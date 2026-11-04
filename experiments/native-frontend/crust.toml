@@ -1,0 +1,13 @@
+[project]
+name = "native-frontend-probe"
+
+[[targets]]
+name = "frontend-probe"
+kind = "executable"
+entry = "probe.cr"
+
+[targets.native]
+include-dirs = ["include"]
+link-inputs = ["../../artifacts/native-frontend/tsbridge.lib"]
+runtime-libraries = ["../../artifacts/native-frontend/tsbridge.dll"]
+debug = true
