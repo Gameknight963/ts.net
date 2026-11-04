@@ -48,7 +48,7 @@ Write-Host 'PASS missing-file error'
 $safetyRoot = Join-Path $output 'safety-tests'
 [IO.Directory]::CreateDirectory($safetyRoot) | Out-Null
 $frontendImport = '../../../experiments/native-frontend/frontend.cr'
-$includeDirectory = (Join-Path $experiment 'include').Replace('\', '/')
+$includeDirectory = $output.Replace('\', '/')
 @"
 [project]
 name = "frontend-safety-tests"

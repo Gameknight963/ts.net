@@ -42,13 +42,6 @@ try {
             if ($LASTEXITCODE) { throw 'Go frontend DLL build failed' }
         }
         finally { Pop-Location }
-        # Keep the small C facade synchronized with cgo's actual export types.
-        # The generated header also has synthetic #line filenames that Crust's
-        # source loader currently treats as real input files.
-        $generatedHeader = Get-Content -LiteralPath "$output/tsbridge.h" -Raw
-        foreach ($declaration in (Get-Content "$experiment/include/tsnet_frontend.h" | Where-Object { $_ -match '^(int|void) tsnet_' })) {
-            if (!$generatedHeader.Contains("extern $declaration")) { throw "C ABI declaration differs from cgo: $declaration" }
-        }
         @'
 LIBRARY tsbridge.dll
 EXPORTS

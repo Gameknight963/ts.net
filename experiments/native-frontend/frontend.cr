@@ -2,7 +2,7 @@ import <std/vector.cr>;
 
 #pragma crust begin_c
 #include <string.h>
-#include "tsnet_frontend.h"
+#include "tsbridge.h"
 #pragma crust end_c
 
 // Pointer validity and ownership are caller obligations at the C boundary.

@@ -7,7 +7,7 @@ kind = "executable"
 entry = "probe.cr"
 
 [targets.native]
-include-dirs = ["include"]
+include-dirs = ["../../artifacts/native-frontend"]
 link-inputs = ["../../artifacts/native-frontend/tsbridge.lib"]
 runtime-libraries = ["../../artifacts/native-frontend/tsbridge.dll"]
 debug = true
