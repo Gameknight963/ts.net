@@ -1,15 +1,15 @@
-import "emitter.cr";
+import "il-emitter.cr";
 
 int compile(const Arguments& arguments) {
     if (arguments.count() != 3) {
-        print("Usage: tsnetc INPUT.ts OUTPUT.cs");
+        print("Usage: tsnetc INPUT.ts OUTPUT.dll");
         return 2;
     }
     Compiler compiler = Compiler::create(arguments.at(1).view());
     compiler.token = lex(&compiler);
     parse(&compiler);
     check_program(&compiler);
-    emit_program(arguments.at(2).view(), &compiler);
+    emit_assembly(arguments.at(2).view(), &compiler);
     return 0;
 }
 

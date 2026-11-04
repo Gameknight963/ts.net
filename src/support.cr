@@ -6,6 +6,7 @@ import "native.cr";
 struct Store<T> {
     private Vector<T> records;
     static Self create() { return (Self){.records = Vector<T>::create()}; }
+    size_t count() const { return this.records.count(); }
     size_t add(T record) {
         this.records.push(record);
         return this.records.count();

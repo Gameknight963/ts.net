@@ -11,8 +11,14 @@
   </ItemGroup>
   <PropertyGroup>
     <CrustTarget>tsnetc</CrustTarget>
-    <CrustRunArguments>&quot;$(MSBuildProjectDirectory)/examples/structural.ts&quot; &quot;$(MSBuildProjectDirectory)/target/demo.cs&quot;</CrustRunArguments>
+    <CrustRunArguments>&quot;$(MSBuildProjectDirectory)/examples/structural.ts&quot; &quot;$(MSBuildProjectDirectory)/target/demo.dll&quot;</CrustRunArguments>
     <CrustRunWorkingDirectory>$(MSBuildProjectDirectory)</CrustRunWorkingDirectory>
   </PropertyGroup>
   <Import Project="$(CrustSdkPath)/Crust.targets" />
+  <Target Name="BuildMetadataWriter" BeforeTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/scripts/build-metadata-writer.ps1&quot;" />
+  </Target>
+  <Target Name="PrepareMetadataWriter" BeforeTargets="_CrustReadProject" Condition="'$(DesignTimeBuild)' != 'true' and !Exists('$(MSBuildProjectDirectory)/artifacts/metadata-writer/Tsnet.Metadata.lib')">
+    <CallTarget Targets="BuildMetadataWriter" />
+  </Target>
 </Project>
