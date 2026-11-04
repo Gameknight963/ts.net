@@ -1,0 +1,18 @@
+<Project DefaultTargets="Build">
+  <PropertyGroup>
+    <ProjectGuid>{F8D39348-69E4-46FA-A604-AD6521A788BA}</ProjectGuid>
+    <CrustSdkPath Condition="'$(CrustSdkPath)' == '' and '$(CRUST_SDK_PATH)' != ''">$(CRUST_SDK_PATH)</CrustSdkPath>
+    <CrustSdkPath Condition="'$(CrustSdkPath)' == '' and Exists('$(MSBuildThisFileDirectory)../crust/editors/msbuild/Crust.props')">$(MSBuildThisFileDirectory)../crust/editors/msbuild</CrustSdkPath>
+  </PropertyGroup>
+  <Import Project="$(CrustSdkPath)/Crust.props" />
+  <ItemGroup>
+    <None Remove="artifacts/**" />
+    <Compile Remove="artifacts/**" />
+  </ItemGroup>
+  <PropertyGroup>
+    <CrustTarget>tsnetc</CrustTarget>
+    <CrustRunArguments>&quot;$(MSBuildProjectDirectory)/examples/structural.ts&quot; &quot;$(MSBuildProjectDirectory)/target/demo.cs&quot;</CrustRunArguments>
+    <CrustRunWorkingDirectory>$(MSBuildProjectDirectory)</CrustRunWorkingDirectory>
+  </PropertyGroup>
+  <Import Project="$(CrustSdkPath)/Crust.targets" />
+</Project>

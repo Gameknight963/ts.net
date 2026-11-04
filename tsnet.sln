@@ -1,0 +1,18 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.0.0
+MinimumVisualStudioVersion = 17.14.0.0
+Project("{419D914F-6B6D-4C61-8E53-AAB562A9C7D0}") = "tsnet", "tsnet.crproj", "{F8D39348-69E4-46FA-A604-AD6521A788BA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Default|Any CPU = Default|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F8D39348-69E4-46FA-A604-AD6521A788BA}.Default|Any CPU.ActiveCfg = Default|Any CPU
+		{F8D39348-69E4-46FA-A604-AD6521A788BA}.Default|Any CPU.Build.0 = Default|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
