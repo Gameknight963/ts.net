@@ -1,4 +1,4 @@
-import "../../crust/lib/vector.cr";
+import <std/vector.cr>;
 
 #pragma crust begin_c
 #include <stdio.h>
