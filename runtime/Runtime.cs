@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 // Support for operations that cannot be resolved statically. Typed numeric code
 // does not pass through this representation.
-abstract class TsObject
+public abstract class TsObject
 {
     private Dictionary<string, object> extra;
 
@@ -19,8 +19,13 @@ abstract class TsObject
     }
 }
 
-static class Js
+public static class Js
 {
+    public static int Run(Action entry)
+    {
+        try { entry(); return 0; }
+        catch (Exception error) { Console.Error.WriteLine(error); return 1; }
+    }
     private sealed class UndefinedValue { }
     public static readonly object Undefined = new UndefinedValue();
     public static double Now() => Stopwatch.GetTimestamp() * (1000.0 / Stopwatch.Frequency);

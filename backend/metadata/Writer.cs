@@ -1,0 +1,246 @@
+using System.Reflection;
+using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
+using System.Reflection.PortableExecutable;
+using System.Runtime.InteropServices;
+using System.Text;
+
+// This boundary accepts assembly concepts, not TypeScript syntax or types.
+// IDs belong to the input plan; metadata tokens are assigned only here.
+public static class NativeWriter
+{
+    [UnmanagedCallersOnly(EntryPoint = "tsnet_emit_assembly")]
+    public static unsafe int Emit(byte* data, int length, byte* path, byte* error, int capacity)
+    {
+        try
+        {
+            if (data == null || length < 4 || path == null || capacity < 0) throw new ArgumentException("Invalid writer arguments");
+            var plan = new AssemblyPlan(new BinaryReader(new MemoryStream(new ReadOnlySpan<byte>(data, length).ToArray())));
+            var image = plan.Build();
+            string destination = Marshal.PtrToStringUTF8((nint)path)!;
+            string temporary = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try { File.WriteAllBytes(temporary, image); File.Move(temporary, destination, overwrite: true); }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+            return 0;
+        }
+        catch (Exception exception)
+        {
+            if (error != null && capacity > 0)
+            {
+                byte[] message = Encoding.UTF8.GetBytes(exception.Message);
+                int count = Math.Min(message.Length, capacity - 1);
+                message.AsSpan(0, count).CopyTo(new Span<byte>(error, count));
+                error[count] = 0;
+            }
+            return 1;
+        }
+    }
+}
+
+sealed class AssemblyPlan
+{
+    sealed record ExternalType(int Id, string Assembly, string Namespace, string Name);
+    sealed class TypeRow(int id, int attributes, string name, int parent)
+    {
+        public int Id = id, Attributes = attributes, Parent = parent;
+        public string Name = name;
+        public List<int> Interfaces = [];
+        public List<FieldRow> Fields = [];
+        public List<MethodRow> Methods = [];
+    }
+    sealed record FieldRow(int Id, int Attributes, int Type, string Name);
+    sealed record Instruction(int Code, int Operand, double Number = 0, string? Text = null);
+    sealed class MethodRow(int id, int owner, int attributes, int result, int[] parameters, string name)
+    {
+        public int Id = id, Owner = owner, Attributes = attributes, Result = result;
+        public int[] Parameters = parameters;
+        public string Name = name;
+        public List<int> Locals = [];
+        public List<Instruction> Instructions = [];
+    }
+    readonly List<ExternalType> references = [];
+    readonly List<TypeRow> types = [];
+    readonly List<MethodRow> members = [];
+    readonly List<(int Id, int Method, int Type)> specifications = [];
+    readonly Dictionary<int, TypeRow> typeRows = [];
+    readonly Dictionary<int, MethodRow> methodRows = [];
+    readonly Dictionary<int, EntityHandle> handles = [];
+    readonly MetadataBuilder metadata = new();
+    readonly int entry;
+    readonly string name;
+
+    static string Text(BinaryReader reader)
+    {
+        int length = reader.ReadInt32();
+        if (length < 0 || length > reader.BaseStream.Length - reader.BaseStream.Position) throw new InvalidDataException("Invalid string length");
+        return new UTF8Encoding(false, true).GetString(reader.ReadBytes(length));
+    }
+    static int[] Parameters(BinaryReader reader)
+    {
+        int count = reader.ReadInt32();
+        if (count < 0 || count > 65535) throw new InvalidDataException("Invalid parameter count");
+        var result = new int[count];
+        for (int i = 0; i < count; i++) result[i] = reader.ReadInt32();
+        return result;
+    }
+    public AssemblyPlan(BinaryReader reader)
+    {
+        if (reader.ReadInt32() != 0x314c4954) throw new InvalidDataException("Unsupported IL plan version");
+        name = Text(reader);
+        while (true)
+        {
+            int command = reader.ReadInt32();
+            int id = reader.ReadInt32();
+            switch (command)
+            {
+                case 1: references.Add(new(id, Text(reader), Text(reader), Text(reader))); break;
+                case 2:
+                    var type = new TypeRow(id, reader.ReadInt32(), Text(reader), reader.ReadInt32());
+                    types.Add(type); typeRows.Add(id, type); break;
+                case 3: typeRows[id].Interfaces.Add(reader.ReadInt32()); break;
+                case 4:
+                    int owner = reader.ReadInt32();
+                    typeRows[owner].Fields.Add(new(id, reader.ReadInt32(), reader.ReadInt32(), Text(reader))); break;
+                case 5: case 6:
+                    var method = new MethodRow(id, reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), Parameters(reader), Text(reader));
+                    methodRows.Add(id, method);
+                    if (command == 5) typeRows[method.Owner].Methods.Add(method); else members.Add(method);
+                    break;
+                case 7: methodRows[id].Locals.Add(reader.ReadInt32()); break;
+                case 8: methodRows[id].Instructions.Add(new(reader.ReadInt32(), reader.ReadInt32())); break;
+                case 9: methodRows[id].Instructions.Add(new(0x23, 0, reader.ReadDouble())); break;
+                case 10: methodRows[id].Instructions.Add(new(0x72, 0, Text: Text(reader))); break;
+                case 11:
+                    entry = id;
+                    if (reader.BaseStream.Position != reader.BaseStream.Length) throw new InvalidDataException("Trailing IL plan data");
+                    return;
+                case 12: specifications.Add((id, reader.ReadInt32(), reader.ReadInt32())); break;
+                default: throw new InvalidDataException("Unknown IL plan command");
+            }
+        }
+    }
+
+    EntityHandle Handle(int id) => id == 0 ? default : handles[id];
+    void EncodeType(SignatureTypeEncoder encoder, int type)
+    {
+        switch (type)
+        {
+            case -2: encoder.Boolean(); break;
+            case -3: encoder.Double(); break;
+            case -4: encoder.String(); break;
+            case -5: encoder.Object(); break;
+            case -6: encoder.Int32(); break;
+            case -7: encoder.SZArray().Object(); break;
+            case -8: encoder.GenericMethodTypeParameter(0); break;
+            case -9: encoder.IntPtr(); break;
+            default: encoder.Type(Handle(type), isValueType: false); break;
+        }
+    }
+    BlobHandle Signature(MethodRow method, bool external)
+    {
+        var signature = new BlobBuilder();
+        bool instance = external ? (method.Attributes & 1) != 0 : (method.Attributes & (int)MethodAttributes.Static) == 0;
+        int genericCount = external && (method.Attributes & 2) != 0 ? 1 : 0;
+        new BlobEncoder(signature).MethodSignature(genericParameterCount: genericCount, isInstanceMethod: instance).Parameters(method.Parameters.Length,
+            result => { if (method.Result == -1) result.Void(); else EncodeType(result.Type(), method.Result); },
+            parameters => { foreach (int parameter in method.Parameters) EncodeType(parameters.AddParameter().Type(), parameter); });
+        return metadata.GetOrAddBlob(signature);
+    }
+    int Body(MethodRow method, MethodBodyStreamEncoder bodies)
+    {
+        if ((method.Attributes & (int)MethodAttributes.Abstract) != 0) return -1;
+        var code = new BlobBuilder();
+        var flow = new ControlFlowBuilder();
+        var il = new InstructionEncoder(code, flow);
+        var labels = new Dictionary<int, LabelHandle>();
+        LabelHandle Label(int id) { if (!labels.TryGetValue(id, out var label)) labels.Add(id, label = il.DefineLabel()); return label; }
+        foreach (var instruction in method.Instructions)
+        {
+            int operand = instruction.Operand;
+            switch (instruction.Code)
+            {
+                case -1: il.MarkLabel(Label(operand)); break;
+                case 0x20: il.LoadConstantI4(operand); break;
+                case 0x23: il.LoadConstantR8(instruction.Number); break;
+                case 0x72: il.LoadString(metadata.GetOrAddUserString(instruction.Text!)); break;
+                case 0xfe09: il.LoadArgument(operand); break;
+                case 0xfe0b: il.StoreArgument(operand); break;
+                case 0xfe0c: il.LoadLocal(operand); break;
+                case 0xfe0e: il.StoreLocal(operand); break;
+                case 0x38: case 0x39: case 0x3a: il.Branch((ILOpCode)instruction.Code, Label(operand)); break;
+                case 0x28: case 0x6f: case 0x73: case 0x74: case 0x75: case 0x7b: case 0x7d: case 0x7e: case 0x80: case 0x8c: case 0x8d: case 0xa5: case 0xfe06:
+                    il.OpCode((ILOpCode)instruction.Code); il.Token(Handle(operand)); break;
+                default: il.OpCode((ILOpCode)instruction.Code); break;
+            }
+        }
+        StandaloneSignatureHandle locals = default;
+        if (method.Locals.Count != 0)
+        {
+            var signature = new BlobBuilder();
+            var encoder = new BlobEncoder(signature).LocalVariableSignature(method.Locals.Count);
+            foreach (int local in method.Locals) EncodeType(encoder.AddVariable().Type(), local);
+            locals = metadata.AddStandaloneSignature(metadata.GetOrAddBlob(signature));
+        }
+        return bodies.AddMethodBody(il, maxStack: ushort.MaxValue, localVariablesSignature: locals, attributes: MethodBodyAttributes.InitLocals);
+    }
+    public byte[] Build()
+    {
+        metadata.AddModule(0, metadata.GetOrAddString(name + ".dll"), metadata.GetOrAddGuid(Guid.NewGuid()), default, default);
+        metadata.AddAssembly(metadata.GetOrAddString(name), new Version(1, 0, 0, 0), default, default, 0, AssemblyHashAlgorithm.None);
+        var assemblies = new Dictionary<string, AssemblyReferenceHandle>();
+        foreach (var reference in references)
+        {
+            if (!assemblies.TryGetValue(reference.Assembly, out var assembly))
+            {
+                bool framework = reference.Assembly.StartsWith("System.", StringComparison.Ordinal);
+                var key = framework ? metadata.GetOrAddBlob(new byte[] { 0xb0, 0x3f, 0x5f, 0x7f, 0x11, 0xd5, 0x0a, 0x3a }) : default;
+                assembly = metadata.AddAssemblyReference(metadata.GetOrAddString(reference.Assembly),
+                    framework ? new Version(10, 0, 0, 0) : new Version(1, 0, 0, 0), default, key, 0, default);
+                assemblies.Add(reference.Assembly, assembly);
+            }
+            handles.Add(reference.Id, metadata.AddTypeReference(assembly, metadata.GetOrAddString(reference.Namespace), metadata.GetOrAddString(reference.Name)));
+        }
+        metadata.AddTypeDefinition(0, default, metadata.GetOrAddString("<Module>"), default, MetadataTokens.FieldDefinitionHandle(1), MetadataTokens.MethodDefinitionHandle(1));
+        int typeIndex = 2, fieldIndex = 1, methodIndex = 1;
+        foreach (var type in types)
+        {
+            handles.Add(type.Id, MetadataTokens.TypeDefinitionHandle(typeIndex++));
+            foreach (var field in type.Fields) handles.Add(field.Id, MetadataTokens.FieldDefinitionHandle(fieldIndex++));
+            foreach (var method in type.Methods) handles.Add(method.Id, MetadataTokens.MethodDefinitionHandle(methodIndex++));
+        }
+        foreach (var member in members) handles.Add(member.Id, metadata.AddMemberReference(Handle(member.Owner), metadata.GetOrAddString(member.Name), Signature(member, true)));
+        foreach (var specification in specifications)
+        {
+            var signature = new BlobBuilder();
+            EncodeType(new BlobEncoder(signature).MethodSpecificationSignature(1).AddArgument(), specification.Type);
+            handles.Add(specification.Id, metadata.AddMethodSpecification(Handle(specification.Method), metadata.GetOrAddBlob(signature)));
+        }
+        var il = new BlobBuilder();
+        var bodies = new MethodBodyStreamEncoder(il);
+        fieldIndex = methodIndex = 1;
+        foreach (var type in types)
+        {
+            metadata.AddTypeDefinition((TypeAttributes)type.Attributes, default, metadata.GetOrAddString(type.Name), Handle(type.Parent),
+                MetadataTokens.FieldDefinitionHandle(fieldIndex), MetadataTokens.MethodDefinitionHandle(methodIndex));
+            foreach (int implemented in type.Interfaces) metadata.AddInterfaceImplementation((TypeDefinitionHandle)Handle(type.Id), Handle(implemented));
+            foreach (var field in type.Fields)
+            {
+                var signature = new BlobBuilder();
+                EncodeType(new BlobEncoder(signature).FieldSignature(), field.Type);
+                metadata.AddFieldDefinition((FieldAttributes)field.Attributes, metadata.GetOrAddString(field.Name), metadata.GetOrAddBlob(signature));
+                fieldIndex++;
+            }
+            foreach (var method in type.Methods)
+            {
+                metadata.AddMethodDefinition((MethodAttributes)method.Attributes, MethodImplAttributes.IL, metadata.GetOrAddString(method.Name),
+                    Signature(method, false), Body(method, bodies), MetadataTokens.ParameterHandle(1));
+                methodIndex++;
+            }
+        }
+        var pe = new ManagedPEBuilder(new PEHeaderBuilder(imageCharacteristics: Characteristics.ExecutableImage), new MetadataRootBuilder(metadata), il,
+            entryPoint: (MethodDefinitionHandle)Handle(entry), flags: CorFlags.ILOnly);
+        var result = new BlobBuilder();
+        pe.Serialize(result);
+        return result.ToArray();
+    }
+}
