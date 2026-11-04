@@ -1,97 +1,142 @@
 import "model.cr";
-
 bool name_start(char ch) {
     return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' || ch == '$';
 }
-bool digit(char ch) { return ch >= '0' && ch <= '9'; }
+bool digit(char ch) {
+    return ch >= '0' && ch <= '9';
+}
 
-unsafe Token* lex(Compiler* c, char* source) {
-    Token* first = 0;
-    Token* last = 0;
+TokenId lex(Compiler& c) {
+    TokenId first = 0;
+    TokenId last = 0;
     size_t position = 0;
     int line = 1;
     int column = 1;
-    if (strncmp(source, "\xef\xbb\xbf", 3) == 0) { position = 3; }
+    if (((int)c.source.peek(0) & 255) == 239 && ((int)c.source.peek(1) & 255) == 187 &&
+        ((int)c.source.peek(2) & 255) == 191) {
+        position = 3;
+    }
     while (true) {
-        char ch = source[position];
+        char ch = c.source.peek(position);
         if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n') {
             position++;
             column++;
-            if (ch == '\n') { line++; column = 1; }
+            if (ch == '\n') {
+                line++;
+                column = 1;
+            }
             continue;
         }
-        if (ch == '/' && source[position + 1] == '/') {
-            while (source[position] != 0 && source[position] != '\n') { position++; column++; }
+        if (ch == '/' && c.source.peek(position + 1) == '/') {
+            while (c.source.peek(position) != 0 && c.source.peek(position) != '\n') {
+                position++;
+                column++;
+            }
             continue;
         }
-        Token* token = (Token*)allocate(c->arena, sizeof(Token));
-        token->line = line;
-        token->column = column;
-        token->kind = TokenKind::Punctuation;
+        TokenId token = new_token(c);
+        set_token_line(token, line, c);
+        set_token_column(token, column, c);
+        set_token_kind(token, TokenKind::Punctuation, c);
         size_t start = position;
-        if (ch == '/' && source[position + 1] == '*') {
-            position += 2; column += 2;
-            while (source[position] != 0 && !(source[position] == '*' && source[position + 1] == '/')) {
-                if (source[position] == '\n') { line++; column = 0; }
-                position++; column++;
+        if (ch == '/' && c.source.peek(position + 1) == '*') {
+            position += 2;
+            column += 2;
+            while (c.source.peek(position) != 0 &&
+                   !(c.source.peek(position) == '*' && c.source.peek(position + 1) == '/')) {
+                if (c.source.peek(position) == '\n') {
+                    line++;
+                    column = 0;
+                }
+                position++;
+                column++;
             }
-            if (source[position] == 0) { token->text = copy_text(c->arena, "/*", 2); fail(c, token, "unterminated comment"); }
-            position += 2; column += 2;
+            if (c.source.peek(position) == 0) {
+                set_token_text(token, source_text(start, 2, c), c);
+                fail(token, &text_unterminated_comment, c);
+            }
+            position += 2;
+            column += 2;
             continue;
         }
-        if (ch == 0) { token->kind = TokenKind::End; }
-        else if (name_start(ch)) {
-            token->kind = TokenKind::Name;
-            do { position++; } while (name_start(source[position]) || digit(source[position]));
-        }
-        else if (digit(ch) || (ch == '.' && digit(source[position + 1]))) {
-            token->kind = TokenKind::Number;
-            while (digit(source[position])) { position++; }
-            if (source[position] == '.') {
+        if (ch == 0) {
+            set_token_kind(token, TokenKind::End, c);
+        } else if (name_start(ch)) {
+            set_token_kind(token, TokenKind::Name, c);
+            do {
                 position++;
-                while (digit(source[position])) { position++; }
-            }
-            if (source[position] == 'e' || source[position] == 'E') {
+            } while (name_start(c.source.peek(position)) || digit(c.source.peek(position)));
+        } else if (digit(ch) || (ch == '.' && digit(c.source.peek(position + 1)))) {
+            set_token_kind(token, TokenKind::Number, c);
+            while (digit(c.source.peek(position))) {
                 position++;
-                if (source[position] == '+' || source[position] == '-') { position++; }
-                size_t exponent = position;
-                while (digit(source[position])) { position++; }
-                if (position == exponent) { token->text = copy_text(c->arena, source + start, position - start); fail(c, token, "expected exponent digits"); }
             }
-        }
-        else if (ch == '"' || ch == '\'') {
-            token->kind = TokenKind::String;
-            position++;
-            while (source[position] != ch) {
-                if (source[position] == 0 || source[position] == '\n' || source[position] == '\r') {
-                    token->text = copy_text(c->arena, source + start, position - start);
-                    fail(c, token, "unterminated string");
-                }
-                if (source[position] == '\\') {
+            if (c.source.peek(position) == '.') {
+                position++;
+                while (digit(c.source.peek(position))) {
                     position++;
-                    char escape = source[position];
-                    if (!(escape == 'n' || escape == 'r' || escape == 't' || escape == '\\' || escape == '\'' || escape == '"')) {
-                        token->text = copy_text(c->arena, source + start, position - start);
-                        fail(c, token, "unsupported string escape");
+                }
+            }
+            if (c.source.peek(position) == 'e' || c.source.peek(position) == 'E') {
+                position++;
+                if (c.source.peek(position) == '+' || c.source.peek(position) == '-') {
+                    position++;
+                }
+                size_t exponent = position;
+                while (digit(c.source.peek(position))) {
+                    position++;
+                }
+                if (position == exponent) {
+                    set_token_text(token, source_text(start, position - start, c), c);
+                    fail(token, &text_expected_exponent_digits, c);
+                }
+            }
+        } else if (ch == '"' || ch == '\'') {
+            set_token_kind(token, TokenKind::String, c);
+            position++;
+            while (c.source.peek(position) != ch) {
+                if (c.source.peek(position) == 0 || c.source.peek(position) == '\n' ||
+                    c.source.peek(position) == '\r') {
+                    set_token_text(token, source_text(start, position - start, c), c);
+                    fail(token, &text_unterminated_string, c);
+                }
+                if (c.source.peek(position) == '\\') {
+                    position++;
+                    char escape = c.source.peek(position);
+                    if (!(escape == 'n' || escape == 'r' || escape == 't' || escape == '\\' ||
+                          escape == '\'' || escape == '"')) {
+                        set_token_text(token, source_text(start, position - start, c), c);
+                        fail(token, &text_unsupported_string_escape, c);
                     }
                 }
                 position++;
             }
             position++;
-        }
-        else {
+        } else {
             position++;
-            char following = source[position];
-            if ((ch == '=' || ch == '!') && following == '=' && source[position + 1] == '=') { position += 2; }
-            else if ((ch == '+' || ch == '-') && (following == ch || following == '=')) { position++; }
-            else if ((ch == '*' || ch == '/' || ch == '<' || ch == '>' || ch == '=' || ch == '!') && following == '=') { position++; }
-            else if ((ch == '&' || ch == '|') && following == ch) { position++; }
+            char following = c.source.peek(position);
+            if ((ch == '=' || ch == '!') && following == '=' && c.source.peek(position + 1) == '=') {
+                position += 2;
+            } else if ((ch == '+' || ch == '-') && (following == ch || following == '=')) {
+                position++;
+            } else if ((ch == '*' || ch == '/' || ch == '<' || ch == '>' || ch == '=' || ch == '!') &&
+                       following == '=') {
+                position++;
+            } else if ((ch == '&' || ch == '|') && following == ch) {
+                position++;
+            }
         }
-        token->text = copy_text(c->arena, source + start, position - start);
+        set_token_text(token, source_text(start, position - start, c), c);
         column += (int)(position - start);
-        if (first == 0) { first = token; } else { last->next = token; }
+        if (first == 0) {
+            first = token;
+        } else {
+            set_token_next(last, token, c);
+        }
         last = token;
-        if (token->kind == TokenKind::End) { return first; }
+        if (get_token(token, c).kind == TokenKind::End) {
+            return first;
+        }
     }
     return first;
 }

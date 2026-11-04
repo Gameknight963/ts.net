@@ -1,290 +1,454 @@
 import "checker.cr";
 
-unsafe void cs_type(FILE* output, Type* type) {
-    if (type->kind == TypeKind::Number) { fputs("double", output); }
-    else if (type->kind == TypeKind::String) { fputs("string", output); }
-    else if (type->kind == TypeKind::Boolean) { fputs("bool", output); }
-    else if (type->kind == TypeKind::Void) { fputs("void", output); }
-    else if (type->kind == TypeKind::Shape) { fprintf(output, "I%d", type->id); }
-    else { fputs("object", output); }
-}
-
-unsafe void cs_string(FILE* output, const char* text) {
-    fputc('"', output);
-    for (size_t i = 0; text[i] != 0; i++) {
-        char ch = text[i];
-        if (ch == '"' || ch == '\\') { fputc('\\', output); fputc(ch, output); }
-        else if (ch == '\n') { fputs("\\n", output); }
-        else if (ch == '\r') { fputs("\\r", output); }
-        else if (ch == '\t') { fputs("\\t", output); }
-        else { fputc(ch, output); }
+void cs_type(Output& output, TypeId type, const Compiler& c) {
+    if (get_type(type, c).kind == TypeKind::Number) {
+        output.bytes(&text_double);
+    } else if (get_type(type, c).kind == TypeKind::String) {
+        output.bytes(&text_string);
+    } else if (get_type(type, c).kind == TypeKind::Boolean) {
+        output.bytes(&text_bool);
+    } else if (get_type(type, c).kind == TypeKind::Void) {
+        output.bytes(&text_void);
+    } else if (get_type(type, c).kind == TypeKind::Shape) {
+        output.bytes(&text_interface_prefix);
+        output.integer(get_type(type, c).id);
+    } else {
+        output.bytes(&text_object);
     }
-    fputc('"', output);
 }
 
-unsafe void cs_property(FILE* output, const char* name) {
-    fputs("p_", output);
-    for (size_t i = 0; name[i] != 0; i++) { fprintf(output, "%02x", (unsigned int)(unsigned char)name[i]); }
+void cs_string(Output& output, TextId text, const Compiler& c) {
+    output.put('"');
+    for (size_t i = 0; text_byte(text, i, c) != 0; i++) {
+        char ch = text_byte(text, i, c);
+        if (ch == '"' || ch == '\\') {
+            output.put('\\');
+            output.put(ch);
+        } else if (ch == '\n') {
+            output.bytes(&text_escape_newline);
+        } else if (ch == '\r') {
+            output.bytes(&text_escape_return);
+        } else if (ch == '\t') {
+            output.bytes(&text_escape_tab);
+        } else {
+            output.put(ch);
+        }
+    }
+    output.put('"');
 }
 
-unsafe void emit_as(FILE* output, Node* entry, Type* target) {
-    bool checked = target->kind != TypeKind::Any && target->kind != TypeKind::Unknown
-        && (entry->type->kind == TypeKind::Any || entry->type->kind == TypeKind::Unknown
-            || (target->kind == TypeKind::Shape && entry->type != target) || !fits(entry->type, target));
-    if (checked) { fputs("Js.Cast<", output); cs_type(output, target); fputs(">(", output); }
-    emit_expression(output, entry);
-    if (checked) { fprintf(output, ", \"line %d: checked conversion failed\")", entry->token->line); }
+void cs_property(Output& output, TextId name, const Compiler& c) {
+    output.bytes(&text_property_prefix);
+    for (size_t i = 0; text_byte(name, i, c) != 0; i++) {
+        output.hex(text_byte(name, i, c));
+    }
 }
 
-unsafe void emit_expression(FILE* output, Node* entry) {
-    NodeKind kind = entry->kind;
+void emit_as(Output& output, NodeId entry, TypeId target, const Compiler& c) {
+    bool checked = get_type(target, c).kind != TypeKind::Any &&
+                   get_type(target, c).kind != TypeKind::Unknown &&
+                   (get_type(get_node(entry, c).type, c).kind == TypeKind::Any ||
+                    get_type(get_node(entry, c).type, c).kind == TypeKind::Unknown ||
+                    (get_type(target, c).kind == TypeKind::Shape && get_node(entry, c).type != target) ||
+                    !fits(get_node(entry, c).type, target, c));
+    if (checked) {
+        output.bytes(&text_js_cast);
+        cs_type(output, target, c);
+        output.bytes(&text_generic_call_open);
+    }
+    emit_expression(output, entry, c);
+    if (checked) {
+        output.bytes(&text_line);
+        output.integer(get_token(get_node(entry, c).token, c).line);
+        output.bytes(&text_checked_conversion_failed);
+    }
+}
+
+void emit_expression(Output& output, NodeId entry, const Compiler& c) {
+    NodeKind kind = get_node(entry, c).kind;
     if (kind == NodeKind::Number) {
-        double value = strtod(entry->token->text, 0);
-        if (value > 1.7976931348623157e308) { fputs("double.PositiveInfinity", output); }
-        else { fprintf(output, "%.17gd", value); }
-    }
-    else if (kind == NodeKind::Boolean) { fputs(entry->token->text, output); }
-    else if (kind == NodeKind::String) {
-        const char* text = entry->token->text;
-        size_t length = strlen(text);
-        fputc('"', output);
+        double value = number(get_token(get_node(entry, c).token, c).text, c);
+        if (value > 1.7976931348623157e308) {
+            output.bytes(&text_double_positiveinfinity);
+        } else {
+            output.number(value);
+            output.bytes(&text_number_suffix);
+        }
+    } else if (kind == NodeKind::Boolean) {
+        write(get_token(get_node(entry, c).token, c).text, output, c);
+    } else if (kind == NodeKind::String) {
+        TextId text = get_token(get_node(entry, c).token, c).text;
+        size_t length = text_size(text, c);
+        output.put('"');
         for (size_t i = 1; i + 1 < length; i++) {
-            char ch = text[i];
+            char ch = text_byte(text, i, c);
             if (ch == '\\') {
                 i++;
-                if (text[i] == '\'') { fputc('\'', output); }
-                else { fputc('\\', output); fputc(text[i], output); }
+                if (text_byte(text, i, c) == '\'') {
+                    output.put('\'');
+                } else {
+                    output.put('\\');
+                    output.put(text_byte(text, i, c));
+                }
+            } else if (ch == '"') {
+                output.bytes(&text_escaped_quote);
+            } else {
+                output.put(ch);
             }
-            else if (ch == '"') { fputs("\\\"", output); }
-            else { fputc(ch, output); }
         }
-        fputc('"', output);
-    }
-    else if (kind == NodeKind::Name) { fprintf(output, "v%d", entry->symbol->id); }
-    else if (kind == NodeKind::Object) {
-        fprintf(output, "new O%d { ", entry->type->id);
-        Node* property = entry->children;
+        output.put('"');
+    } else if (kind == NodeKind::Name) {
+        output.bytes(&text_variable_prefix);
+        output.integer(get_symbol(get_node(entry, c).symbol, c).id);
+    } else if (kind == NodeKind::Object) {
+        output.bytes(&text_new_o);
+        output.integer(get_type(get_node(entry, c).type, c).id);
+        output.bytes(&text_object_initializer_open);
+        NodeId property = get_node(entry, c).children;
         while (property != 0) {
-            cs_property(output, property->name); fputs(" = ", output);
-            emit_expression(output, property->left);
-            fputs(", ", output); property = property->next;
+            cs_property(output, get_node(property, c).name, c);
+            output.bytes(&text_spaced_assign);
+            emit_expression(output, get_node(property, c).left, c);
+            output.bytes(&text_argument_separator);
+            property = get_node(property, c).next;
         }
-        fputs("}", output);
-    }
-    else if (kind == NodeKind::Property) {
-        if (entry->left->type->kind == TypeKind::Any) {
-            fputs("Js.Get(", output); emit_expression(output, entry->left);
-            fputs(", ", output); cs_string(output, entry->name); fputs(")", output);
+        output.bytes(&text_rbrace);
+    } else if (kind == NodeKind::Property) {
+        if (get_type(get_node(get_node(entry, c).left, c).type, c).kind == TypeKind::Any) {
+            output.bytes(&text_js_get);
+            emit_expression(output, get_node(entry, c).left, c);
+            output.bytes(&text_argument_separator);
+            cs_string(output, get_node(entry, c).name, c);
+            output.bytes(&text_rparen);
+        } else if (get_type(get_node(get_node(entry, c).left, c).type, c).kind == TypeKind::String) {
+            output.bytes(&text_string_length_prefix);
+            emit_expression(output, get_node(entry, c).left, c);
+            output.bytes(&text_string_length_suffix);
+        } else {
+            output.bytes(&text_lparen);
+            emit_expression(output, get_node(entry, c).left, c);
+            output.bytes(&text_member_access);
+            cs_property(output, get_node(entry, c).name, c);
         }
-        else if (entry->left->type->kind == TypeKind::String) {
-            fputs("((double)(", output); emit_expression(output, entry->left); fputs(").Length)", output);
-        }
-        else { fputs("(", output); emit_expression(output, entry->left); fputs(").", output); cs_property(output, entry->name); }
-    }
-    else if (kind == NodeKind::Call) {
-        Node* argument = entry->children;
-        if (builtin(entry->left, "performance", "now")) { fputs("Js.Now(", output); }
-        else if (builtin(entry->left, "console", "log")) {
-            fputs("Js.Log(", output);
+    } else if (kind == NodeKind::Call) {
+        NodeId argument = get_node(entry, c).children;
+        if (builtin(get_node(entry, c).left, &text_performance, &text_now, c)) {
+            output.bytes(&text_js_now);
+        } else if (builtin(get_node(entry, c).left, &text_console, &text_log, c)) {
+            output.bytes(&text_js_log);
             while (argument != 0) {
-                emit_expression(output, argument);
-                argument = argument->next; if (argument != 0) { fputs(", ", output); }
+                emit_expression(output, argument, c);
+                argument = get_node(argument, c).next;
+                if (argument != 0) {
+                    output.bytes(&text_argument_separator);
+                }
+            }
+        } else {
+            output.bytes(&text_function_prefix);
+            output.integer(get_symbol(get_node(get_node(entry, c).left, c).symbol, c).id);
+            output.bytes(&text_lparen);
+            NodeId parameter =
+                get_node(get_symbol(get_node(get_node(entry, c).left, c).symbol, c).function, c).children;
+            while (argument != 0) {
+                emit_as(output, argument, get_node(parameter, c).type, c);
+                argument = get_node(argument, c).next;
+                parameter = get_node(parameter, c).next;
+                if (argument != 0) {
+                    output.bytes(&text_argument_separator);
+                }
             }
         }
-        else {
-            fprintf(output, "f%d(", entry->left->symbol->id);
-            Node* parameter = entry->left->symbol->function->children;
-            while (argument != 0) {
-                emit_as(output, argument, parameter->type);
-                argument = argument->next; parameter = parameter->next;
-                if (argument != 0) { fputs(", ", output); }
+        output.bytes(&text_rparen);
+    } else if (kind == NodeKind::Assert) {
+        emit_as(output, get_node(entry, c).left, get_node(entry, c).type, c);
+    } else if (kind == NodeKind::Unary) {
+        output.bytes(&text_lparen);
+        write(get_token(get_node(entry, c).token, c).text, output, c);
+        output.bytes(&text_lparen);
+        if (get_type(get_node(get_node(entry, c).left, c).type, c).kind == TypeKind::Any) {
+            if (is_text(get_token(get_node(entry, c).token, c).text, &text_not, c)) {
+                output.bytes(&text_js_boolean);
+            } else {
+                output.bytes(&text_js_number);
             }
+            emit_expression(output, get_node(entry, c).left, c);
+            output.bytes(&text_rparen);
+        } else {
+            emit_expression(output, get_node(entry, c).left, c);
         }
-        fputs(")", output);
-    }
-    else if (kind == NodeKind::Assert) { emit_as(output, entry->left, entry->type); }
-    else if (kind == NodeKind::Unary) {
-        fprintf(output, "(%s", entry->token->text);
-        fputs("(", output);
-        if (entry->left->type->kind == TypeKind::Any) {
-            fputs(same(entry->token->text, "!") ? "Js.Boolean(" : "Js.Number(", output);
-            emit_expression(output, entry->left); fputs(")", output);
+        output.bytes(&text_close_two_parens);
+    } else if (kind == NodeKind::Update) {
+        emit_expression(output, get_node(entry, c).left, c);
+        write(get_token(get_node(entry, c).token, c).text, output, c);
+    } else if (kind == NodeKind::Assign) {
+        if (get_node(get_node(entry, c).left, c).kind == NodeKind::Property &&
+            get_type(get_node(get_node(get_node(entry, c).left, c).left, c).type, c).kind == TypeKind::Any) {
+            output.bytes(&text_js_set);
+            emit_expression(output, get_node(get_node(entry, c).left, c).left, c);
+            output.bytes(&text_argument_separator);
+            cs_string(output, get_node(get_node(entry, c).left, c).name, c);
+            output.bytes(&text_argument_separator);
+            emit_expression(output, get_node(entry, c).right, c);
+            output.bytes(&text_rparen);
+        } else {
+            emit_expression(output, get_node(entry, c).left, c);
+            output.bytes(&text_space);
+            write(get_token(get_node(entry, c).token, c).text, output, c);
+            output.bytes(&text_space);
+            emit_as(output, get_node(entry, c).right, get_node(get_node(entry, c).left, c).type, c);
         }
-        else { emit_expression(output, entry->left); }
-        fputs("))", output);
-    }
-    else if (kind == NodeKind::Update) {
-        // C# only accepts an unparenthesized assignment target for updates.
-        emit_expression(output, entry->left); fputs(entry->token->text, output);
-    }
-    else if (kind == NodeKind::Assign) {
-        if (entry->left->kind == NodeKind::Property && entry->left->left->type->kind == TypeKind::Any) {
-            fputs("Js.Set(", output); emit_expression(output, entry->left->left);
-            fputs(", ", output); cs_string(output, entry->left->name);
-            fputs(", ", output); emit_expression(output, entry->right); fputs(")", output);
-        }
-        else {
-            emit_expression(output, entry->left);
-            fprintf(output, " %s ", entry->token->text);
-            emit_as(output, entry->right, entry->left->type);
-        }
-    }
-    else if (kind == NodeKind::Binary) {
-        const char* op = entry->token->text;
-        if (same(op, "===") || same(op, "!==")) {
-            if (same(op, "!==")) { fputs("!", output); }
-            fputs("Js.Equal(", output); emit_expression(output, entry->left);
-            fputs(", ", output); emit_expression(output, entry->right); fputs(")", output);
-        }
-        else if (same(op, "+") && entry->type->kind == TypeKind::Any) {
-            fputs("Js.Add(", output); emit_expression(output, entry->left);
-            fputs(", ", output); emit_expression(output, entry->right); fputs(")", output);
-        }
-        else if (same(op, "+") && entry->type->kind == TypeKind::String) {
-            fputs("(Js.Text(", output); emit_expression(output, entry->left);
-            fputs(") + Js.Text(", output); emit_expression(output, entry->right); fputs("))", output);
-        }
-        else {
-            bool logical = same(op, "&&") || same(op, "||");
-            fputs("(", output);
-            if (entry->left->type->kind == TypeKind::Any) { fputs(logical ? "Js.Boolean(" : "Js.Number(", output); }
-            fputs("(", output); emit_expression(output, entry->left); fputs(")", output);
-            if (entry->left->type->kind == TypeKind::Any) { fputs(")", output); }
-            fprintf(output, " %s ", op);
-            if (entry->right->type->kind == TypeKind::Any) { fputs(logical ? "Js.Boolean(" : "Js.Number(", output); }
-            fputs("(", output); emit_expression(output, entry->right); fputs(")", output);
-            if (entry->right->type->kind == TypeKind::Any) { fputs(")", output); }
-            fputs(")", output);
+    } else if (kind == NodeKind::Binary) {
+        TextId op = get_token(get_node(entry, c).token, c).text;
+        if (is_text(op, &text_strict_equal, c) || is_text(op, &text_strict_not_equal, c)) {
+            if (is_text(op, &text_strict_not_equal, c)) {
+                output.bytes(&text_not);
+            }
+            output.bytes(&text_js_equal);
+            emit_expression(output, get_node(entry, c).left, c);
+            output.bytes(&text_argument_separator);
+            emit_expression(output, get_node(entry, c).right, c);
+            output.bytes(&text_rparen);
+        } else if (is_text(op, &text_plus, c) && get_type(get_node(entry, c).type, c).kind == TypeKind::Any) {
+            output.bytes(&text_js_add);
+            emit_expression(output, get_node(entry, c).left, c);
+            output.bytes(&text_argument_separator);
+            emit_expression(output, get_node(entry, c).right, c);
+            output.bytes(&text_rparen);
+        } else if (is_text(op, &text_plus, c) &&
+                   get_type(get_node(entry, c).type, c).kind == TypeKind::String) {
+            output.bytes(&text_concatenation_start);
+            emit_expression(output, get_node(entry, c).left, c);
+            output.bytes(&text_concatenation_next);
+            emit_expression(output, get_node(entry, c).right, c);
+            output.bytes(&text_close_two_parens);
+        } else {
+            bool logical = is_text(op, &text_and, c) || is_text(op, &text_or, c);
+            output.bytes(&text_lparen);
+            if (get_type(get_node(get_node(entry, c).left, c).type, c).kind == TypeKind::Any) {
+                if (logical) {
+                    output.bytes(&text_js_boolean);
+                } else {
+                    output.bytes(&text_js_number);
+                }
+            }
+            output.bytes(&text_lparen);
+            emit_expression(output, get_node(entry, c).left, c);
+            output.bytes(&text_rparen);
+            if (get_type(get_node(get_node(entry, c).left, c).type, c).kind == TypeKind::Any) {
+                output.bytes(&text_rparen);
+            }
+            output.bytes(&text_space);
+            write(op, output, c);
+            output.bytes(&text_space);
+            if (get_type(get_node(get_node(entry, c).right, c).type, c).kind == TypeKind::Any) {
+                if (logical) {
+                    output.bytes(&text_js_boolean);
+                } else {
+                    output.bytes(&text_js_number);
+                }
+            }
+            output.bytes(&text_lparen);
+            emit_expression(output, get_node(entry, c).right, c);
+            output.bytes(&text_rparen);
+            if (get_type(get_node(get_node(entry, c).right, c).type, c).kind == TypeKind::Any) {
+                output.bytes(&text_rparen);
+            }
+            output.bytes(&text_rparen);
         }
     }
 }
 
-unsafe void emit_condition(FILE* output, Node* entry) {
-    if (entry->type->kind == TypeKind::Any) { fputs("Js.Boolean(", output); }
-    emit_expression(output, entry);
-    if (entry->type->kind == TypeKind::Any) { fputs(")", output); }
-}
-
-unsafe void emit_variable(FILE* output, Node* entry) {
-    cs_type(output, entry->type); fprintf(output, " v%d = ", entry->symbol->id);
-    emit_as(output, entry->left, entry->type);
-}
-
-unsafe void emit_statement(FILE* output, Node* entry, Type* return_type) {
-    if (entry->kind == NodeKind::Block) {
-        fputs("{\n", output);
-        Node* child = entry->children;
-        while (child != 0) { emit_statement(output, child, return_type); child = child->next; }
-        fputs("}\n", output);
+void emit_condition(Output& output, NodeId entry, const Compiler& c) {
+    if (get_type(get_node(entry, c).type, c).kind == TypeKind::Any) {
+        output.bytes(&text_js_boolean);
     }
-    else if (entry->kind == NodeKind::Variable) { emit_variable(output, entry); fputs(";\n", output); }
-    else if (entry->kind == NodeKind::Return) {
-        fputs("return", output);
-        if (entry->left != 0) { fputs(" ", output); emit_as(output, entry->left, return_type); }
-        fputs(";\n", output);
-    }
-    else if (entry->kind == NodeKind::If || entry->kind == NodeKind::While) {
-        fputs(entry->kind == NodeKind::If ? "if (" : "while (", output);
-        emit_condition(output, entry->left); fputs(") {\n", output);
-        emit_statement(output, entry->right, return_type); fputs("}\n", output);
-        if (entry->third != 0) {
-            fputs("else {\n", output); emit_statement(output, entry->third, return_type); fputs("}\n", output);
-        }
-    }
-    else if (entry->kind == NodeKind::For) {
-        fputs("for (", output); emit_variable(output, entry->left); fputs("; ", output);
-        emit_condition(output, entry->right); fputs("; ", output);
-        // Discarding a non-statement expression is legal in TS, so use a helper.
-        if (entry->third->kind == NodeKind::Assign || entry->third->kind == NodeKind::Update || entry->third->kind == NodeKind::Call) {
-            emit_expression(output, entry->third);
-        }
-        else { fputs("Js.Discard(", output); emit_expression(output, entry->third); fputs(")", output); }
-        fputs(") {\n", output); emit_statement(output, entry->fourth, return_type); fputs("}\n", output);
-    }
-    else if (entry->kind == NodeKind::Expression) {
-        Node* value = entry->left;
-        if (value->kind == NodeKind::Assign || value->kind == NodeKind::Update || value->kind == NodeKind::Call) {
-            emit_expression(output, value);
-        }
-        else { fputs("Js.Discard(", output); emit_expression(output, value); fputs(")", output); }
-        fputs(";\n", output);
+    emit_expression(output, entry, c);
+    if (get_type(get_node(entry, c).type, c).kind == TypeKind::Any) {
+        output.bytes(&text_rparen);
     }
 }
 
-unsafe void emit_shapes(Compiler* c, FILE* output) {
-    Type* type = c->types;
+void emit_variable(Output& output, NodeId entry, const Compiler& c) {
+    cs_type(output, get_node(entry, c).type, c);
+    output.bytes(&text_variable_declaration_prefix);
+    output.integer(get_symbol(get_node(entry, c).symbol, c).id);
+    output.bytes(&text_spaced_assign);
+    emit_as(output, get_node(entry, c).left, get_node(entry, c).type, c);
+}
+
+void emit_statement(Output& output, NodeId entry, TypeId return_type, const Compiler& c) {
+    if (get_node(entry, c).kind == NodeKind::Block) {
+        output.bytes(&text_block_open);
+        NodeId child = get_node(entry, c).children;
+        while (child != 0) {
+            emit_statement(output, child, return_type, c);
+            child = get_node(child, c).next;
+        }
+        output.bytes(&text_block_close);
+    } else if (get_node(entry, c).kind == NodeKind::Variable) {
+        emit_variable(output, entry, c);
+        output.bytes(&text_statement_end);
+    } else if (get_node(entry, c).kind == NodeKind::Return) {
+        output.bytes(&text_return);
+        if (get_node(entry, c).left != 0) {
+            output.bytes(&text_space);
+            emit_as(output, get_node(entry, c).left, return_type, c);
+        }
+        output.bytes(&text_statement_end);
+    } else if (get_node(entry, c).kind == NodeKind::If || get_node(entry, c).kind == NodeKind::While) {
+        if (get_node(entry, c).kind == NodeKind::If) {
+            output.bytes(&text_if_2);
+        } else {
+            output.bytes(&text_while_2);
+        }
+        emit_condition(output, get_node(entry, c).left, c);
+        output.bytes(&text_control_body_open);
+        emit_statement(output, get_node(entry, c).right, return_type, c);
+        output.bytes(&text_block_close);
+        if (get_node(entry, c).third != 0) {
+            output.bytes(&text_else_2);
+            emit_statement(output, get_node(entry, c).third, return_type, c);
+            output.bytes(&text_block_close);
+        }
+    } else if (get_node(entry, c).kind == NodeKind::For) {
+        output.bytes(&text_for_2);
+        emit_variable(output, get_node(entry, c).left, c);
+        output.bytes(&text_for_separator);
+        emit_condition(output, get_node(entry, c).right, c);
+        output.bytes(&text_for_separator);
+        if (get_node(get_node(entry, c).third, c).kind == NodeKind::Assign ||
+            get_node(get_node(entry, c).third, c).kind == NodeKind::Update ||
+            get_node(get_node(entry, c).third, c).kind == NodeKind::Call) {
+            emit_expression(output, get_node(entry, c).third, c);
+        } else {
+            output.bytes(&text_js_discard);
+            emit_expression(output, get_node(entry, c).third, c);
+            output.bytes(&text_rparen);
+        }
+        output.bytes(&text_control_body_open);
+        emit_statement(output, get_node(entry, c).fourth, return_type, c);
+        output.bytes(&text_block_close);
+    } else if (get_node(entry, c).kind == NodeKind::Expression) {
+        NodeId value = get_node(entry, c).left;
+        if (get_node(value, c).kind == NodeKind::Assign || get_node(value, c).kind == NodeKind::Update ||
+            get_node(value, c).kind == NodeKind::Call) {
+            emit_expression(output, value, c);
+        } else {
+            output.bytes(&text_js_discard);
+            emit_expression(output, value, c);
+            output.bytes(&text_rparen);
+        }
+        output.bytes(&text_statement_end);
+    }
+}
+
+void emit_shapes(Output& output, const Compiler& c) {
+    TypeId type = c.types;
     while (type != 0) {
-        if (type->kind == TypeKind::Shape) {
-            fprintf(output, "interface I%d {\n", type->id);
-            Field* member = type->fields;
+        if (get_type(type, c).kind == TypeKind::Shape) {
+            output.bytes(&text_interface_i);
+            output.integer(get_type(type, c).id);
+            output.bytes(&text_type_body_open);
+            FieldId member = get_type(type, c).fields;
             while (member != 0) {
-                cs_type(output, member->type); fputs(" ", output); cs_property(output, member->name);
-                fputs(" { get; set; }\n", output); member = member->next;
+                cs_type(output, get_field(member, c).type, c);
+                output.bytes(&text_space);
+                cs_property(output, get_field(member, c).name, c);
+                output.bytes(&text_get_set);
+                member = get_field(member, c).next;
             }
-            fputs("}\n", output);
+            output.bytes(&text_block_close);
         }
-        type = type->next;
+        type = get_type(type, c).next;
     }
-    type = c->types;
+    type = c.types;
     while (type != 0) {
-        if (type->kind == TypeKind::Shape) {
-            fprintf(output, "sealed class O%d : TsObject", type->id);
-            Type* target = c->types;
+        if (get_type(type, c).kind == TypeKind::Shape) {
+            output.bytes(&text_sealed_class_o);
+            output.integer(get_type(type, c).id);
+            output.bytes(&text_tsobject);
+            TypeId target = c.types;
             while (target != 0) {
-                if (fits(type, target)) { fprintf(output, ", I%d", target->id); }
-                target = target->next;
+                if (fits(type, target, c)) {
+                    output.bytes(&text_interface_separator);
+                    output.integer(get_type(target, c).id);
+                }
+                target = get_type(target, c).next;
             }
-            fputs(" {\n", output);
-            Field* member = type->fields;
+            output.bytes(&text_type_body_open);
+            FieldId member = get_type(type, c).fields;
             while (member != 0) {
-                fputs("public ", output); cs_type(output, member->type); fputs(" ", output);
-                cs_property(output, member->name); fputs(" { get; set; }\n", output);
-                member = member->next;
+                output.bytes(&text_public);
+                cs_type(output, get_field(member, c).type, c);
+                output.bytes(&text_space);
+                cs_property(output, get_field(member, c).name, c);
+                output.bytes(&text_get_set);
+                member = get_field(member, c).next;
             }
-            fputs("public override object Get(string key) { switch (key) {\n", output);
-            member = type->fields;
+            output.bytes(&text_public_override_object_get_string_key_switch);
+            member = get_type(type, c).fields;
             while (member != 0) {
-                fputs("case ", output); cs_string(output, member->name); fputs(": return ", output);
-                cs_property(output, member->name); fputs(";\n", output); member = member->next;
+                output.bytes(&text_case);
+                cs_string(output, get_field(member, c).name, c);
+                output.bytes(&text_return_2);
+                cs_property(output, get_field(member, c).name, c);
+                output.bytes(&text_statement_end);
+                member = get_field(member, c).next;
             }
-            fputs("default: return base.Get(key); } }\n", output);
-            fputs("public override object Set(string key, object value) { switch (key) {\n", output);
-            member = type->fields;
+            output.bytes(&text_default_return_base_get_key);
+            output.bytes(&text_public_override_object_set_string_key_object);
+            member = get_type(type, c).fields;
             while (member != 0) {
-                fputs("case ", output); cs_string(output, member->name); fputs(": ", output);
-                cs_property(output, member->name); fputs(" = Js.Cast<", output); cs_type(output, member->type);
-                fputs(">(value, \"property write violates static field type\"); return value;\n", output);
-                member = member->next;
+                output.bytes(&text_case);
+                cs_string(output, get_field(member, c).name, c);
+                output.bytes(&text_case_separator);
+                cs_property(output, get_field(member, c).name, c);
+                output.bytes(&text_js_cast_2);
+                cs_type(output, get_field(member, c).type, c);
+                output.bytes(&text_value_property_write_violates_static_field_type);
+                member = get_field(member, c).next;
             }
-            fputs("default: return base.Set(key, value); } }\n}\n", output);
+            output.bytes(&text_default_return_base_set_key_value);
         }
-        type = type->next;
+        type = get_type(type, c).next;
     }
 }
 
-unsafe void emit_program(Compiler* c, const char* path) {
-    FILE* output = fopen(path, "wb");
-    if (output == 0) { printf("tsnetc: cannot write %s\n", path); exit(1); }
-    fputs("// Generated by the Crust tsnetc prototype.\nusing System;\n", output);
-    emit_shapes(c, output);
-    fputs("static class Program {\n", output);
-    Node* function = c->functions;
+void emit_program(const char[]& path, const Compiler& c) {
+    Output output = Output::open(path);
+    output.bytes(&text_generated_by_the_crust_tsnetc_prototype_using);
+    emit_shapes(&output, c);
+    output.bytes(&text_static_class_program);
+    NodeId function = c.functions;
     while (function != 0) {
-        fputs("static ", output); cs_type(output, function->type);
-        fprintf(output, " f%d(", function->symbol->id);
-        Node* parameter = function->children;
+        output.bytes(&text_static);
+        cs_type(&output, get_node(function, c).type, c);
+        output.bytes(&text_function_declaration_prefix);
+        output.integer(get_symbol(get_node(function, c).symbol, c).id);
+        output.bytes(&text_lparen);
+        NodeId parameter = get_node(function, c).children;
         while (parameter != 0) {
-            cs_type(output, parameter->type); fprintf(output, " v%d", parameter->symbol->id);
-            parameter = parameter->next; if (parameter != 0) { fputs(", ", output); }
+            cs_type(&output, get_node(parameter, c).type, c);
+            output.bytes(&text_variable_declaration_prefix);
+            output.integer(get_symbol(get_node(parameter, c).symbol, c).id);
+            parameter = get_node(parameter, c).next;
+            if (parameter != 0) {
+                output.bytes(&text_argument_separator);
+            }
         }
-        fputs(")\n", output); emit_statement(output, function->left, function->type);
-        function = function->next;
+        output.bytes(&text_signature_end);
+        emit_statement(&output, get_node(function, c).left, get_node(function, c).type, c);
+        function = get_node(function, c).next;
     }
-    fputs("public static void Main() {\n", output);
-    Node* entry = c->statements;
-    while (entry != 0) { emit_statement(output, entry, 0); entry = entry->next; }
-    fputs("}\n}\n", output);
-    bool failed = ferror(output) != 0;
-    if (fclose(output) != 0) { failed = true; }
-    if (failed) { puts("tsnetc: output write failed"); exit(1); }
+    output.bytes(&text_public_static_void_main);
+    NodeId entry = c.statements;
+    while (entry != 0) {
+        emit_statement(&output, entry, 0, c);
+        entry = get_node(entry, c).next;
+    }
+    output.bytes(&text_program_end);
+    if (!output.finish()) {
+        print("tsnetc: output write failed");
+        exit(1);
+    }
 }
