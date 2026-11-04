@@ -11,8 +11,20 @@ try {
     $testRoot = "$root/artifacts/tests"
     [IO.Directory]::CreateDirectory($testRoot) | Out-Null
 
+    # Cross read-buffer boundaries, retain IDs through repeated vector growth,
+    # and preserve UTF-8 source bytes, a BOM, and CRLF line endings.
+    $boundary = New-Object System.Text.StringBuilder
+    [void]$boundary.AppendLine('//' + ('x' * 5000))
+    [void]$boundary.AppendLine('function increment(n: number): number { return n + 1; }')
+    for ($i = 0; $i -lt 1500; $i++) { [void]$boundary.AppendLine("const v$i = increment($i);") }
+    $unicode = [string][char]0x96EA + ' ' + [char]::ConvertFromUtf32(0x1F980)
+    [void]$boundary.AppendLine('const banner = "' + $unicode + '";')
+    [void]$boundary.AppendLine('console.log(v0, v127, v511, v1499, banner, banner.length);')
+    $bom = New-Object System.Text.UTF8Encoding($true)
+    [IO.File]::WriteAllText("$testRoot/boundaries.ts", $boundary.ToString(), $bom)
+
     # Differential execution checks against the actual TypeScript compiler.
-    foreach ($fixture in @('tests/behavior.ts', 'examples/structural.ts', 'examples/numeric.ts')) {
+    foreach ($fixture in @('tests/behavior.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
         & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/$name" $fixture
@@ -80,6 +92,7 @@ try {
         $index++
     }
     Write-Host "PASS $index frontend rejection and output-preservation checks"
+    & "$PSScriptRoot/test-compiler-storage.ps1"
     & dotnet msbuild tsnet.crproj -t:Check -nologo -v:minimal
     if ($LASTEXITCODE) { throw 'Visual Studio project check failed' }
     Write-Host 'All tests passed.'
