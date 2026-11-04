@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
+    & "$PSScriptRoot/build-metadata-writer.ps1"
     & crust check
     if ($LASTEXITCODE) { throw 'Crust check failed' }
     & crust build --release
@@ -24,7 +25,7 @@ try {
     [IO.File]::WriteAllText("$testRoot/boundaries.ts", $boundary.ToString(), $bom)
 
     # Differential execution checks against the actual TypeScript compiler.
-    foreach ($fixture in @('tests/behavior.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
+    foreach ($fixture in @('tests/behavior.ts', 'tests/il-backend.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
         & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/$name" $fixture
@@ -80,7 +81,7 @@ try {
     $index = 0
     foreach ($case in $rejects) {
         $inputPath = "$testRoot/reject-$index.ts"
-        $outputPath = "$testRoot/reject-$index.cs"
+        $outputPath = "$testRoot/reject-$index.dll"
         [IO.File]::WriteAllText($inputPath, $case.Source, $utf8)
         # Existing output must survive a failed frontend compilation.
         [IO.File]::WriteAllText($outputPath, '// sentinel', $utf8)
@@ -93,6 +94,7 @@ try {
     }
     Write-Host "PASS $index frontend rejection and output-preservation checks"
     & "$PSScriptRoot/test-compiler-storage.ps1"
+    & "$PSScriptRoot/test-metadata-writer.ps1"
     & dotnet msbuild tsnet.crproj -t:Check -nologo -v:minimal
     if ($LASTEXITCODE) { throw 'Visual Studio project check failed' }
     Write-Host 'All tests passed.'

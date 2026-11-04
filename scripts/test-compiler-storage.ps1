@@ -85,7 +85,7 @@ Write-Host 'PASS store ownership, active borrows, private file ownership, and un
 
 $compiler = Join-Path $root 'target/crust/tsnetc/tsnetc.exe'
 $inputFile = Join-Path $work 'boundary.ts'
-$outputFile = Join-Path $work 'boundary.cs'
+$outputFile = Join-Path $work 'boundary.dll'
 foreach ($case in @(
     @{ Source = '//' + ('x' * (4 * 1024 * 1024 - 2)); Succeeds = $true; Message = '' },
     @{ Source = '//' + ('x' * (4 * 1024 * 1024 - 1)); Succeeds = $false; Message = '4 MiB' },
