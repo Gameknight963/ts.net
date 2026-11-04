@@ -1,0 +1,6 @@
+target/
+bin/
+obj/
+.vs/
+*.crproj.user
+artifacts/

@@ -1,0 +1,10 @@
+[project]
+name = "tsnet"
+
+[[targets]]
+name = "tsnetc"
+kind = "executable"
+entry = "src/main.cr"
+
+[targets.native]
+debug = true
