@@ -205,7 +205,7 @@ void il_prove_locals(const Compiler& c, IlBackend& b) {
     Vector<int> declarations=zero_ids(c.symbol_store.count()+1);
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
-        if (n.kind==NodeKind::Variable) { declarations.at_mut(n.symbol)++; }
+        if (n.kind==NodeKind::Variable || (n.kind==NodeKind::Binding && n.symbol!=0)) { declarations.at_mut(n.symbol)++; }
         if (n.kind==NodeKind::Variable && il_defined(n.left,c)) {
             TypeKind kind=get_type(n.type,c).kind;
             if (kind==TypeKind::Number) { b.raw_slots.at_mut(n.symbol)=il_int_result(n.left,c) ? -6 : -3; }
@@ -216,10 +216,11 @@ void il_prove_locals(const Compiler& c, IlBackend& b) {
         Node n=get_node(i,c);
         // Redeclarations share storage, including declarations of parameters.
         // Their first initializer does not prove later values remain defined.
-        if (n.kind==NodeKind::Variable && declarations.at(n.symbol)>1) {
+        if ((n.kind==NodeKind::Variable || n.kind==NodeKind::Binding) && n.symbol!=0 && declarations.at(n.symbol)>1) {
             b.raw_slots.at_mut(n.symbol)=0;b.written_symbols.at_mut(n.symbol)=1;
             b.iteration_vars.at_mut(n.symbol)=1;
         }
+        if (n.kind==NodeKind::Binding && n.symbol!=0) { b.raw_slots.at_mut(n.symbol)=0;b.written_symbols.at_mut(n.symbol)=1; }
         if (n.kind==NodeKind::ForOf) {
             Node target=get_node(n.left,c);
             if (target.kind==NodeKind::Block) { target=get_node(target.children,c); }

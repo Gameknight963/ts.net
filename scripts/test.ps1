@@ -26,7 +26,7 @@ try {
     [IO.File]::WriteAllText("$testRoot/boundaries.ts", $boundary.ToString(), $bom)
 
     # Differential execution checks against the actual TypeScript compiler.
-    foreach ($fixture in @('tests/behavior.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/straightforward.ts', 'tests/nullable-values.ts', 'tests/numeric-fastpaths.ts', 'tests/bitwise.ts', 'tests/scalar-objects.ts', 'tests/integer-loops.ts', 'tests/arrays.ts', 'tests/packed-arrays.ts', 'tests/for-of.ts', 'tests/array-spread.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
+    foreach ($fixture in @('tests/behavior.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/straightforward.ts', 'tests/nullable-values.ts', 'tests/numeric-fastpaths.ts', 'tests/bitwise.ts', 'tests/scalar-objects.ts', 'tests/integer-loops.ts', 'tests/arrays.ts', 'tests/packed-arrays.ts', 'tests/for-of.ts', 'tests/array-spread.ts', 'tests/array-destructuring.ts', 'tests/destructuring-fastpath.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
         & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/$name" $fixture
@@ -57,6 +57,11 @@ try {
     & dotnet tests/inspect-arrays/bin/Release/net10.0/Inspect.dll "$testRoot/packed-arrays/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Array runtime checks failed' }
 
+    & dotnet build tests/inspect-destructuring/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Destructuring inspector build failed' }
+    & dotnet tests/inspect-destructuring/bin/Release/net10.0/Inspect.dll "$testRoot/destructuring-fastpath/bin/Release/net10.0/App.dll"
+    if ($LASTEXITCODE) { throw 'Literal destructuring allocated temporary objects' }
+
     & dotnet build tests/inspect-iteration/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Iteration runtime checks failed to build' }
     & dotnet tests/inspect-iteration/bin/Release/net10.0/Inspect.dll
@@ -71,6 +76,7 @@ try {
         @{ Name = 'reference-bad-write'; Message = 'property write violates static field type' },
         @{ Name = 'for-of-invalid'; Message = 'Value is not iterable' },
         @{ Name = 'array-spread-invalid'; Message = 'Value is not iterable' },
+        @{ Name = 'array-destructuring-invalid'; Message = 'Value is not iterable' },
         @{ Name = 'bad-structural-cast'; Message = 'checked conversion failed' }
     )) {
         $name = $case.Name

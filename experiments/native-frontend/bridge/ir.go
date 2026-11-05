@@ -302,6 +302,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		id = b.node(20, n, "hole")
 		row = b.nodes[id-1]
 		row.constant = 1
+		row.typ = b.typ(b.c.GetUndefinedType())
 	case ast.KindSpreadElement:
 		id = b.node(35, n, "...")
 		row = b.nodes[id-1]
@@ -426,6 +427,12 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.children = b.list(declarations)
 	case ast.KindVariableDeclaration, ast.KindParameter:
+		if n.Kind == ast.KindVariableDeclaration && n.Name().Kind == ast.KindArrayBindingPattern {
+			id = b.lower(n.Name())
+			initializer := b.lower(n.Initializer())
+			b.nodes[id-1].left = initializer
+			return id
+		}
 		if n.Kind == ast.KindParameter && n.AsParameterDeclaration().DotDotDotToken != nil {
 			b.unsupported(n)
 		}
@@ -454,6 +461,36 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			b.nodes[row.left-1].constant = 1
 		}
 		if ast.GetCombinedNodeFlags(n)&ast.NodeFlagsConst != 0 {
+			row.constant = 1
+		}
+	case ast.KindArrayBindingPattern:
+		id = b.node(36, n, "[")
+		row = b.nodes[id-1]
+		row.typ = b.typ(b.c.GetTypeAtLocation(n))
+		row.children = b.list(n.Elements())
+	case ast.KindBindingElement:
+		if n.Name() == nil {
+			id = b.node(20, n, "hole")
+			b.nodes[id-1].typ = b.typ(b.c.GetUndefinedType())
+			b.nodes[id-1].constant = 1
+			return id
+		}
+		id = b.node(37, n, "binding")
+		row = b.nodes[id-1]
+		row.typ = b.typ(b.c.GetTypeAtLocation(n.Name()))
+		row.left = b.lower(n.Initializer())
+		if ast.GetCombinedNodeFlags(n)&ast.NodeFlagsBlockScoped == 0 {
+			row.name = b.text("var")
+		}
+		if n.Name().Kind == ast.KindIdentifier {
+			row.symbol = b.symbol(n.Name())
+			b.symbols[row.symbol-1].typ = row.typ
+		} else if n.Name().Kind == ast.KindArrayBindingPattern {
+			row.right = b.lower(n.Name())
+		} else {
+			b.unsupported(n)
+		}
+		if n.AsBindingElement().DotDotDotToken != nil {
 			row.constant = 1
 		}
 	case ast.KindReturnStatement:

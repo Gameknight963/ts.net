@@ -4,12 +4,16 @@ void il_prepare_iteration_vars(NodeId owner, const Compiler& c, IlBackend& b) {
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
         if (scalar_owner(i,&b.node_parents,c)!=owner) { continue; }
+        if (n.kind==NodeKind::Binding && n.symbol!=0 && n.name!=0 && is_text(n.name,&text_var,c)) { b.iteration_vars.at_mut(n.symbol)=1; }
         Node target=n;
         if (n.kind==NodeKind::ForOf && !n.constant) {
             target=get_node(n.left,c);
             if (target.kind==NodeKind::Block) { target=get_node(target.children,c); }
-        } else if (n.kind!=NodeKind::Variable || b.iteration_vars.at(n.symbol)==0) { continue; }
-        if (target.kind!=NodeKind::Variable) { continue; }
+            if (target.kind==NodeKind::Destructure) {
+                continue;
+            }
+        } else if ((n.kind!=NodeKind::Variable && n.kind!=NodeKind::Binding) || n.symbol==0 || b.iteration_vars.at(n.symbol)==0) { continue; }
+        if (target.kind!=NodeKind::Variable && target.kind!=NodeKind::Binding) { continue; }
         b.iteration_vars.at_mut(target.symbol)=1;
         if (b.slots.at(target.symbol)==-2147483647) {
             TypeId type=get_symbol(target.symbol,c).type;
@@ -67,6 +71,8 @@ void il_for_of(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {
     if (get_type(get_node(n.right,c).type,c).kind==TypeKind::Array) { b.emit(0x20,1); }
     else { b.emit(0xfe0c,iterable);b.emit(0xfe0c,position);b.call(RuntimeMember::ForOfStep); }
     b.op(0x58);b.emit(0xfe0e,position);
-    il_iteration_store(binding,type,value,c,b);il_statement(n.fourth,result,c,b);
+    if (target.kind==NodeKind::Destructure) { il_binding_pattern(binding,value,c,b); }
+    else { il_iteration_store(binding,type,value,c,b); }
+    il_statement(n.fourth,result,c,b);
     b.emit(0x38,start);b.mark(done);
 }

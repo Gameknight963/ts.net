@@ -1,4 +1,4 @@
-import "il-iteration.cr";
+import "il-destructure.cr";
 
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
     if (get_node(entry,c).kind==NodeKind::Array && get_type(target,c).kind==TypeKind::Array) {
@@ -364,6 +364,9 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
     } else if (n.kind == NodeKind::Block) {
         NodeId child=n.children;
         while (child != 0) { il_statement(child,return_type,c,b); child=get_node(child,c).next; }
+    } else if (n.kind==NodeKind::Destructure) {
+        if (il_literal_bindings(entry,c,b)) { return; }
+        il_boxed(n.left,c,b);int source=b.local(-5);b.emit(0xfe0e,source);il_binding_pattern(entry,source,c,b);
     } else if (n.kind == NodeKind::Variable) {
         if (b.iteration_vars.at(n.symbol)!=0) {
             Node initial=get_node(n.left,c);

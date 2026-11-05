@@ -54,7 +54,9 @@ enum class NodeKind {
     Array,
     Index,
     ForOf,
-    Spread
+    Spread,
+    Destructure,
+    Binding
 };
 struct Token {
     TokenKind kind;

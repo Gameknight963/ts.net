@@ -65,6 +65,7 @@ const char text_expression_nesting_limit_exceeded[34] = "expression nesting limi
 const char text_as[3] = "as";
 const char text_const[6] = "const";
 const char text_let[4] = "let";
+const char text_var[4] = "var";
 const char text_statement_nesting_limit_exceeded[33] = "statement nesting limit exceeded";
 const char text_unterminated_block[19] = "unterminated block";
 const char text_return[7] = "return";

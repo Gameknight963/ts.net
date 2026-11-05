@@ -26,7 +26,7 @@ SymbolId il_packed_loop(NodeId entry, SymbolId counter, const Compiler& c, const
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
         if (!il_inside(i,body,b)) { continue; }
-        if (n.kind==NodeKind::Variable && n.symbol==array) { return 0; }
+        if ((n.kind==NodeKind::Variable || n.kind==NodeKind::Binding) && n.symbol==array) { return 0; }
         if (n.kind==NodeKind::Assign || n.kind==NodeKind::Update) {
             Node target=get_node(n.left,c);
             if (target.kind==NodeKind::Property || (target.kind==NodeKind::Name && target.symbol==array)) { return 0; }
