@@ -31,6 +31,11 @@ void il_prove_scalars(const Compiler& c, IlBackend& b) {
     Vector<int> parents=zero_ids(c.node_store.count()+1);
     Vector<int> definitions=zero_ids(c.symbol_store.count()+1);
     Vector<int> invalid=zero_ids(c.symbol_store.count()+1);
+    Vector<int> declarations=zero_ids(c.symbol_store.count()+1);
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        Node n=get_node(i,c);
+        if (n.kind==NodeKind::Variable || n.kind==NodeKind::Binding) { declarations.at_mut(n.symbol)++; }
+    }
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
         // Jump targets are control-flow edges, not lexical parents.
@@ -41,14 +46,14 @@ void il_prove_scalars(const Compiler& c, IlBackend& b) {
         if (n.fourth!=0) { parents.at_mut(n.fourth)=(int)i; }
         NodeId child=n.children;
         while (child!=0) { parents.at_mut(child)=(int)i;child=get_node(child,c).next; }
-        if (n.kind==NodeKind::Variable && n.constant && get_type(n.type,c).kind==TypeKind::Shape && scalar_literal(n.left,c)) {
+        if (n.kind==NodeKind::Variable && n.left!=0 && declarations.at(n.symbol)==1 && get_type(n.type,c).kind==TypeKind::Shape && scalar_literal(n.left,c)) {
             b.scalar_roots.at_mut(n.symbol)=(int)n.symbol;definitions.at_mut(n.symbol)=(int)i;
         }
     }
-    // Immutable aliases share the same field locals, including narrower views.
+    // Aliases share field locals; any later rebinding invalidates their root.
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
-        if (n.kind!=NodeKind::Variable || !n.constant || get_type(n.type,c).kind!=TypeKind::Shape) { continue; }
+        if (n.kind!=NodeKind::Variable || n.left==0 || declarations.at(n.symbol)!=1 || get_type(n.type,c).kind!=TypeKind::Shape) { continue; }
         Node value=get_node(n.left,c);
         if (value.kind!=NodeKind::Name) { continue; }
         SymbolId root=(SymbolId)b.scalar_roots.at(value.symbol);

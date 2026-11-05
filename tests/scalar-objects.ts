@@ -2,8 +2,8 @@ type X = { x: number };
 function scalar(count: number, seed: number): number {
     let total = 0;
     for (let i = 0; i < count; i++) {
-        const point = { x: i, y: seed };
-        const view: X = point;
+        let point = { x: i, y: seed };
+        let view: X = point;
         if (i % 2 === 0) view.x += 1;
         total += point.x + point.y;
     }
@@ -89,3 +89,20 @@ function shorthandEscape() { const x = { x: 2 }; const wrapper = { x }; return w
 console.log(shorthandEscape().x);
 function copiedField() { const point = { x: 3 }; const wrapper = { x: point.x }; return wrapper.x; }
 console.log(copiedField());
+
+function reassignedRoot() {
+    let point = { x: 1 };
+    const previous = point;
+    point = { x: 9 };
+    previous.x++;
+    return previous.x + point.x;
+}
+console.log(reassignedRoot());
+function redeclaredRoot() {
+    var point = { x: 1 };
+    const previous = point;
+    var point = { x: 9 };
+    previous.x++;
+    return previous.x + point.x;
+}
+console.log(redeclaredRoot());
