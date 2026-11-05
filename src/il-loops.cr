@@ -1,4 +1,4 @@
-import "il-loop-globals.cr";
+import "il-integer-calls.cr";
 
 NodeId il_loop_binding(NodeId entry, const Compiler& c) {
     Node loop=get_node(entry,c);
@@ -81,6 +81,7 @@ void il_tagged_loop_code(NodeId entry, TypeId result, SymbolId counter, int boun
 }
 
 void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, const Compiler& c, IlBackend& b) {
+    if (il_integer_call_loop(entry,result,counter,bound,c,b)) { return; }
     if (counter!=0) {
         SymbolId pushes=il_push_loop(entry,c,b);
         if (pushes!=0) { b.load(pushes);b.emit(0xfe0c,bound);b.call(RuntimeMember::ArrayReservePushes); }

@@ -1,7 +1,7 @@
 import "assembly-plan.cr";
 
 enum class RuntimeMember {
-    ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
@@ -340,6 +340,8 @@ void il_runtime(IlBackend& b) {
     int object_type=b.ref(RuntimeMember::ObjectType);
     b.ref_set(RuntimeMember::ObjectConstructor,b.plan.method0(6,object_type,1,-1,".ctor"));
     int js = b.ref(RuntimeMember::JsType); int obj = b.ref(RuntimeMember::TsObjectType);
+    int integer_loop_parameters[4]={-10,-3,-6,-6};
+    b.ref_set(RuntimeMember::GuardIntegerLoop,b.plan.method(6,js,0,-2,&integer_loop_parameters,"GuardIntegerLoop"));
     b.ref_set(RuntimeMember::NumberPredicate,b.plan.method2(6,js,0,-2,-5,-6,"NumberPredicate"));
     b.ref_set(RuntimeMember::NumberPredicateNumber,b.plan.method2(6,js,0,-2,-10,-6,"NumberPredicateNumber"));
     b.ref_set(RuntimeMember::NumberPredicateFunction,b.plan.method1(6,js,0,-5,-6,"NumberPredicateFunction"));
