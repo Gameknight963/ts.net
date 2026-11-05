@@ -27,6 +27,23 @@ bool scalar_literal(NodeId entry, const Compiler& c) {
     return properties==count;
 }
 
+bool scalar_numeric_value(NodeId entry, const Vector<int>& definitions, const IlBackend& b, const Compiler& c) {
+    Node n=get_node(entry,c);
+    if (n.type!=0 && get_type(n.type,c).kind==TypeKind::Number) { return true; }
+    if (n.kind==NodeKind::Undefined) { return true; }
+    if (n.kind==NodeKind::Binary && is_text(get_token(n.token,c).text,&text_plus,c)) {
+        return scalar_numeric_value(n.left,definitions,b,c) && scalar_numeric_value(n.right,definitions,b,c);
+    }
+    if (n.kind==NodeKind::Property && get_node(n.left,c).kind==NodeKind::Name) {
+        SymbolId root=(SymbolId)b.scalar_roots.at(get_node(n.left,c).symbol);
+        if (root==0) { return false; }
+        Node declaration=get_node((NodeId)definitions.at(root),c);
+        FieldId member=field(get_node(declaration.left,c).type,n.name,c);
+        return member!=0 && get_type(get_field(member,c).type,c).kind==TypeKind::Number;
+    }
+    return false;
+}
+
 void il_prove_scalars(const Compiler& c, IlBackend& b) {
     Vector<int> parents=zero_ids(c.node_store.count()+1);
     Vector<int> definitions=zero_ids(c.symbol_store.count()+1);
@@ -46,18 +63,18 @@ void il_prove_scalars(const Compiler& c, IlBackend& b) {
         if (n.fourth!=0) { parents.at_mut(n.fourth)=(int)i; }
         NodeId child=n.children;
         while (child!=0) { parents.at_mut(child)=(int)i;child=get_node(child,c).next; }
-        if (n.kind==NodeKind::Variable && n.left!=0 && declarations.at(n.symbol)==1 && get_type(n.type,c).kind==TypeKind::Shape && scalar_literal(n.left,c)) {
+        if (n.kind==NodeKind::Variable && n.left!=0 && declarations.at(n.symbol)==1 && (get_type(n.type,c).kind==TypeKind::Shape || get_type(n.type,c).kind==TypeKind::Any) && scalar_literal(n.left,c)) {
             b.scalar_roots.at_mut(n.symbol)=(int)n.symbol;definitions.at_mut(n.symbol)=(int)i;
         }
     }
     // Aliases share field locals; any later rebinding invalidates their root.
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
-        if (n.kind!=NodeKind::Variable || n.left==0 || declarations.at(n.symbol)!=1 || get_type(n.type,c).kind!=TypeKind::Shape) { continue; }
+        if (n.kind!=NodeKind::Variable || n.left==0 || declarations.at(n.symbol)!=1 || (get_type(n.type,c).kind!=TypeKind::Shape && get_type(n.type,c).kind!=TypeKind::Any)) { continue; }
         Node value=get_node(n.left,c);
         if (value.kind!=NodeKind::Name) { continue; }
         SymbolId root=(SymbolId)b.scalar_roots.at(value.symbol);
-        if (root!=0 && fits(value.type,n.type,c)) { b.scalar_roots.at_mut(n.symbol)=(int)root; }
+        if (root!=0 && (get_type(n.type,c).kind==TypeKind::Any || fits(value.type,n.type,c))) { b.scalar_roots.at_mut(n.symbol)=(int)root; }
     }
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
@@ -74,13 +91,22 @@ void il_prove_scalars(const Compiler& c, IlBackend& b) {
             // Storing the whole object as a literal member is an escape.
             Node container=get_node((NodeId)parents.at(parent_id),c);
             TypeId actual=get_node(get_node(definition,c).left,c).type;
-            FieldId original=field(actual,parent.name,c);FieldId view=field(n.type,parent.name,c);
+            FieldId original=field(actual,parent.name,c);FieldId view=0;
+            if (get_type(n.type,c).kind==TypeKind::Any) {
+                if (original!=0 && get_type(get_field(original,c).type,c).kind==TypeKind::Number) {
+                    // Keep dynamic setters for writes that might violate the
+                    // field's contract, including their existing failure path.
+                    if (container.kind==NodeKind::Assign && container.left==parent_id && (is_text(get_token(container.token,c).text,&text_assign,c) || is_text(get_token(container.token,c).text,&text_and_assign,c) || is_text(get_token(container.token,c).text,&text_or_assign,c) || is_text(get_token(container.token,c).text,&text_nullish_assign,c)) && !scalar_numeric_value(container.right,&definitions,b,c)) { invalid.at_mut(root)=1;continue; }
+                    if (container.kind==NodeKind::Assign && is_text(get_token(container.token,c).text,&text_add_assign,c) && get_type(get_node(container.right,c).type,c).kind!=TypeKind::Number) { invalid.at_mut(root)=1;continue; }
+                    view=original;
+                }
+            } else { view=field(n.type,parent.name,c); }
             if (container.kind!=NodeKind::Object && original!=0 && view!=0) {
                 TypeId original_type=get_field(original,c).type;TypeId view_type=get_field(view,c).type;
                 if (original_type==view_type || (get_type(original_type,c).kind==TypeKind::Array && get_type(view_type,c).kind==TypeKind::Array)) { continue; }
             }
         }
-        // Calls, captures, identity tests, rebinding and dynamic views escape.
+        // Calls, captures, identity tests, rebinding and unknown fields escape.
         invalid.at_mut(root)=1;
     }
     for (size_t i=1;i<b.scalar_roots.count();i++) {
@@ -131,4 +157,33 @@ void il_scalar_initialize(NodeId entry, const Compiler& c, IlBackend& b) {
     }
 }
 
-
+// Retain the proven numeric representation through local any views. The
+// nullable field representation still distinguishes undefined from NaN.
+void il_infer_scalar_values(Compiler& c, const IlBackend& b) {
+    Vector<int> shapes=zero_ids(c.symbol_store.count()+1);
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        Node n=get_node(i,c);
+        if (n.kind==NodeKind::Variable && n.left!=0 && b.scalar_roots.at(n.symbol)==(int)n.symbol) {
+            shapes.at_mut(n.symbol)=(int)get_node(n.left,c).type;
+        }
+    }
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        Node n=get_node(i,c);
+        if (n.kind!=NodeKind::Property || n.type==0 || get_type(n.type,c).kind!=TypeKind::Any || get_node(n.left,c).kind!=NodeKind::Name) { continue; }
+        SymbolId root=(SymbolId)b.scalar_roots.at(get_node(n.left,c).symbol);
+        if (root==0 || shapes.at(root)==0) { continue; }
+        FieldId member=field((TypeId)shapes.at(root),n.name,c);
+        if (member!=0 && get_type(get_field(member,c).type,c).kind==TypeKind::Number) { set_node_type(i,get_field(member,c).type,c); }
+    }
+    // Parents precede their expression children in the frontend snapshot.
+    for (size_t i=c.node_store.count();i>0;i--) {
+        Node n=get_node(i,c);
+        if (n.type==0 || get_type(n.type,c).kind!=TypeKind::Any) { continue; }
+        if (n.kind==NodeKind::Binary && is_text(get_token(n.token,c).text,&text_plus,c) && get_type(get_node(n.left,c).type,c).kind==TypeKind::Number && get_type(get_node(n.right,c).type,c).kind==TypeKind::Number) {
+            set_node_type(i,get_node(n.left,c).type,c);
+        }
+        if ((n.kind==NodeKind::Assign || n.kind==NodeKind::Update) && get_node(n.left,c).kind==NodeKind::Property && get_type(get_node(n.left,c).type,c).kind==TypeKind::Number) {
+            set_node_type(i,get_node(n.left,c).type,c);
+        }
+    }
+}

@@ -3,8 +3,8 @@ function scalar(count: number, seed: number): number {
     let total = 0;
     for (let i = 0; i < count; i++) {
         let point = { x: i, y: seed };
-        let view: X = point;
-        if (i % 2 === 0) view.x += 1;
+        let view: any = point;
+        if (i % 2 === 0) view.x = view.x + 1;
         total += point.x + point.y;
     }
     return total;
