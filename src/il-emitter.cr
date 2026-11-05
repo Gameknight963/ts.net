@@ -322,7 +322,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             if (il_scalar_own(entry,c,b)) { return; }
             NodeId argument=n.children;NodeId key=argument!=0 ? get_node(argument,c).next : 0;
             NodeId numeric_key=il_numeric_property_key(key,c);bool numeric=numeric_key!=0;
-            bool integer=numeric && (il_int_result(numeric_key,c) || (get_node(numeric_key,c).kind==NodeKind::Name && b.raw_slot(get_node(numeric_key,c).symbol)==-6));
+            bool integer=numeric && il_integer_value(numeric_key,c,b);
             for (int i=0;i<2;i++) {
                 if (argument==0) { b.call(RuntimeMember::Undefined); }
                 else { if (i==1 && integer) { il_integer(numeric_key,c,b); } else if (i==1 && numeric) { il_expression(numeric_key,c,b); } else { il_boxed(argument,c,b); }argument=get_node(argument,c).next; }

@@ -152,3 +152,17 @@ bool il_integer_value(NodeId entry, const Compiler& c, const IlBackend& b) {
     Node n=get_node(entry,c);
     return (n.kind==NodeKind::Name && b.raw_slot(n.symbol)==-6) || il_int_result(entry,c) || il_integer_remainder(entry,c,b);
 }
+
+bool il_nonnegative_integer(NodeId entry, const Compiler& c, const IlBackend& b) {
+    Node n=get_node(entry,c);
+    if (n.kind==NodeKind::Name) { return b.raw_slot(n.symbol)==-6 && b.nonnegative_ints.at(n.symbol)!=0; }
+    if (n.kind==NodeKind::Number) { return il_int_result(entry,c) && number(get_token(n.token,c).text,c)>=0; }
+    if (il_integer_remainder(entry,c,b)) { return true; }
+    if (n.kind!=NodeKind::Binary) { return false; }
+    TextId op=get_token(n.token,c).text;
+    // AND clears the sign bit when either operand has it clear. OR and XOR
+    // need both operands to have it clear. Bitwise emission keeps JS coercions.
+    if (is_text(op,&text_bit_and,c)) { return il_nonnegative_integer(n.left,c,b) || il_nonnegative_integer(n.right,c,b); }
+    if (is_text(op,&text_bit_or,c) || is_text(op,&text_bit_xor,c)) { return il_nonnegative_integer(n.left,c,b) && il_nonnegative_integer(n.right,c,b); }
+    return false;
+}

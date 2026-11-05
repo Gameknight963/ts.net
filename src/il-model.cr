@@ -267,6 +267,14 @@ void il_prove_locals(const Compiler& c, IlBackend& b) {
             }
         }
     }
+    // Unchanged integer literals retain their sign proof at every use.
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        Node n=get_node(i,c);
+        if (n.kind==NodeKind::Variable && n.left!=0 && b.raw_slot(n.symbol)==-6 && b.written_symbols.at(n.symbol)==0) {
+            Node value=get_node(n.left,c);
+            if (value.kind==NodeKind::Number && number(get_token(value.token,c).text,c)>=0) { b.nonnegative_ints.at_mut(n.symbol)=1; }
+        }
+    }
 }
 
 void il_runtime(IlBackend& b) {
