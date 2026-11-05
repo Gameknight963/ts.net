@@ -16,7 +16,7 @@ import (
 
 // Versioned, pointer-free typed IR. Display strings are never used as types.
 type irType struct{ kind, name, fields int }
-type irField struct{ name, typ, next int }
+type irField struct{ name, typ, next, optional int }
 type irToken struct{ text, line, column int }
 type irNode struct{ kind, token, name, typ, left, right, third, fourth, children, next, symbol, constant int }
 type irSymbol struct{ name, typ, function int }
@@ -86,6 +86,25 @@ func (b *irBuilder) typ(t *checker.Type) int {
 	case flags&checker.TypeFlagsObject != 0:
 		kind = 6
 	}
+	// Scalar unions containing only undefined use the same nullable ABI as scalars.
+	// A union also containing JS null deliberately remains object-backed.
+	if flags&checker.TypeFlagsUnion != 0 && kind == 4 {
+		number, boolean, undefined := true, true, false
+		for _, part := range t.Types() {
+			f := part.Flags()
+			if f&checker.TypeFlagsUndefined != 0 {
+				undefined = true
+				continue
+			}
+			number = number && f&checker.TypeFlagsNumberLike != 0
+			boolean = boolean && f&checker.TypeFlagsBooleanLike != 0
+		}
+		if undefined && number {
+			kind = 0
+		} else if undefined && boolean {
+			kind = 2
+		}
+	}
 	if kind != 6 {
 		if id := b.primitives[kind]; id != 0 {
 			b.typeIDs[t] = id
@@ -103,7 +122,11 @@ func (b *irBuilder) typ(t *checker.Type) int {
 	for _, property := range b.c.GetPropertiesOfType(t) {
 		name := b.text(ast.SymbolName(property))
 		typ := b.typ(b.c.GetTypeOfSymbol(property))
-		b.fields = append(b.fields, irField{name: name, typ: typ})
+		optional := 0
+		if property.Flags&ast.SymbolFlagsOptional != 0 {
+			optional = 1
+		}
+		b.fields = append(b.fields, irField{name: name, typ: typ, optional: optional})
 		fid := len(b.fields)
 		if last == 0 {
 			b.types[id-1].fields = fid
@@ -383,12 +406,14 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.left = b.lower(n.Initializer())
 		row.typ = b.typ(b.c.GetTypeAtLocation(n.Name()))
 		if n.Kind == ast.KindParameter && (n.Initializer() != nil || n.AsParameterDeclaration().QuestionToken != nil) {
-			row.typ = b.typ(b.c.GetAnyType())
+			if b.types[row.typ-1].kind != 0 && b.types[row.typ-1].kind != 2 {
+				row.typ = b.typ(b.c.GetAnyType())
+			}
 			row.constant = 1
 		}
 		b.symbols[row.symbol-1].typ = row.typ
 		if n.Initializer() == nil && n.Kind == ast.KindVariableDeclaration {
-			if b.types[row.typ-1].kind != 4 {
+			if b.types[row.typ-1].kind != 4 && b.types[row.typ-1].kind != 0 && b.types[row.typ-1].kind != 2 {
 				b.unsupported(n)
 			}
 			row.left = b.node(20, n, "undefined")
@@ -575,7 +600,7 @@ func exportIR(s *session) (result []byte, err error) {
 	}
 	var data bytes.Buffer
 	put := func(v int) { _ = binary.Write(&data, binary.LittleEndian, int32(v)) }
-	put(0x31524954)
+	put(0x32524954)
 	put(len(b.texts))
 	for _, text := range b.texts {
 		put(len(text))
@@ -592,6 +617,7 @@ func exportIR(s *session) (result []byte, err error) {
 		put(f.name)
 		put(f.typ)
 		put(f.next)
+		put(f.optional)
 	}
 	put(len(b.tokens))
 	for _, t := range b.tokens {

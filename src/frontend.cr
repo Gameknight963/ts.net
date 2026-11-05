@@ -35,7 +35,7 @@ void import_frontend(const char[]& path, Compiler& c) {
     if (snapshot.code()!=0) { print(snapshot.view());exit(1); }
     session.close();
     IrReader r=IrReader::create(snapshot.view());
-    if (r.integer()!=0x31524954) { print("tsnetc: unsupported frontend IR version");exit(1); }
+    if (r.integer()!=0x32524954) { print("tsnetc: unsupported frontend IR version");exit(1); }
     size_t count=r.id();
     for (size_t i=0;i<count;i++) { r.text(c); }
     count=r.id();c.next_type=(int)count;c.types=count==0 ? 0 : 1;
@@ -47,7 +47,8 @@ void import_frontend(const char[]& path, Compiler& c) {
     count=r.id();
     for (size_t i=0;i<count;i++) {
         TextId name=r.id();TypeId type=r.id();FieldId next=r.id();
-        Field record={.name=name,.type=type,.next=next};c.field_store.add(record);
+        bool optional=r.integer()!=0;
+        Field record={.name=name,.type=type,.next=next,.optional=optional};c.field_store.add(record);
     }
     count=r.id();
     for (size_t i=0;i<count;i++) {

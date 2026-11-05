@@ -71,6 +71,7 @@ struct Field {
     TextId name;
     TypeId type;
     FieldId next;
+    bool optional;
 };
 struct Node {
     NodeKind kind;
@@ -203,7 +204,7 @@ void set_field_next(FieldId id, FieldId value, Compiler& c) {
     c.field_store.at_mut(id).next = value;
 }
 FieldId new_field(Compiler& c) {
-    Field record = {.name = 0, .type = 0, .next = 0};
+    Field record = {.name = 0, .type = 0, .next = 0, .optional=false};
     return c.field_store.add(record);
 }
 Node get_node(NodeId id, const Compiler& c) {

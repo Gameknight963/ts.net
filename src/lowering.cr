@@ -10,7 +10,7 @@ bool fits(TypeId source, TypeId target, const Compiler& c) {
     FieldId required = get_type(target, c).fields;
     while (required != 0) {
         FieldId actual = field(source, get_field(required, c).name, c);
-        if (actual == 0 || get_field(actual, c).type != get_field(required, c).type) {
+        if ((actual==0 && !get_field(required,c).optional) || (actual!=0 && get_field(actual,c).type != get_field(required,c).type)) {
             return false;
         }
         required = get_field(required, c).next;
