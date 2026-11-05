@@ -206,6 +206,13 @@ public static class Js
         throw new InvalidOperationException("slice requires an array or string");
     }
     public static void ArrayAppend(object receiver, object value) => ((JsArray)receiver).Append(value);
+    public static void ArrayReserveCapacity(object receiver, double limit)
+    {
+        if (receiver is JsArray array && limit > 0 && limit <= int.MaxValue) array.ReserveCapacity((int)Math.Ceiling(limit));
+    }
+    public static object[] ArrayTryDense(object receiver, double limit) => receiver is JsArray array && receiver.GetType() == typeof(JsArray) ? array.DenseRange(limit) : null;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object ArrayDecode(object value) => JsArray.DecodeElement(value);
     // The compiler proves these indexes are non-negative.
     public static object ArrayGetAt(object receiver, int index) => receiver is JsArray array ? array.ElementAt((uint)index) : IndexGet(receiver, (double)index);
     public static void ArraySetAt(object receiver, int index, object value)

@@ -272,6 +272,8 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     }
     else if (n.kind==NodeKind::Array) { il_array_literal(entry,n.type,c,b); }
     else if (n.kind==NodeKind::Index) {
+        int dense=il_dense_slot(entry,c,b);
+        if (dense>=0) { b.emit(0xfe0c,dense);il_integer(n.right,c,b);b.op(0x9a);b.call(RuntimeMember::ArrayDecode);b.from_object(n.type,c);return; }
         int packed=il_packed_slot(entry,c,b);
         if (packed>=0) { b.emit(0xfe0c,packed);il_integer(n.right,c,b);b.op(0x99);b.call(RuntimeMember::WrapNumber);return; }
         il_expression(n.left,c,b);

@@ -163,6 +163,9 @@ public class JsArray : TsObject
     }
     public object GetIndex(object key) => Get(Js.Text(key));
     public object ElementAt(uint index) => Read(index);
+    internal virtual void ReserveCapacity(int capacity) => values.Reserve(capacity);
+    internal object[] DenseRange(double limit) => limit >= 0 && limit <= values.Length && limit <= values.Dense.Length ? values.Dense : null;
+    internal static object DecodeElement(object value) => ReferenceEquals(value, Hole) ? Js.Undefined : value;
     public void SetAt(int index, object value)
     {
         if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
@@ -231,6 +234,7 @@ public sealed class NumberArray : JsArray
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static double? Decode(double value) => unchecked((ulong)(BitConverter.DoubleToInt64Bits(value) - MissingBits)) <= 1 ? null : value;
     public override bool HasElement(uint index) => index < Count && BitConverter.DoubleToInt64Bits(numbers.Get(index)) != MissingBits;
+    internal override void ReserveCapacity(int capacity) => numbers.Reserve(capacity);
     protected override uint Count => numbers.Length;
     protected override object Read(uint index) => Js.BoxNumber(Decode(numbers.Get(index)));
     protected override void Write(uint index, object value) => Store(index, Js.Cast<double?>(value, "Array write violates number element type"));

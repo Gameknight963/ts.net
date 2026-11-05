@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, CheckInitialized, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, CheckInitialized, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -50,6 +50,7 @@ struct IlBackend {
     Vector<int> nonnegative_ints;
     Vector<int> node_parents;
     Vector<int> packed_arrays;
+    Vector<int> dense_arrays;
     Vector<int> iteration_vars;
     Vector<int> scalar_roots;
     Vector<ScalarField> scalar_fields;
@@ -70,7 +71,7 @@ struct IlBackend {
             .casts=zero_ids(types), .methods=zero_ids(symbols), .binding_methods=zero_ids(symbols), .global_fields=zero_ids(symbols), .global_flags=zero_ids(symbols), .global_vars=zero_ids(symbols), .global_cache=zero_ids(symbols), .slots=empty_slots(symbols),.raw_slots=zero_ids(symbols),
             .numeric_slots=zero_ids(symbols),.numeric_methods=zero_ids(symbols),.written_symbols=zero_ids(symbols),
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
-            .packed_arrays=zero_ids(symbols),
+            .packed_arrays=zero_ids(symbols),.dense_arrays=zero_ids(symbols),
             .iteration_vars=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
@@ -322,6 +323,9 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::ArrayAppend,b.plan.method2(6,js,0,-1,-5,-5,"ArrayAppend"));
     b.ref_set(RuntimeMember::ArrayHole,b.plan.method1(6,js,0,-1,-5,"ArrayHole"));
     Vector<int> array_set_parameters=Vector<int>::create();array_set_parameters.push(-5);array_set_parameters.push(-6);array_set_parameters.push(-5);
+    b.ref_set(RuntimeMember::ArrayReserveCapacity,b.plan.method2(6,js,0,-1,-5,-3,"ArrayReserveCapacity"));
+    b.ref_set(RuntimeMember::ArrayTryDense,b.plan.method2(6,js,0,-7,-5,-3,"ArrayTryDense"));
+    b.ref_set(RuntimeMember::ArrayDecode,b.plan.method1(6,js,0,-5,-5,"ArrayDecode"));
     b.ref_set(RuntimeMember::ArrayIndexGetAt,b.plan.method2(6,js,0,-5,-5,-6,"ArrayGetAt"));
     b.ref_set(RuntimeMember::ArrayIndexSetAt,b.plan.method(6,js,0,-1,array_set_parameters.view(),"ArraySetAt"));
     Vector<int> spread_parameters=Vector<int>::create();spread_parameters.push(-5);spread_parameters.push(-5);spread_parameters.push(-6);
