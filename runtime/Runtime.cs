@@ -194,6 +194,11 @@ public static class Js
     }
     public static double ArrayPush(object receiver, object[] values) =>
         receiver is JsArray array ? array.PushMany(values) : throw new InvalidOperationException("push requires an array");
+    public static double ArraySearch(object receiver, object value, object fromIndex, bool includes) =>
+        receiver is JsArray array ? array.Search(value, fromIndex, includes) : throw new InvalidOperationException("Array search requires an array");
+    public static double ArraySearchNumber(object receiver, double? value, object fromIndex, bool includes) =>
+        receiver is JsArray array ? array.SearchNumber(value, fromIndex, includes) : throw new InvalidOperationException("Array search requires an array");
+
     public static object Slice(object receiver, object start, object end)
     {
         if (receiver is JsArray array) return array.Slice(start, end);

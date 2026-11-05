@@ -53,15 +53,36 @@ void il_array_literal(NodeId entry, TypeId type, const Compiler& c, IlBackend& b
         index++;value=item.next;
     }
 }
+bool il_array_search(NodeId entry, const Compiler& c) {
+    Node callee=get_node(get_node(entry,c).left,c);
+    return callee.kind==NodeKind::Property && (is_text(callee.name,&text_includes,c) || is_text(callee.name,&text_index_of,c));
+}
+void il_array_search_result(NodeId entry, const Compiler& c, IlBackend& b) {
+    Node n=get_node(entry,c);Node callee=get_node(n.left,c);
+    bool includes=is_text(callee.name,&text_includes,c);
+    if (includes) { b.plan.number(b.method,-1);b.op(0xfe02);b.call(RuntimeMember::WrapBoolean); }
+    else { b.call(RuntimeMember::WrapNumber); }
+    if (get_type(n.type,c).kind==TypeKind::Any) { b.call(includes ? RuntimeMember::BoxBoolean : RuntimeMember::BoxNumber); }
+}
 bool il_array_call(NodeId entry, const Compiler& c) {
     Node n=get_node(entry,c);Node callee=get_node(n.left,c);
-    if (callee.kind!=NodeKind::Property || (!is_text(callee.name,&text_push,c) && !is_text(callee.name,&text_pop,c) && !is_text(callee.name,&text_slice,c))) { return false; }
+    if (callee.kind!=NodeKind::Property || (!is_text(callee.name,&text_push,c) && !is_text(callee.name,&text_pop,c) && !is_text(callee.name,&text_slice,c) && !il_array_search(entry,c))) { return false; }
     TypeKind owner=get_type(get_node(callee.left,c).type,c).kind;
     return owner==TypeKind::Array || owner==TypeKind::Any || (owner==TypeKind::String && is_text(callee.name,&text_slice,c));
 }
 void il_emit_array_call(NodeId entry, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);Node callee=get_node(n.left,c);TypeId owner=get_node(callee.left,c).type;
     il_expression(callee.left,c,b);
+    if (il_array_search(entry,c)) {
+        NodeId argument=n.children;bool numeric=argument!=0 && get_type(get_node(argument,c).type,c).kind==TypeKind::Number;
+        if (argument!=0) { if (numeric) { il_expression(argument,c,b); } else { il_boxed(argument,c,b); }argument=get_node(argument,c).next; }
+        else { b.call(RuntimeMember::Undefined); }
+        if (argument!=0) { il_boxed(argument,c,b);argument=get_node(argument,c).next; }
+        else { b.call(RuntimeMember::Undefined); }
+        while (argument!=0) { il_expression(argument,c,b);if (get_type(get_node(argument,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }argument=get_node(argument,c).next; }
+        b.emit(0x20,is_text(callee.name,&text_includes,c) ? 1 : 0);
+        b.call(numeric ? RuntimeMember::ArraySearchNumber : RuntimeMember::ArraySearch);il_array_search_result(entry,c,b);return;
+    }
     if (is_text(callee.name,&text_slice,c)) {
         NodeId argument=n.children;
         for (int i=0;i<2;i++) {

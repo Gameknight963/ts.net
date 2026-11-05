@@ -27,7 +27,7 @@ bool il_static_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
 TypeId il_call_number_type(NodeId entry, const Compiler& c) {
     Node call=get_node(entry,c);Node callee=get_node(call.left,c);
     if (il_array_call(entry,c)) {
-        if (is_text(callee.name,&text_slice,c)) { return 0; }
+        if (is_text(callee.name,&text_slice,c) || il_array_search(entry,c)) { return 0; }
         TypeId owner=get_node(callee.left,c).type;
         return il_number_array(owner,c) ? get_type(owner,c).element : 0;
     }
@@ -78,6 +78,12 @@ void il_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
     if (builtin(call.left,&text_performance,&text_now,c)) { b.call(RuntimeMember::Now);b.call(RuntimeMember::WrapNumber);return; }
     if (array_call) {
         b.emit(0xfe0c,receiver);
+        if (il_array_search(entry,c)) {
+            b.emit(0xfe0c,array);b.emit(0x20,0);b.call(RuntimeMember::ForOfValue);
+            b.emit(0xfe0c,array);b.emit(0x20,1);b.call(RuntimeMember::ForOfValue);
+            b.emit(0x20,is_text(callee.name,&text_includes,c) ? 1 : 0);b.call(RuntimeMember::ArraySearch);
+            il_array_search_result(entry,c,b);return;
+        }
         if (is_text(callee.name,&text_slice,c)) {
             b.emit(0xfe0c,array);b.emit(0x20,0);b.call(RuntimeMember::ForOfValue);
             b.emit(0xfe0c,array);b.emit(0x20,1);b.call(RuntimeMember::ForOfValue);b.call(RuntimeMember::Slice);return;

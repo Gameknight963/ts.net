@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 // Dense storage handles ordinary arrays. Distant indices stay sparse so a write
 // near the JavaScript length limit does not request a multi-gigabyte buffer.
-struct ArrayStorage<T>
+partial struct ArrayStorage<T>
 {
     T[] dense;
     Dictionary<uint, T> sparse;
@@ -103,7 +103,7 @@ struct ArrayStorage<T>
     }
 }
 
-public class JsArray : TsObject
+public partial class JsArray : TsObject
 {
     static readonly object Hole = new object();
     ArrayStorage<object> values;
@@ -216,7 +216,7 @@ public class JsArray : TsObject
     }
 }
 
-public sealed class NumberArray : JsArray
+public sealed partial class NumberArray : JsArray
 {
     // Canonicalize stored numeric NaNs, reserving a distinct NaN payload for
     // holes and explicit undefined. Public reads use the nullable scalar ABI.
