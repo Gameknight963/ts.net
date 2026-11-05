@@ -19,7 +19,7 @@ SymbolId il_counted_loop(NodeId entry, const Compiler& c, const IlBackend& b) {
     Node binding=get_node(declaration,c);
     if (binding.kind!=NodeKind::Variable || binding.left==0) { return 0; }
     Node initial=get_node(binding.left,c);Node condition=get_node(loop.right,c);Node increment=get_node(loop.third,c);
-    if (binding.kind!=NodeKind::Variable || initial.kind!=NodeKind::Number || number(get_token(initial.token,c).text,c)!=0 ||
+    if (binding.kind!=NodeKind::Variable || initial.kind!=NodeKind::Number || !il_int_result(binding.left,c) || number(get_token(initial.token,c).text,c)<0 ||
         b.raw_slot(binding.symbol)!=-3 || condition.kind!=NodeKind::Binary || !is_text(get_token(condition.token,c).text,&text_less,c) ||
         get_node(condition.left,c).kind!=NodeKind::Name || get_node(condition.left,c).symbol!=binding.symbol ||
         increment.kind!=NodeKind::Update || !is_text(get_token(increment.token,c).text,&text_increment,c) ||
@@ -103,8 +103,9 @@ void il_loop_inner(NodeId entry, TypeId result, const Compiler& c, IlBackend& b)
     if (counter==0) { il_loop_body(entry,result,0,-1,c,b);return; }
     Node n=get_node(entry,c);Node condition=get_node(n.right,c);
     Node limit=get_node(condition.right,c);
+    double initial=number(get_token(get_node(get_node(il_loop_binding(entry,c),c).left,c).token,c).text,c);
     if (limit.kind==NodeKind::Number) {
-        if (number(get_token(limit.token,c).text,c)>2147483647) { il_loop_body(entry,result,0,-1,c,b);return; }
+        if (number(get_token(limit.token,c).text,c)>2147483647 || number(get_token(limit.token,c).text,c)<=initial) { il_loop_body(entry,result,0,-1,c,b);return; }
         int bound=b.local(-3);il_number(condition.right,c,b);b.emit(0xfe0e,bound);
         int previous=b.raw_slot(counter);b.raw_slots.at_mut(counter)=-6;b.nonnegative_ints.at_mut(counter)=1;
         il_loop_body(entry,result,counter,bound,c,b);
@@ -116,6 +117,8 @@ void il_loop_inner(NodeId entry, TypeId result, const Compiler& c, IlBackend& b)
     il_number(condition.right,c,b);b.emit(0xfe0e,bound);
     // An unordered comparison sends NaN to the original loop too.
     b.emit(0xfe0c,bound);b.plan.number(b.method,2147483647);b.op(0xfe03);b.emit(0x3a,fallback);
+    // Buffer guards may read the array before the loop: keep empty nonzero loops on the original path.
+    if (initial>0) { b.emit(0xfe0c,bound);b.plan.number(b.method,initial);b.op(0xfe02);b.emit(0x39,fallback); }
     int previous=b.raw_slot(counter);b.raw_slots.at_mut(counter)=-6;b.nonnegative_ints.at_mut(counter)=1;
     b.loop_versions++;
     il_loop_body(entry,result,counter,bound,c,b);b.emit(0x38,done);

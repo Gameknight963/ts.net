@@ -76,3 +76,40 @@ function roundedBound(bound: number) {
 console.log(roundedBound(0), roundedBound(-0), roundedBound(-1), roundedBound(-1 / 0));
 console.log(roundedBound(0.1), roundedBound(1.1), roundedBound(2.9), roundedBound(0 / 0));
 console.log(roundedBound(2147483646.5), roundedBound(2147483647), roundedBound(2147483648), roundedBound(1 / 0));
+
+function positiveStart(bound: number) {
+    let total = 0;
+    for (let i = 3; i < bound; i++) {
+        total += i % 7;
+        if (i === 6) break;
+    }
+    return total;
+}
+console.log(positiveStart(0), positiveStart(3), positiveStart(3.1), positiveStart(5.5));
+console.log(positiveStart(2147483647), positiveStart(2147483648), positiveStart(1 / 0));
+console.log(positiveStart(0 / 0), positiveStart(undefined as unknown as number));
+function nearIntegerLimit() {
+    let total = 0;
+    for (let i = 2147483645; i < 2147483647; i++) total += i % 3;
+    return total;
+}
+console.log(nearIntegerLimit());
+function fractionalStart() {
+    let total = 0;
+    for (let i = 1.5; i < 4; i++) total += i % 2;
+    return total;
+}
+console.log(fractionalStart());
+function emptyArrayLoop(bound: number) {
+    const values = undefined as unknown as any[];
+    for (let i = 3; i < bound; i++) { values[i] = i; }
+    return 0;
+}
+console.log(emptyArrayLoop(0), emptyArrayLoop(3));
+function nonzeroArray() {
+    const values: number[] = [1, 2, 3, 4];
+    let total = 0;
+    for (let i = 1; i < 4; i++) total += values[i];
+    return total;
+}
+console.log(nonzeroArray());
