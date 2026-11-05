@@ -14,14 +14,14 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 	}
 	name := ""
 	parent := n.Parent
-	for parent != nil && parent.Kind == ast.KindParenthesizedExpression {
+	for parent != nil && (parent.Kind == ast.KindParenthesizedExpression || parent.Kind == ast.KindAsExpression || parent.Kind == ast.KindTypeAssertionExpression || parent.Kind == ast.KindSatisfiesExpression) {
 		parent = parent.Parent
 	}
 	if parent != nil {
 		switch parent.Kind {
 		case ast.KindVariableDeclaration, ast.KindPropertyAssignment:
-			if parent.Name().Kind == ast.KindIdentifier || parent.Name().Kind == ast.KindStringLiteral {
-				name = parent.Name().Text()
+			if property, known := b.literalPropertyName(parent.Name()); known {
+				name = property
 			}
 		case ast.KindExportAssignment:
 			name = "default"

@@ -161,7 +161,7 @@ public partial class JsArray : TsObject
         else return base.Set(key, value);
         return value;
     }
-    public object GetIndex(object key) => Get(Js.Text(key));
+    public object GetIndex(object key) => Get(Js.PropertyKey(key));
     public object ElementAt(uint index) => Read(index);
     internal virtual void ReserveCapacity(int capacity) => values.Reserve(capacity);
     internal object[] DenseRange(double limit) => limit >= 0 && limit <= values.Length && limit <= values.Dense.Length ? values.Dense : null;
@@ -171,7 +171,7 @@ public partial class JsArray : TsObject
         if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
         Write((uint)index, value);
     }
-    public void SetIndex(object key, object value) => Set(Js.Text(key), value);
+    public void SetIndex(object key, object value) => Set(Js.PropertyKey(key), value);
     public void Append(object value)
     {
         uint index = Count;
@@ -276,7 +276,7 @@ public sealed partial class NumberArray : JsArray
     public double? GetNumber(double index)
     {
         if (index >= 0 && index < uint.MaxValue && index == (uint)index) return Decode(numbers.Get((uint)index));
-        return Js.Cast<double?>(Get(Js.Text(index)), "Array element is not a number");
+        return Js.Cast<double?>(Get(Js.PropertyKey(index)), "Array element is not a number");
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double? GetNumberAt(int index) => Decode(numbers.Get((uint)index));
@@ -286,7 +286,7 @@ public sealed partial class NumberArray : JsArray
     public void SetNumber(double index, double? value)
     {
         if (index >= 0 && index < uint.MaxValue && index == (uint)index) Store((uint)index, value);
-        else Set(Js.Text(index), Js.BoxNumber(value));
+        else Set(Js.PropertyKey(index), Js.BoxNumber(value));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double PushNumber(double? value)

@@ -131,6 +131,20 @@ func (b *irBuilder) typ(t *checker.Type) int {
 		b.primitives[kind] = id
 		return id
 	}
+	index := b.c.GetIndexInfoOfType(t, b.c.GetStringType())
+	if index == nil {
+		index = b.c.GetIndexInfoOfType(t, b.c.GetNumberType())
+	}
+	if index != nil {
+		b.types[id-1].element = b.typ(index.ValueType())
+	} else {
+		infos := b.c.GetIndexInfosOfType(t)
+		if len(infos) == 1 {
+			b.types[id-1].element = b.typ(infos[0].ValueType())
+		} else if len(infos) > 1 {
+			b.types[id-1].element = b.typ(b.c.GetAnyType())
+		}
+	}
 	last := 0
 	for _, property := range b.c.GetPropertiesOfType(t) {
 		name := b.text(ast.SymbolName(property))
@@ -380,10 +394,28 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		if n.Kind == ast.KindPropertyAssignment && n.Name().Kind != ast.KindComputedPropertyName && n.Name().Text() == "__proto__" {
 			b.unsupported(n)
 		}
-		id = b.node(5, n, n.Name().Text())
+		name := n.Name()
+		key := name
+		computed := name.Kind == ast.KindComputedPropertyName
+		if computed {
+			key = name.Expression()
+		}
+		staticName, known := b.literalPropertyName(name)
+		dynamic := !known
+		id = b.node(5, n, "property")
 		row = b.nodes[id-1]
-		row.name = b.text(n.Name().Text())
+		if dynamic {
+			row.right = b.lower(key)
+			if !computed && name.Kind == ast.KindNumericLiteral {
+				b.nodes[row.right-1].typ = b.typ(b.c.GetNumberType())
+			}
+		} else {
+			row.name = b.text(staticName)
+		}
 		if n.Kind == ast.KindPropertyAssignment {
+			if dynamic && anonymousPropertyFunction(n.Initializer()) {
+				row.constant = 1
+			}
 			row.left = b.lower(n.Initializer())
 		} else {
 			row.left = b.lower(n.Name())

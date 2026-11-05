@@ -39,7 +39,7 @@ void il_iteration_store(NodeId entry, TypeId type, int value, const Compiler& c,
     }
     if (target.kind!=NodeKind::Property) { fail(target.token,"unsupported iteration binding",c); }
     il_expression(target.left,c,b);TypeId owner=get_node(target.left,c).type;
-    if (get_type(owner,c).kind==TypeKind::Any) {
+    if (get_type(owner,c).kind==TypeKind::Any || (get_type(owner,c).kind==TypeKind::Shape && field(owner,target.name,c)==0 && get_type(owner,c).element!=0)) {
         il_text(target.name,c,b);b.emit(0xfe0c,value);b.box(type,c);b.call(RuntimeMember::DynamicSet);b.op(0x26);
     } else if (get_type(owner,c).kind==TypeKind::Array && is_text(target.name,&text_length,c)) {
         b.emit(0xfe0c,value);b.call(RuntimeMember::NumberValue);b.call(RuntimeMember::ArraySetLength);

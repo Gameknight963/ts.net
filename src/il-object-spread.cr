@@ -1,15 +1,15 @@
 import "il-key-layouts.cr";
 
-bool il_has_object_spread(NodeId entry, const Compiler& c) {
+bool il_object_needs_entries(NodeId entry, const Compiler& c) {
     Node n=get_node(entry,c);if (n.kind!=NodeKind::Object) { return false; }
     NodeId property=n.children;
-    while (property!=0) { Node p=get_node(property,c);if (p.kind==NodeKind::Spread) { return true; }property=p.next; }
+    while (property!=0) { Node p=get_node(property,c);if (p.kind==NodeKind::Spread || (p.kind==NodeKind::Property && p.right!=0)) { return true; }property=p.next; }
     return false;
 }
 
 void il_prepare_spreads(const Compiler& c, IlBackend& b) {
     for (size_t i=1;i<=c.node_store.count();i++) {
-        if (!il_has_object_spread(i,c)) { continue; }
+        if (!il_object_needs_entries(i,c)) { continue; }
         TypeId type=get_node(i,c).type;
         if (get_type(type,c).kind==TypeKind::Shape) { b.spread_types.at_mut(type)=1; }
         else { b.spread_any_constructor=-1; }
@@ -34,7 +34,7 @@ void il_prepare_spread_hints(const Compiler& c, IlBackend& b) {
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);if (n.kind!=NodeKind::Variable || n.left==0) { continue; }
         Node source=get_node(n.left,c);
-        if (source.kind!=NodeKind::Object || il_has_object_spread(n.left,c) || !il_same_spread_fields(source.type,n.type,c)) { continue; }
+        if (source.kind!=NodeKind::Object || il_object_needs_entries(n.left,c) || !il_same_spread_fields(source.type,n.type,c)) { continue; }
         int klass=b.literal_classes.at(n.left);if (klass==0) { klass=b.classes.at(source.type); }
         b.spread_source_classes.at_mut(n.symbol)=klass;
     }
@@ -118,7 +118,7 @@ void il_object_spread_expression(NodeId entry, const Compiler& c, IlBackend& b) 
         Node source=get_node(first.left,c);il_boxed(first.left,c,b);cached=b.local(-5);b.emit(0xfe0e,cached);
         int klass=0;
         if (source.kind==NodeKind::Name) { klass=b.spread_source_classes.at(source.symbol); }
-        if (source.kind==NodeKind::Object && !il_has_object_spread(first.left,c)) { klass=b.literal_classes.at(first.left);if (klass==0) { klass=b.classes.at(source.type); } }
+        if (source.kind==NodeKind::Object && !il_object_needs_entries(first.left,c)) { klass=b.literal_classes.at(first.left);if (klass==0) { klass=b.classes.at(source.type); } }
         int root=b.classes.at(source.type);
         for (int attempt=0;attempt<2;attempt++) {
             int candidate=attempt==0 ? klass : root;if (candidate==0 || (attempt==1 && candidate==klass)) { continue; }
@@ -131,7 +131,13 @@ void il_object_spread_expression(NodeId entry, const Compiler& c, IlBackend& b) 
     while (property!=0) {
         Node p=get_node(property,c);b.emit(0xfe0c,destination);
         if (p.kind==NodeKind::Spread) { if (cached>=0) { b.emit(0xfe0c,cached); } else { il_boxed(p.left,c,b); }b.call(RuntimeMember::ObjectSpread); }
-        else { il_text(p.name,c,b);il_boxed(p.left,c,b);b.call(RuntimeMember::DefineOwn); }
+        else {
+            if (p.right!=0) { il_boxed(p.right,c,b);b.call(RuntimeMember::PropertyKey); } else { il_text(p.name,c,b); }
+            int key=-1;if (p.constant) { key=b.local(-4);b.op(0x25);b.emit(0xfe0e,key); }
+            il_boxed(p.left,c,b);
+            if (p.constant) { b.emit(0xfe0c,key);b.call(RuntimeMember::NamePropertyFunction); }
+            b.call(RuntimeMember::DefineOwn);
+        }
         property=p.next;
     }
     if (typed) {
@@ -158,12 +164,12 @@ void il_spread_clone(TypeId type, int klass, int constructor, const Compiler& c,
 void il_spread_clones(const Compiler& c, IlBackend& b) {
     Vector<int> candidates=Vector<int>::create();
     for (size_t i=1;i<=c.node_store.count();i++) {
-        if (!il_has_object_spread(i,c)) { continue; }
+        if (!il_object_needs_entries(i,c)) { continue; }
         Node literal=get_node(i,c);Node spread=get_node(literal.children,c);Node source=get_node(spread.left,c);
         if (spread.kind!=NodeKind::Spread || spread.next!=0 || !il_same_spread_fields(source.type,literal.type,c)) { continue; }
         candidates.push(b.classes.at(source.type));
         if (source.kind==NodeKind::Name) { candidates.push(b.spread_source_classes.at(source.symbol)); }
-        if (source.kind==NodeKind::Object && !il_has_object_spread(spread.left,c)) {
+        if (source.kind==NodeKind::Object && !il_object_needs_entries(spread.left,c)) {
             int klass=b.literal_classes.at(spread.left);if (klass==0) { klass=b.classes.at(source.type); }candidates.push(klass);
         }
     }
@@ -202,7 +208,7 @@ void il_scalar_spread_initialize(NodeId entry, const Compiler& c, IlBackend& b) 
     Node binding=get_node(entry,c);Node literal=get_node(binding.left,c);Node spread=get_node(literal.children,c);Node source=get_node(spread.left,c);
     il_boxed(spread.left,c,b);int cached=b.local(-5);b.emit(0xfe0e,cached);int done=b.label();
     int hint=0;if (source.kind==NodeKind::Name) { hint=b.spread_source_classes.at(source.symbol); }
-    if (source.kind==NodeKind::Object && !il_has_object_spread(spread.left,c)) { hint=b.literal_classes.at(spread.left);if (hint==0) { hint=b.classes.at(source.type); } }
+    if (source.kind==NodeKind::Object && !il_object_needs_entries(spread.left,c)) { hint=b.literal_classes.at(spread.left);if (hint==0) { hint=b.classes.at(source.type); } }
     int root=b.classes.at(source.type);
     for (int attempt=0;attempt<2;attempt++) {
         int candidate=attempt==0 ? hint : root;if (candidate==0 || (attempt==1 && candidate==hint)) { continue; }

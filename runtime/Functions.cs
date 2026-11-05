@@ -18,7 +18,7 @@ public class JsFunction : TsObject
     readonly RawNumberFunction0 raw0;
     readonly RawNumberFunction1 raw1;
     readonly RawNumberFunction2 raw2;
-    readonly string name;
+    string name;
     readonly int length;
     public JsFunction(object body, object numeric, string name, int length)
     {
@@ -31,6 +31,7 @@ public class JsFunction : TsObject
         raw2 = numeric as RawNumberFunction2;
         this.name = name;this.length = length;
     }
+    internal void InferPropertyName(string value) { name = value; }
     public override bool HasOwn(string key) => key == "name" || key == "length" || base.HasOwn(key);
     public override object Get(string key) => key == "name" ? name : key == "length" ? (double)length : base.Get(key);
     public override object Set(string key, object value)
@@ -84,6 +85,7 @@ public static partial class Js
         return result;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object NamePropertyFunction(object value, string name) { ((JsFunction)value).InferPropertyName(name); return value; }
     public static object CallFunction0(object target) => target is JsFunction function ? function.Invoke(Array.Empty<object>()) : throw new InvalidOperationException("Value is not callable");
     public static object CallFunction(object target, object[] arguments) => target is JsFunction function ? function.Invoke(arguments) : throw new InvalidOperationException("Value is not callable");
     public static object CallFunctionArguments(object target, object arguments)

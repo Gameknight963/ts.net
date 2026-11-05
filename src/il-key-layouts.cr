@@ -4,7 +4,7 @@ import "il-globals.cr";
 // literal. Keep key order in a shared generated subclass, not in each object.
 void il_prepare_key_layouts(const Compiler& c, IlBackend& b) {
     for (size_t i=1;i<=c.node_store.count();i++) {
-        Node n=get_node(i,c);if (n.kind!=NodeKind::Object || get_type(n.type,c).kind!=TypeKind::Shape || il_has_object_spread(i,c)) { continue; }
+        Node n=get_node(i,c);if (n.kind!=NodeKind::Object || get_type(n.type,c).kind!=TypeKind::Shape || il_object_needs_entries(i,c)) { continue; }
         FieldId member=get_type(n.type,c).fields;NodeId property=n.children;bool different=false;
         while (member!=0 && property!=0) {
             Node p=get_node(property,c);

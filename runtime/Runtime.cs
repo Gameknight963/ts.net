@@ -147,7 +147,7 @@ public static partial class Js
     public static bool HasOwn(object receiver, object key)
     {
         if (IsNullish(receiver)) throw new InvalidOperationException("Cannot inspect properties of null or undefined");
-        return key is double number ? HasOwnNumber(receiver, number) : HasOwnNamed(receiver, Text(key));
+        return key is double number ? HasOwnNumber(receiver, number) : HasOwnNamed(receiver, PropertyKey(key));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -160,7 +160,7 @@ public static partial class Js
                 return array.HasElement((uint)index);
             if (receiver is string text) return index >= 0 && index < text.Length && index == (uint)index;
         }
-        return HasOwnNamed(receiver, key.HasValue ? Text(key.GetValueOrDefault()) : "undefined");
+        return HasOwnNamed(receiver, key.HasValue ? PropertyKey(key.GetValueOrDefault()) : "undefined");
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -183,7 +183,7 @@ public static partial class Js
     public static object IndexGet(object receiver, object key)
     {
         if (receiver is JsArray array) return array.GetIndex(key);
-        string text = Text(key);
+        string text = PropertyKey(key);
         if (receiver is string value && JsArray.Index(text, out uint index) && index < value.Length)
             return value.Substring((int)index, 1);
         return Get(receiver, text);
@@ -191,7 +191,7 @@ public static partial class Js
     public static void IndexSet(object receiver, object key, object value)
     {
         if (receiver is JsArray array) array.SetIndex(key, value);
-        else Set(receiver, Text(key), value);
+        else Set(receiver, PropertyKey(key), value);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double ArrayPushOne(object receiver, object value)

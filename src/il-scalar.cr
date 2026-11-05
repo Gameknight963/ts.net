@@ -19,7 +19,7 @@ bool scalar_literal(NodeId entry, const Compiler& c) {
         count++;member=get_field(member,c).next;
     }
     if (count==0 || count>8) { return false; }
-    if (il_has_object_spread(entry,c)) {
+    if (il_object_needs_entries(entry,c)) {
         Node spread=get_node(n.children,c);
         if (spread.kind!=NodeKind::Spread || spread.next!=0 || !il_same_spread_fields(get_node(spread.left,c).type,n.type,c)) { return false; }
         member=get_type(n.type,c).fields;
@@ -107,7 +107,7 @@ void il_prove_scalars(const Compiler& c, IlBackend& b) {
         if (parent.kind==NodeKind::Call && parent.children==i && get_node(definition,c).constant && scalar_own_call((NodeId)parents.at(i),c)) {
             // The source can have a different set of own keys at runtime.
             // Keep presence queries on a real spread object.
-            if (!il_has_object_spread(get_node(definition,c).left,c)) { continue; }
+            if (!il_object_needs_entries(get_node(definition,c).left,c)) { continue; }
         }
         if (parent.kind==NodeKind::Property && parent.left==i) {
             NodeId parent_id=(NodeId)parents.at(i);
@@ -172,7 +172,7 @@ void il_scalar_initialize(NodeId entry, const Compiler& c, IlBackend& b) {
         if (!found) { b.scalar_fields.push((ScalarField){.root=n.symbol,.name=f.name,.type=f.type,.slot=slot}); }
         member=f.next;
     }
-    if (il_has_object_spread(n.left,c)) { il_scalar_spread_initialize(entry,c,b);return; }
+    if (il_object_needs_entries(n.left,c)) { il_scalar_spread_initialize(entry,c,b);return; }
     NodeId property=value.children;
     while (property!=0) {
         Node p=get_node(property,c);FieldId f=field(value.type,p.name,c);

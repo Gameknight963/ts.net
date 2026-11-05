@@ -62,8 +62,8 @@ func (b *irBuilder) contextualObject(n *ast.Node, row *irNode) {
 		return
 	}
 	for property := row.children; property != 0; property = b.nodes[property-1].next {
-		if b.nodes[property-1].kind == 35 {
-			// A spread result keeps presence separately, including missing
+		if b.nodes[property-1].kind == 35 || b.nodes[property-1].right != 0 {
+			// Dynamic entries keep presence separately, including missing
 			// contextual optional properties and additional runtime keys.
 			row.typ = target
 			return
