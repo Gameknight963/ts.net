@@ -1,4 +1,4 @@
-import "il-parameters.cr";
+import "il-call-spread.cr";
 
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
     if (get_node(entry,c).kind==NodeKind::Array && get_type(target,c).kind==TypeKind::Array) {
@@ -254,6 +254,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         }
         else { il_number(n.left,c,b); if (is_text(op,&text_minus,c)) { b.op(0x65); }b.call(RuntimeMember::WrapNumber); }
     } else if (n.kind == NodeKind::Call) {
+        if (il_call_has_spread(entry,c)) { il_spread_call(entry,c,b);return; }
         if (il_array_call(entry,c)) { il_emit_array_call(entry,c,b); }
         else if (builtin(n.left,&text_performance,&text_now,c)) { b.call(RuntimeMember::Now);b.call(RuntimeMember::WrapNumber); }
         else if (builtin(n.left,&text_console,&text_log,c)) {

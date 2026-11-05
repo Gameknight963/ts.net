@@ -151,6 +151,33 @@ public static class Js
     public static void ArraySetAt(object receiver, int index, object value) => ((JsArray)receiver).SetAt(index, value);
     public static void ArrayHole(object receiver) => ((JsArray)receiver).AppendHole();
     public static void ArraySpread(object receiver, object source, int extra) => ((JsArray)receiver).Spread(source, extra);
+    public static object CallRest(object arguments, int start, bool numeric)
+    {
+        var source = (JsArray)arguments;
+        if (start == 0 && (!numeric || source is NumberArray)) return source;
+        JsArray result = numeric ? new NumberArray(0) : new JsArray(0);
+        if (result is NumberArray destination) destination.ReservePushes(Math.Max(0, source.Length() - start));
+        for (uint i = (uint)start; i < source.Length(); i++)
+        {
+            if (result is NumberArray numbers && source is NumberArray input) numbers.PushNumber(input.GetNumberAt(unchecked((int)i)));
+            else result.Append(source.ElementAt(i));
+        }
+        return result;
+    }
+    public static double PushArguments(object receiver, object arguments)
+    {
+        var target = (JsArray)receiver;var source = (JsArray)arguments;
+        if (target is NumberArray numbers && source is NumberArray input && numbers.AppendPacked(input, 0)) return numbers.Length();
+        uint length = (uint)source.Length();
+        for (uint i = 0; i < length; i++) target.Append(source.ElementAt(i));
+        return target.Length();
+    }
+    public static void LogArguments(object arguments)
+    {
+        var source = (JsArray)arguments;var values = new object[checked((int)source.Length())];
+        for (int i = 0; i < values.Length; i++) values[i] = source.ElementAt((uint)i);
+        Log(values);
+    }
     public static object ArrayPop(object receiver) =>
         receiver is JsArray array ? array.Pop() : throw new InvalidOperationException("pop requires an array");
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
