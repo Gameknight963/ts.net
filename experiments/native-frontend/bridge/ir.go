@@ -201,6 +201,10 @@ var operators = map[ast.Kind]string{
 	ast.KindEqualsEqualsEqualsToken: "===", ast.KindExclamationEqualsEqualsToken: "!==", ast.KindLessThanToken: "<", ast.KindGreaterThanToken: ">",
 	ast.KindLessThanEqualsToken: "<=", ast.KindGreaterThanEqualsToken: ">=", ast.KindAmpersandAmpersandToken: "&&", ast.KindBarBarToken: "||",
 	ast.KindExclamationToken: "!", ast.KindPlusPlusToken: "++", ast.KindMinusMinusToken: "--",
+	ast.KindAmpersandToken: "&", ast.KindBarToken: "|", ast.KindCaretToken: "^", ast.KindTildeToken: "~",
+	ast.KindLessThanLessThanToken: "<<", ast.KindGreaterThanGreaterThanToken: ">>", ast.KindGreaterThanGreaterThanGreaterThanToken: ">>>",
+	ast.KindAmpersandEqualsToken: "&=", ast.KindBarEqualsToken: "|=", ast.KindCaretEqualsToken: "^=",
+	ast.KindLessThanLessThanEqualsToken: "<<=", ast.KindGreaterThanGreaterThanEqualsToken: ">>=", ast.KindGreaterThanGreaterThanGreaterThanEqualsToken: ">>>=",
 }
 
 func (b *irBuilder) lower(n *ast.Node) int {

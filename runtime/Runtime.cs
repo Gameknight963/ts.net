@@ -44,6 +44,22 @@ public static class Js
     public static double Now() => Stopwatch.GetTimestamp() * (1000.0 / Stopwatch.Frequency);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int ToInt32(double value)
+    {
+        if (value >= int.MinValue && value <= int.MaxValue) return (int)value;
+        return ToInt32Slow(value);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static int ToInt32Slow(double value)
+    {
+        if (!double.IsFinite(value)) return 0;
+        double reduced = Math.Truncate(value) % 4294967296.0;
+        if (reduced < 0) reduced += 4294967296.0;
+        return unchecked((int)(uint)reduced);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T Cast<T>(object value, string message)
     {
         if (ReferenceEquals(value, Undefined) && Nullable.GetUnderlyingType(typeof(T)) != null) return default;

@@ -4,7 +4,7 @@ enum class RuntimeMember {
     ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, Cast, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
-    WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, Count
+    WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -189,6 +189,7 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::Equal, b.plan.method2(6, js, 0, -2, -5, -5, "Equal"));
     b.ref_set(RuntimeMember::EqualNumbers, b.plan.method2(6, js, 0, -2, -10, -10, "EqualNumbers"));
     b.ref_set(RuntimeMember::Remainder, b.plan.method2(6, js, 0, -3, -3, -3, "Remainder"));
+    b.ref_set(RuntimeMember::ToInt32, b.plan.method1(6, js, 0, -6, -3, "ToInt32"));
     b.ref_set(RuntimeMember::EqualBooleans, b.plan.method2(6, js, 0, -2, -11, -11, "EqualBooleans"));
     b.ref_set(RuntimeMember::Number, b.plan.method1(6, js, 0, -3, -5, "Number"));
     b.ref_set(RuntimeMember::Boolean, b.plan.method1(6, js, 0, -2, -5, "Boolean"));

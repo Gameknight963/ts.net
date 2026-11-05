@@ -23,6 +23,22 @@ void il_condition(NodeId entry, const Compiler& c, IlBackend& b) {
 }
 void il_invert(IlBackend& b) { b.emit(0x20,0); b.op(0xfe01); }
 
+int il_bitwise_code(TextId op, const Compiler& c) {
+    if (is_text(op,&text_bit_and,c) || is_text(op,&text_bit_and_assign,c)) { return 0x5f; }
+    if (is_text(op,&text_bit_or,c) || is_text(op,&text_bit_or_assign,c)) { return 0x60; }
+    if (is_text(op,&text_bit_xor,c) || is_text(op,&text_bit_xor_assign,c)) { return 0x61; }
+    if (is_text(op,&text_shift_left,c) || is_text(op,&text_shift_left_assign,c)) { return 0x62; }
+    if (is_text(op,&text_shift_right,c) || is_text(op,&text_shift_right_assign,c)) { return 0x63; }
+    if (is_text(op,&text_shift_unsigned,c) || is_text(op,&text_shift_unsigned_assign,c)) { return 0x64; }
+    return 0;
+}
+void il_bitwise_result(int opcode, IlBackend& b) {
+    if (opcode>=0x62) { b.emit(0x20,31);b.op(0x5f); }
+    b.op(opcode);
+    b.op(opcode==0x64 ? 0x76 : 0x6c);
+    b.call(RuntimeMember::WrapNumber);
+}
+
 void il_load_target(NodeId entry, int receiver, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);
     if (n.kind == NodeKind::Name) { il_expression(entry,c,b); }
@@ -49,22 +65,27 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
     }
     int previous=-1;
     TextId op=get_token(n.token,c).text;
+    int bitwise=il_bitwise_code(op,c);
     if (n.kind==NodeKind::Assign && is_text(op,&text_add_assign,c) && get_type(target.type,c).kind==TypeKind::String) {
         il_load_target(n.left,receiver,c,b);b.call(RuntimeMember::Text);
         il_boxed(n.right,c,b);b.call(RuntimeMember::Text);b.call(RuntimeMember::Concat);
     } else if (n.kind == NodeKind::Update || !is_text(op,&text_assign,c)) {
         if (target.kind==NodeKind::Name) { il_number(n.left,c,b); }
         else { il_load_target(n.left,receiver,c,b);b.call(RuntimeMember::NumberValue); }
+        if (bitwise!=0) { b.call(RuntimeMember::ToInt32); }
         if (n.kind == NodeKind::Update) {
             previous=b.local(b.type(target.type,c));
             b.op(0x25);b.call(RuntimeMember::WrapNumber);b.emit(0xfe0e,previous);b.plan.number(b.method,1);
         }
-        else { il_number(n.right,c,b); }
-        if (is_text(op,&text_increment,c) || is_text(op,&text_add_assign,c)) { b.op(0x58); }
-        else if (is_text(op,&text_decrement,c) || is_text(op,&text_subtract_assign,c)) { b.op(0x59); }
-        else if (is_text(op,&text_multiply_assign,c)) { b.op(0x5a); }
-        else { b.op(0x5b); }
-        b.call(RuntimeMember::WrapNumber);
+        else { il_number(n.right,c,b);if (bitwise!=0) { b.call(RuntimeMember::ToInt32); } }
+        if (bitwise!=0) { il_bitwise_result(bitwise,b); }
+        else {
+            if (is_text(op,&text_increment,c) || is_text(op,&text_add_assign,c)) { b.op(0x58); }
+            else if (is_text(op,&text_decrement,c) || is_text(op,&text_subtract_assign,c)) { b.op(0x59); }
+            else if (is_text(op,&text_multiply_assign,c)) { b.op(0x5a); }
+            else { b.op(0x5b); }
+            b.call(RuntimeMember::WrapNumber);
+        }
     } else { il_as(n.right,target.type,c,b); }
     int value=b.local(b.type(target.type,c)); b.emit(0xfe0e,value);
     if (target.kind == NodeKind::Name) {
@@ -141,6 +162,9 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     else if (n.kind == NodeKind::Unary) {
         TextId op=get_token(n.token,c).text;
         if (is_text(op,&text_not,c)) { il_condition(n.left,c,b); il_invert(b);b.call(RuntimeMember::WrapBoolean); }
+        else if (is_text(op,&text_bit_not,c)) {
+            il_number(n.left,c,b);b.call(RuntimeMember::ToInt32);b.op(0x66);b.op(0x6c);b.call(RuntimeMember::WrapNumber);
+        }
         else { il_number(n.left,c,b); if (is_text(op,&text_minus,c)) { b.op(0x65); }b.call(RuntimeMember::WrapNumber); }
     } else if (n.kind == NodeKind::Call) {
         if (builtin(n.left,&text_performance,&text_now,c)) { b.call(RuntimeMember::Now);b.call(RuntimeMember::WrapNumber); }
@@ -196,6 +220,10 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             }
             if (is_text(op,&text_strict_not_equal,c)) { il_invert(b); }
             b.call(RuntimeMember::WrapBoolean);
+        } else if (il_bitwise_code(op,c)!=0) {
+            il_number(n.left,c,b);b.call(RuntimeMember::ToInt32);
+            il_number(n.right,c,b);b.call(RuntimeMember::ToInt32);
+            il_bitwise_result(il_bitwise_code(op,c),b);
         } else if (is_text(op,&text_plus,c) && get_type(n.type,c).kind == TypeKind::Any) {
             il_boxed(n.left,c,b); il_boxed(n.right,c,b); b.call(RuntimeMember::Add);
         } else if (is_text(op,&text_plus,c) && get_type(n.type,c).kind == TypeKind::String) {
