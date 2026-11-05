@@ -1,4 +1,4 @@
-import "il-destructure.cr";
+import "il-parameters.cr";
 
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
     if (get_node(entry,c).kind==NodeKind::Array && get_type(target,c).kind==TypeKind::Array) {
@@ -268,6 +268,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         } else {
             SymbolId symbol=get_node(n.left,c).symbol;
             if (symbol==0 || get_symbol(symbol,c).function==0) { fail(n.token,"function value calls need lowering",c); }
+            if (il_flat_parameter_call(entry,c,b)) { return; }
             NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;
             NodeId argument=n.children;
             while (argument != 0) {
@@ -410,6 +411,13 @@ void emit_assembly(const char[]& path, const Compiler& c) {
         Vector<char> name=numbered_name('f',get_symbol(n.symbol,c).id);
         int result_type=b.type(n.type,c);
         b.methods.at_mut(n.symbol)=b.plan.method(5,program,0x16,result_type,parameters.view(),name.view());
+        NodeId pattern=il_flat_parameter(function,c);
+        if (pattern!=0 && il_has_flat_calls(n.symbol,c)) {
+            Vector<int> fields=Vector<int>::create();NodeId child=get_node(pattern,c).children;
+            while (child!=0) { fields.push(b.type(get_node(child,c).type,c));child=get_node(child,c).next; }
+            Vector<char> flat_name=numbered_name('g',get_symbol(n.symbol,c).id);
+            b.binding_methods.at_mut(n.symbol)=b.plan.method(5,program,0x16,result_type,fields.view(),flat_name.view());
+        }
         function=n.next;
     }
     int main=b.plan.method0(5,program,0x16,-1,"Body");
@@ -447,6 +455,7 @@ void emit_assembly(const char[]& path, const Compiler& c) {
         il_statement(n.left,n.type,c,&b);
         if (get_type(n.type,c).kind != TypeKind::Void) { b.empty(n.type,c); }
         b.op(0x2a);
+        il_flat_parameter_body(function,c,&b);
         function=n.next;
     }
     b.begin(main);il_prepare_iteration_vars(0,c,&b); NodeId statement=c.statements;

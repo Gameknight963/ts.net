@@ -37,6 +37,7 @@ struct IlBackend {
     Vector<int> setters;
     Vector<int> casts;
     Vector<int> methods;
+    Vector<int> binding_methods;
     Vector<int> slots;
     Vector<int> raw_slots;
     Vector<int> numeric_slots;
@@ -61,7 +62,7 @@ struct IlBackend {
         return (Self){.plan=AssemblyPlan::create(), .runtime=zero_ids((size_t)RuntimeMember::Count),
             .interfaces=zero_ids(types), .classes=zero_ids(types), .constructors=zero_ids(types),
             .fields=zero_ids(fields), .getters=zero_ids(fields), .setters=zero_ids(fields),
-            .casts=zero_ids(types), .methods=zero_ids(symbols), .slots=empty_slots(symbols),.raw_slots=zero_ids(symbols),
+            .casts=zero_ids(types), .methods=zero_ids(symbols), .binding_methods=zero_ids(symbols), .slots=empty_slots(symbols),.raw_slots=zero_ids(symbols),
             .numeric_slots=zero_ids(symbols),.numeric_methods=zero_ids(symbols),.written_symbols=zero_ids(symbols),
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
             .packed_arrays=zero_ids(symbols),
