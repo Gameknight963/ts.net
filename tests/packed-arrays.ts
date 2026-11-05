@@ -82,3 +82,37 @@ function zero(values: number[], count: number) {
 }
 zero(payloadValues, 3);
 console.log(payloadValues[0], 1 / payloadValues[0]);
+function redeclaredBound(count: number) {
+    let visits = 0;
+    for (let i = 0; i < count; i++) { var count = 0; visits++; }
+    return visits;
+}
+console.log(redeclaredBound(4));
+function redeclaredArray() {
+    var values = [1, 2, 3];
+    let total = 0;
+    for (let i = 0; i < 3; i++) {
+        var values = [9, 10, 11];
+        total += values[i];
+    }
+    return total;
+}
+console.log(redeclaredArray());
+function arrayDeclaredInLoop() {
+    let total = 0;
+    for (let i = 0; i < 3; i++) {
+        const local = [4, 5, 6];
+        total += local[i];
+    }
+    return total;
+}
+console.log(arrayDeclaredInLoop());
+function redeclaredValue() {
+    var value = 0 / 0;
+    console.log(value);
+    var value = 3;
+    console.log(value);
+    var value: number;
+    console.log(value);
+}
+redeclaredValue();

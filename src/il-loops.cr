@@ -29,6 +29,7 @@ SymbolId il_counted_loop(NodeId entry, const Compiler& c, const IlBackend& b) {
         get_type(bound.type,c).kind!=TypeKind::Number || b.written_symbols.at(bound.symbol)!=0)) { return 0; }
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
+        if (n.kind==NodeKind::Variable && n.symbol==binding.symbol && i!=declaration) { return 0; }
         if ((n.kind==NodeKind::Assign || n.kind==NodeKind::Update) && get_node(n.left,c).kind==NodeKind::Name &&
             get_node(n.left,c).symbol==binding.symbol && i!=loop.third) { return 0; }
         if (n.kind==NodeKind::Name && n.symbol==binding.symbol) {

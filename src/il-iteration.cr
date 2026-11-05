@@ -3,9 +3,12 @@ import "il-arrays.cr";
 void il_prepare_iteration_vars(NodeId owner, const Compiler& c, IlBackend& b) {
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
-        if (n.kind!=NodeKind::ForOf || n.constant || scalar_owner(i,&b.node_parents,c)!=owner) { continue; }
-        Node target=get_node(n.left,c);
-        if (target.kind==NodeKind::Block) { target=get_node(target.children,c); }
+        if (scalar_owner(i,&b.node_parents,c)!=owner) { continue; }
+        Node target=n;
+        if (n.kind==NodeKind::ForOf && !n.constant) {
+            target=get_node(n.left,c);
+            if (target.kind==NodeKind::Block) { target=get_node(target.children,c); }
+        } else if (n.kind!=NodeKind::Variable || b.iteration_vars.at(n.symbol)==0) { continue; }
         if (target.kind!=NodeKind::Variable) { continue; }
         b.iteration_vars.at_mut(target.symbol)=1;
         if (b.slots.at(target.symbol)==-2147483647) {
