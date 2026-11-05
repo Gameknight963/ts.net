@@ -459,6 +459,10 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			b.nodes[row.third-1].typ = row.typ
 			row.constant = 1
 		}
+		if n.Kind == ast.KindVariableDeclaration && ast.GetCombinedNodeFlags(n)&ast.NodeFlagsBlockScoped == 0 {
+			row.fourth = b.node(1, n, "var")
+			b.nodes[row.fourth-1].typ = b.typ(b.c.GetStringType())
+		}
 		if n.Kind == ast.KindParameter && (n.Initializer() != nil || n.AsParameterDeclaration().QuestionToken != nil) {
 			if b.types[row.typ-1].kind != 0 && b.types[row.typ-1].kind != 2 {
 				row.typ = b.typ(b.c.GetAnyType())

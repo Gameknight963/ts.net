@@ -33,6 +33,11 @@ public static class Js
     static readonly object BoxedFalse = false;
     public static object GetUndefined() => Undefined;
     public static bool IsUndefined(object value) => ReferenceEquals(value, Undefined);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void CheckInitialized(bool initialized)
+    {
+        if (!initialized) throw new InvalidOperationException("Cannot access binding before initialization");
+    }
     public static bool IsNullish(object value) => value == null || ReferenceEquals(value, Undefined);
     public static void RequireObject(object value)
     {

@@ -4,6 +4,7 @@ void il_prepare_iteration_vars(NodeId owner, const Compiler& c, IlBackend& b) {
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
         if (scalar_owner(i,&b.node_parents,c)!=owner) { continue; }
+        if ((n.kind==NodeKind::Variable || n.kind==NodeKind::Binding) && n.symbol!=0 && b.global_fields.at(n.symbol)!=0) { continue; }
         if (n.kind==NodeKind::Binding && n.symbol!=0 && n.name!=0 && is_text(n.name,&text_var,c)) { b.iteration_vars.at_mut(n.symbol)=1; }
         Node target=n;
         if (n.kind==NodeKind::ForOf && !n.constant) {
@@ -15,7 +16,7 @@ void il_prepare_iteration_vars(NodeId owner, const Compiler& c, IlBackend& b) {
         } else if ((n.kind!=NodeKind::Variable && n.kind!=NodeKind::Binding) || n.symbol==0 || b.iteration_vars.at(n.symbol)==0) { continue; }
         if (target.kind!=NodeKind::Variable && target.kind!=NodeKind::Binding) { continue; }
         b.iteration_vars.at_mut(target.symbol)=1;
-        if (b.slots.at(target.symbol)==-2147483647) {
+        if (b.global_fields.at(target.symbol)==0 && b.slots.at(target.symbol)==-2147483647) {
             TypeId type=get_symbol(target.symbol,c).type;
             int slot=b.local(b.type(type,c));b.slots.at_mut(target.symbol)=slot;
             b.empty(type,c);b.store(target.symbol);
@@ -52,7 +53,7 @@ void il_for_of(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {
         binding=target.children;target=get_node(binding,c);
     }
     TypeId type=(target.kind==NodeKind::Name || target.kind==NodeKind::Variable) ? get_symbol(target.symbol,c).type : target.type;
-    if (target.kind==NodeKind::Variable && b.slots.at(target.symbol)==-2147483647) {
+    if (target.kind==NodeKind::Variable && b.global_fields.at(target.symbol)==0 && b.slots.at(target.symbol)==-2147483647) {
         int slot=b.local(b.type(type,c));b.slots.at_mut(target.symbol)=slot;b.empty(type,c);b.store(target.symbol);
     }
     il_expression(n.right,c,b);int iterable=b.local(-5);b.emit(0xfe0e,iterable);

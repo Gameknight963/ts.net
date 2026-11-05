@@ -1,4 +1,4 @@
-import "il-call-spread.cr";
+import "il-globals.cr";
 
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
     if (get_node(entry,c).kind==NodeKind::Array && get_type(target,c).kind==TypeKind::Array) {
@@ -377,6 +377,11 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
         if (il_literal_bindings(entry,c,b)) { return; }
         il_boxed(n.left,c,b);int source=b.local(-5);b.emit(0xfe0e,source);il_binding_pattern(entry,source,c,b);
     } else if (n.kind == NodeKind::Variable) {
+        if (b.global_fields.at(n.symbol)!=0) {
+            Node initial=get_node(n.left,c);
+            if (b.global_vars.at(n.symbol)!=0 && initial.kind==NodeKind::Undefined && initial.constant) { return; }
+            il_as(n.left,n.type,c,b);b.initialize(n.symbol);return;
+        }
         if (b.iteration_vars.at(n.symbol)!=0) {
             Node initial=get_node(n.left,c);
             if (!(initial.kind==NodeKind::Undefined && initial.constant)) { il_as(n.left,n.type,c,b);b.store(n.symbol); }
@@ -412,6 +417,7 @@ void emit_assembly(const char[]& path, const Compiler& c) {
     IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_runtime(&b);il_shapes(c,&b);
     int object_type=b.ref(RuntimeMember::ObjectType);
     int program=b.plan.type("Program",object_type,0x181);
+    il_globals(program,c,&b);
     NodeId function=c.functions;
     while (function != 0) {
         Node n=get_node(function,c); Vector<int> parameters=Vector<int>::create(); NodeId parameter=n.children;

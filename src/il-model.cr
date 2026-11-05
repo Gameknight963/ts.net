@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, CheckInitialized, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -38,6 +38,9 @@ struct IlBackend {
     Vector<int> casts;
     Vector<int> methods;
     Vector<int> binding_methods;
+    Vector<int> global_fields;
+    Vector<int> global_flags;
+    Vector<int> global_vars;
     Vector<int> slots;
     Vector<int> raw_slots;
     Vector<int> numeric_slots;
@@ -62,7 +65,7 @@ struct IlBackend {
         return (Self){.plan=AssemblyPlan::create(), .runtime=zero_ids((size_t)RuntimeMember::Count),
             .interfaces=zero_ids(types), .classes=zero_ids(types), .constructors=zero_ids(types),
             .fields=zero_ids(fields), .getters=zero_ids(fields), .setters=zero_ids(fields),
-            .casts=zero_ids(types), .methods=zero_ids(symbols), .binding_methods=zero_ids(symbols), .slots=empty_slots(symbols),.raw_slots=zero_ids(symbols),
+            .casts=zero_ids(types), .methods=zero_ids(symbols), .binding_methods=zero_ids(symbols), .global_fields=zero_ids(symbols), .global_flags=zero_ids(symbols), .global_vars=zero_ids(symbols), .slots=empty_slots(symbols),.raw_slots=zero_ids(symbols),
             .numeric_slots=zero_ids(symbols),.numeric_methods=zero_ids(symbols),.written_symbols=zero_ids(symbols),
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
             .packed_arrays=zero_ids(symbols),
@@ -101,6 +104,8 @@ struct IlBackend {
     int local(int type) { this.plan.local(this.method, type); return this.local_count++; }
     void begin(int method) { this.method=method; this.local_count=0; this.label_count=0;this.loop_versions=0; }
     void load_storage(SymbolId symbol) {
+        int global=this.global_fields.at(symbol);
+        if (global!=0) { this.check_global(symbol);this.emit(0x7e,global);return; }
         int slot = this.slots.at(symbol);
         if (slot==-2147483647) { print("tsnetc: captured binding or function value needs lowering");exit(1); }
         if (slot < 0) { this.emit(0xfe09, -slot - 1); } else { this.emit(0xfe0c, slot); }
@@ -118,9 +123,22 @@ struct IlBackend {
         this.store_storage(symbol);
     }
     void store_storage(SymbolId symbol) {
+        int global=this.global_fields.at(symbol);
+        if (global!=0) { this.check_global(symbol);this.emit(0x80,global);return; }
         int slot = this.slots.at(symbol);
         if (slot==-2147483647) { print("tsnetc: captured binding needs lowering");exit(1); }
         if (slot < 0) { this.emit(0xfe0b, -slot - 1); } else { this.emit(0xfe0e, slot); }
+    }
+    void check_global(SymbolId symbol) {
+        if (this.global_vars.at(symbol)==0) {
+            int flag=this.global_flags.at(symbol);this.emit(0x7e,flag);this.call(RuntimeMember::CheckInitialized);
+        }
+    }
+    void initialize(SymbolId symbol) {
+        int global=this.global_fields.at(symbol);
+        if (global==0) { this.store(symbol);return; }
+        this.emit(0x80,global);int flag=this.global_flags.at(symbol);
+        if (flag!=0) { this.emit(0x20,1);this.emit(0x80,flag); }
     }
     void box(TypeId type, const Compiler& c) {
         if (get_type(type, c).kind == TypeKind::Number) { this.call(RuntimeMember::BoxNumber); }
@@ -317,6 +335,7 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::IsUndefined,b.plan.method1(6,js,0,-2,-5,"IsUndefined"));
     b.ref_set(RuntimeMember::IsNullish,b.plan.method1(6,js,0,-2,-5,"IsNullish"));
     b.ref_set(RuntimeMember::RequireObject,b.plan.method1(6,js,0,-1,-5,"RequireObject"));
+    b.ref_set(RuntimeMember::CheckInitialized,b.plan.method1(6,js,0,-1,-2,"CheckInitialized"));
     b.ref_set(RuntimeMember::LoopLimit,b.plan.method1(6,js,0,-6,-3,"LoopLimit"));
     b.ref_set(RuntimeMember::TypeOf, b.plan.method1(6, js, 0, -4, -5, "TypeOf"));
     b.ref_set(RuntimeMember::Text, b.plan.method1(6, js, 0, -4, -5, "Text"));
