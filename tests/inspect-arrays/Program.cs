@@ -28,6 +28,23 @@ if (sparseCopy.Length() != uint.MaxValue || !Equals(sparseCopy.ElementAt(4294967
 sparseSlice.SetNumber(4294967294, 9);
 if (!Equals(sparseCopy.ElementAt(4294967294), 7.0)) throw new Exception("Sparse slice shared its dictionary");
 Console.WriteLine("PASS slice holes, undefined, negative zero, independent buffers, and sparse length limit");
+foreach (JsArray reversed in new JsArray[] { new JsArray(0), new NumberArray(0) })
+{
+    reversed.Set("0", 7.0);reversed.Set("2", Js.Undefined);reversed.Set("4294967294", 9.0);reversed.Set("named", shared);
+    if (!ReferenceEquals(reversed.Reverse(), reversed) || reversed.Length() != uint.MaxValue) throw new Exception("Reverse changed identity or length");
+    if (!Equals(reversed.ElementAt(0), 9.0) || !Equals(reversed.ElementAt(4294967294), 7.0) || reversed.HasElement(2) || !reversed.HasElement(4294967292) || !ReferenceEquals(reversed.ElementAt(4294967292), Js.Undefined)) throw new Exception("Sparse reverse changed holes or undefined");
+    if (!ReferenceEquals(reversed.Get("named"), shared)) throw new Exception("Reverse moved a named property");
+    if (Js.ArraySearch(reversed, 7.0, 0.0, false) != 4294967294) throw new Exception("Searching a reversed sparse array lost its order");
+    reversed.Reverse();
+    if (!Equals(reversed.ElementAt(0), 7.0) || !Equals(reversed.ElementAt(4294967294), 9.0) || !reversed.HasElement(2) || reversed.HasElement(4294967292)) throw new Exception("Second sparse reverse lost original elements");
+}
+var denseReverse = new NumberArray(8);
+for (int i = 0; i < 8; i++) denseReverse.SetNumberAt(i, i);
+for (int i = 0; i < 10; i++) denseReverse.Reverse();
+long reverseStart = GC.GetAllocatedBytesForCurrentThread();
+for (int i = 0; i < 100; i++) denseReverse.Reverse();
+if (GC.GetAllocatedBytesForCurrentThread() != reverseStart || denseReverse.GetNumberAt(0) != 0 || denseReverse.TryPacked(8) == null) throw new Exception("Dense reverse allocated or invalidated a packed buffer");
+Console.WriteLine("PASS sparse reverse at the array length limit, presence, identity, and allocation-free dense reverse");
 long[] nanPatterns = [0x7ff8000000000000, 0x7ff8000000000001, 0x7ff8000000000002, 0x7ff0000000000001, unchecked((long)0xfff8000000000001UL)];
 foreach (long bits in nanPatterns)
 {

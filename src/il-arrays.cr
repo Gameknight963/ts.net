@@ -64,13 +64,19 @@ void il_array_search_result(NodeId entry, const Compiler& c, IlBackend& b) {
 }
 bool il_array_call(NodeId entry, const Compiler& c) {
     Node n=get_node(entry,c);Node callee=get_node(n.left,c);
-    if (callee.kind!=NodeKind::Property || (!is_text(callee.name,&text_push,c) && !is_text(callee.name,&text_pop,c) && !is_text(callee.name,&text_slice,c) && !il_array_search(entry,c))) { return false; }
+    if (callee.kind!=NodeKind::Property || (!is_text(callee.name,&text_push,c) && !is_text(callee.name,&text_pop,c) && !is_text(callee.name,&text_slice,c) && !il_array_search(entry,c) && !is_text(callee.name,&text_reverse,c))) { return false; }
     TypeKind owner=get_type(get_node(callee.left,c).type,c).kind;
     return owner==TypeKind::Array || owner==TypeKind::Any || (owner==TypeKind::String && is_text(callee.name,&text_slice,c));
 }
 void il_emit_array_call(NodeId entry, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);Node callee=get_node(n.left,c);TypeId owner=get_node(callee.left,c).type;
     il_expression(callee.left,c,b);
+    if (is_text(callee.name,&text_reverse,c)) {
+        b.op(0x25);b.call(RuntimeMember::ArrayReverseBuiltin);int builtin=b.local(-2);b.emit(0xfe0e,builtin);
+        NodeId argument=n.children;
+        while (argument!=0) { il_expression(argument,c,b);if (get_type(get_node(argument,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }argument=get_node(argument,c).next; }
+        b.emit(0xfe0c,builtin);b.call(RuntimeMember::ArrayReverse);return;
+    }
     if (il_array_search(entry,c)) {
         NodeId argument=n.children;bool numeric=argument!=0 && get_type(get_node(argument,c).type,c).kind==TypeKind::Number;
         if (argument!=0) { if (numeric) { il_expression(argument,c,b); } else { il_boxed(argument,c,b); }argument=get_node(argument,c).next; }

@@ -27,7 +27,7 @@ bool il_static_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
 TypeId il_call_number_type(NodeId entry, const Compiler& c) {
     Node call=get_node(entry,c);Node callee=get_node(call.left,c);
     if (il_array_call(entry,c)) {
-        if (is_text(callee.name,&text_slice,c) || il_array_search(entry,c)) { return 0; }
+        if (is_text(callee.name,&text_slice,c) || is_text(callee.name,&text_reverse,c) || il_array_search(entry,c)) { return 0; }
         TypeId owner=get_node(callee.left,c).type;
         return il_number_array(owner,c) ? get_type(owner,c).element : 0;
     }
@@ -60,11 +60,14 @@ void il_append_call_argument(NodeId entry, int array, TypeId number, const Compi
 }
 
 void il_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
-    Node call=get_node(entry,c);Node callee=get_node(call.left,c);int receiver=-1;
+    Node call=get_node(entry,c);Node callee=get_node(call.left,c);int receiver=-1;int reverse_builtin=-1;
     if (callee.symbol!=0 && get_symbol(callee.symbol,c).function!=0 && il_flat_parameter_call(entry,c,b)) { return; }
     if (il_static_spread_call(entry,c,b)) { return; }
     bool array_call=il_array_call(entry,c);
     if (array_call) { il_expression(callee.left,c,b);receiver=b.local(-5);b.emit(0xfe0e,receiver); }
+    if (array_call && is_text(callee.name,&text_reverse,c)) {
+        b.emit(0xfe0c,receiver);b.call(RuntimeMember::ArrayReverseBuiltin);reverse_builtin=b.local(-2);b.emit(0xfe0e,reverse_builtin);
+    }
     TypeId numeric=il_call_number_type(entry,c);
     b.emit(0x20,0);b.emit(0x73,b.ref(numeric!=0 ? RuntimeMember::NumberArrayConstructor : RuntimeMember::ArrayConstructor));
     int array=b.local(-5);b.emit(0xfe0e,array);NodeId argument=call.children;
@@ -78,6 +81,7 @@ void il_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
     if (builtin(call.left,&text_performance,&text_now,c)) { b.call(RuntimeMember::Now);b.call(RuntimeMember::WrapNumber);return; }
     if (array_call) {
         b.emit(0xfe0c,receiver);
+        if (is_text(callee.name,&text_reverse,c)) { b.emit(0xfe0c,reverse_builtin);b.call(RuntimeMember::ArrayReverse);return; }
         if (il_array_search(entry,c)) {
             b.emit(0xfe0c,array);b.emit(0x20,0);b.call(RuntimeMember::ForOfValue);
             b.emit(0xfe0c,array);b.emit(0x20,1);b.call(RuntimeMember::ForOfValue);

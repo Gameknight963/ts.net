@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, CheckInitialized, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, CheckInitialized, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -343,6 +343,8 @@ void il_runtime(IlBackend& b) {
     Vector<int> call_rest_parameters=Vector<int>::create();call_rest_parameters.push(-5);call_rest_parameters.push(-6);call_rest_parameters.push(-2);
     b.ref_set(RuntimeMember::CallRest,b.plan.method(6,js,0,-5,call_rest_parameters.view(),"CallRest"));
     b.ref_set(RuntimeMember::ArrayPop,b.plan.method1(6,js,0,-5,-5,"ArrayPop"));
+    b.ref_set(RuntimeMember::ArrayReverse,b.plan.method2(6,js,0,-5,-5,-2,"ArrayReverse"));
+    b.ref_set(RuntimeMember::ArrayReverseBuiltin,b.plan.method1(6,js,0,-2,-5,"ArrayReverseBuiltin"));
     Vector<int> slice_parameters=Vector<int>::create();slice_parameters.push(-5);slice_parameters.push(-5);slice_parameters.push(-5);
     b.ref_set(RuntimeMember::Slice,b.plan.method(6,js,0,-5,slice_parameters.view(),"Slice"));
     Vector<int> search_parameters=Vector<int>::create();search_parameters.push(-5);search_parameters.push(-5);search_parameters.push(-5);search_parameters.push(-2);

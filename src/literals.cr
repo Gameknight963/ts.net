@@ -93,6 +93,7 @@ const char text_push[5] = "push";
 const char text_pop[4] = "pop";
 const char text_includes[9] = "includes";
 const char text_index_of[8] = "indexOf";
+const char text_reverse[8] = "reverse";
 const char text_slice[6] = "slice";
 const char text_property_access_requires_object_or_any[39] = "property access requires object or any";
 const char text_object_has_no_such_property[28] = "object has no such property";

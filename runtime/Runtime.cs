@@ -194,6 +194,18 @@ public static class Js
     }
     public static double ArrayPush(object receiver, object[] values) =>
         receiver is JsArray array ? array.PushMany(values) : throw new InvalidOperationException("push requires an array");
+    public static bool ArrayReverseBuiltin(object receiver)
+    {
+        if (IsNullish(receiver)) throw new InvalidOperationException("Cannot read reverse of null or undefined");
+        return receiver is JsArray array && !array.HasOwn("reverse");
+    }
+    public static object ArrayReverse(object receiver, bool builtin)
+    {
+        if (receiver is not JsArray array) throw new InvalidOperationException("Array reverse requires an array");
+        if (!builtin) throw new InvalidOperationException("reverse is not callable");
+        return array.Reverse();
+    }
+
     public static double ArraySearch(object receiver, object value, object fromIndex, bool includes) =>
         receiver is JsArray array ? array.Search(value, fromIndex, includes) : throw new InvalidOperationException("Array search requires an array");
     public static double ArraySearchNumber(object receiver, double? value, object fromIndex, bool includes) =>
