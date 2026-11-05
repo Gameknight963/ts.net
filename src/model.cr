@@ -42,7 +42,15 @@ enum class NodeKind {
     Undefined,
     Null,
     Conditional,
-    TypeOf
+    TypeOf,
+    Do,
+    Break,
+    Continue,
+    Switch,
+    Case,
+    Label,
+    Nullish,
+    Sequence
 };
 struct Token {
     TokenKind kind;

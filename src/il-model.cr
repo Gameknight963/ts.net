@@ -3,7 +3,7 @@ import "assembly-plan.cr";
 enum class RuntimeMember {
     ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, Cast, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
-    Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, Count
+    Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -29,6 +29,8 @@ struct IlBackend {
     Vector<int> casts;
     Vector<int> methods;
     Vector<int> slots;
+    Vector<int> breaks;
+    Vector<int> continues;
     int method;
     int local_count;
     int label_count;
@@ -40,6 +42,7 @@ struct IlBackend {
             .interfaces=zero_ids(types), .classes=zero_ids(types), .constructors=zero_ids(types),
             .fields=zero_ids(fields), .getters=zero_ids(fields), .setters=zero_ids(fields),
             .casts=zero_ids(types), .methods=zero_ids(symbols), .slots=empty_slots(symbols),
+            .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
             .method=0, .local_count=0, .label_count=0};
     }
     int ref(RuntimeMember member) const { return this.runtime.at((size_t)member); }
@@ -49,6 +52,8 @@ struct IlBackend {
     int cast(TypeId id) const { return this.casts.at(id); }
     int function(SymbolId id) const { return this.methods.at(id); }
     int constructor(TypeId id) const { return this.constructors.at(id); }
+    int break_target(NodeId id) const { return this.breaks.at(id); }
+    int continue_target(NodeId id) const { return this.continues.at(id); }
     void ref_set(RuntimeMember member, int id) { this.runtime.at_mut((size_t)member) = id; }
     int type(TypeId type, const Compiler& c) const {
         if (type == 0) { return -1; }
@@ -101,6 +106,8 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::Boolean, b.plan.method1(6, js, 0, -2, -5, "Boolean"));
     b.ref_set(RuntimeMember::Truthy, b.plan.method1(6, js, 0, -2, -5, "Truthy"));
     b.ref_set(RuntimeMember::Undefined, b.plan.method0(6, js, 0, -5, "GetUndefined"));
+    b.ref_set(RuntimeMember::IsUndefined,b.plan.method1(6,js,0,-2,-5,"IsUndefined"));
+    b.ref_set(RuntimeMember::IsNullish,b.plan.method1(6,js,0,-2,-5,"IsNullish"));
     b.ref_set(RuntimeMember::TypeOf, b.plan.method1(6, js, 0, -4, -5, "TypeOf"));
     b.ref_set(RuntimeMember::Text, b.plan.method1(6, js, 0, -4, -5, "Text"));
     b.ref_set(RuntimeMember::DynamicGet, b.plan.method2(6, js, 0, -5, -5, -4, "Get"));

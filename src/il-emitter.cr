@@ -25,7 +25,7 @@ void il_invert(IlBackend& b) { b.emit(0x20,0); b.op(0xfe01); }
 
 void il_load_target(NodeId entry, int receiver, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);
-    if (n.kind == NodeKind::Name) { b.load(n.symbol); }
+    if (n.kind == NodeKind::Name) { il_expression(entry,c,b); }
     else {
         b.emit(0xfe0c,receiver);
         TypeId owner=get_node(n.left,c).type;
@@ -48,7 +48,10 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
     }
     int previous=-1;
     TextId op=get_token(n.token,c).text;
-    if (n.kind == NodeKind::Update || !is_text(op,&text_assign,c)) {
+    if (n.kind==NodeKind::Assign && is_text(op,&text_add_assign,c) && get_type(target.type,c).kind==TypeKind::String) {
+        il_load_target(n.left,receiver,c,b);b.call(RuntimeMember::Text);
+        il_boxed(n.right,c,b);b.call(RuntimeMember::Text);b.call(RuntimeMember::Concat);
+    } else if (n.kind == NodeKind::Update || !is_text(op,&text_assign,c)) {
         il_load_target(n.left,receiver,c,b);
         if (n.kind == NodeKind::Update) { previous=b.local(b.type(target.type,c)); b.op(0x25); b.emit(0xfe0e,previous); b.plan.number(b.method,1); }
         else { il_expression(n.right,c,b); }
@@ -70,7 +73,7 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
             il_text(target.name,c,b); b.emit(0xfe0c,value);b.box(target.type,c);b.call(RuntimeMember::DynamicSet); b.op(0x26);
         } else { b.emit(0xfe0c,value); b.emit(0x6f,b.setter(field(owner,target.name,c))); }
     }
-    b.emit(0xfe0c,previous >= 0 ? previous : value);
+    b.emit(0xfe0c,previous >= 0 && !n.constant ? previous : value);
 }
 
 void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
@@ -81,6 +84,16 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     }
     else if (n.kind == NodeKind::Null) { b.op(0x14); }
     else if (n.kind == NodeKind::TypeOf) { il_boxed(n.left,c,b);b.call(RuntimeMember::TypeOf); }
+    else if (n.kind==NodeKind::Sequence) {
+        il_expression(n.left,c,b);if (get_type(get_node(n.left,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }
+        il_as(n.right,n.type,c,b);
+    }
+    else if (n.kind == NodeKind::Nullish) {
+        int alternate=b.label();int done=b.label();
+        il_boxed(n.left,c,b);b.op(0x25);b.call(RuntimeMember::IsNullish);b.emit(0x3a,alternate);
+        if (b.type(n.type,c)!=-5) { b.plan.string(b.method,"checked conversion failed");b.emit(0x28,b.cast(n.type)); }
+        b.emit(0x38,done);b.mark(alternate);b.op(0x26);il_as(n.right,n.type,c,b);b.mark(done);
+    }
     else if (n.kind == NodeKind::Conditional) {
         int alternate=b.label();int done=b.label();il_condition(n.left,c,b);b.emit(0x39,alternate);
         il_as(n.right,n.type,c,b);b.emit(0x38,done);b.mark(alternate);il_as(n.third,n.type,c,b);b.mark(done);
@@ -138,11 +151,18 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;
             NodeId argument=n.children;
             while (argument != 0) {
-                if (parameter==0) { fail(n.token,"variable-arity calls need lowering",c); }
+                if (parameter==0) {
+                    il_expression(argument,c,b);
+                    if (get_type(get_node(argument,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }
+                    argument=get_node(argument,c).next;continue;
+                }
                 il_as(argument,get_node(parameter,c).type,c,b);
                 argument=get_node(argument,c).next; parameter=get_node(parameter,c).next;
             }
-            if (parameter!=0) { fail(n.token,"omitted arguments need lowering",c); }
+            while (parameter!=0) {
+                if (!get_node(parameter,c).constant) { fail(n.token,"omitted required argument",c); }
+                b.call(RuntimeMember::Undefined);parameter=get_node(parameter,c).next;
+            }
             b.emit(0x28,(int)b.function(symbol));
             TypeId declared=get_symbol(symbol,c).type;
             if (b.type(n.type,c)==-5 && get_type(declared,c).kind!=TypeKind::Void) { b.box(declared,c); }
@@ -179,7 +199,30 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
 
 void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);
-    if (n.kind == NodeKind::Block) {
+    if (n.kind == NodeKind::Break || n.kind == NodeKind::Continue) {
+        int target=n.kind==NodeKind::Break ? b.break_target(n.left) : b.continue_target(n.left);
+        if (target==0) { fail(n.token,"missing control-flow target",c); }
+        b.emit(0x38,target);
+    } else if (n.kind == NodeKind::Label) {
+        int done=b.label();b.breaks.at_mut(entry)=done;il_statement(n.left,return_type,c,b);b.mark(done);
+    } else if (n.kind == NodeKind::Switch) {
+        int done=b.label();b.breaks.at_mut(entry)=done;
+        il_boxed(n.left,c,b);int value=b.local(-5);b.emit(0xfe0e,value);
+        int fallback=done;NodeId clause=n.children;
+        while (clause!=0) {
+            int label=b.label();b.breaks.at_mut(clause)=label;Node item=get_node(clause,c);
+            if (item.left==0) { fallback=label; }
+            else { b.emit(0xfe0c,value);il_boxed(item.left,c,b);b.call(RuntimeMember::Equal);b.emit(0x3a,label); }
+            clause=item.next;
+        }
+        b.emit(0x38,fallback);clause=n.children;
+        while (clause!=0) {
+            b.mark(b.break_target(clause));NodeId child=get_node(clause,c).children;
+            while (child!=0) { il_statement(child,return_type,c,b);child=get_node(child,c).next; }
+            clause=get_node(clause,c).next;
+        }
+        b.mark(done);
+    } else if (n.kind == NodeKind::Block) {
         NodeId child=n.children;
         while (child != 0) { il_statement(child,return_type,c,b); child=get_node(child,c).next; }
     } else if (n.kind == NodeKind::Variable) {
@@ -192,12 +235,18 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
         int alternate=b.label(); int done=b.label();
         il_condition(n.left,c,b); b.emit(0x39,alternate); il_statement(n.right,return_type,c,b); b.emit(0x38,done);
         b.mark(alternate); if (n.third != 0) { il_statement(n.third,return_type,c,b); } b.mark(done);
-    } else if (n.kind == NodeKind::While || n.kind == NodeKind::For) {
-        int start=b.label(); int done=b.label();
-        if (n.kind == NodeKind::For) { il_statement(n.left,return_type,c,b); }
-        b.mark(start); il_condition(n.kind == NodeKind::While ? n.left : n.right,c,b); b.emit(0x39,done);
-        il_statement(n.kind == NodeKind::While ? n.right : n.fourth,return_type,c,b);
-        if (n.kind == NodeKind::For) { il_expression(n.third,c,b); if (get_type(get_node(n.third,c).type,c).kind != TypeKind::Void) { b.op(0x26); } }
+    } else if (n.kind == NodeKind::While || n.kind == NodeKind::For || n.kind==NodeKind::Do) {
+        int start=b.label();int next=b.label();int done=b.label();
+        b.breaks.at_mut(entry)=done;b.continues.at_mut(entry)=n.kind==NodeKind::While ? start : next;
+        if (n.kind == NodeKind::For && n.left!=0) { il_statement(n.left,return_type,c,b); }
+        b.mark(start);
+        if (n.kind!=NodeKind::Do) {
+            NodeId condition=n.kind==NodeKind::While ? n.left : n.right;
+            if (condition!=0) { il_condition(condition,c,b);b.emit(0x39,done); }
+        }
+        il_statement(n.kind == NodeKind::For ? n.fourth : n.right,return_type,c,b);b.mark(next);
+        if (n.kind==NodeKind::Do) { il_condition(n.left,c,b);b.emit(0x39,done); }
+        if (n.kind == NodeKind::For && n.third!=0) { il_expression(n.third,c,b); if (get_type(get_node(n.third,c).type,c).kind != TypeKind::Void) { b.op(0x26); } }
         b.emit(0x38,start); b.mark(done);
     }
 }
@@ -221,6 +270,15 @@ void emit_assembly(const char[]& path, const Compiler& c) {
     while (function != 0) {
         Node n=get_node(function,c); b.begin((int)b.function(n.symbol)); NodeId parameter=n.children; int index=0;
         while (parameter != 0) { b.slots.at_mut(get_node(parameter,c).symbol)=-(++index); parameter=get_node(parameter,c).next; }
+        parameter=n.children;
+        while (parameter!=0) {
+            Node p=get_node(parameter,c);
+            if (p.left!=0) {
+                int done=b.label();b.load(p.symbol);b.call(RuntimeMember::IsUndefined);b.emit(0x39,done);
+                il_as(p.left,p.type,c,&b);b.store(p.symbol);b.mark(done);
+            }
+            parameter=p.next;
+        }
         il_statement(n.left,n.type,c,&b);
         if (get_type(n.type,c).kind == TypeKind::Void) { b.op(0x2a); } else { b.op(0x14); b.op(0x7a); }
         function=n.next;

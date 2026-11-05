@@ -20,6 +20,14 @@ type irField struct{ name, typ, next int }
 type irToken struct{ text, line, column int }
 type irNode struct{ kind, token, name, typ, left, right, third, fourth, children, next, symbol, constant int }
 type irSymbol struct{ name, typ, function int }
+type irControl struct {
+	id   int
+	loop bool
+}
+type irLabel struct {
+	id        int
+	statement *ast.Node
+}
 type irBuilder struct {
 	c                     *checker.Checker
 	file                  *ast.SourceFile
@@ -34,7 +42,16 @@ type irBuilder struct {
 	symbols               []irSymbol
 	symbolIDs             map[*ast.Symbol]int
 	functions, statements int
+	controls              []irControl
+	controlIDs            map[*ast.Node]int
+	labels                map[string]irLabel
 }
+
+func (b *irBuilder) beginControl(n *ast.Node, id int, loop bool) {
+	b.controlIDs[n] = id
+	b.controls = append(b.controls, irControl{id, loop})
+}
+func (b *irBuilder) endControl() { b.controls = b.controls[:len(b.controls)-1] }
 
 func (b *irBuilder) text(s string) int {
 	if id := b.textIDs[s]; id != 0 {
@@ -189,6 +206,27 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		id = b.node(0, n, text)
 	case ast.KindStringLiteral, ast.KindNoSubstitutionTemplateLiteral:
 		id = b.node(1, n, n.Text())
+	case ast.KindTemplateExpression:
+		t := n.AsTemplateExpression()
+		result := b.node(1, t.Head, t.Head.Text())
+		b.nodes[result-1].typ = b.typ(b.c.GetStringType())
+		for _, part := range t.TemplateSpans.Nodes {
+			span := part.AsTemplateSpan()
+			value := b.lower(span.Expression)
+			add := b.node(7, part, "+")
+			b.nodes[add-1].typ = b.typ(b.c.GetStringType())
+			b.nodes[add-1].left = result
+			b.nodes[add-1].right = value
+			result = add
+			literal := b.node(1, span.Literal, span.Literal.Text())
+			b.nodes[literal-1].typ = b.typ(b.c.GetStringType())
+			add = b.node(7, part, "+")
+			b.nodes[add-1].typ = b.typ(b.c.GetStringType())
+			b.nodes[add-1].left = result
+			b.nodes[add-1].right = literal
+			result = add
+		}
+		return result
 	case ast.KindTrueKeyword, ast.KindFalseKeyword:
 		id = b.node(2, n, map[bool]string{true: "true", false: "false"}[n.Kind == ast.KindTrueKeyword])
 	case ast.KindIdentifier:
@@ -256,6 +294,20 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.children = b.list(call.Arguments.Nodes)
 	case ast.KindBinaryExpression:
 		expr := n.AsBinaryExpression()
+		if expr.OperatorToken.Kind == ast.KindCommaToken {
+			id = b.node(31, n, ",")
+			row = b.nodes[id-1]
+			row.left = b.lower(expr.Left)
+			row.right = b.lower(expr.Right)
+			break
+		}
+		if expr.OperatorToken.Kind == ast.KindQuestionQuestionToken {
+			id = b.node(30, n, "??")
+			row = b.nodes[id-1]
+			row.left = b.lower(expr.Left)
+			row.right = b.lower(expr.Right)
+			break
+		}
 		op := operators[expr.OperatorToken.Kind]
 		if op == "" {
 			b.unsupported(n)
@@ -263,7 +315,8 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		kind := 7
 		if expr.OperatorToken.Kind >= ast.KindFirstAssignment && expr.OperatorToken.Kind <= ast.KindLastAssignment {
 			kind = 10
-			if op != "=" && (b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Left)).Flags()&checker.TypeFlagsNumberLike == 0 || b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Right)).Flags()&checker.TypeFlagsNumberLike == 0) {
+			stringAdd := op == "+=" && b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Left)).Flags()&checker.TypeFlagsStringLike != 0
+			if op != "=" && !stringAdd && (b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Left)).Flags()&checker.TypeFlagsNumberLike == 0 || b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Right)).Flags()&checker.TypeFlagsNumberLike == 0) {
 				b.unsupported(n)
 			}
 		}
@@ -274,8 +327,18 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindPrefixUnaryExpression:
 		expr := n.AsPrefixUnaryExpression()
 		op := operators[expr.Operator]
-		if op == "" || op == "++" || op == "--" {
+		if op == "" {
 			b.unsupported(n)
+		}
+		if op == "++" || op == "--" {
+			if b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Operand)).Flags()&checker.TypeFlagsNumberLike == 0 {
+				b.unsupported(n)
+			}
+			id = b.node(11, n, op)
+			row = b.nodes[id-1]
+			row.left = b.lower(expr.Operand)
+			row.constant = 1
+			break
 		}
 		id = b.node(8, n, op)
 		row = b.nodes[id-1]
@@ -307,7 +370,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.children = b.list(declarations)
 	case ast.KindVariableDeclaration, ast.KindParameter:
-		if n.Kind == ast.KindParameter && (n.Initializer() != nil || n.AsParameterDeclaration().DotDotDotToken != nil) {
+		if n.Kind == ast.KindParameter && n.AsParameterDeclaration().DotDotDotToken != nil {
 			b.unsupported(n)
 		}
 		if n.Name().Kind != ast.KindIdentifier {
@@ -319,6 +382,10 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.symbol = b.symbol(n.Name())
 		row.left = b.lower(n.Initializer())
 		row.typ = b.typ(b.c.GetTypeAtLocation(n.Name()))
+		if n.Kind == ast.KindParameter && (n.Initializer() != nil || n.AsParameterDeclaration().QuestionToken != nil) {
+			row.typ = b.typ(b.c.GetAnyType())
+			row.constant = 1
+		}
 		b.symbols[row.symbol-1].typ = row.typ
 		if n.Initializer() == nil && n.Kind == ast.KindVariableDeclaration {
 			if b.types[row.typ-1].kind != 4 {
@@ -346,18 +413,90 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		id = b.node(16, n, "while")
 		row = b.nodes[id-1]
 		row.left = b.lower(s.Expression)
+		b.beginControl(n, id, true)
 		row.right = b.lower(s.Statement)
-	case ast.KindForStatement:
-		s := n.AsForStatement()
-		if s.Initializer == nil || s.Condition == nil || s.Incrementor == nil {
+		b.endControl()
+	case ast.KindDoStatement:
+		s := n.AsDoStatement()
+		id = b.node(24, n, "do")
+		row = b.nodes[id-1]
+		row.left = b.lower(s.Expression)
+		b.beginControl(n, id, true)
+		row.right = b.lower(s.Statement)
+		b.endControl()
+	case ast.KindBreakStatement, ast.KindContinueStatement:
+		kind := 25
+		var label *ast.Node
+		if n.Kind == ast.KindContinueStatement {
+			kind = 26
+			label = n.AsContinueStatement().Label
+		} else {
+			label = n.AsBreakStatement().Label
+		}
+		id = b.node(kind, n, "jump")
+		row = b.nodes[id-1]
+		if label != nil {
+			target := b.labels[label.Text()]
+			row.left = target.id
+			if kind == 26 {
+				row.left = b.controlIDs[target.statement]
+			}
+		} else {
+			for i := len(b.controls) - 1; i >= 0; i-- {
+				if kind == 25 || b.controls[i].loop {
+					row.left = b.controls[i].id
+					break
+				}
+			}
+		}
+		if row.left == 0 {
 			b.unsupported(n)
 		}
+	case ast.KindLabeledStatement:
+		s := n.AsLabeledStatement()
+		id = b.node(29, n, s.Label.Text())
+		row = b.nodes[id-1]
+		previous, exists := b.labels[s.Label.Text()]
+		statement := s.Statement
+		for statement.Kind == ast.KindLabeledStatement {
+			statement = statement.AsLabeledStatement().Statement
+		}
+		b.labels[s.Label.Text()] = irLabel{id, statement}
+		row.left = b.lower(s.Statement)
+		if exists {
+			b.labels[s.Label.Text()] = previous
+		} else {
+			delete(b.labels, s.Label.Text())
+		}
+	case ast.KindSwitchStatement:
+		s := n.AsSwitchStatement()
+		id = b.node(27, n, "switch")
+		row = b.nodes[id-1]
+		row.left = b.lower(s.Expression)
+		b.beginControl(n, id, false)
+		row.children = b.list(s.CaseBlock.AsCaseBlock().Clauses.Nodes)
+		b.endControl()
+	case ast.KindCaseClause, ast.KindDefaultClause:
+		s := n.AsCaseOrDefaultClause()
+		id = b.node(28, n, "case")
+		row = b.nodes[id-1]
+		row.left = b.lower(s.Expression)
+		row.children = b.list(s.Statements.Nodes)
+	case ast.KindForStatement:
+		s := n.AsForStatement()
 		id = b.node(17, n, "for")
 		row = b.nodes[id-1]
 		row.left = b.lower(s.Initializer)
+		if s.Initializer != nil && s.Initializer.Kind != ast.KindVariableDeclarationList {
+			statement := b.node(18, s.Initializer, ";")
+			b.nodes[statement-1].left = row.left
+			row.left = statement
+		}
 		row.right = b.lower(s.Condition)
 		row.third = b.lower(s.Incrementor)
+		b.beginControl(n, id, true)
 		row.fourth = b.lower(s.Statement)
+		b.endControl()
 	case ast.KindExpressionStatement:
 		id = b.node(18, n, ";")
 		row = b.nodes[id-1]
@@ -368,7 +507,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	if row.token == 0 {
 		row = b.nodes[id-1]
 	}
-	if row.typ == 0 && (row.kind <= 11 || row.kind >= 20) {
+	if row.typ == 0 && (row.kind <= 11 || row.kind >= 20 && row.kind <= 23 || row.kind == 30 || row.kind == 31) {
 		row.typ = b.typ(b.c.GetTypeAtLocation(n))
 	}
 	if row.kind == 20 {
@@ -386,6 +525,8 @@ func exportIR(s *session) (result []byte, err error) {
 	c, release := s.program.GetTypeCheckerForFileExclusive(context.Background(), s.file)
 	defer release()
 	b := &irBuilder{c: c, file: s.file, textIDs: map[string]int{}, typeIDs: map[*checker.Type]int{}, primitives: map[int]int{}, symbolIDs: map[*ast.Symbol]int{}}
+	b.controlIDs = map[*ast.Node]int{}
+	b.labels = map[string]irLabel{}
 	functions := map[*ast.Node]int{}
 	last := 0
 	for _, n := range s.file.Statements.Nodes {
