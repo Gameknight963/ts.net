@@ -364,11 +364,11 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.left = b.lower(n.Expression())
 	case ast.KindElementAccessExpression:
-		if b.isBuiltinObjectKeys(n) {
+		if enumeration := b.objectEnumeration(n); enumeration >= 0 {
 			if identifierWrite(n) {
 				b.unsupported(n)
 			}
-			id = b.node(47, n, "Object.keys")
+			id = b.node(enumeration, n, "Object enumeration")
 			row = b.nodes[id-1]
 			row.typ = b.typ(b.c.GetTypeAtLocation(n))
 			break
@@ -421,11 +421,11 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			row.left = b.lower(n.Name())
 		}
 	case ast.KindPropertyAccessExpression:
-		if b.isBuiltinObjectKeys(n) {
+		if enumeration := b.objectEnumeration(n); enumeration >= 0 {
 			if identifierWrite(n) {
 				b.unsupported(n)
 			}
-			id = b.node(47, n, "Object.keys")
+			id = b.node(enumeration, n, "Object enumeration")
 			row = b.nodes[id-1]
 			row.typ = b.typ(b.c.GetTypeAtLocation(n))
 			break

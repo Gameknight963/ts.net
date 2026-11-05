@@ -26,7 +26,7 @@ try {
     [IO.File]::WriteAllText("$testRoot/boundaries.ts", $boundary.ToString(), $bom)
 
     # Differential execution checks against the actual TypeScript compiler.
-    foreach ($fixture in @('tests/behavior.ts', 'tests/globals.ts', 'tests/modules.ts', 'tests/default-modules.ts', 'tests/structural-fields.ts', 'tests/optional-context.ts', 'tests/has-own.ts', 'tests/object-keys.ts', 'tests/object-spread.ts', 'tests/spread-fastpath.ts', 'tests/key-layouts.ts', 'tests/object-key-count.ts', 'tests/string-index.ts', 'tests/has-own-fastpath.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/functions.ts', 'tests/function-self.ts', 'tests/iife-captures.ts', 'tests/closures.ts', 'tests/local-functions.ts', 'tests/local-function-loop.ts', 'tests/closure-loop.ts', 'tests/function-dispatch.ts', 'tests/call-arity.ts', 'tests/function-aliases.ts', 'tests/void-values.ts', 'tests/straightforward.ts', 'tests/logical-assignment.ts', 'tests/dynamic-arithmetic.ts', 'tests/nullable-values.ts', 'tests/number-fields.ts', 'tests/push-values.ts', 'tests/push-local-arrays.ts', 'tests/numeric-fastpaths.ts', 'tests/numeric-constants.ts', 'tests/number-predicates.ts', 'tests/number-bindings.ts', 'tests/bitwise.ts', 'tests/scalar-objects.ts', 'tests/scalar-dynamic.ts', 'tests/scalar-references.ts', 'tests/integer-loops.ts', 'tests/integer-call-loops.ts', 'tests/arrays.ts', 'tests/mixed-index.ts', 'tests/union-arrays.ts', 'tests/loop-accumulators.ts', 'tests/computed-index.ts', 'tests/computed-properties.ts', 'tests/key-coercion-effects.ts', 'tests/dense-read.ts', 'tests/typeof-number.ts', 'tests/slice.ts', 'tests/reverse.ts', 'tests/array-search.ts', 'tests/packed-arrays.ts', 'tests/array-ranges.ts', 'tests/inferred-arrays.ts', 'tests/fresh-any-arrays.ts', 'tests/for-of.ts', 'tests/array-spread.ts', 'tests/array-destructuring.ts', 'tests/object-destructuring.ts', 'tests/destructuring-fastpath.ts', 'tests/destructured-parameters.ts', 'tests/rest-parameters.ts', 'tests/call-spread.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
+    foreach ($fixture in @('tests/behavior.ts', 'tests/globals.ts', 'tests/modules.ts', 'tests/default-modules.ts', 'tests/structural-fields.ts', 'tests/optional-context.ts', 'tests/has-own.ts', 'tests/object-keys.ts', 'tests/object-enumeration.ts', 'tests/object-spread.ts', 'tests/spread-fastpath.ts', 'tests/key-layouts.ts', 'tests/object-key-count.ts', 'tests/string-index.ts', 'tests/has-own-fastpath.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/functions.ts', 'tests/function-self.ts', 'tests/iife-captures.ts', 'tests/closures.ts', 'tests/local-functions.ts', 'tests/local-function-loop.ts', 'tests/closure-loop.ts', 'tests/function-dispatch.ts', 'tests/call-arity.ts', 'tests/function-aliases.ts', 'tests/void-values.ts', 'tests/straightforward.ts', 'tests/logical-assignment.ts', 'tests/dynamic-arithmetic.ts', 'tests/nullable-values.ts', 'tests/number-fields.ts', 'tests/push-values.ts', 'tests/push-local-arrays.ts', 'tests/numeric-fastpaths.ts', 'tests/numeric-constants.ts', 'tests/number-predicates.ts', 'tests/number-bindings.ts', 'tests/bitwise.ts', 'tests/scalar-objects.ts', 'tests/scalar-dynamic.ts', 'tests/scalar-references.ts', 'tests/integer-loops.ts', 'tests/integer-call-loops.ts', 'tests/arrays.ts', 'tests/mixed-index.ts', 'tests/union-arrays.ts', 'tests/loop-accumulators.ts', 'tests/computed-index.ts', 'tests/computed-properties.ts', 'tests/key-coercion-effects.ts', 'tests/dense-read.ts', 'tests/typeof-number.ts', 'tests/slice.ts', 'tests/reverse.ts', 'tests/array-search.ts', 'tests/packed-arrays.ts', 'tests/array-ranges.ts', 'tests/inferred-arrays.ts', 'tests/fresh-any-arrays.ts', 'tests/for-of.ts', 'tests/array-spread.ts', 'tests/array-destructuring.ts', 'tests/object-destructuring.ts', 'tests/destructuring-fastpath.ts', 'tests/destructured-parameters.ts', 'tests/rest-parameters.ts', 'tests/call-spread.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
         & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/$name" $fixture
@@ -80,6 +80,11 @@ try {
     if ($LASTEXITCODE) { throw 'Property bag inspector build failed' }
     & dotnet tests/inspect-property-bag/bin/Release/net10.0/Inspect.dll
     if ($LASTEXITCODE) { throw 'Dynamic property storage checks failed' }
+
+    & dotnet build tests/inspect-enumeration/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Enumeration inspector build failed' }
+    & dotnet tests/inspect-enumeration/bin/Release/net10.0/Inspect.dll "$testRoot/object-enumeration/bin/Release/net10.0/App.dll"
+    if ($LASTEXITCODE) { throw 'Object enumeration runtime checks failed' }
 
     & dotnet build tests/inspect-arrays/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Array runtime checks failed to build' }
@@ -148,6 +153,10 @@ try {
         @{ Name = 'structural-field-bad-write'; Message = 'checked conversion failed' },
         @{ Name = 'structural-reference-bad-write'; Message = 'checked conversion failed' },
         @{ Name = 'object-key-count-null'; Message = 'Cannot convert null or undefined to object' },
+        @{ Name = 'object-values-null'; Message = 'Cannot convert null or undefined to object' },
+        @{ Name = 'object-values-missing'; Message = 'Cannot convert null or undefined to object' },
+        @{ Name = 'object-entries-null'; Message = 'Cannot convert null or undefined to object' },
+        @{ Name = 'object-entries-missing'; Message = 'Cannot convert null or undefined to object' },
         @{ Name = 'object-keys-null'; Message = 'Cannot convert null or undefined to object' },
         @{ Name = 'object-keys-missing'; Message = 'Cannot convert null or undefined to object' },
         @{ Name = 'has-own-null'; Message = 'Cannot inspect properties of null or undefined' },

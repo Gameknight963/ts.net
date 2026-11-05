@@ -179,19 +179,33 @@ func (b *irBuilder) intrinsicVoidCall(callee int) bool {
 	return owner.kind == 3 && owner.name != 0 && b.texts[owner.name-1] == "console"
 }
 
-func (b *irBuilder) isBuiltinObjectKeys(n *ast.Node) bool {
+func (b *irBuilder) objectEnumeration(n *ast.Node) int {
+	name := ""
 	if n.Kind == ast.KindPropertyAccessExpression {
-		if n.Name().Text() != "keys" {
-			return false
-		}
+		name = n.Name().Text()
 	} else if n.Kind == ast.KindElementAccessExpression {
 		argument := n.AsElementAccessExpression().ArgumentExpression
-		if argument.Kind != ast.KindStringLiteral || argument.Text() != "keys" {
-			return false
+		if argument.Kind != ast.KindStringLiteral && argument.Kind != ast.KindNoSubstitutionTemplateLiteral {
+			return -1
 		}
+		name = argument.Text()
 	} else {
-		return false
+		return -1
 	}
 	owner := n.Expression()
-	return owner.Kind == ast.KindIdentifier && owner.Text() == "Object" && b.isBuiltinIdentifier(owner)
+	for owner.Kind == ast.KindParenthesizedExpression {
+		owner = owner.Expression()
+	}
+	if owner.Kind != ast.KindIdentifier || owner.Text() != "Object" || !b.isBuiltinIdentifier(owner) {
+		return -1
+	}
+	switch name {
+	case "keys":
+		return 47
+	case "values":
+		return 48
+	case "entries":
+		return 49
+	}
+	return -1
 }

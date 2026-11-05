@@ -35,7 +35,7 @@ void il_key_layouts(const Compiler& c, IlBackend& b) {
         int count=0;NodeId child=n.children;while (child!=0) { count++;child=get_node(child,c).next; }
         b.emit(0x20,count);b.emit(0x8d,b.ref(RuntimeMember::ObjectType));int index=0;child=n.children;
         while (child!=0) { Node p=get_node(child,c);b.op(0x25);b.emit(0x20,index++);il_text(p.name,c,b);b.op(0xa2);child=p.next; }
-        b.call(RuntimeMember::KeysFromFixed);b.op(0x2a);
+        b.call(RuntimeMember::KeysFromFixed);b.op(0x2a);il_enumeration_shape(n.type,type,i,c,b);
     }
 }
 
@@ -47,4 +47,15 @@ void il_object_keys_call(NodeId entry, bool count, const Compiler& c, IlBackend&
     while (argument!=0) { il_expression(argument,c,b);if (get_type(get_node(argument,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }argument=get_node(argument,c).next; }
     b.emit(0xfe0c,source);b.call(count ? RuntimeMember::ObjectKeyCount : RuntimeMember::ObjectKeys);
     if (count) { b.call(RuntimeMember::WrapNumber); }
+}
+
+void il_object_enumeration_call(NodeId entry, const Compiler& c, IlBackend& b) {
+    Node call=get_node(entry,c);NodeId argument=call.children;
+    if (argument==0) { b.call(RuntimeMember::Undefined); }
+    else { il_boxed(argument,c,b);argument=get_node(argument,c).next; }
+    int source=b.local(-5);b.emit(0xfe0e,source);
+    while (argument!=0) { il_expression(argument,c,b);if (get_type(get_node(argument,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }argument=get_node(argument,c).next; }
+    b.emit(0xfe0c,source);
+    if (get_node(call.left,c).kind==NodeKind::ObjectEntriesFunction) { b.call(RuntimeMember::ObjectEntries); }
+    else { b.call(il_number_array(call.type,c) ? RuntimeMember::ObjectNumberValues : RuntimeMember::ObjectValues); }
 }
