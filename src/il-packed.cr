@@ -38,14 +38,21 @@ void il_buffer_bound(NodeId entry, int bound, const Compiler& c, IlBackend& b) {
     else { b.emit(0xfe0c,bound); }
 }
 
+bool il_key_may_invoke(Node n, const Compiler& c) {
+    NodeId key=n.kind==NodeKind::Property || n.kind==NodeKind::Index ? n.right : n.kind==NodeKind::Binding ? n.third : 0;
+    if (key==0) { return false; }
+    TypeKind kind=get_type(get_node(key,c).type,c).kind;
+    return kind!=TypeKind::String && kind!=TypeKind::Number && kind!=TypeKind::Boolean && kind!=TypeKind::Void;
+}
+
 SymbolId il_buffer_loop(NodeId entry, SymbolId counter, bool numeric, const Compiler& c, const IlBackend& b) {
     if (counter==0) { return 0; }
     Node loop=get_node(entry,c);NodeId body=loop.fourth;SymbolId array=0;int mode=-1;
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
         if (!il_inside(i,body,b)) { continue; }
-        // A call or nested loop can invalidate a buffer or its range proof.
-        if (n.kind==NodeKind::Call || n.kind==NodeKind::Function || n.kind==NodeKind::For || n.kind==NodeKind::ForOf || n.kind==NodeKind::While || n.kind==NodeKind::Do) { return 0; }
+        // Explicit calls, key coercion, and nested loops can invalidate the buffer.
+        if (il_key_may_invoke(n,c) || n.kind==NodeKind::Call || n.kind==NodeKind::Function || n.kind==NodeKind::For || n.kind==NodeKind::ForOf || n.kind==NodeKind::While || n.kind==NodeKind::Do) { return 0; }
         if (n.kind==NodeKind::Index) {
             Node receiver=get_node(n.left,c);Node index=get_node(n.right,c);
             if (receiver.kind!=NodeKind::Name || get_type(receiver.type,c).kind!=TypeKind::Array ||
