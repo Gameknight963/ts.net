@@ -69,12 +69,28 @@ sealed class AssemblyPlan
     TypeReferenceHandle nullableType;
     readonly int entry;
     readonly string name;
+    static readonly UTF8Encoding Utf8 = new(false, true);
 
-    static string Text(BinaryReader reader)
+    internal static string Text(BinaryReader reader)
     {
         int length = reader.ReadInt32();
         if (length < 0 || length > reader.BaseStream.Length - reader.BaseStream.Position) throw new InvalidDataException("Invalid string length");
-        return new UTF8Encoding(false, true).GetString(reader.ReadBytes(length));
+        byte[] bytes = reader.ReadBytes(length);
+        // The frontend uses WTF-8 so JavaScript's lone UTF-16 surrogates survive
+        // the native boundary. Decode those triples, validating all other UTF-8.
+        StringBuilder? result = null;
+        int start = 0;
+        for (int i = 0; i + 2 < bytes.Length; i++)
+        {
+            if (bytes[i] != 0xed || bytes[i + 1] < 0xa0 || bytes[i + 1] > 0xbf || (bytes[i + 2] & 0xc0) != 0x80) continue;
+            result ??= new StringBuilder();
+            result.Append(Utf8.GetString(bytes, start, i - start));
+            result.Append((char)(((bytes[i] & 15) << 12) | ((bytes[i + 1] & 63) << 6) | (bytes[i + 2] & 63)));
+            i += 2;start = i + 1;
+        }
+        if (result == null) return Utf8.GetString(bytes);
+        result.Append(Utf8.GetString(bytes, start, bytes.Length - start));
+        return result.ToString();
     }
     static int[] Parameters(BinaryReader reader)
     {

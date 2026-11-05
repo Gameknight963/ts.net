@@ -122,6 +122,10 @@ try {
     Write-Host "PASS $index frontend rejection and output-preservation checks"
     & "$PSScriptRoot/test-compiler-storage.ps1"
     & "$PSScriptRoot/test-metadata-writer.ps1"
+    & dotnet build tests/inspect-writer/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Assembly writer inspector build failed' }
+    & dotnet tests/inspect-writer/bin/Release/net10.0/Inspect.dll
+    if ($LASTEXITCODE) { throw 'Assembly writer string checks failed' }
     & dotnet msbuild tsnet.crproj -t:Check -nologo -v:minimal
     if ($LASTEXITCODE) { throw 'Visual Studio project check failed' }
     Write-Host 'All tests passed.'
