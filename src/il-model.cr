@@ -1,7 +1,7 @@
 import "assembly-plan.cr";
 
 enum class RuntimeMember {
-    ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
@@ -54,6 +54,13 @@ struct IlBackend {
     Vector<int> tag_arrays;
     Vector<int> reversible_literals;
     Vector<int> tagged_literals;
+    Vector<int> spread_source_classes;
+    Vector<int> literal_classes;
+    Vector<int> spread_classes;
+    Vector<int> spread_types;
+    Vector<int> spread_constructors;
+    Vector<int> spread_finishes;
+    int spread_any_constructor;
     Vector<int> layout_needed;
     Vector<int> literal_constructors;
     Vector<int> function_adapters;
@@ -98,7 +105,7 @@ struct IlBackend {
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
             .packed_arrays=zero_ids(symbols),.dense_arrays=zero_ids(symbols),.tag_arrays=zero_ids(symbols),
             .reversible_literals=zero_ids(c.node_store.count()+1),.tagged_literals=zero_ids(c.node_store.count()+1),
-            .layout_needed=zero_ids(types),.literal_constructors=zero_ids(c.node_store.count()+1),.function_adapters=zero_ids(symbols),.raw_functions=zero_ids(symbols),.function_caches=zero_ids(symbols),.function_constructors=zero_ids(symbols),.capture_fields=zero_ids(symbols),.capture_flags=zero_ids(symbols),.capture_scopes=zero_ids(symbols),.capture_types=zero_ids(symbols),.capture_vars=zero_ids(symbols),.function_contexts=zero_ids(symbols),.context_types=zero_ids(c.node_store.count()+1),.context_constructors=zero_ids(c.node_store.count()+1),.context_parents=zero_ids(c.node_store.count()+1),.context_parent_fields=zero_ids(c.node_store.count()+1),.context_scope=0,.context_slot=-1,.function_targets=zero_ids(symbols),.predicate_targets=zero_ids(symbols),.function_values_needed=zero_ids(symbols),
+            .spread_source_classes=zero_ids(symbols),.literal_classes=zero_ids(c.node_store.count()+1),.spread_classes=zero_ids(types),.spread_types=zero_ids(types),.spread_constructors=zero_ids(types),.spread_finishes=zero_ids(types),.spread_any_constructor=0,.layout_needed=zero_ids(types),.literal_constructors=zero_ids(c.node_store.count()+1),.function_adapters=zero_ids(symbols),.raw_functions=zero_ids(symbols),.function_caches=zero_ids(symbols),.function_constructors=zero_ids(symbols),.capture_fields=zero_ids(symbols),.capture_flags=zero_ids(symbols),.capture_scopes=zero_ids(symbols),.capture_types=zero_ids(symbols),.capture_vars=zero_ids(symbols),.function_contexts=zero_ids(symbols),.context_types=zero_ids(c.node_store.count()+1),.context_constructors=zero_ids(c.node_store.count()+1),.context_parents=zero_ids(c.node_store.count()+1),.context_parent_fields=zero_ids(c.node_store.count()+1),.context_scope=0,.context_slot=-1,.function_targets=zero_ids(symbols),.predicate_targets=zero_ids(symbols),.function_values_needed=zero_ids(symbols),
             .iteration_vars=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
@@ -342,6 +349,11 @@ void il_runtime(IlBackend& b) {
     int object_type=b.ref(RuntimeMember::ObjectType);
     b.ref_set(RuntimeMember::ObjectConstructor,b.plan.method0(6,object_type,1,-1,".ctor"));
     int js = b.ref(RuntimeMember::JsType); int obj = b.ref(RuntimeMember::TsObjectType);
+    b.ref_set(RuntimeMember::ObjectSpread,b.plan.method2(6,js,0,-1,-5,-5,"ObjectSpread"));
+    b.ref_set(RuntimeMember::DefineOwn,b.plan.method2(6,obj,1,-1,-4,-5,"DefineOwn"));
+    b.ref_set(RuntimeMember::MarkPresent,b.plan.method1(6,obj,1,-1,-4,"MarkPresent"));
+    b.ref_set(RuntimeMember::TryCloneSpread,b.plan.method1(6,js,2,-5,-5,"TryCloneSpread"));
+    b.ref_set(RuntimeMember::OwnKeysBase,b.plan.method0(6,obj,1,-5,"OwnKeys"));
     b.ref_set(RuntimeMember::ObjectKeyCount,b.plan.method1(6,js,0,-3,-5,"ObjectKeyCount"));
     b.ref_set(RuntimeMember::KeyCountWithFixed,b.plan.method1(6,obj,1,-3,-6,"KeyCountWithFixed"));
     b.ref_set(RuntimeMember::ObjectKeys,b.plan.method1(6,js,0,-5,-5,"ObjectKeys"));
@@ -526,7 +538,9 @@ void il_optional_members(TypeId type, int klass, const Compiler& c, IlBackend& b
                         TypeId original=get_field(actual,c).type;
                         b.emit(0xfe09,0);b.emit(0x7b,b.field_token(actual));b.convert(original,record.type,c);b.op(0x2a);
                         b.begin(b.plan.method1(5,klass,0x1e6,-1,value_type,set.view()));
-                        b.emit(0xfe09,0);b.emit(0xfe09,1);b.convert(record.type,original,c);b.emit(0x7d,b.field_token(actual));b.op(0x2a);
+                        b.emit(0xfe09,0);b.emit(0xfe09,1);b.convert(record.type,original,c);b.emit(0x7d,b.field_token(actual));
+                        if (b.spread_types.at(type)!=0) { b.emit(0xfe09,0);il_text(record.name,c,b);b.emit(0x6f,b.ref(RuntimeMember::MarkPresent)); }
+                        b.op(0x2a);
                     } else {
                         b.emit(0xfe09,0);il_text(record.name,c,b);b.call(RuntimeMember::Get);b.from_object(record.type,c);b.op(0x2a);
                         b.begin(b.plan.method1(5,klass,0x1e6,-1,value_type,set.view()));
@@ -580,7 +594,7 @@ void il_shapes(const Compiler& c, IlBackend& b) {
         if (get_type(type,c).kind == TypeKind::Shape) {
             Vector<char> name=numbered_name('O',get_type(type,c).id);
             int base_type=b.ref(RuntimeMember::TsObjectType);
-            int klass=b.plan.type(name.view(),base_type,b.layout_needed.at(type)!=0 ? 1 : 0x101);
+            int klass=b.plan.type(name.view(),base_type,b.layout_needed.at(type)!=0 || b.spread_types.at(type)!=0 ? 1 : 0x101);
             b.classes.at_mut(type)=klass;
             TypeId target=c.types;
             while (target != 0) {
@@ -603,7 +617,9 @@ void il_shapes(const Compiler& c, IlBackend& b) {
                 b.emit(0xfe09,0); b.emit(0xfe09,1);
                 TypeKind member_kind=get_type(record.type,c).kind;
                 if (member_kind==TypeKind::String || member_kind==TypeKind::Shape || member_kind==TypeKind::Array) { b.from_object(record.type,c); }
-                b.emit(0x7d,value); b.op(0x2a);
+                b.emit(0x7d,value);
+                if (b.spread_types.at(type)!=0) { b.emit(0xfe09,0);il_text(record.name,c,b);b.emit(0x6f,b.ref(RuntimeMember::MarkPresent)); }
+                b.op(0x2a);
                 member=record.next;
             }
             b.begin(b.plan.method0(5,klass,0xc6,-5,"OwnKeys"));
@@ -641,7 +657,9 @@ void il_shapes(const Compiler& c, IlBackend& b) {
                 if (b.type(record.type,c)!=-5 || value_kind==TypeKind::String || value_kind==TypeKind::Shape || value_kind==TypeKind::Array) {
                     b.plan.string(b.method,"property write violates static field type"); b.emit(0x28,(int)b.cast(record.type));
                 }
-                b.emit(0x7d,(int)b.field_token(member)); b.emit(0xfe09,2); b.op(0x2a); b.mark(next);
+                b.emit(0x7d,(int)b.field_token(member));
+                if (b.spread_types.at(type)!=0) { b.emit(0xfe09,0);il_text(record.name,c,b);b.emit(0x6f,b.ref(RuntimeMember::MarkPresent)); }
+                b.emit(0xfe09,2); b.op(0x2a); b.mark(next);
                 member=record.next;
             }
             b.emit(0xfe09,0); b.emit(0xfe09,1); b.emit(0xfe09,2); b.call(RuntimeMember::Set); b.op(0x2a);

@@ -17,8 +17,14 @@ func (b *irBuilder) contextualObject(n *ast.Node, row *irNode) {
 	// resulting variables still expect the literal's narrower type. Only adopt
 	// storage where the consumer has its own established type.
 	site := n
-	for site.Parent != nil && site.Parent.Kind == ast.KindPropertyAssignment {
-		site = site.Parent.Parent
+	for site != nil && site.Parent != nil {
+		if site.Parent.Kind == ast.KindParenthesizedExpression {
+			site = site.Parent
+		} else if site.Parent.Kind == ast.KindPropertyAssignment {
+			site = site.Parent.Parent
+		} else {
+			break
+		}
 	}
 	if site == nil || site.Parent == nil {
 		return
@@ -29,12 +35,19 @@ func (b *irBuilder) contextualObject(n *ast.Node, row *irNode) {
 			return
 		}
 	case ast.KindCallExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression:
+	case ast.KindArrowFunction:
+		if parent.Type() == nil && b.c.GetContextualType(parent, checker.ContextFlagsNone) == nil {
+			return
+		}
 	case ast.KindReturnStatement:
 		owner := parent.Parent
-		for owner != nil && owner.Kind != ast.KindFunctionDeclaration {
+		for owner != nil && owner.Kind != ast.KindFunctionDeclaration && owner.Kind != ast.KindFunctionExpression && owner.Kind != ast.KindArrowFunction {
 			owner = owner.Parent
 		}
-		if owner == nil || owner.Type() == nil {
+		if owner == nil {
+			return
+		}
+		if owner.Type() == nil && (owner.Kind == ast.KindFunctionDeclaration || b.c.GetContextualType(owner, checker.ContextFlagsNone) == nil) {
 			return
 		}
 	default:
@@ -47,6 +60,14 @@ func (b *irBuilder) contextualObject(n *ast.Node, row *irNode) {
 	target := b.typ(context)
 	if b.types[target-1].kind != 6 {
 		return
+	}
+	for property := row.children; property != 0; property = b.nodes[property-1].next {
+		if b.nodes[property-1].kind == 35 {
+			// A spread result keeps presence separately, including missing
+			// contextual optional properties and additional runtime keys.
+			row.typ = target
+			return
+		}
 	}
 
 	present := map[int]bool{}

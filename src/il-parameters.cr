@@ -99,7 +99,7 @@ bool il_flat_parameter_call(NodeId entry, const Compiler& c, IlBackend& b) {
     if (!get_node(pattern,c).constant) { return il_flat_rest_call(entry,pattern,symbol,c,b); }
     if (call.children==0) { return false; }
     Node literal=get_node(call.children,c);
-    if (literal.kind!=NodeKind::Object || literal.next!=0) { return false; }
+    if (literal.kind!=NodeKind::Object || il_has_object_spread(call.children,c) || literal.next!=0) { return false; }
     NodeId property=literal.children;int count=0;
     while (property!=0) { if (++count>16) { return false; }property=get_node(property,c).next; }
     Vector<int> names=Vector<int>::create();Vector<int> slots=Vector<int>::create();Vector<int> types=Vector<int>::create();

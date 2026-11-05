@@ -345,7 +345,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.constant = 1
 		row.typ = b.typ(b.c.GetUndefinedType())
-	case ast.KindSpreadElement:
+	case ast.KindSpreadElement, ast.KindSpreadAssignment:
 		id = b.node(35, n, "...")
 		row = b.nodes[id-1]
 		row.left = b.lower(n.Expression())
@@ -377,6 +377,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.left = b.lower(expr.Expression)
 		row.right = b.lower(expr.ArgumentExpression)
 	case ast.KindPropertyAssignment, ast.KindShorthandPropertyAssignment:
+		if n.Kind == ast.KindPropertyAssignment && n.Name().Kind != ast.KindComputedPropertyName && n.Name().Text() == "__proto__" {
+			b.unsupported(n)
+		}
 		id = b.node(5, n, n.Name().Text())
 		row = b.nodes[id-1]
 		row.name = b.text(n.Name().Text())

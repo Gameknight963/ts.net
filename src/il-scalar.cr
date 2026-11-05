@@ -11,7 +11,7 @@ NodeId scalar_owner(NodeId entry, const Vector<int>& parents, const Compiler& c)
 
 bool scalar_literal(NodeId entry, const Compiler& c) {
     Node n=get_node(entry,c);
-    if (n.kind!=NodeKind::Object || get_type(n.type,c).kind!=TypeKind::Shape) { return false; }
+    if (n.kind!=NodeKind::Object || il_has_object_spread(entry,c) || get_type(n.type,c).kind!=TypeKind::Shape) { return false; }
     int count=0;FieldId member=get_type(n.type,c).fields;
     while (member!=0) {
         TypeKind kind=get_type(get_field(member,c).type,c).kind;

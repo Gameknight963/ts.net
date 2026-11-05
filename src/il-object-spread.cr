@@ -1,0 +1,142 @@
+import "il-key-layouts.cr";
+
+bool il_has_object_spread(NodeId entry, const Compiler& c) {
+    Node n=get_node(entry,c);if (n.kind!=NodeKind::Object) { return false; }
+    NodeId property=n.children;
+    while (property!=0) { Node p=get_node(property,c);if (p.kind==NodeKind::Spread) { return true; }property=p.next; }
+    return false;
+}
+
+void il_prepare_spreads(const Compiler& c, IlBackend& b) {
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        if (!il_has_object_spread(i,c)) { continue; }
+        TypeId type=get_node(i,c).type;
+        if (get_type(type,c).kind==TypeKind::Shape) { b.spread_types.at_mut(type)=1; }
+        else { b.spread_any_constructor=-1; }
+    }
+}
+
+bool il_same_spread_fields(TypeId source, TypeId target, const Compiler& c) {
+    if (get_type(source,c).kind!=TypeKind::Shape || get_type(target,c).kind!=TypeKind::Shape) { return false; }
+    int count=0;FieldId member=get_type(source,c).fields;
+    while (member!=0) {
+        Field a=get_field(member,c);FieldId found=field(target,a.name,c);
+        if (found==0) { return false; }Field other=get_field(found,c);
+        if (a.type!=other.type || a.optional!=other.optional) { return false; }
+        count++;member=a.next;
+    }
+    member=get_type(target,c).fields;
+    while (member!=0) { count--;member=get_field(member,c).next; }
+    return count==0;
+}
+
+void il_prepare_spread_hints(const Compiler& c, IlBackend& b) {
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        Node n=get_node(i,c);if (n.kind!=NodeKind::Variable || n.left==0) { continue; }
+        Node source=get_node(n.left,c);
+        if (source.kind!=NodeKind::Object || il_has_object_spread(n.left,c) || !il_same_spread_fields(source.type,n.type,c)) { continue; }
+        int klass=b.literal_classes.at(n.left);if (klass==0) { klass=b.classes.at(source.type); }
+        b.spread_source_classes.at_mut(n.symbol)=klass;
+    }
+}
+
+void il_spread_count(int klass, IlBackend& b) {
+    b.begin(b.plan.method0(5,klass,0xc6,-3,"OwnKeyCount"));
+    b.emit(0xfe09,0);b.emit(0x20,0);b.call(RuntimeMember::KeyCountWithFixed);b.op(0x2a);
+}
+
+// Spread objects retain typed fields, with the base dictionary recording which
+// keys actually exist and their insertion order. Missing fields stay undefined.
+void il_spread_shapes(const Compiler& c, IlBackend& b) {
+    for (size_t type=1;type<b.spread_types.count();type++) {
+        if (b.spread_types.at(type)==0) { continue; }
+        Vector<char> name=numbered_name('D',(int)type);int parent=b.classes.at(type);
+        int klass=b.plan.type(name.view(),parent,0x101);b.spread_classes.at_mut(type)=klass;
+        int constructor=b.plan.method0(5,klass,0x1886,-1,".ctor");b.spread_constructors.at_mut(type)=constructor;
+        b.begin(constructor);b.emit(0xfe09,0);b.emit(0x28,b.constructor(type));
+        FieldId member=get_type(type,c).fields;
+        while (member!=0) {
+            Field record=get_field(member,c);b.emit(0xfe09,0);b.empty(record.type,c);b.emit(0x7d,b.field_token(member));member=record.next;
+        }
+        b.op(0x2a);
+        b.begin(b.plan.method1(5,klass,0xc6,-2,-4,"HasOwn"));
+        b.emit(0xfe09,0);b.emit(0xfe09,1);b.call(RuntimeMember::HasOwnBase);b.op(0x2a);
+        b.begin(b.plan.method0(5,klass,0xc6,-5,"OwnKeys"));
+        b.emit(0xfe09,0);b.call(RuntimeMember::OwnKeysBase);b.op(0x2a);
+        il_spread_count(klass,b);
+        b.begin(b.plan.method1(5,klass,0xc6,-1,-4,"MarkPresent"));
+        b.emit(0xfe09,0);b.emit(0xfe09,1);b.call(RuntimeMember::Undefined);b.call(RuntimeMember::DefineOwn);b.op(0x2a);
+        // Convert only after all overwrites, so an intermediate incompatible
+        // value does not fail before a later property replaces it.
+        int finish=b.plan.method0(5,klass,6,-1,"FinishSpread");b.spread_finishes.at_mut(type)=finish;b.begin(finish);
+        member=get_type(type,c).fields;
+        while (member!=0) {
+            Field record=get_field(member,c);int absent=b.label();
+            b.emit(0xfe09,0);il_text(record.name,c,b);b.call(RuntimeMember::HasOwnBase);b.emit(0x39,absent);
+            b.emit(0xfe09,0);b.emit(0xfe09,0);il_text(record.name,c,b);b.call(RuntimeMember::Get);b.from_object(record.type,c);b.emit(0x7d,b.field_token(member));
+            b.emit(0xfe09,0);il_text(record.name,c,b);b.call(RuntimeMember::Undefined);b.call(RuntimeMember::DefineOwn);
+            b.mark(absent);member=record.next;
+        }
+        b.op(0x2a);
+    }
+    if (b.spread_any_constructor!=-1) { return; }
+    int parent=b.ref(RuntimeMember::TsObjectType);int klass=b.plan.type("DAny",parent,0x101);
+    int constructor=b.plan.method0(5,klass,0x1886,-1,".ctor");b.spread_any_constructor=constructor;
+    b.begin(constructor);b.emit(0xfe09,0);b.call(RuntimeMember::Constructor);b.op(0x2a);il_spread_count(klass,b);
+    Vector<FieldId> emitted=Vector<FieldId>::create();TypeId target=c.types;
+    while (target!=0) {
+        if (get_type(target,c).kind==TypeKind::Shape) {
+            int interface_type=b.interface_type(target);b.plan.implements(klass,interface_type);FieldId member=get_type(target,c).fields;
+            while (member!=0) {
+                Field record=get_field(member,c);bool seen=false;
+                for (size_t i=0;i<emitted.count();i++) {
+                    Field previous=get_field(emitted.at(i),c);
+                    if (same(previous.name,record.name,c) && b.type(previous.type,c)==b.type(record.type,c)) { seen=true; }
+                }
+                if (!seen) {
+                    emitted.push(member);int storage=b.type(record.type,c);
+                    Vector<char> get=field_name(record.name,"get_p_",c);Vector<char> set=field_name(record.name,"set_p_",c);
+                    b.begin(b.plan.method0(5,klass,0x1e6,storage,get.view()));
+                    b.emit(0xfe09,0);il_text(record.name,c,b);b.call(RuntimeMember::Get);
+                    if (storage!=-5) { b.from_object(record.type,c); }b.op(0x2a);
+                    b.begin(b.plan.method1(5,klass,0x1e6,-1,storage,set.view()));
+                    b.emit(0xfe09,0);il_text(record.name,c,b);b.emit(0xfe09,1);b.box(record.type,c);b.call(RuntimeMember::Set);b.op(0x26);b.op(0x2a);
+                }
+                member=record.next;
+            }
+        }
+        target=get_type(target,c).next;
+    }
+}
+
+void il_object_spread_expression(NodeId entry, const Compiler& c, IlBackend& b) {
+    Node n=get_node(entry,c);bool typed=get_type(n.type,c).kind==TypeKind::Shape;
+    int constructor=typed ? b.spread_constructors.at(n.type) : b.spread_any_constructor;
+    Node first=get_node(n.children,c);int cached=-1;int done=b.label();
+    // The exact runtime class check keeps wider objects on the copy path.
+    if (first.kind==NodeKind::Spread && first.next==0 && il_same_spread_fields(get_node(first.left,c).type,n.type,c)) {
+        Node source=get_node(first.left,c);il_boxed(first.left,c,b);cached=b.local(-5);b.emit(0xfe0e,cached);
+        int klass=0;
+        if (source.kind==NodeKind::Name) { klass=b.spread_source_classes.at(source.symbol); }
+        if (source.kind==NodeKind::Object && !il_has_object_spread(first.left,c)) { klass=b.literal_classes.at(first.left);if (klass==0) { klass=b.classes.at(source.type); } }
+        int root=b.classes.at(source.type);
+        for (int attempt=0;attempt<2;attempt++) {
+            int candidate=attempt==0 ? klass : root;if (candidate==0 || (attempt==1 && candidate==klass)) { continue; }
+            int generic=b.ref(RuntimeMember::TryCloneSpread);int method=b.plan.specialize(generic,candidate);
+            b.emit(0xfe0c,cached);b.emit(0x28,method);b.op(0x25);b.emit(0x3a,done);b.op(0x26);
+        }
+    }
+    b.emit(0x73,constructor);int destination=b.local(-5);b.emit(0xfe0e,destination);
+    NodeId property=n.children;
+    while (property!=0) {
+        Node p=get_node(property,c);b.emit(0xfe0c,destination);
+        if (p.kind==NodeKind::Spread) { if (cached>=0) { b.emit(0xfe0c,cached); } else { il_boxed(p.left,c,b); }b.call(RuntimeMember::ObjectSpread); }
+        else { il_text(p.name,c,b);il_boxed(p.left,c,b);b.call(RuntimeMember::DefineOwn); }
+        property=p.next;
+    }
+    if (typed) {
+        int klass=b.spread_classes.at(n.type);int finish=b.spread_finishes.at(n.type);
+        b.emit(0xfe0c,destination);b.emit(0x74,klass);b.emit(0x28,finish);
+    }
+    b.emit(0xfe0c,destination);b.mark(done);
+}

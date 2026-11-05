@@ -1,0 +1,38 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+
+public abstract partial class TsObject
+{
+    public void DefineOwn(string key, object value) => (extra ??= new Dictionary<string, object>())[key] = value;
+    public virtual void MarkPresent(string key) { }
+    public object CloneForSpread()
+    {
+        var result = (TsObject)MemberwiseClone();
+        if (extra != null) result.extra = new Dictionary<string, object>(extra);
+        return result;
+    }
+}
+
+public static partial class Js
+{
+    // Only generated data classes with the exact expected layout may be cloned.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    public static object TryCloneSpread<T>(object source) =>
+        source is TsObject value && source.GetType() == typeof(T) ? value.CloneForSpread() : null;
+
+    public static void ObjectSpread(object destination, object source)
+    {
+        var target = (TsObject)destination;
+        if (source == null || ReferenceEquals(source, Undefined)) return;
+        if (source is TsObject value) {
+            var keys = (JsArray)value.OwnKeys();
+            for (int i = 0; i < keys.Length(); i++) {
+                string key = (string)keys.Get(i.ToString(CultureInfo.InvariantCulture));
+                if (value.HasOwn(key)) target.DefineOwn(key, value.Get(key));
+            }
+        } else if (source is string text) {
+            for (int i = 0; i < text.Length; i++) target.DefineOwn(i.ToString(CultureInfo.InvariantCulture), text[i].ToString());
+        }
+    }
+}

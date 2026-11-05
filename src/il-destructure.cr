@@ -56,6 +56,7 @@ bool il_literal_bindings(NodeId entry, const Compiler& c, IlBackend& b) {
 bool il_literal_object_bindings(NodeId entry, const Compiler& c, IlBackend& b) {
     Node pattern=get_node(entry,c);Node literal=get_node(pattern.left,c);
     if (literal.kind!=NodeKind::Object) { return false; }
+    if (il_has_object_spread(pattern.left,c)) { return false; }
     NodeId child=pattern.children;
     while (child!=0) {
         Node binding=get_node(child,c);

@@ -1,4 +1,4 @@
-import "il-key-layouts.cr";
+import "il-object-spread.cr";
 
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
     if (get_node(entry,c).kind==NodeKind::Array && (get_type(target,c).kind==TypeKind::Array || get_type(target,c).kind==TypeKind::Any || get_type(target,c).kind==TypeKind::Unknown)) {
@@ -336,6 +336,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         else { if (il_direct_index(entry,c,b)) { il_integer(n.right,c,b);b.call(RuntimeMember::ArrayIndexGetAt); } else { il_boxed(n.right,c,b);b.call(RuntimeMember::IndexGet); }b.from_object(n.type,c); }
     }
     else if (n.kind == NodeKind::Object) {
+        if (il_has_object_spread(entry,c)) { il_object_spread_expression(entry,c,b);return; }
         int constructor=b.literal_constructors.at(entry);b.emit(0x73,constructor>0 ? constructor : b.constructor(n.type));
         NodeId property=n.children;
         while (property != 0) {
@@ -591,7 +592,7 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
 
 void emit_assembly(const char[]& path, Compiler& c) {
     TypeId numeric_array=il_numeric_array_type(c);
-    IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_prove_reversible_arrays(c,&b);il_choose_tagged_arrays(c,&b);il_runtime(&b);il_prepare_key_layouts(c,&b);il_shapes(c,&b);il_key_layouts(c,&b);
+    IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_prove_reversible_arrays(c,&b);il_choose_tagged_arrays(c,&b);il_runtime(&b);il_prepare_spreads(c,&b);il_prepare_key_layouts(c,&b);il_shapes(c,&b);il_key_layouts(c,&b);il_spread_shapes(c,&b);il_prepare_spread_hints(c,&b);
     int object_type=b.ref(RuntimeMember::ObjectType);
     int program=b.plan.type("Program",object_type,0x181);
     il_prepare_closures(c,&b);il_prepare_function_values(program,c,&b);

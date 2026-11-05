@@ -1,6 +1,9 @@
 package main
 
-import "github.com/microsoft/typescript-go/internal/ast"
+import (
+	"github.com/microsoft/typescript-go/internal/ast"
+	"github.com/microsoft/typescript-go/internal/checker"
+)
 
 func (b *irBuilder) functionValue(n *ast.Node) int {
 	if ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync != 0 {
@@ -29,6 +32,13 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 	}
 	value := b.node(38, n, "function")
 	typ := b.typ(b.c.GetReturnTypeOfSignature(b.c.GetSignatureFromDeclaration(n)))
+	if n.Type() == nil && n.Kind != ast.KindFunctionDeclaration {
+		if context := b.c.GetContextualType(n, checker.ContextFlagsNone); context != nil {
+			if signatures := b.c.GetSignaturesOfType(context, checker.SignatureKindCall); len(signatures) == 1 {
+				typ = b.typ(b.c.GetReturnTypeOfSignature(signatures[0]))
+			}
+		}
+	}
 	symbol := 0
 	if n.Name() != nil && n.Kind != ast.KindFunctionDeclaration {
 		symbol = b.symbol(n.Name())

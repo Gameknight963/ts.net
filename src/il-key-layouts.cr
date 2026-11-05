@@ -4,7 +4,7 @@ import "il-globals.cr";
 // literal. Keep key order in a shared generated subclass, not in each object.
 void il_prepare_key_layouts(const Compiler& c, IlBackend& b) {
     for (size_t i=1;i<=c.node_store.count();i++) {
-        Node n=get_node(i,c);if (n.kind!=NodeKind::Object || get_type(n.type,c).kind!=TypeKind::Shape) { continue; }
+        Node n=get_node(i,c);if (n.kind!=NodeKind::Object || get_type(n.type,c).kind!=TypeKind::Shape || il_has_object_spread(i,c)) { continue; }
         FieldId member=get_type(n.type,c).fields;NodeId property=n.children;bool different=false;
         while (member!=0 && property!=0) {
             Node p=get_node(property,c);
@@ -25,12 +25,12 @@ void il_key_layouts(const Compiler& c, IlBackend& b) {
             Node previous=get_node((NodeId)templates.at(j),c);if (previous.type!=n.type) { continue; }
             NodeId left=n.children;NodeId right=previous.children;
             while (left!=0 && right!=0 && get_node(left,c).name==get_node(right,c).name) { left=get_node(left,c).next;right=get_node(right,c).next; }
-            if (left==0 && right==0) { shared=b.literal_constructors.at((size_t)templates.at(j));break; }
+            if (left==0 && right==0) { shared=b.literal_constructors.at((size_t)templates.at(j));int shared_class=b.literal_classes.at((size_t)templates.at(j));b.literal_classes.at_mut(i)=shared_class;break; }
         }
         if (shared!=0) { b.literal_constructors.at_mut(i)=shared;continue; }
         templates.push((int)i);Vector<char> name=numbered_name('K',(int)i);int parent=b.classes.at(n.type);
         int type=b.plan.type(name.view(),parent,0x101);int constructor=b.plan.method0(5,type,0x1886,-1,".ctor");
-        b.literal_constructors.at_mut(i)=constructor;b.begin(constructor);b.emit(0xfe09,0);b.emit(0x28,b.constructor(n.type));b.op(0x2a);
+        b.literal_classes.at_mut(i)=type;b.literal_constructors.at_mut(i)=constructor;b.begin(constructor);b.emit(0xfe09,0);b.emit(0x28,b.constructor(n.type));b.op(0x2a);
         b.begin(b.plan.method0(5,type,0xc6,-5,"OwnKeys"));b.emit(0xfe09,0);
         int count=0;NodeId child=n.children;while (child!=0) { count++;child=get_node(child,c).next; }
         b.emit(0x20,count);b.emit(0x8d,b.ref(RuntimeMember::ObjectType));int index=0;child=n.children;
