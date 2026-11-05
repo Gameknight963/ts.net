@@ -442,11 +442,12 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		}
 		b.symbols[row.symbol-1].typ = row.typ
 		if n.Initializer() == nil && n.Kind == ast.KindVariableDeclaration {
-			if b.types[row.typ-1].kind != 4 && b.types[row.typ-1].kind != 0 && b.types[row.typ-1].kind != 2 {
+			if b.types[row.typ-1].kind == 3 {
 				b.unsupported(n)
 			}
 			row.left = b.node(20, n, "undefined")
 			b.nodes[row.left-1].typ = b.typ(b.c.GetUndefinedType())
+			b.nodes[row.left-1].constant = 1
 		}
 		if ast.GetCombinedNodeFlags(n)&ast.NodeFlagsConst != 0 {
 			row.constant = 1
@@ -551,6 +552,27 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		b.beginControl(n, id, true)
 		row.fourth = b.lower(s.Statement)
 		b.endControl()
+	case ast.KindForOfStatement:
+		s := n.AsForInOrOfStatement()
+		if s.AwaitModifier != nil {
+			b.unsupported(n)
+		}
+		id = b.node(34, n, "of")
+		row = b.nodes[id-1]
+		if s.Initializer.Kind == ast.KindVariableDeclarationList {
+			flags := ast.GetCombinedNodeFlags(s.Initializer)
+			if flags&ast.NodeFlagsUsing != 0 {
+				b.unsupported(n)
+			}
+			if flags&ast.NodeFlagsBlockScoped != 0 {
+				row.constant = 1
+			}
+		}
+		row.left = b.lower(s.Initializer)
+		row.right = b.lower(s.Expression)
+		b.beginControl(n, id, true)
+		row.fourth = b.lower(s.Statement)
+		b.endControl()
 	case ast.KindExpressionStatement:
 		id = b.node(18, n, ";")
 		row = b.nodes[id-1]
@@ -629,7 +651,7 @@ func exportIR(s *session) (result []byte, err error) {
 	}
 	var data bytes.Buffer
 	put := func(v int) { _ = binary.Write(&data, binary.LittleEndian, int32(v)) }
-	put(0x33524954)
+	put(0x34524954)
 	put(len(b.texts))
 	for _, text := range b.texts {
 		put(len(text))

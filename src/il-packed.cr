@@ -13,7 +13,7 @@ SymbolId il_packed_loop(NodeId entry, SymbolId counter, const Compiler& c, const
         Node n=get_node(i,c);
         if (!il_inside(i,body,b)) { continue; }
         // A call or nested loop can invalidate a buffer or its range proof.
-        if (n.kind==NodeKind::Call || n.kind==NodeKind::Function || n.kind==NodeKind::For || n.kind==NodeKind::While || n.kind==NodeKind::Do) { return 0; }
+        if (n.kind==NodeKind::Call || n.kind==NodeKind::Function || n.kind==NodeKind::For || n.kind==NodeKind::ForOf || n.kind==NodeKind::While || n.kind==NodeKind::Do) { return 0; }
         if (n.kind==NodeKind::Index) {
             Node receiver=get_node(n.left,c);Node index=get_node(n.right,c);
             if (receiver.kind!=NodeKind::Name || get_type(receiver.type,c).kind!=TypeKind::Array ||

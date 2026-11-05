@@ -5,7 +5,8 @@ enum class RuntimeMember {
     Constructor, Get, Set, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
-    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber, Count
+    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -44,6 +45,7 @@ struct IlBackend {
     Vector<int> nonnegative_ints;
     Vector<int> node_parents;
     Vector<int> packed_arrays;
+    Vector<int> iteration_vars;
     Vector<int> scalar_roots;
     Vector<ScalarField> scalar_fields;
     Vector<int> breaks;
@@ -63,6 +65,7 @@ struct IlBackend {
             .numeric_slots=zero_ids(symbols),.numeric_methods=zero_ids(symbols),.written_symbols=zero_ids(symbols),
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
             .packed_arrays=zero_ids(symbols),
+            .iteration_vars=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
             .method=0, .local_count=0, .label_count=0,.loop_versions=0};
@@ -209,6 +212,13 @@ void il_prove_locals(const Compiler& c, IlBackend& b) {
     }
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
+        if (n.kind==NodeKind::ForOf) {
+            Node target=get_node(n.left,c);
+            if (target.kind==NodeKind::Block) { target=get_node(target.children,c); }
+            if (target.kind==NodeKind::Variable || target.kind==NodeKind::Name) {
+                b.raw_slots.at_mut(target.symbol)=0;b.written_symbols.at_mut(target.symbol)=1;
+            }
+        }
         if (n.kind==NodeKind::Assign || n.kind==NodeKind::Update) {
             Node target=get_node(n.left,c);
             if (target.kind==NodeKind::Name) {
@@ -271,6 +281,10 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::ArrayTryPacked,b.plan.method2(6,js,0,-12,-5,-3,"ArrayTryPacked"));
     b.ref_set(RuntimeMember::ArrayReservePushes,b.plan.method2(6,js,0,-1,-5,-3,"ArrayReservePushes"));
     b.ref_set(RuntimeMember::CanonicalNumber,b.plan.method1(6,js,0,-3,-3,"CanonicalNumber"));
+    b.ref_set(RuntimeMember::ForOfLength,b.plan.method1(6,js,0,-3,-5,"ForOfLength"));
+    b.ref_set(RuntimeMember::ForOfValue,b.plan.method2(6,js,0,-5,-5,-6,"ForOfValue"));
+    b.ref_set(RuntimeMember::ForOfNumber,b.plan.method2(6,js,0,-10,-5,-6,"ForOfNumber"));
+    b.ref_set(RuntimeMember::ForOfStep,b.plan.method2(6,js,0,-6,-5,-6,"ForOfStep"));
     b.ref_set(RuntimeMember::EqualBooleans, b.plan.method2(6, js, 0, -2, -11, -11, "EqualBooleans"));
     b.ref_set(RuntimeMember::Number, b.plan.method1(6, js, 0, -3, -5, "Number"));
     b.ref_set(RuntimeMember::Boolean, b.plan.method1(6, js, 0, -2, -5, "Boolean"));

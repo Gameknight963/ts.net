@@ -1,4 +1,4 @@
-import "il-arrays.cr";
+import "il-iteration.cr";
 
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
     if (get_node(entry,c).kind==NodeKind::Array && get_type(target,c).kind==TypeKind::Array) {
@@ -333,6 +333,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             b.call(get_type(n.type,c).kind==TypeKind::Boolean ? RuntimeMember::WrapBoolean : RuntimeMember::WrapNumber);
         }
     }
+    else { fail(n.token,"unsupported lowered expression",c); }
 }
 
 void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend& b) {
@@ -364,6 +365,11 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
         NodeId child=n.children;
         while (child != 0) { il_statement(child,return_type,c,b); child=get_node(child,c).next; }
     } else if (n.kind == NodeKind::Variable) {
+        if (b.iteration_vars.at(n.symbol)!=0) {
+            Node initial=get_node(n.left,c);
+            if (!(initial.kind==NodeKind::Undefined && initial.constant)) { il_as(n.left,n.type,c,b);b.store(n.symbol); }
+            return;
+        }
         SymbolId root=(SymbolId)b.scalar_roots.at(n.symbol);
         if (root!=0) {
             if (root==n.symbol) { il_scalar_initialize(entry,c,b); }
@@ -383,9 +389,11 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
         int alternate=b.label(); int done=b.label();
         il_condition(n.left,c,b); b.emit(0x39,alternate); il_statement(n.right,return_type,c,b); b.emit(0x38,done);
         b.mark(alternate); if (n.third != 0) { il_statement(n.third,return_type,c,b); } b.mark(done);
+    } else if (n.kind==NodeKind::ForOf) {
+        il_for_of(entry,return_type,c,b);
     } else if (n.kind == NodeKind::While || n.kind == NodeKind::For || n.kind==NodeKind::Do) {
         il_loop(entry,return_type,c,b);
-    }
+    } else { fail(n.token,"unsupported lowered statement",c); }
 }
 
 void emit_assembly(const char[]& path, const Compiler& c) {
@@ -428,12 +436,13 @@ void emit_assembly(const char[]& path, const Compiler& c) {
             }
             parameter=p.next;
         }
+        il_prepare_iteration_vars(function,c,&b);
         il_statement(n.left,n.type,c,&b);
         if (get_type(n.type,c).kind != TypeKind::Void) { b.empty(n.type,c); }
         b.op(0x2a);
         function=n.next;
     }
-    b.begin(main); NodeId statement=c.statements;
+    b.begin(main);il_prepare_iteration_vars(0,c,&b); NodeId statement=c.statements;
     while (statement != 0) { il_statement(statement,0,c,&b); statement=get_node(statement,c).next; }
     b.op(0x2a);
     b.begin(entry); b.op(0x14); b.emit(0xfe06,main); b.emit(0x73,b.ref(RuntimeMember::ActionConstructor)); b.call(RuntimeMember::Run); b.op(0x2a);

@@ -52,7 +52,8 @@ enum class NodeKind {
     Nullish,
     Sequence,
     Array,
-    Index
+    Index,
+    ForOf
 };
 struct Token {
     TokenKind kind;

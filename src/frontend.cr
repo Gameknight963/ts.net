@@ -35,7 +35,7 @@ void import_frontend(const char[]& path, Compiler& c) {
     if (snapshot.code()!=0) { print(snapshot.view());exit(1); }
     session.close();
     IrReader r=IrReader::create(snapshot.view());
-    if (r.integer()!=0x33524954) { print("tsnetc: unsupported frontend IR version");exit(1); }
+    if (r.integer()!=0x34524954) { print("tsnetc: unsupported frontend IR version");exit(1); }
     size_t count=r.id();
     for (size_t i=0;i<count;i++) { r.text(c); }
     count=r.id();c.next_type=(int)count;c.types=count==0 ? 0 : 1;

@@ -105,6 +105,7 @@ public class JsArray : TsObject
         return value;
     }
     public object GetIndex(object key) => Get(Js.Text(key));
+    public object ElementAt(uint index) => Read(index);
     public void SetIndex(object key, object value) => Set(Js.Text(key), value);
     public double PushMany(object[] items)
     {
