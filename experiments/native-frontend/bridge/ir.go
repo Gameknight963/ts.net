@@ -427,7 +427,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.children = b.list(declarations)
 	case ast.KindVariableDeclaration, ast.KindParameter:
-		if n.Kind == ast.KindVariableDeclaration && n.Name().Kind == ast.KindArrayBindingPattern {
+		if n.Kind == ast.KindVariableDeclaration && (n.Name().Kind == ast.KindArrayBindingPattern || n.Name().Kind == ast.KindObjectBindingPattern) {
 			id = b.lower(n.Name())
 			initializer := b.lower(n.Initializer())
 			b.nodes[id-1].left = initializer
@@ -463,10 +463,13 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		if ast.GetCombinedNodeFlags(n)&ast.NodeFlagsConst != 0 {
 			row.constant = 1
 		}
-	case ast.KindArrayBindingPattern:
+	case ast.KindArrayBindingPattern, ast.KindObjectBindingPattern:
 		id = b.node(36, n, "[")
 		row = b.nodes[id-1]
 		row.typ = b.typ(b.c.GetTypeAtLocation(n))
+		if n.Kind == ast.KindObjectBindingPattern {
+			row.constant = 1
+		}
 		row.children = b.list(n.Elements())
 	case ast.KindBindingElement:
 		if n.Name() == nil {
@@ -485,13 +488,28 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		if n.Name().Kind == ast.KindIdentifier {
 			row.symbol = b.symbol(n.Name())
 			b.symbols[row.symbol-1].typ = row.typ
-		} else if n.Name().Kind == ast.KindArrayBindingPattern {
+		} else if n.Name().Kind == ast.KindArrayBindingPattern || n.Name().Kind == ast.KindObjectBindingPattern {
 			row.right = b.lower(n.Name())
 		} else {
 			b.unsupported(n)
 		}
 		if n.AsBindingElement().DotDotDotToken != nil {
+			if n.Parent.Kind == ast.KindObjectBindingPattern {
+				b.unsupported(n)
+			}
 			row.constant = 1
+		}
+		if n.Parent.Kind == ast.KindObjectBindingPattern {
+			key := n.AsBindingElement().PropertyName
+			if key == nil {
+				key = n.Name()
+			}
+			if key.Kind == ast.KindComputedPropertyName {
+				row.third = b.lower(key.Expression())
+			} else {
+				row.third = b.node(1, key, key.Text())
+				b.nodes[row.third-1].typ = b.typ(b.c.GetStringType())
+			}
 		}
 	case ast.KindReturnStatement:
 		id = b.node(14, n, "return")

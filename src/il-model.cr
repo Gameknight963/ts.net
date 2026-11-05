@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -305,6 +305,7 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::Undefined, b.plan.method0(6, js, 0, -5, "GetUndefined"));
     b.ref_set(RuntimeMember::IsUndefined,b.plan.method1(6,js,0,-2,-5,"IsUndefined"));
     b.ref_set(RuntimeMember::IsNullish,b.plan.method1(6,js,0,-2,-5,"IsNullish"));
+    b.ref_set(RuntimeMember::RequireObject,b.plan.method1(6,js,0,-1,-5,"RequireObject"));
     b.ref_set(RuntimeMember::TypeOf, b.plan.method1(6, js, 0, -4, -5, "TypeOf"));
     b.ref_set(RuntimeMember::Text, b.plan.method1(6, js, 0, -4, -5, "Text"));
     b.ref_set(RuntimeMember::DynamicGet, b.plan.method2(6, js, 0, -5, -5, -4, "Get"));
@@ -337,7 +338,7 @@ void il_optional_members(TypeId type, int klass, const Compiler& c, IlBackend& b
                 Field record=get_field(member,c);bool seen=false;
                 for (size_t i=0;i<emitted.count();i++) {
                     Field previous=get_field(emitted.at(i),c);
-                    if (previous.type==record.type && same(previous.name,record.name,c)) { seen=true; }
+                    if (b.type(previous.type,c)==b.type(record.type,c) && same(previous.name,record.name,c)) { seen=true; }
                 }
                 if (field(type,record.name,c)==0 && record.optional && !seen) {
                     emitted.push(member);int value_type=b.type(record.type,c);

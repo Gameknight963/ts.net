@@ -32,6 +32,10 @@ public static class Js
     public static object GetUndefined() => Undefined;
     public static bool IsUndefined(object value) => ReferenceEquals(value, Undefined);
     public static bool IsNullish(object value) => value == null || ReferenceEquals(value, Undefined);
+    public static void RequireObject(object value)
+    {
+        if (IsNullish(value)) throw new InvalidOperationException("Cannot destructure null or undefined");
+    }
     public static string TypeOf(object value) => value switch
     {
         null => "object",
