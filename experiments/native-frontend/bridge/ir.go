@@ -297,6 +297,15 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindTrueKeyword, ast.KindFalseKeyword:
 		id = b.node(2, n, map[bool]string{true: "true", false: "false"}[n.Kind == ast.KindTrueKeyword])
 	case ast.KindIdentifier:
+		if (n.Text() == "NaN" || n.Text() == "Infinity") && b.isBuiltinIdentifier(n) {
+			// These globals are numbers, not uninitialized program bindings.
+			// The numeric ABI accepts C's NaN/Infinity spellings unchanged.
+			if identifierWrite(n) {
+				b.unsupported(n)
+			}
+			id = b.node(0, n, n.Text())
+			break
+		}
 		if b.c.GetSymbolAtLocation(n) == b.c.GetUndefinedSymbol() {
 			id = b.node(20, n, "undefined")
 			break
