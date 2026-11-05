@@ -504,6 +504,11 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.children = b.list(declarations)
 	case ast.KindVariableDeclaration, ast.KindParameter:
+		if n.Kind == ast.KindVariableDeclaration {
+			if result, ok := b.numberPredicateBindings(n); ok {
+				return result
+			}
+		}
 		if n.Kind == ast.KindVariableDeclaration && (n.Name().Kind == ast.KindArrayBindingPattern || n.Name().Kind == ast.KindObjectBindingPattern) {
 			id = b.lower(n.Name())
 			initializer := b.lower(n.Initializer())

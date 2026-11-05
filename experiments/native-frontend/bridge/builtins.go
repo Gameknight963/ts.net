@@ -71,6 +71,10 @@ func (b *irBuilder) numberPredicate(n *ast.Node) int {
 	if owner.Kind != ast.KindIdentifier || owner.Text() != "Number" || !b.isBuiltinIdentifier(owner) {
 		return -1
 	}
+	return numberPredicateName(name)
+}
+
+func numberPredicateName(name string) int {
 	switch name {
 	case "isNaN":
 		return 0
@@ -82,4 +86,76 @@ func (b *irBuilder) numberPredicate(n *ast.Node) int {
 		return 3
 	}
 	return -1
+}
+
+// A declaration from the unchanged built-in Number object can use its cached
+// functions directly. Keep ordinary destructuring for shadowed Number bindings.
+func (b *irBuilder) numberPredicateBindings(n *ast.Node) (int, bool) {
+	if n.Name().Kind != ast.KindObjectBindingPattern || n.Initializer() == nil {
+		return 0, false
+	}
+	source := n.Initializer()
+	for source.Kind == ast.KindParenthesizedExpression {
+		source = source.Expression()
+	}
+	if source.Kind != ast.KindIdentifier || source.Text() != "Number" || !b.isBuiltinIdentifier(source) {
+		return 0, false
+	}
+	block := b.node(12, n, "Number bindings")
+	first, last := 0, 0
+	for _, element := range n.Name().Elements() {
+		binding := element.AsBindingElement()
+		if binding.DotDotDotToken != nil {
+			b.unsupported(element)
+		}
+		key := binding.PropertyName
+		if key == nil {
+			key = element.Name()
+		}
+		if key.Kind == ast.KindComputedPropertyName {
+			key = key.Expression()
+			for key.Kind == ast.KindParenthesizedExpression {
+				key = key.Expression()
+			}
+			if key.Kind != ast.KindStringLiteral && key.Kind != ast.KindNoSubstitutionTemplateLiteral {
+				b.unsupported(key)
+			}
+		}
+		mode := numberPredicateName(key.Text())
+		if mode < 0 {
+			b.unsupported(key)
+		}
+		value := b.node(43+mode, element, "number predicate function")
+		b.nodes[value-1].typ = b.typ(b.c.GetAnyType())
+		item := 0
+		if element.Name().Kind == ast.KindIdentifier {
+			item = b.node(13, element, element.Name().Text())
+			row := b.nodes[item-1]
+			row.name = b.text(element.Name().Text())
+			row.symbol = b.symbol(element.Name())
+			row.typ = b.typ(b.c.GetTypeAtLocation(element.Name()))
+			row.left = value
+			if ast.GetCombinedNodeFlags(n)&ast.NodeFlagsConst != 0 {
+				row.constant = 1
+			}
+			if ast.GetCombinedNodeFlags(n)&ast.NodeFlagsBlockScoped == 0 {
+				row.fourth = b.node(1, n, "var")
+				b.nodes[row.fourth-1].typ = b.typ(b.c.GetStringType())
+			}
+			b.symbols[row.symbol-1].typ = row.typ
+			b.nodes[item-1] = row
+		} else {
+			item = b.lower(element.Name())
+			b.nodes[item-1].left = value
+		}
+		// These methods are defined, so binding defaults must not execute.
+		if first == 0 {
+			first = item
+		} else {
+			b.nodes[last-1].next = item
+		}
+		last = item
+	}
+	b.nodes[block-1].children = first
+	return block, true
 }
