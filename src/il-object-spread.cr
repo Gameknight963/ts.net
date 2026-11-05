@@ -140,3 +140,80 @@ void il_object_spread_expression(NodeId entry, const Compiler& c, IlBackend& b) 
     }
     b.emit(0xfe0c,destination);b.mark(done);
 }
+
+// A generated field copy gives the JIT ordinary allocation and stores instead
+// of a runtime-sized MemberwiseClone operation. The caller checks exact type.
+void il_spread_clone(TypeId type, int klass, int constructor, const Compiler& c, IlBackend& b) {
+    b.begin(b.plan.method0(5,klass,0xc6,-5,"CloneForSpread"));
+    b.emit(0x73,constructor);int result=b.local(klass);b.emit(0xfe0e,result);
+    FieldId member=get_type(type,c).fields;
+    while (member!=0) {
+        int token=b.field_token(member);b.emit(0xfe0c,result);b.emit(0xfe09,0);b.emit(0x7b,token);b.emit(0x7d,token);
+        member=get_field(member,c).next;
+    }
+    b.emit(0xfe09,0);b.emit(0xfe0c,result);b.call(RuntimeMember::CopySpreadExtras);
+    b.emit(0xfe0c,result);b.op(0x2a);
+}
+
+void il_spread_clones(const Compiler& c, IlBackend& b) {
+    Vector<int> candidates=Vector<int>::create();
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        if (!il_has_object_spread(i,c)) { continue; }
+        Node literal=get_node(i,c);Node spread=get_node(literal.children,c);Node source=get_node(spread.left,c);
+        if (spread.kind!=NodeKind::Spread || spread.next!=0 || !il_same_spread_fields(source.type,literal.type,c)) { continue; }
+        candidates.push(b.classes.at(source.type));
+        if (source.kind==NodeKind::Name) { candidates.push(b.spread_source_classes.at(source.symbol)); }
+        if (source.kind==NodeKind::Object && !il_has_object_spread(spread.left,c)) {
+            int klass=b.literal_classes.at(spread.left);if (klass==0) { klass=b.classes.at(source.type); }candidates.push(klass);
+        }
+    }
+    if (candidates.count()==0) { return; }
+    for (size_t type=1;type<b.classes.count();type++) {
+        int klass=b.classes.at(type);if (klass==0) { continue; }bool needed=false;
+        for (size_t j=0;j<candidates.count();j++) { if (candidates.at(j)==klass) { needed=true; } }
+        if (!needed) { continue; }
+        int constructor=b.constructor(type);il_spread_clone(type,klass,constructor,c,b);
+    }
+    Vector<int> seen=Vector<int>::create();
+    for (size_t i=1;i<b.literal_classes.count();i++) {
+        int klass=b.literal_classes.at(i);if (klass==0) { continue; }bool needed=false;
+        for (size_t j=0;j<candidates.count();j++) { if (candidates.at(j)==klass) { needed=true; } }
+        if (!needed) { continue; }bool duplicate=false;
+        for (size_t j=0;j<seen.count();j++) { if (seen.at(j)==klass) { duplicate=true; } }
+        if (duplicate) { continue; }seen.push(klass);
+        int constructor=b.literal_constructors.at(i);il_spread_clone(get_node(i,c).type,klass,constructor,c,b);
+    }
+}
+
+void il_scalar_spread_fields(SymbolId symbol, TypeId type, int source, const Compiler& c, IlBackend& b) {
+    FieldId member=get_type(type,c).fields;
+    while (member!=0) {
+        Field f=get_field(member,c);
+        b.emit(0xfe0c,source);b.emit(0x74,b.interface_type(type));b.emit(0x6f,b.getter(member));
+        for (size_t i=0;i<b.scalar_fields.count();i++) {
+            ScalarField storage=b.scalar_fields.at(i);
+            if (storage.root==symbol && same(storage.name,f.name,c)) { b.emit(0xfe0e,storage.slot);break; }
+        }
+        member=f.next;
+    }
+}
+
+void il_scalar_spread_initialize(NodeId entry, const Compiler& c, IlBackend& b) {
+    Node binding=get_node(entry,c);Node literal=get_node(binding.left,c);Node spread=get_node(literal.children,c);Node source=get_node(spread.left,c);
+    il_boxed(spread.left,c,b);int cached=b.local(-5);b.emit(0xfe0e,cached);int done=b.label();
+    int hint=0;if (source.kind==NodeKind::Name) { hint=b.spread_source_classes.at(source.symbol); }
+    if (source.kind==NodeKind::Object && !il_has_object_spread(spread.left,c)) { hint=b.literal_classes.at(spread.left);if (hint==0) { hint=b.classes.at(source.type); } }
+    int root=b.classes.at(source.type);
+    for (int attempt=0;attempt<2;attempt++) {
+        int candidate=attempt==0 ? hint : root;if (candidate==0 || (attempt==1 && candidate==hint)) { continue; }
+        int next=b.label();int generic=b.ref(RuntimeMember::IsExactSpread);int method=b.plan.specialize(generic,candidate);
+        b.emit(0xfe0c,cached);b.emit(0x28,method);b.emit(0x39,next);
+        il_scalar_spread_fields(binding.symbol,literal.type,cached,c,b);b.emit(0x38,done);b.mark(next);
+    }
+    // Unknown layouts still enumerate every key and evaluate any accessors.
+    int constructor=b.spread_constructors.at(literal.type);int klass=b.spread_classes.at(literal.type);int finish=b.spread_finishes.at(literal.type);
+    b.emit(0x73,constructor);int result=b.local(klass);b.emit(0xfe0e,result);
+    b.emit(0xfe0c,result);b.emit(0xfe0c,cached);b.call(RuntimeMember::ObjectSpread);
+    b.emit(0xfe0c,result);b.emit(0x28,finish);
+    il_scalar_spread_fields(binding.symbol,literal.type,result,c,b);b.mark(done);
+}

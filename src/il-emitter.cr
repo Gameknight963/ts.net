@@ -592,7 +592,7 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
 
 void emit_assembly(const char[]& path, Compiler& c) {
     TypeId numeric_array=il_numeric_array_type(c);
-    IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_prove_reversible_arrays(c,&b);il_choose_tagged_arrays(c,&b);il_runtime(&b);il_prepare_spreads(c,&b);il_prepare_key_layouts(c,&b);il_shapes(c,&b);il_key_layouts(c,&b);il_spread_shapes(c,&b);il_prepare_spread_hints(c,&b);
+    IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_prove_reversible_arrays(c,&b);il_choose_tagged_arrays(c,&b);il_runtime(&b);il_prepare_spreads(c,&b);il_prepare_key_layouts(c,&b);il_shapes(c,&b);il_key_layouts(c,&b);il_spread_shapes(c,&b);il_prepare_spread_hints(c,&b);il_spread_clones(c,&b);
     int object_type=b.ref(RuntimeMember::ObjectType);
     int program=b.plan.type("Program",object_type,0x181);
     il_prepare_closures(c,&b);il_prepare_function_values(program,c,&b);

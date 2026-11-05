@@ -6,7 +6,11 @@ public abstract partial class TsObject
 {
     public void DefineOwn(string key, object value) => (extra ??= new Dictionary<string, object>())[key] = value;
     public virtual void MarkPresent(string key) { }
-    public object CloneForSpread()
+    public void CopySpreadExtras(object destination)
+    {
+        if (extra != null) ((TsObject)destination).extra = new Dictionary<string, object>(extra);
+    }
+    public virtual object CloneForSpread()
     {
         var result = (TsObject)MemberwiseClone();
         if (extra != null) result.extra = new Dictionary<string, object>(extra);
@@ -16,6 +20,9 @@ public abstract partial class TsObject
 
 public static partial class Js
 {
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    public static bool IsExactSpread<T>(object source) => source != null && source.GetType() == typeof(T);
+
     // Only generated data classes with the exact expected layout may be cloned.
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
     public static object TryCloneSpread<T>(object source) =>

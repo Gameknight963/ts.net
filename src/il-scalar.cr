@@ -11,7 +11,7 @@ NodeId scalar_owner(NodeId entry, const Vector<int>& parents, const Compiler& c)
 
 bool scalar_literal(NodeId entry, const Compiler& c) {
     Node n=get_node(entry,c);
-    if (n.kind!=NodeKind::Object || il_has_object_spread(entry,c) || get_type(n.type,c).kind!=TypeKind::Shape) { return false; }
+    if (n.kind!=NodeKind::Object || get_type(n.type,c).kind!=TypeKind::Shape) { return false; }
     int count=0;FieldId member=get_type(n.type,c).fields;
     while (member!=0) {
         TypeKind kind=get_type(get_field(member,c).type,c).kind;
@@ -19,6 +19,13 @@ bool scalar_literal(NodeId entry, const Compiler& c) {
         count++;member=get_field(member,c).next;
     }
     if (count==0 || count>8) { return false; }
+    if (il_has_object_spread(entry,c)) {
+        Node spread=get_node(n.children,c);
+        if (spread.kind!=NodeKind::Spread || spread.next!=0 || !il_same_spread_fields(get_node(spread.left,c).type,n.type,c)) { return false; }
+        member=get_type(n.type,c).fields;
+        while (member!=0) { Field f=get_field(member,c);if (f.optional) { return false; }member=f.next; }
+        return true;
+    }
     int properties=0;NodeId property=n.children;
     while (property!=0) {
         if (field(n.type,get_node(property,c).name,c)==0) { return false; }
@@ -97,7 +104,11 @@ void il_prove_scalars(const Compiler& c, IlBackend& b) {
         if (scalar_owner(i,&parents,c)!=scalar_owner(definition,&parents,c)) { invalid.at_mut(root)=1;continue; }
         Node parent=get_node((NodeId)parents.at(i),c);
         if (parent.kind==NodeKind::Variable && parent.left==i && b.scalar_roots.at(parent.symbol)==(int)root) { continue; }
-        if (parent.kind==NodeKind::Call && parent.children==i && get_node(definition,c).constant && scalar_own_call((NodeId)parents.at(i),c)) { continue; }
+        if (parent.kind==NodeKind::Call && parent.children==i && get_node(definition,c).constant && scalar_own_call((NodeId)parents.at(i),c)) {
+            // The source can have a different set of own keys at runtime.
+            // Keep presence queries on a real spread object.
+            if (!il_has_object_spread(get_node(definition,c).left,c)) { continue; }
+        }
         if (parent.kind==NodeKind::Property && parent.left==i) {
             NodeId parent_id=(NodeId)parents.at(i);
             // Literal members share Property's representation with field reads.
@@ -161,6 +172,7 @@ void il_scalar_initialize(NodeId entry, const Compiler& c, IlBackend& b) {
         if (!found) { b.scalar_fields.push((ScalarField){.root=n.symbol,.name=f.name,.type=f.type,.slot=slot}); }
         member=f.next;
     }
+    if (il_has_object_spread(n.left,c)) { il_scalar_spread_initialize(entry,c,b);return; }
     NodeId property=value.children;
     while (property!=0) {
         Node p=get_node(property,c);FieldId f=field(value.type,p.name,c);
