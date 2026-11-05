@@ -414,8 +414,9 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
                 il_as(argument,get_node(parameter,c).type,c,b);
                 argument=get_node(argument,c).next; parameter=get_node(parameter,c).next;
             }
+            // The frontend checks typed arity. Calls through any can omit
+            // required parameters and must pass undefined, as spread calls do.
             while (parameter!=0) {
-                if (!get_node(parameter,c).constant) { fail(n.token,"omitted required argument",c); }
                 Node p=get_node(parameter,c);
                 if (p.third!=0) { il_rest_arguments(0,get_node(p.third,c).type,c,b); }
                 else { b.empty(p.type,c); }
