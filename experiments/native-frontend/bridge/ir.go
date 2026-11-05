@@ -36,6 +36,7 @@ type irBuilder struct {
 	types                 []irType
 	typeIDs               map[*checker.Type]int
 	primitives            map[int]int
+	contextualShapes      map[string]int
 	fields                []irField
 	tokens                []irToken
 	nodes                 []irNode
