@@ -103,6 +103,43 @@ SymbolId il_tag_loop(NodeId entry, SymbolId array, const Compiler& c, const IlBa
     return array;
 }
 
+// Only primitive operations without escaping control flow are eligible.
+// Copy-back must not be bypassed by an observable jump or exception.
+SymbolId il_loop_accumulator(NodeId entry, const Compiler& c, const IlBackend& b) {
+    NodeId body=get_node(entry,c).fourth;SymbolId accumulator=0;
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        if (!il_inside(i,body,b)) { continue; }
+        Node n=get_node(i,c);
+        if (n.kind!=NodeKind::Assign && n.kind!=NodeKind::Update) { continue; }
+        Node target=get_node(n.left,c);
+        if (target.kind==NodeKind::Name && get_type(target.type,c).kind==TypeKind::Number &&
+            b.raw_slot(target.symbol)==0 && b.slots.at(target.symbol)>=0 && b.global_fields.at(target.symbol)==0) {
+            if (accumulator!=0 && accumulator!=target.symbol) { return 0; }
+            accumulator=target.symbol;
+        }
+    }
+    if (accumulator==0) { return 0; }
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        if (!il_inside(i,body,b)) { continue; }
+        Node n=get_node(i,c);
+        if (n.kind!=NodeKind::Block && n.kind!=NodeKind::Expression && n.kind!=NodeKind::If &&
+            n.kind!=NodeKind::Name && n.kind!=NodeKind::Number && n.kind!=NodeKind::Boolean && n.kind!=NodeKind::String &&
+            n.kind!=NodeKind::Undefined && n.kind!=NodeKind::TypeOf && n.kind!=NodeKind::Index &&
+            n.kind!=NodeKind::Binary && n.kind!=NodeKind::Unary && n.kind!=NodeKind::Conditional &&
+            n.kind!=NodeKind::Sequence && n.kind!=NodeKind::Assign && n.kind!=NodeKind::Update) { return 0; }
+        if (n.kind==NodeKind::Name && (b.global_fields.at(n.symbol)!=0 ||
+            (get_type(n.type,c).kind!=TypeKind::Number && get_type(n.type,c).kind!=TypeKind::Boolean && get_type(n.type,c).kind!=TypeKind::Array))) { return 0; }
+        if (n.kind==NodeKind::Binary && get_type(n.type,c).kind!=TypeKind::Number && get_type(n.type,c).kind!=TypeKind::Boolean) { return 0; }
+        if (n.kind==NodeKind::Assign || n.kind==NodeKind::Update) {
+            Node target=get_node(n.left,c);
+            if (target.kind!=NodeKind::Name) { return 0; }
+            if (target.symbol==accumulator && (!il_defined(i,c) ||
+                (n.kind==NodeKind::Assign && get_type(get_node(n.right,c).type,c).kind!=TypeKind::Number))) { return 0; }
+        }
+    }
+    return accumulator;
+}
+
 int il_dense_slot(NodeId entry, const Compiler& c, const IlBackend& b) {
     Node n=get_node(entry,c);
     if (n.kind!=NodeKind::Index || get_node(n.left,c).kind!=NodeKind::Name) { return -1; }

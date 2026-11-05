@@ -65,6 +65,19 @@ void il_loop_code(NodeId entry, TypeId result, SymbolId counter, int bound, cons
     b.emit(0x38,start);b.mark(done);
 }
 
+void il_tagged_loop_code(NodeId entry, TypeId result, SymbolId counter, int bound, const Compiler& c, IlBackend& b) {
+    SymbolId accumulator=il_loop_accumulator(entry,c,b);
+    if (accumulator==0) { il_loop_code(entry,result,counter,bound,c,b);return; }
+    int original=b.slots.at(accumulator);int raw=b.local(-3);int fallback=b.label();int done=b.label();
+    b.load(accumulator);b.call(RuntimeMember::NumberMissing);b.emit(0x3a,fallback);
+    b.load(accumulator);b.call(RuntimeMember::NumberValue);b.emit(0xfe0e,raw);
+    b.slots.at_mut(accumulator)=raw;b.raw_slots.at_mut(accumulator)=-3;
+    il_loop_code(entry,result,counter,bound,c,b);
+    b.emit(0xfe0c,raw);b.call(RuntimeMember::WrapNumber);b.emit(0xfe0e,original);
+    b.slots.at_mut(accumulator)=original;b.raw_slots.at_mut(accumulator)=0;
+    b.emit(0x38,done);b.mark(fallback);il_loop_code(entry,result,counter,bound,c,b);b.mark(done);
+}
+
 void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, const Compiler& c, IlBackend& b) {
     if (counter!=0) {
         SymbolId pushes=il_push_loop(entry,c,b);
@@ -86,7 +99,7 @@ void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, cons
             b.load(array);il_buffer_bound(entry,bound,c,b);b.call(RuntimeMember::ArrayTryTags);b.emit(0xfe0e,tags);
             b.emit(0xfe0c,tags);b.emit(0x39,ordinary);
             b.tag_arrays.at_mut(array)=tags+1;
-            il_loop_code(entry,result,counter,bound,c,b);b.emit(0x38,tagged_done);
+            il_tagged_loop_code(entry,result,counter,bound,c,b);b.emit(0x38,tagged_done);
             b.tag_arrays.at_mut(array)=0;
             b.mark(ordinary);
         }
