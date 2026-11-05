@@ -120,7 +120,9 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
     TextId op=get_token(n.token,c).text;
     int bitwise=il_bitwise_code(op,c);
     bool logical=n.kind==NodeKind::Assign && il_logical_assignment(op,c);int logical_done=-1;TypeId value_type=target.type;
-    if (logical) {
+    {
+        // Writes use the binding's declared storage, even when the read is
+        // narrowed to a number or string by TypeScript's control flow.
         if (target.kind==NodeKind::Name) { value_type=get_symbol(target.symbol,c).type; }
         else if (scalar.slot>=0) { value_type=scalar.type; }
         else {
@@ -129,6 +131,8 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
             else if (target.kind==NodeKind::Index && kind==TypeKind::Array) { value_type=get_type(owner,c).element; }
             else if (target.kind==NodeKind::Property && kind==TypeKind::Shape) { value_type=get_field(field(owner,target.name,c),c).type; }
         }
+    }
+    if (logical) {
         logical_done=b.label();il_load_target(n.left,receiver,index,c,b);b.convert(target.type,value_type,c);b.op(0x25);
         if (is_text(op,&text_nullish_assign,c)) {
             TypeKind kind=get_type(value_type,c).kind;
@@ -150,12 +154,15 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
     } else if (n.kind==NodeKind::Assign && is_text(op,&text_add_assign,c) && get_type(target.type,c).kind==TypeKind::String) {
         il_load_target(n.left,receiver,index,c,b);b.call(RuntimeMember::Text);
         il_boxed(n.right,c,b);b.call(RuntimeMember::Text);b.call(RuntimeMember::Concat);
+    } else if (n.kind==NodeKind::Assign && is_text(op,&text_add_assign,c) && (get_type(target.type,c).kind==TypeKind::Any || get_type(get_node(n.right,c).type,c).kind==TypeKind::Any)) {
+        il_load_target(n.left,receiver,index,c,b);b.box(target.type,c);
+        il_boxed(n.right,c,b);b.call(RuntimeMember::Add);b.from_object(value_type,c);
     } else if (n.kind == NodeKind::Update || !is_text(op,&text_assign,c)) {
         if (target.kind==NodeKind::Name) { il_number(n.left,c,b); }
-        else { il_load_target(n.left,receiver,index,c,b);b.call(RuntimeMember::NumberValue); }
+        else { il_load_target(n.left,receiver,index,c,b);b.call(get_type(target.type,c).kind==TypeKind::Number ? RuntimeMember::NumberValue : RuntimeMember::Number); }
         if (bitwise!=0) { b.call(RuntimeMember::ToInt32); }
         if (n.kind == NodeKind::Update) {
-            previous=b.local(b.type(target.type,c));
+            previous=b.local(-10);
             b.op(0x25);b.call(RuntimeMember::WrapNumber);b.emit(0xfe0e,previous);b.plan.number(b.method,1);
         }
         else { il_number(n.right,c,b);if (bitwise!=0) { b.call(RuntimeMember::ToInt32); } }
@@ -164,10 +171,12 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
             if (is_text(op,&text_increment,c) || is_text(op,&text_add_assign,c)) { b.op(0x58); }
             else if (is_text(op,&text_decrement,c) || is_text(op,&text_subtract_assign,c)) { b.op(0x59); }
             else if (is_text(op,&text_multiply_assign,c)) { b.op(0x5a); }
+            else if (is_text(op,&text_modulo_assign,c)) { b.call(RuntimeMember::Remainder); }
             else { b.op(0x5b); }
             b.call(RuntimeMember::WrapNumber);
         }
-    } else { il_as(n.right,target.type,c,b); }
+        if (b.type(value_type,c)==-5) { b.call(RuntimeMember::BoxNumber); }
+    } else { il_as(n.right,value_type,c,b); }
     int value=b.local(b.type(value_type,c)); b.emit(0xfe0e,value);
     if (target.kind == NodeKind::Name) {
         b.emit(0xfe0c,value);
@@ -199,7 +208,8 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
             b.convert(value_type,get_field(member,c).type,c);b.emit(0x6f,b.setter(member));
         }
     }
-    b.emit(0xfe0c,previous >= 0 && !n.constant ? previous : value);
+    if (previous>=0 && !n.constant) { b.emit(0xfe0c,previous); }
+    else { b.emit(0xfe0c,value);if (!logical) { b.convert(value_type,n.type,c); } }
     if (logical) { b.mark(logical_done);b.convert(value_type,n.type,c); }
 }
 

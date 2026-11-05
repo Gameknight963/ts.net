@@ -208,7 +208,7 @@ func (b *irBuilder) list(nodes []*ast.Node) int {
 
 var operators = map[ast.Kind]string{
 	ast.KindPlusToken: "+", ast.KindMinusToken: "-", ast.KindAsteriskToken: "*", ast.KindSlashToken: "/", ast.KindPercentToken: "%",
-	ast.KindEqualsToken: "=", ast.KindPlusEqualsToken: "+=", ast.KindMinusEqualsToken: "-=", ast.KindAsteriskEqualsToken: "*=", ast.KindSlashEqualsToken: "/=",
+	ast.KindEqualsToken: "=", ast.KindPlusEqualsToken: "+=", ast.KindMinusEqualsToken: "-=", ast.KindAsteriskEqualsToken: "*=", ast.KindSlashEqualsToken: "/=", ast.KindPercentEqualsToken: "%=",
 	ast.KindAmpersandAmpersandEqualsToken: "&&=", ast.KindBarBarEqualsToken: "||=", ast.KindQuestionQuestionEqualsToken: "??=",
 	ast.KindEqualsEqualsEqualsToken: "===", ast.KindExclamationEqualsEqualsToken: "!==", ast.KindLessThanToken: "<", ast.KindGreaterThanToken: ">",
 	ast.KindLessThanEqualsToken: "<=", ast.KindGreaterThanEqualsToken: ">=", ast.KindAmpersandAmpersandToken: "&&", ast.KindBarBarToken: "||",
@@ -379,9 +379,12 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		kind := 7
 		if expr.OperatorToken.Kind >= ast.KindFirstAssignment && expr.OperatorToken.Kind <= ast.KindLastAssignment {
 			kind = 10
-			stringAdd := op == "+=" && b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Left)).Flags()&checker.TypeFlagsStringLike != 0
+			left := b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Left)).Flags()
+			right := b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Right)).Flags()
+			addition := op == "+=" && (left&checker.TypeFlagsStringLike != 0 || (left|right)&checker.TypeFlagsAny != 0)
 			logical := op == "&&=" || op == "||=" || op == "??="
-			if op != "=" && !stringAdd && !logical && (b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Left)).Flags()&checker.TypeFlagsNumberLike == 0 || b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Right)).Flags()&checker.TypeFlagsNumberLike == 0) {
+			numeric := checker.TypeFlagsNumberLike | checker.TypeFlagsAny
+			if op != "=" && !addition && !logical && (left&numeric == 0 || right&numeric == 0) {
 				b.unsupported(n)
 			}
 		}
@@ -396,7 +399,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			b.unsupported(n)
 		}
 		if op == "++" || op == "--" {
-			if b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Operand)).Flags()&checker.TypeFlagsNumberLike == 0 {
+			if b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Operand)).Flags()&(checker.TypeFlagsNumberLike|checker.TypeFlagsAny) == 0 {
 				b.unsupported(n)
 			}
 			id = b.node(11, n, op)
@@ -410,7 +413,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.left = b.lower(expr.Operand)
 	case ast.KindPostfixUnaryExpression:
 		expr := n.AsPostfixUnaryExpression()
-		if b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Operand)).Flags()&checker.TypeFlagsNumberLike == 0 {
+		if b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Operand)).Flags()&(checker.TypeFlagsNumberLike|checker.TypeFlagsAny) == 0 {
 			b.unsupported(n)
 		}
 		id = b.node(11, n, operators[expr.Operator])
@@ -677,6 +680,8 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	if row.kind == 20 {
 		row.typ = b.typ(b.c.GetUndefinedType())
 	}
+	b.preserveDynamicType(n, &row)
+
 	b.nodes[id-1] = row
 	return id
 }

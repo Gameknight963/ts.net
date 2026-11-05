@@ -28,6 +28,7 @@ const char text_add_assign[3] = "+=";
 const char text_subtract_assign[3] = "-=";
 const char text_multiply_assign[3] = "*=";
 const char text_divide_assign[3] = "/=";
+const char text_modulo_assign[3] = "%=";
 const char text_or[3] = "||";
 const char text_and[3] = "&&";
 const char text_strict_equal[4] = "===";
