@@ -24,3 +24,15 @@ function right(): number { effects += 'V'; values[0] = 4; return 2; }
 console.log(receiver()[index()] **= right(), effects, values[0]);
 function square(value: number): number { return value ** 2; }
 console.log(square(7), square(-0), 1 / square(-0));
+
+let exactMismatches = 0;
+for (let base = -9; base <= 9; base++) {
+    let expected = 1;
+    for (let exponent = 0; exponent <= 16; exponent++) {
+        if (base ** exponent !== expected) exactMismatches++;
+        expected *= base;
+    }
+}
+console.log('exact integer powers', exactMismatches);
+console.log('outside guard', 8 ** 17 === 2251799813685248, 1.5 ** 3 === 3.375);
+console.log('extreme bases', 1e-200 ** 2 === 0, 1e200 ** 2 === Infinity);

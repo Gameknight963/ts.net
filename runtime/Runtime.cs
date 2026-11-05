@@ -349,6 +349,25 @@ public static partial class Js
 
     public static double Power(double value, double exponent)
     {
+        int integer = (int)exponent;
+        if ((uint)integer <= 16 && exponent == integer)
+        {
+            if (integer == 0) return 1;
+            if (integer == 1) return value;
+            if (integer == 2) return value * value;
+            // Every intermediate is exact: 8^16 is only 2^48.
+            if (value >= -8 && value <= 8 && value == (int)value)
+            {
+                double result = 1;
+                while (integer != 0)
+                {
+                    if ((integer & 1) != 0) result *= value;
+                    integer >>= 1;
+                    if (integer != 0) value *= value;
+                }
+                return result;
+            }
+        }
         // ECMAScript differs from Math.Pow for unit bases and nonfinite exponents.
         if (double.IsNaN(exponent) || Math.Abs(value) == 1 && double.IsInfinity(exponent)) return double.NaN;
         return Math.Pow(value, exponent);
