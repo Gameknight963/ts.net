@@ -187,7 +187,8 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
         int packed=il_packed_slot(n.left,c,b);
         if (packed>=0) {
             b.emit(0xfe0c,packed);b.emit(0xfe0c,index);b.emit(0xfe0c,value);b.call(RuntimeMember::NumberValue);
-            b.call(RuntimeMember::CanonicalNumber);b.op(0xa1);
+            if (!is_text(op,&text_assign,c) || !il_integer_value(n.right,c,b)) { b.call(RuntimeMember::CanonicalNumber); }
+            b.op(0xa1);
         } else {
             b.emit(0xfe0c,receiver);b.emit(0xfe0c,index);b.emit(0xfe0c,value);
             if (il_direct_array_index(n.left,c,b)) { b.call(RuntimeMember::NumberIndexSetAt); }
