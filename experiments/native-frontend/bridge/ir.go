@@ -680,6 +680,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	if row.kind == 20 {
 		row.typ = b.typ(b.c.GetUndefinedType())
 	}
+	b.contextualObject(n, &row)
 	b.preserveDynamicType(n, &row)
 
 	b.nodes[id-1] = row

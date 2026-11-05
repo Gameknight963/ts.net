@@ -5,6 +5,9 @@ bool fits_nested(TypeId source, TypeId target, Vector<int>& sources, Vector<int>
         return true;
     }
     TypeKind source_kind=get_type(source,c).kind;TypeKind target_kind=get_type(target,c).kind;
+    // Object-backed field views accept typed storage through generated adapters.
+    // Top-level scalar conversions still need to box their values.
+    if ((target_kind==TypeKind::Any || target_kind==TypeKind::Unknown) && source_kind!=TypeKind::Void) { return true; }
     // Array references share the same ABI; element reads retain their checks.
     if (source_kind==TypeKind::Array && target_kind==TypeKind::Array) { return true; }
     if (source_kind != TypeKind::Shape || target_kind != TypeKind::Shape) {

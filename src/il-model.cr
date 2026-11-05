@@ -381,15 +381,25 @@ void il_optional_members(TypeId type, int klass, const Compiler& c, IlBackend& b
                     Field previous=get_field(emitted.at(i),c);
                     if (b.type(previous.type,c)==b.type(record.type,c) && same(previous.name,record.name,c)) { seen=true; }
                 }
-                if (field(type,record.name,c)==0 && record.optional && !seen) {
+                FieldId actual=field(type,record.name,c);
+                bool missing=actual==0 && record.optional;
+                bool adapted=actual!=0 && b.type(get_field(actual,c).type,c)!=b.type(record.type,c);
+                if ((missing || adapted) && !seen) {
                     emitted.push(member);int value_type=b.type(record.type,c);
                     Vector<char> get=field_name(record.name,"get_p_",c);
                     Vector<char> set=field_name(record.name,"set_p_",c);
                     b.begin(b.plan.method0(5,klass,0x1e6,value_type,get.view()));
-                    b.emit(0xfe09,0);il_text(record.name,c,b);b.call(RuntimeMember::Get);b.from_object(record.type,c);b.op(0x2a);
-                    b.begin(b.plan.method1(5,klass,0x1e6,-1,value_type,set.view()));
-                    b.emit(0xfe09,0);il_text(record.name,c,b);b.emit(0xfe09,1);b.box(record.type,c);
-                    b.call(RuntimeMember::Set);b.op(0x26);b.op(0x2a);
+                    if (adapted) {
+                        TypeId original=get_field(actual,c).type;
+                        b.emit(0xfe09,0);b.emit(0x7b,b.field_token(actual));b.convert(original,record.type,c);b.op(0x2a);
+                        b.begin(b.plan.method1(5,klass,0x1e6,-1,value_type,set.view()));
+                        b.emit(0xfe09,0);b.emit(0xfe09,1);b.convert(record.type,original,c);b.emit(0x7d,b.field_token(actual));b.op(0x2a);
+                    } else {
+                        b.emit(0xfe09,0);il_text(record.name,c,b);b.call(RuntimeMember::Get);b.from_object(record.type,c);b.op(0x2a);
+                        b.begin(b.plan.method1(5,klass,0x1e6,-1,value_type,set.view()));
+                        b.emit(0xfe09,0);il_text(record.name,c,b);b.emit(0xfe09,1);b.box(record.type,c);
+                        b.call(RuntimeMember::Set);b.op(0x26);b.op(0x2a);
+                    }
                 }
                 member=record.next;
             }
@@ -457,7 +467,10 @@ void il_shapes(const Compiler& c, IlBackend& b) {
                 b.begin(b.plan.method0(5,klass,0x1e6,value_type,get.view()));
                 b.emit(0xfe09,0); b.emit(0x7b,value); b.op(0x2a);
                 b.begin(b.plan.method1(5,klass,0x1e6,-1,value_type,set.view()));
-                b.emit(0xfe09,0); b.emit(0xfe09,1); b.emit(0x7d,value); b.op(0x2a);
+                b.emit(0xfe09,0); b.emit(0xfe09,1);
+                TypeKind member_kind=get_type(record.type,c).kind;
+                if (member_kind==TypeKind::String || member_kind==TypeKind::Shape || member_kind==TypeKind::Array) { b.from_object(record.type,c); }
+                b.emit(0x7d,value); b.op(0x2a);
                 member=record.next;
             }
             b.begin(b.plan.method1(5,klass,0xc6,-5,-4,"Get"));
