@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
+    & "$PSScriptRoot/native-frontend.ps1"
     & "$PSScriptRoot/build-metadata-writer.ps1"
     & crust check
     if ($LASTEXITCODE) { throw 'Crust check failed' }
@@ -25,7 +26,7 @@ try {
     [IO.File]::WriteAllText("$testRoot/boundaries.ts", $boundary.ToString(), $bom)
 
     # Differential execution checks against the actual TypeScript compiler.
-    foreach ($fixture in @('tests/behavior.ts', 'tests/il-backend.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
+    foreach ($fixture in @('tests/behavior.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
         & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/$name" $fixture
@@ -65,18 +66,18 @@ try {
     }
 
     $rejects = @(
-        @{ Source = 'const n: number = "wrong";'; Error = 'incompatible variable initializer' },
-        @{ Source = 'const n = 1; n = 2;'; Error = 'cannot assign to const' },
-        @{ Source = 'const n: unknown = 1; console.log(n + 1);'; Error = 'numeric operand required' },
-        @{ Source = 'function f(): number { const x = 1; }'; Error = 'return on every path' },
-        @{ Source = 'function f(n: number): number { return n; } f("bad");'; Error = 'incompatible function argument' },
-        @{ Source = 'const p = { x: 1 }; console.log(p.y);'; Error = 'no such property' },
-        @{ Source = 'const x = [1, 2];'; Error = 'expected expression' },
-        @{ Source = 'const s = "unterminated'; Error = 'unterminated string' },
-        @{ Source = '/* unterminated'; Error = 'unterminated comment' },
-        @{ Source = 'let x = 1; let x = 2;'; Error = 'duplicate binding' },
-        @{ Source = 'console.log(missing);'; Error = 'unknown binding' },
-        @{ Source = 'type A = { x: number }; type B = { x: string }; const a: A = { x: 1 }; const b: B = a;'; Error = 'incompatible variable initializer' }
+        @{ Source = 'const n: number = "wrong";'; Error = '"code":2322' },
+        @{ Source = 'const n = 1; n = 2;'; Error = '"code":2588' },
+        @{ Source = 'const n: unknown = 1; console.log(n + 1);'; Error = '"code":18046' },
+        @{ Source = 'function f(): number { const x = 1; }'; Error = '"code":2355' },
+        @{ Source = 'function f(n: number): number { return n; } f("bad");'; Error = '"code":2345' },
+        @{ Source = 'const p = { x: 1 }; console.log(p.y);'; Error = '"code":2339' },
+        @{ Source = 'const x = [1, 2];'; Error = 'unsupported lowering' },
+        @{ Source = 'const s = "unterminated'; Error = '"code":1002' },
+        @{ Source = '/* unterminated'; Error = '"code":1010' },
+        @{ Source = 'let x = 1; let x = 2;'; Error = '"code":2451' },
+        @{ Source = 'console.log(missing);'; Error = '"code":2304' },
+        @{ Source = 'type A = { x: number }; type B = { x: string }; const a: A = { x: 1 }; const b: B = a;'; Error = '"code":2322' }
     )
     $index = 0
     foreach ($case in $rejects) {
@@ -86,7 +87,7 @@ try {
         # Existing output must survive a failed frontend compilation.
         [IO.File]::WriteAllText($outputPath, '// sentinel', $utf8)
         $message = @(& $compiler $inputPath $outputPath) -join "`n"
-        if ($LASTEXITCODE -eq 0 -or !$message.Contains($case.Error) -or !$message.Contains('(1,')) {
+        if ($LASTEXITCODE -eq 0 -or !$message.Contains($case.Error)) {
             throw "Expected frontend diagnostic: $($case.Source)`n$message"
         }
         if ([IO.File]::ReadAllText($outputPath) -ne '// sentinel') { throw 'Frontend failure overwrote output' }

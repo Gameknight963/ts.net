@@ -7,6 +7,7 @@ $manifest = (Get-Content "$root/crust.toml" -Raw).
     Replace('entry = "src/main.cr"', "entry = `"$entry`"").
     Replace('"backend/metadata/link-options.c"', '"../../backend/metadata/link-options.c"').
     Replace('"artifacts/metadata-writer/', '"../../artifacts/metadata-writer/')
+$manifest = $manifest.Replace('"artifacts/native-frontend', '"../../artifacts/native-frontend')
 $manifest | Set-Content "$work/crust.toml"
 $import = '../../src/assembly-plan.cr'
 @"
