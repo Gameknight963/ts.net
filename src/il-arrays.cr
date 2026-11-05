@@ -1,5 +1,28 @@
 import "il-loops.cr";
 
+// Reserve for a stable array shared by the loop, never a fresh array per
+// iteration. Otherwise a capacity hint could turn linear allocation quadratic.
+bool il_push_capacity_hint(NodeId entry, const Compiler& c, const IlBackend& b) {
+    if (b.push_bound<0) { return false; }
+    Node receiver=get_node(get_node(get_node(entry,c).left,c).left,c);
+    if (receiver.kind!=NodeKind::Name || b.written_symbols.at(receiver.symbol)!=0) { return false; }
+    NodeId loop=(NodeId)b.node_parents.at(entry);
+    while (loop!=0 && get_node(loop,c).kind!=NodeKind::For) {
+        NodeKind kind=get_node(loop,c).kind;
+        if (kind==NodeKind::ForOf || kind==NodeKind::While || kind==NodeKind::Do || kind==NodeKind::Function) { return false; }
+        loop=(NodeId)b.node_parents.at(loop);
+    }
+    if (loop==0) { return false; }
+    bool declared=false;
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        Node n=get_node(i,c);
+        if ((n.kind==NodeKind::Variable || n.kind==NodeKind::Binding) && n.symbol==receiver.symbol) {
+            declared=true;if (il_inside(i,loop,b)) { return false; }
+        }
+    }
+    return declared;
+}
+
 bool il_number_array(TypeId type, const Compiler& c) {
     return get_type(type,c).kind==TypeKind::Array && get_type(get_type(type,c).element,c).kind==TypeKind::Number;
 }
@@ -121,7 +144,7 @@ void il_emit_array_call(NodeId entry, const Compiler& c, IlBackend& b) {
         il_as(n.children,get_type(owner,c).element,c,b);b.call(RuntimeMember::NumberPush);
     } else if (n.children!=0 && get_node(n.children,c).next==0) {
         il_boxed(n.children,c,b);
-        if (b.push_bound>=0) { b.emit(0xfe0c,b.push_bound);b.call(RuntimeMember::ArrayPushOneReserved); }
+        if (il_push_capacity_hint(entry,c,b)) { b.emit(0xfe0c,b.push_bound);b.call(RuntimeMember::ArrayPushOneReserved); }
         else { b.call(RuntimeMember::ArrayPushOne); }
     } else {
         int count=0;NodeId argument=n.children;
