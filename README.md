@@ -13,42 +13,42 @@ Building on linux is not supported atm.
 
 ## Current performance
 
-As of [bcf51ee](https://github.com/Gameknight963/ts.net/commit/bcf51eef349af01d91ab5b028afe679cf872c95b):
+As of [f0dc5bc](https://github.com/Gameknight963/ts.net/commit/f0dc5bc47bb8364e7304b198ff27698dbb113048):
 
 Runtime performance:
 
 | Workload | ts.net | Node | Result |
 |---|---:|---:|---|
-| Numeric loop, 20M iterations | 14.38 ms | 74.42 ms | 5.2x faster |
-| Typed-object loop, 500K iterations | 0.36 ms | 0.65 ms | 1.8x faster |
+| Numeric loop, 20M iterations | 14.29 ms | 73.79 ms | 5.2x faster |
+| Typed-object loop, 500K iterations | 0.35 ms | 0.65 ms | 1.8x faster |
 | `any` property loop, 350K iterations | 0.28 ms | 0.43 ms | 1.5x faster |
-| Mixed array, 100K elements and 5 traversals | 0.99 ms | 1.21 ms | 1.2x faster |
-| Numeric `any[]`, 1M iterations | 0.70 ms | 1.66 ms | 2.4x faster |
-| Numeric array, 100K elements and 100 reversals | 1.97 ms | 7.75 ms | 3.9x faster |
-| Mixed array, 100K elements and 100 reversals | 1.02 ms | 7.60 ms | 7.4x faster |
-| Numeric callback, 2M calls (experimental) | 1.40 ms | 0.83 ms | 1.7x slower |
-| Captured numeric callback, 2M calls | 5.17 ms | 5.03 ms | 3% slower |
-| Local function, 2M direct calls | 0.47 ms | 0.83 ms | 1.7x faster |
-| Self-returning function, 2M calls | 4.92 ms | 0.77 ms | 6.4x slower |
-| `Object.keys(value).length`, 100K calls | 0.071 ms | 0.904 ms | 12.8x faster |
-| `Object.keys(value)`, 100K calls and key reads | 1.27 ms | 1.11 ms | 1.1x slower |
-| Local object spread, 100K two-field copies | 0.09 ms | 1.00 ms | 10.6x faster |
-| Object spread, 100K copies stored in an array | 3.06 ms | 2.46 ms | 1.2x slower |
-| Computed keys, 100K objects and reads | 3.78 ms | 25.98 ms | 6.9x faster |
-| `Object.values(value)`, 100K calls and reads | 1.45 ms | 9.51 ms | 6.6x faster |
-| `Object.entries(value)`, 100K calls and reads | 5.49 ms | 16.86 ms | 3.1x faster |
-| Literal squares, 2M iterations | 1.40 ms | 1.41 ms | 1% faster |
-| Varying exponents, 1M iterations | 18.76 ms | 13.68 ms | 1.4x slower |
+| Mixed array, 100K elements and 5 traversals | 0.97 ms | 1.11 ms | 1.1x faster |
+| Numeric `any[]`, 1M iterations | 0.70 ms | 1.64 ms | 2.3x faster |
+| Numeric array, 100K elements and 100 reversals | 1.99 ms | 7.76 ms | 3.9x faster |
+| Mixed array, 100K elements and 100 reversals | 1.01 ms | 7.69 ms | 7.6x faster |
+| Numeric callback, 2M calls (experimental) | 1.37 ms | 0.82 ms | 1.7x slower |
+| Captured numeric callback, 2M calls | 5.10 ms | 4.99 ms | 2% slower |
+| Local function, 2M direct calls | 0.47 ms | 0.82 ms | 1.8x faster |
+| Self-returning function, 2M calls | 4.90 ms | 0.76 ms | 6.4x slower |
+| `Object.keys(value).length`, 100K calls | 0.071 ms | 0.920 ms | 13.0x faster |
+| `Object.keys(value)`, 100K calls and key reads | 1.23 ms | 1.11 ms | 1.1x slower |
+| Local object spread, 100K two-field copies | 0.09 ms | 1.03 ms | 10.9x faster |
+| Object spread, 100K copies stored in an array | 2.98 ms | 2.42 ms | 1.2x slower |
+| Computed keys, 100K objects and reads | 3.76 ms | 26.00 ms | 6.9x faster |
+| `Object.values(value)`, 100K calls and reads | 1.42 ms | 9.39 ms | 6.6x faster |
+| `Object.entries(value)`, 100K calls and reads | 5.27 ms | 16.70 ms | 3.2x faster |
+| Literal squares, 2M iterations | 1.39 ms | 1.41 ms | 1% faster |
+| Small integer bases and varying exponents, 1M iterations | 4.67 ms | 13.84 ms | 3.0x faster |
 
 Compilation times:
 
 | Source | tsnetc | tsc |
 |---|---|---|
-| Small numeric benchmark | 327.71 ms | 323.35 ms |
-| 5,000 variables | 431.11 ms | 373.90 ms |
+| Small numeric benchmark | 326.42 ms | 327.06 ms |
+| 5,000 variables | 436.63 ms | 372.17 ms |
 
-Literal squares are about tied with Node, while varying exponents take 1.4x as long. Object.values and Object.entries remain faster in these tests, but general exponentiation and allocation-heavy workloads need more work.
+Small integer bases with varying exponents now run 3.0x faster than Node in this test; the runtime avoids general power calls when every multiplication is exact. Literal squares remain about tied, and this improvement does not establish a speedup for fractional powers.
 
-Compilation times remain close to Microsoft’s Go-based TypeScript compiler, though the larger source takes about 15% longer.
+Compilation times remain close to Microsoft’s Go-based TypeScript compiler, though the larger source takes about 17% longer.
 
 Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
