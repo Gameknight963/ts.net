@@ -236,11 +236,25 @@ bool il_number_type_test(NodeId entry, bool wrap, const Compiler& c, IlBackend& 
     if (wrap) { b.call(RuntimeMember::WrapBoolean); }return true;
 }
 
+void il_predicate_result(bool wrap, TypeId type, const Compiler& c, IlBackend& b) {
+    if (!wrap) { return; }
+    b.call(RuntimeMember::WrapBoolean);
+    if (get_type(type,c).kind!=TypeKind::Boolean) { b.call(RuntimeMember::BoxBoolean); }
+}
+
 bool il_number_predicate(NodeId entry, bool wrap, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);int mode=(int)n.kind-(int)NodeKind::NumberIsNaN;
+    if (n.kind==NodeKind::Call) {
+        Node callee=get_node(n.left,c);TypeKind result=get_type(n.type,c).kind;
+        if (callee.kind!=NodeKind::Name || (result!=TypeKind::Boolean && result!=TypeKind::Any && result!=TypeKind::Unknown)) { return false; }
+        mode=b.predicate_targets.at(callee.symbol)-1;
+        if (mode<0) { return false; }
+        // Keep initialization checks and the original callee-before-arguments order.
+        il_expression(n.left,c,b);b.op(0x26);
+    }
     if (mode<0 || mode>3) { return false; }
     if (n.children==0) {
-        b.emit(0x20,0);if (wrap) { b.call(RuntimeMember::WrapBoolean); }return true;
+        b.emit(0x20,0);il_predicate_result(wrap,n.type,c,b);return true;
     }
     Node argument=get_node(n.children,c);
     bool numeric=false;
@@ -249,7 +263,7 @@ bool il_number_predicate(NodeId entry, bool wrap, const Compiler& c, IlBackend& 
             // A proven int32 is finite, integral, safe, and never NaN. Retain
             // argument evaluation even when the predicate result is constant.
             il_expression(n.children,c,b);b.op(0x26);b.emit(0x20,mode==0 ? 0 : 1);
-            if (wrap) { b.call(RuntimeMember::WrapBoolean); }return true;
+            il_predicate_result(wrap,n.type,c,b);return true;
         }
         numeric=get_type(argument.type,c).kind==TypeKind::Number;
         if (numeric) { il_expression(n.children,c,b); } else { il_boxed(n.children,c,b); }
@@ -260,7 +274,7 @@ bool il_number_predicate(NodeId entry, bool wrap, const Compiler& c, IlBackend& 
         b.emit(0xfe0c,array);b.emit(0x20,0);b.call(RuntimeMember::ForOfValue);
     }
     b.emit(0x20,mode);b.call(numeric ? RuntimeMember::NumberPredicateNumber : RuntimeMember::NumberPredicate);
-    if (wrap) { b.call(RuntimeMember::WrapBoolean); }return true;
+    il_predicate_result(wrap,n.type,c,b);return true;
 }
 
 NodeId il_numeric_property_key(NodeId entry, const Compiler& c) {
@@ -355,6 +369,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         }
         else { il_number(n.left,c,b); if (is_text(op,&text_minus,c)) { b.op(0x65); }b.call(RuntimeMember::WrapNumber); }
     } else if (n.kind == NodeKind::Call) {
+        if (il_number_predicate(entry,true,c,b)) { return; }
         if (il_call_has_spread(entry,c)) { il_spread_call(entry,c,b);return; }
         if (il_array_call(entry,c)) { il_emit_array_call(entry,c,b); }
         else if (builtin_has_own(n.left,c)) {

@@ -58,6 +58,7 @@ struct IlBackend {
     Vector<int> raw_functions;
     Vector<int> function_caches;
     Vector<int> function_targets;
+    Vector<int> predicate_targets;
     Vector<int> function_values_needed;
     Vector<int> iteration_vars;
     Vector<int> scalar_roots;
@@ -82,7 +83,7 @@ struct IlBackend {
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
             .packed_arrays=zero_ids(symbols),.dense_arrays=zero_ids(symbols),.tag_arrays=zero_ids(symbols),
             .reversible_literals=zero_ids(c.node_store.count()+1),.tagged_literals=zero_ids(c.node_store.count()+1),
-            .function_adapters=zero_ids(symbols),.raw_functions=zero_ids(symbols),.function_caches=zero_ids(symbols),.function_targets=zero_ids(symbols),.function_values_needed=zero_ids(symbols),
+            .function_adapters=zero_ids(symbols),.raw_functions=zero_ids(symbols),.function_caches=zero_ids(symbols),.function_targets=zero_ids(symbols),.predicate_targets=zero_ids(symbols),.function_values_needed=zero_ids(symbols),
             .iteration_vars=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),

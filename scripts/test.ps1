@@ -59,6 +59,11 @@ try {
     & dotnet tests/inspect-arrays/bin/Release/net10.0/Inspect.dll "$testRoot/packed-arrays/bin/Release/net10.0/App.dll" "$testRoot/union-arrays/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Array runtime checks failed' }
 
+    & dotnet build tests/inspect-predicates/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Predicate inspector build failed' }
+    & dotnet tests/inspect-predicates/bin/Release/net10.0/Inspect.dll "$testRoot/number-predicates/bin/Release/net10.0/App.dll"
+    if ($LASTEXITCODE) { throw 'Stored-predicate allocation check failed' }
+
     & dotnet build tests/inspect-destructuring/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Destructuring inspector build failed' }
     & dotnet tests/inspect-destructuring/bin/Release/net10.0/Inspect.dll "$testRoot/destructuring-fastpath/bin/Release/net10.0/App.dll"
@@ -71,6 +76,8 @@ try {
 
     foreach ($case in @(
         @{ Name = 'bad-assertion'; Message = 'checked conversion failed' },
+        @{ Name = 'predicate-tdz'; Message = 'Cannot access binding before initialization' },
+        @{ Name = 'predicate-result'; Message = 'Function result violates number type' },
         @{ Name = 'default-module-tdz'; Message = 'Cannot access binding before initialization' },
         @{ Name = 'module-tdz'; Message = 'Cannot access binding before initialization' },
         @{ Name = 'global-tdz'; Message = 'Cannot access binding before initialization' },

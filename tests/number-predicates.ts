@@ -38,3 +38,34 @@ for (let i = 0; i < 8; i++) {
     if (Number.isSafeInteger(i)) proved += 1;
 }
 console.log(proved);
+
+const stable = Number.isInteger;
+const alias = stable;
+console.log(alias(2), alias(2.5), alias.name, stable === alias);
+const unknownResult = Number.isFinite as (value: unknown) => unknown;
+const boxedResult = unknownResult(3);
+console.log(boxedResult, typeof boxedResult);
+console.log(indirect(3), typeof indirect(3));
+let changing = Number.isFinite;
+console.log(changing(2));
+changing = Number.isNaN;
+console.log(changing(2), changing(NaN));
+function defaultPredicate(check = Number.isFinite, value: unknown = 3): boolean { return check(value); }
+console.log(defaultPredicate(), defaultPredicate(Number.isNaN, 2), defaultPredicate(Number.isNaN, NaN));
+const discarded: (value: unknown) => void = Number.isFinite;
+discarded(2);
+console.log(alias(...[2] as [unknown]));
+
+function observeHoisted(): void { console.log(typeof hoistedCheck); }
+observeHoisted();
+var hoistedCheck = Number.isFinite;
+console.log(hoistedCheck(2));
+
+function storedLoop(count: number, seed: number): number {
+    const originalCheck = Number.isInteger;
+    const forwarded = originalCheck;
+    let total = 0;
+    for (let i = 0; i < count; i++) if (forwarded(i)) total += 1;
+    return total + seed;
+}
+console.log(storedLoop(8, 7));

@@ -8,6 +8,15 @@ SymbolId il_direct_function(NodeId entry, const Compiler& c, const IlBackend& b)
     return (SymbolId)b.function_targets.at(n.symbol);
 }
 
+int il_predicate_reference(NodeId entry, const Compiler& c, const IlBackend& b) {
+    Node n=get_node(entry,c);
+    while (n.kind==NodeKind::Assert) { n=get_node(n.left,c); }
+    if (n.kind>=NodeKind::NumberIsNaNFunction && n.kind<=NodeKind::NumberIsSafeIntegerFunction) {
+        return (int)n.kind-(int)NodeKind::NumberIsNaNFunction+1;
+    }
+    return n.kind==NodeKind::Name ? b.predicate_targets.at(n.symbol) : 0;
+}
+
 void il_prepare_function_values(int program, const Compiler& c, IlBackend& b) {
     Vector<int> owners=zero_ids(c.symbol_store.count()+1);
     for (size_t i=1;i<=c.node_store.count();i++) {
@@ -18,6 +27,18 @@ void il_prepare_function_values(int program, const Compiler& c, IlBackend& b) {
             if (value.kind==NodeKind::FunctionValue) { target=value.symbol; }
             if (value.kind==NodeKind::Name && get_symbol(value.symbol,c).function!=0) { target=value.symbol; }
             b.function_targets.at_mut(n.symbol)=(int)target;
+        }
+    }
+    bool changed=true;
+    while (changed) {
+        changed=false;
+        for (size_t i=1;i<=c.node_store.count();i++) {
+            Node n=get_node(i,c);
+            // Defaults can be replaced by callers; var bindings are hoisted.
+            if (n.kind!=NodeKind::Variable || n.left==0 || n.fourth!=0 || b.written_symbols.at(n.symbol)!=0 ||
+                b.predicate_targets.at(n.symbol)!=0 || get_node((NodeId)b.node_parents.at(i),c).kind==NodeKind::Function) { continue; }
+            int target=il_predicate_reference(n.left,c,b);
+            if (target!=0) { b.predicate_targets.at_mut(n.symbol)=target;changed=true; }
         }
     }
     for (size_t i=1;i<=c.node_store.count();i++) {
