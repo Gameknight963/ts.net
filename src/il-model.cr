@@ -37,6 +37,11 @@ struct IlBackend {
     Vector<int> methods;
     Vector<int> slots;
     Vector<int> raw_slots;
+    Vector<int> numeric_slots;
+    Vector<int> numeric_methods;
+    Vector<int> written_symbols;
+    Vector<int> nonnegative_ints;
+    Vector<int> node_parents;
     Vector<int> scalar_roots;
     Vector<ScalarField> scalar_fields;
     Vector<int> breaks;
@@ -44,6 +49,7 @@ struct IlBackend {
     int method;
     int local_count;
     int label_count;
+    int loop_versions;
     static Self create(const Compiler& c) {
         size_t types = c.type_store.count() + 1;
         size_t fields = c.field_store.count() + 1;
@@ -52,9 +58,11 @@ struct IlBackend {
             .interfaces=zero_ids(types), .classes=zero_ids(types), .constructors=zero_ids(types),
             .fields=zero_ids(fields), .getters=zero_ids(fields), .setters=zero_ids(fields),
             .casts=zero_ids(types), .methods=zero_ids(symbols), .slots=empty_slots(symbols),.raw_slots=zero_ids(symbols),
+            .numeric_slots=zero_ids(symbols),.numeric_methods=zero_ids(symbols),.written_symbols=zero_ids(symbols),
+            .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
-            .method=0, .local_count=0, .label_count=0};
+            .method=0, .local_count=0, .label_count=0,.loop_versions=0};
     }
     int ref(RuntimeMember member) const { return this.runtime.at((size_t)member); }
     int field_token(FieldId id) const { return this.fields.at(id); }
@@ -83,7 +91,7 @@ struct IlBackend {
     int label() { return ++this.label_count; }
     void mark(int label) { this.emit(-1, label); }
     int local(int type) { this.plan.local(this.method, type); return this.local_count++; }
-    void begin(int method) { this.method=method; this.local_count=0; this.label_count=0; }
+    void begin(int method) { this.method=method; this.local_count=0; this.label_count=0;this.loop_versions=0; }
     void load_storage(SymbolId symbol) {
         int slot = this.slots.at(symbol);
         if (slot==-2147483647) { print("tsnetc: captured binding or function value needs lowering");exit(1); }
@@ -194,6 +202,7 @@ void il_prove_locals(const Compiler& c, IlBackend& b) {
         if (n.kind==NodeKind::Assign || n.kind==NodeKind::Update) {
             Node target=get_node(n.left,c);
             if (target.kind==NodeKind::Name) {
+                b.written_symbols.at_mut(target.symbol)=1;
                 if (!il_defined(i,c)) { b.raw_slots.at_mut(target.symbol)=0; }
                 else if (b.raw_slot(target.symbol)==-6 && !il_int_result(i,c)) { b.raw_slots.at_mut(target.symbol)=-3; }
             }

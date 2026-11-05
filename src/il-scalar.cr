@@ -79,6 +79,7 @@ void il_prove_scalars(const Compiler& c, IlBackend& b) {
         SymbolId root=(SymbolId)b.scalar_roots.at(i);
         if (root!=0 && invalid.at(root)!=0) { b.scalar_roots.at_mut(i)=0; }
     }
+    b.node_parents=move(parents);
 }
 
 ScalarField il_scalar_field(NodeId entry, const Compiler& c, const IlBackend& b) {
@@ -100,7 +101,14 @@ void il_scalar_initialize(NodeId entry, const Compiler& c, IlBackend& b) {
     FieldId member=get_type(value.type,c).fields;
     while (member!=0) {
         Field f=get_field(member,c);int slot=b.local(b.type(f.type,c));
-        b.scalar_fields.push((ScalarField){.root=n.symbol,.name=f.name,.type=f.type,.slot=slot});
+        bool found=false;
+        for (size_t i=0;i<b.scalar_fields.count();i++) {
+            ScalarField storage=b.scalar_fields.at(i);
+            if (storage.root==n.symbol && same(storage.name,f.name,c)) {
+                b.scalar_fields.at_mut(i).slot=slot;found=true;break;
+            }
+        }
+        if (!found) { b.scalar_fields.push((ScalarField){.root=n.symbol,.name=f.name,.type=f.type,.slot=slot}); }
         member=f.next;
     }
     NodeId property=value.children;
