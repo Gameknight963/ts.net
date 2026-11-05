@@ -530,7 +530,12 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
         if (il_literal_bindings(entry,c,b)) { return; }
         il_boxed(n.left,c,b);int source=b.local(-5);b.emit(0xfe0e,source);il_binding_pattern(entry,source,c,b);
     } else if (n.kind == NodeKind::Variable) {
-        if (b.function_targets.at(n.symbol)!=0 && b.function_values_needed.at(n.symbol)==0 && b.global_fields.at(n.symbol)==0) { return; }
+        if (b.function_targets.at(n.symbol)!=0 && b.function_values_needed.at(n.symbol)==0 && b.global_fields.at(n.symbol)==0) {
+            Node value=get_node(n.left,c);
+            // Reading an alias can still throw before its binding initializes.
+            if (value.kind==NodeKind::Name && get_symbol(value.symbol,c).function==0) { il_boxed(n.left,c,b);b.op(0x26); }
+            return;
+        }
         if (b.global_fields.at(n.symbol)!=0) {
             Node initial=get_node(n.left,c);
             if (b.global_vars.at(n.symbol)!=0 && initial.kind==NodeKind::Undefined && initial.constant) { return; }
