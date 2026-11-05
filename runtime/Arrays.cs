@@ -141,6 +141,7 @@ public class JsArray : TsObject
     static bool Index(string key, out uint index) =>
         uint.TryParse(key, NumberStyles.None, CultureInfo.InvariantCulture, out index) &&
         index != uint.MaxValue && key == index.ToString(CultureInfo.InvariantCulture);
+    public override bool HasOwn(string key) => key == "length" || (Index(key, out uint index) ? HasElement(index) : base.HasOwn(key));
     public override object Get(string key) => key == "length" ? (double)Count : Index(key, out uint index) ? Read(index) : base.Get(key);
     public override object Set(string key, object value)
     {

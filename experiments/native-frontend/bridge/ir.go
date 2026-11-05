@@ -344,13 +344,17 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		call := n.AsCallExpression()
 		id = b.node(6, n, "(")
 		row = b.nodes[id-1]
+		own := b.isBuiltinHasOwn(call.Expression)
 		if call.Expression.Kind == ast.KindPropertyAccessExpression && call.Expression.Expression().Kind == ast.KindIdentifier &&
-			(call.Expression.Expression().Text() == "console" || call.Expression.Expression().Text() == "performance") {
+			(call.Expression.Expression().Text() == "console" || call.Expression.Expression().Text() == "performance" || own) {
 			owner := b.node(3, call.Expression.Expression(), call.Expression.Expression().Text())
 			b.nodes[owner-1].name = b.text(call.Expression.Expression().Text())
 			property := b.node(5, call.Expression, call.Expression.Name().Text())
 			b.nodes[property-1].name = b.text(call.Expression.Name().Text())
 			b.nodes[property-1].left = owner
+			if own {
+				b.nodes[property-1].constant = 1
+			}
 			row.left = property
 		} else {
 			row.left = b.lower(call.Expression)

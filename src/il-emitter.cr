@@ -290,6 +290,15 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     } else if (n.kind == NodeKind::Call) {
         if (il_call_has_spread(entry,c)) { il_spread_call(entry,c,b);return; }
         if (il_array_call(entry,c)) { il_emit_array_call(entry,c,b); }
+        else if (builtin_has_own(n.left,c)) {
+            NodeId argument=n.children;
+            for (int i=0;i<2;i++) {
+                if (argument==0) { b.call(RuntimeMember::Undefined); }
+                else { il_boxed(argument,c,b);argument=get_node(argument,c).next; }
+            }
+            while (argument!=0) { il_expression(argument,c,b);if (get_type(get_node(argument,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }argument=get_node(argument,c).next; }
+            b.call(RuntimeMember::HasOwn);b.call(RuntimeMember::WrapBoolean);
+        }
         else if (builtin(n.left,&text_performance,&text_now,c)) { b.call(RuntimeMember::Now);b.call(RuntimeMember::WrapNumber); }
         else if (builtin(n.left,&text_console,&text_log,c)) {
             int count=0; NodeId argument=n.children;

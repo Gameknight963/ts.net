@@ -10,6 +10,8 @@ public abstract class TsObject
 {
     private Dictionary<string, object> extra;
 
+    public virtual bool HasOwn(string key) => extra != null && extra.ContainsKey(key);
+
     public virtual object Get(string key) =>
         extra != null && extra.TryGetValue(key, out var value) ? value : Js.Undefined;
 
@@ -138,6 +140,17 @@ public static class Js
     public static object Set(object receiver, string key, object value) =>
         receiver is TsObject obj ? obj.Set(key, value) :
         throw new InvalidOperationException("Property write requires an object");
+
+    public static bool HasOwn(object receiver, object key)
+    {
+        if (IsNullish(receiver)) throw new InvalidOperationException("Cannot inspect properties of null or undefined");
+        string name = Text(key);
+        if (receiver is TsObject obj) return obj.HasOwn(name);
+        if (receiver is string text) return name == "length" ||
+            uint.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out uint index) &&
+            index < text.Length && name == index.ToString(CultureInfo.InvariantCulture);
+        return false;
+    }
 
     public static object IndexGet(object receiver, object key)
     {

@@ -70,6 +70,11 @@ void il_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
     int array=b.local(-5);b.emit(0xfe0e,array);NodeId argument=call.children;
     while (argument!=0) { il_append_call_argument(argument,array,numeric,c,b);argument=get_node(argument,c).next; }
     if (builtin(call.left,&text_console,&text_log,c)) { b.emit(0xfe0c,array);b.call(RuntimeMember::LogArguments);return; }
+    if (builtin_has_own(call.left,c)) {
+        b.emit(0xfe0c,array);b.emit(0x20,0);b.call(RuntimeMember::ForOfValue);
+        b.emit(0xfe0c,array);b.emit(0x20,1);b.call(RuntimeMember::ForOfValue);
+        b.call(RuntimeMember::HasOwn);b.call(RuntimeMember::WrapBoolean);return;
+    }
     if (builtin(call.left,&text_performance,&text_now,c)) { b.call(RuntimeMember::Now);b.call(RuntimeMember::WrapNumber);return; }
     if (array_call) {
         b.emit(0xfe0c,receiver);

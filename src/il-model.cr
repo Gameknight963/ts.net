@@ -2,7 +2,7 @@ import "assembly-plan.cr";
 
 enum class RuntimeMember {
     ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
-    Constructor, Get, Set, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
+    Constructor, Get, Set, HasOwn, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
@@ -276,6 +276,8 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::JsType, b.plan.reference("Tsnet.Runtime", "", "Js"));
     b.ref_set(RuntimeMember::TsObjectType, b.plan.reference("Tsnet.Runtime", "", "TsObject"));
     int js = b.ref(RuntimeMember::JsType); int obj = b.ref(RuntimeMember::TsObjectType);
+    b.ref_set(RuntimeMember::HasOwn,b.plan.method2(6,js,0,-2,-5,-5,"HasOwn"));
+    b.ref_set(RuntimeMember::HasOwnBase,b.plan.method1(6,obj,1,-2,-4,"HasOwn"));
     b.ref_set(RuntimeMember::WrapNumber,b.plan.method1(6,js,0,-10,-3,"WrapNumber"));
     b.ref_set(RuntimeMember::WrapBoolean,b.plan.method1(6,js,0,-11,-2,"WrapBoolean"));
     b.ref_set(RuntimeMember::EmptyNumber,b.plan.method0(6,js,0,-10,"EmptyNumber"));
@@ -473,6 +475,14 @@ void il_shapes(const Compiler& c, IlBackend& b) {
                 b.emit(0x7d,value); b.op(0x2a);
                 member=record.next;
             }
+            b.begin(b.plan.method1(5,klass,0xc6,-2,-4,"HasOwn"));
+            member=get_type(type,c).fields;
+            while (member!=0) {
+                Field record=get_field(member,c);int next=b.label();
+                b.emit(0xfe09,1);il_text(record.name,c,b);b.call(RuntimeMember::StringEqual);b.emit(0x39,next);
+                b.emit(0x20,1);b.op(0x2a);b.mark(next);member=record.next;
+            }
+            b.emit(0xfe09,0);b.emit(0xfe09,1);b.call(RuntimeMember::HasOwnBase);b.op(0x2a);
             b.begin(b.plan.method1(5,klass,0xc6,-5,-4,"Get"));
             member=get_type(type,c).fields;
             while (member != 0) {

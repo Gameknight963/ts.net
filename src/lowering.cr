@@ -39,3 +39,7 @@ bool builtin(NodeId callee, const char[]& owner, const char[]& member, const Com
            is_text(get_node(get_node(callee, c).left, c).name, owner, c);
 }
 
+
+bool builtin_has_own(NodeId callee, const Compiler& c) {
+    return builtin(callee,&text_object_constructor,&text_has_own,c) && get_node(callee,c).constant;
+}

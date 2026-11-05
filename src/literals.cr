@@ -99,6 +99,8 @@ const char text_now[4] = "now";
 const char text_invalid_performance_call[55] =
     "performance.now requires no arguments and no shadowing";
 const char text_console[8] = "console";
+const char text_object_constructor[7] = "Object";
+const char text_has_own[7] = "hasOwn";
 const char text_log[4] = "log";
 const char text_shadowing_console_is_not_implemented[37] = "shadowing console is not implemented";
 const char text_void_log_argument[18] = "void log argument";
