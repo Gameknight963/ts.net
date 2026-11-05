@@ -1,4 +1,17 @@
 var array = new NumberArray(4);
+var shared = new object();
+var adopted = new JsArray(new object[] { JsArray.HoleValue(), Js.Undefined, null!, shared });
+if (adopted.HasElement(0) || !adopted.HasElement(1) || !adopted.HasElement(2) || adopted.ElementAt(2) != null || !ReferenceEquals(adopted.ElementAt(3), shared)) throw new Exception("Adopted literal changed holes, null, or aliases");
+adopted.SetLength(1);adopted.SetLength(4);
+if (adopted.HasElement(1) || adopted.HasElement(2) || adopted.HasElement(3)) throw new Exception("Adopted literal retained truncated elements");
+adopted.SetAt(2, shared);
+if (!ReferenceEquals(adopted.ElementAt(2), shared)) throw new Exception("Embedded storage lost a write");
+var booleans = new object[1000];Js.BoxBoolean(true);Js.BoxBoolean(false);Js.BoxBoolean(null);
+long booleanStart = GC.GetAllocatedBytesForCurrentThread();
+for (int i = 0; i < booleans.Length; i++) booleans[i] = Js.BoxBoolean(i % 3 == 0 ? null : i % 3 == 1);
+long booleanBytes = GC.GetAllocatedBytesForCurrentThread() - booleanStart;
+if (booleanBytes != 0 || !ReferenceEquals(booleans[0], Js.Undefined) || !Equals(booleans[1], true) || !Equals(booleans[2], false)) throw new Exception("Boxing booleans allocated or changed values");
+Console.WriteLine("PASS adopted literal holes, null, aliases, truncation, and allocation-free boxed booleans");
 long[] nanPatterns = [0x7ff8000000000000, 0x7ff8000000000001, 0x7ff8000000000002, 0x7ff0000000000001, unchecked((long)0xfff8000000000001UL)];
 foreach (long bits in nanPatterns)
 {

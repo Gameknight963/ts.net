@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, LogArguments, PushArguments, CallRest, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -272,6 +272,8 @@ void il_runtime(IlBackend& b) {
     int array=b.plan.reference("Tsnet.Runtime","","JsArray");b.ref_set(RuntimeMember::ArrayType,array);
     int numbers=b.plan.reference("Tsnet.Runtime","","NumberArray");b.ref_set(RuntimeMember::NumberArrayType,numbers);
     b.ref_set(RuntimeMember::ArrayConstructor,b.plan.method1(6,array,1,-1,-6,".ctor"));
+    b.ref_set(RuntimeMember::ArrayBufferConstructor,b.plan.method1(6,array,1,-1,-7,".ctor"));
+    b.ref_set(RuntimeMember::ArrayHoleValue,b.plan.method0(6,array,0,-5,"HoleValue"));
     b.ref_set(RuntimeMember::NumberArrayConstructor,b.plan.method1(6,numbers,1,-1,-6,".ctor"));
     b.ref_set(RuntimeMember::IndexGet,b.plan.method2(6,js,0,-5,-5,-5,"IndexGet"));
     Vector<int> index_parameters=Vector<int>::create();index_parameters.push(-5);index_parameters.push(-5);index_parameters.push(-5);

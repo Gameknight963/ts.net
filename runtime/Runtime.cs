@@ -29,6 +29,8 @@ public static class Js
     }
     private sealed class UndefinedValue { }
     public static readonly object Undefined = new UndefinedValue();
+    static readonly object BoxedTrue = true;
+    static readonly object BoxedFalse = false;
     public static object GetUndefined() => Undefined;
     public static bool IsUndefined(object value) => ReferenceEquals(value, Undefined);
     public static bool IsNullish(object value) => value == null || ReferenceEquals(value, Undefined);
@@ -90,7 +92,7 @@ public static class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object BoxNumber(double? value) => value.HasValue ? (object)value.Value : Undefined;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static object BoxBoolean(bool? value) => value.HasValue ? (object)value.Value : Undefined;
+    public static object BoxBoolean(bool? value) => !value.HasValue ? Undefined : value.Value ? BoxedTrue : BoxedFalse;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double NumberValue(double? value) => value.GetValueOrDefault(double.NaN);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

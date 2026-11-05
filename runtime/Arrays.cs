@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 // Dense storage handles ordinary arrays. Distant indices stay sparse so a write
 // near the JavaScript length limit does not request a multi-gigabyte buffer.
-sealed class ArrayStorage<T>
+struct ArrayStorage<T>
 {
     T[] dense;
     Dictionary<uint, T> sparse;
@@ -41,6 +41,10 @@ sealed class ArrayStorage<T>
         Length = (uint)length;
         dense = length == 0 ? Array.Empty<T>() : new T[Math.Min(length, 4096)];
         Array.Fill(dense, missing);
+    }
+    public ArrayStorage(T[] items, T missing)
+    {
+        this.missing = missing;dense = items;Length = (uint)items.Length;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Get(uint index)
@@ -90,8 +94,11 @@ sealed class ArrayStorage<T>
 public class JsArray : TsObject
 {
     static readonly object Hole = new object();
-    readonly ArrayStorage<object> values;
+    ArrayStorage<object> values;
     public JsArray(int length) { values = new ArrayStorage<object>(length, Hole); }
+    // Generated code transfers its freshly initialized buffer to this array.
+    public JsArray(object[] items) { values = new ArrayStorage<object>(items, Hole); }
+    public static object HoleValue() => Hole;
     protected JsArray() { }
     protected virtual uint Count => values.Length;
     protected virtual object Read(uint index) { object value = values.Get(index); return ReferenceEquals(value, Hole) ? Js.Undefined : value; }
@@ -175,7 +182,7 @@ public sealed class NumberArray : JsArray
     const long MissingBits = 0x7ff8000000000001;
     static readonly double Missing = BitConverter.Int64BitsToDouble(MissingBits);
     static readonly double Undefined = BitConverter.Int64BitsToDouble(MissingBits + 1);
-    readonly ArrayStorage<double> numbers;
+    ArrayStorage<double> numbers;
     uint packedPrefix;
     public NumberArray(int length) { numbers = new ArrayStorage<double>(length, Missing); }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
