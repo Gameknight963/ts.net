@@ -13,7 +13,7 @@ Building on linux is not supported atm.
 
 ## Current performance
 
-As of [5a0ebda](https://github.com/Gameknight963/ts.net/commit/5a0ebda3061c267298b5b715f63e874fea70ce84) (plus some uncommitted work):
+Most measurements are from [5a0ebda](https://github.com/Gameknight963/ts.net/commit/5a0ebda3061c267298b5b715f63e874fea70ce84). The callback measurement is from [b46c76b](https://github.com/Gameknight963/ts.net/commit/b46c76b612b6d0ca905cb4cbef2f97370e206af7):
 
 Runtime performance:
 
@@ -26,7 +26,7 @@ Runtime performance:
 | Numeric `any[]`, 1M iterations | 0.76 ms | 1.67 ms | 2.2x faster |
 | Numeric array, 100K elements and 100 reversals | 2.18 ms | 7.89 ms | 3.6x faster |
 | Mixed array, 100K elements and 100 reversals | 1.30 ms | 7.92 ms | 6.1x faster |
-| Numeric callback, 2M calls (experimental) | 5.97 ms | 0.83 ms | 7.2x slower |
+| Numeric callback, 2M calls (experimental) | 1.47 ms | 0.82 ms | 1.8x slower |
 
 Compilation times:
 
@@ -35,7 +35,7 @@ Compilation times:
 | Small numeric benchmark | 338.66 ms | 343.57 ms |
 | 5,000 variables | 446.63 ms | 392.42 ms |
 
-The numeric and small-object loops are encouraging, but mixed-array traversal and especially callbacks are still slower than Node.
+The numeric and small-object loops are encouraging. Numeric callbacks improved substantially after letting the CLR inline their bodies, but remain slower than Node in this measurement; mixed-array traversal also needs work.
 
 The similar compilation times make sense since this is using much of Microsoft's Go compiler components, and IL emission isn't really a bottleneck.
 
