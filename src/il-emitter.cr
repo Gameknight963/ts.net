@@ -61,6 +61,13 @@ void il_numeric_operands(Node n, bool integer, const Compiler& c, IlBackend& b) 
     } else if (integer) { il_integer(n.left,c,b);il_integer(n.right,c,b); }
     else { il_number(n.left,c,b);il_number(n.right,c,b); }
 }
+int il_relational_mode(TextId op, const Compiler& c) {
+    if (is_text(op,&text_less,c)) { return 0; }
+    if (is_text(op,&text_greater,c)) { return 1; }
+    if (is_text(op,&text_less_equal,c)) { return 2; }
+    if (is_text(op,&text_greater_equal,c)) { return 3; }
+    return -1;
+}
 void il_integer(NodeId entry, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);
     if (n.kind==NodeKind::Name && b.raw_slot(n.symbol)==-6) { b.load_storage(n.symbol);return; }
@@ -492,6 +499,9 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             }
             if (is_text(op,&text_strict_not_equal,c)) { il_invert(b); }
             b.call(RuntimeMember::WrapBoolean);
+        } else if (il_relational_mode(op,c)>=0 && (get_type(get_node(n.left,c).type,c).kind!=TypeKind::Number || get_type(get_node(n.right,c).type,c).kind!=TypeKind::Number)) {
+            il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.emit(0x20,il_relational_mode(op,c));
+            b.call(get_type(get_node(n.left,c).type,c).kind==TypeKind::String && get_type(get_node(n.right,c).type,c).kind==TypeKind::String ? RuntimeMember::StringRelational : RuntimeMember::Relational);b.call(RuntimeMember::WrapBoolean);
         } else if (il_integer_remainder(entry,c,b)) {
             il_integer(entry,c,b);b.op(0x6c);b.call(RuntimeMember::WrapNumber);
         } else if (il_bitwise_code(op,c)!=0) {
