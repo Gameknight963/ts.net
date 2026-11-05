@@ -23,3 +23,10 @@ function parameterKernel(count: number, seed: number): number {
 }
 function parameterValue({a, b}: {a: number; b: number}) { return a + b; }
 console.log(parameterKernel(5, 1));
+function restKernel(count: number, seed: number): number {
+    let sum = 0;
+    for (let i = 0; i < count; i++) sum += restValue(i + seed, i + 0.5);
+    return sum;
+}
+function restValue(...[a, b]: number[]) { return a + b; }
+console.log(restKernel(5, 1));
