@@ -149,6 +149,71 @@ sealed class AssemblyPlan
             parameters => { foreach (int parameter in method.Parameters) EncodeType(parameters.AddParameter().Type(), parameter); });
         return metadata.GetOrAddBlob(signature);
     }
+    int MaxStack(MethodRow method)
+    {
+        var instructions = method.Instructions;
+        var labels = new Dictionary<int, int>();
+        for (int i = 0; i < instructions.Count; i++)
+            if (instructions[i].Code == -1) labels.Add(instructions[i].Operand, i);
+        var depths = new Dictionary<int, int>();
+        var pending = new Queue<int>();
+        int maximum = 0;
+        void Visit(int index, int depth)
+        {
+            if (index >= instructions.Count) throw new InvalidDataException($"Method falls through: {method.Name}");
+            if (depths.TryGetValue(index, out int previous))
+            {
+                if (previous != depth) throw new InvalidDataException($"Inconsistent stack at branch in {method.Name}");
+                return;
+            }
+            depths.Add(index, depth); pending.Enqueue(index);
+            maximum = Math.Max(maximum, depth);
+        }
+        Visit(0, 0);
+        while (pending.TryDequeue(out int index))
+        {
+            var instruction = instructions[index];
+            int pop = 0, push = 0;
+            switch (instruction.Code)
+            {
+                case -1: case 0x00: case 0x38: break;
+                case 0x14: case 0x16: case 0x20: case 0x23: case 0x72:
+                case 0x7e: case 0xfe06: case 0xfe09: case 0xfe0c: push = 1; break;
+                case 0x25: pop = 1; push = 2; break;
+                case 0x26: case 0x39: case 0x3a: case 0x80: case 0xfe0b: case 0xfe0e: pop = 1; break;
+                case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5d:
+                case 0xfe01: case 0xfe02: case 0xfe03: case 0xfe04: case 0xfe05: pop = 2; push = 1; break;
+                case 0x65: case 0x6c: case 0x74: case 0x75: case 0x7b:
+                case 0x8c: case 0x8d: case 0xa5: pop = 1; push = 1; break;
+                case 0x7d: pop = 2; break;
+                case 0xa2: pop = 3; break;
+                case 0x28: case 0x6f: case 0x73:
+                    int target = instruction.Operand;
+                    if (!methodRows.ContainsKey(target)) target = specifications.First(s => s.Id == target).Method;
+                    var called = methodRows[target];
+                    bool instance = members.Contains(called) ? (called.Attributes & 1) != 0 :
+                        (called.Attributes & (int)MethodAttributes.Static) == 0;
+                    pop = called.Parameters.Length + (instance && instruction.Code != 0x73 ? 1 : 0);
+                    push = instruction.Code == 0x73 || called.Result != -1 ? 1 : 0;
+                    break;
+                case 0x2a: pop = method.Result == -1 ? 0 : 1; break;
+                default: throw new InvalidDataException($"Missing stack accounting for opcode {instruction.Code:x}");
+            }
+            int depth = depths[index];
+            if (depth < pop) throw new InvalidDataException($"Stack underflow in {method.Name}");
+            depth = depth - pop + push;
+            maximum = Math.Max(maximum, depth);
+            if (maximum > ushort.MaxValue) throw new InvalidDataException("Method stack exceeds CLR limit");
+            if (instruction.Code == 0x2a)
+            {
+                if (depth != 0) throw new InvalidDataException($"Nonempty return stack in {method.Name}");
+                continue;
+            }
+            if (instruction.Code is 0x38 or 0x39 or 0x3a) Visit(labels[instruction.Operand], depth);
+            if (instruction.Code != 0x38) Visit(index + 1, depth);
+        }
+        return maximum;
+    }
     int Body(MethodRow method, MethodBodyStreamEncoder bodies)
     {
         if ((method.Attributes & (int)MethodAttributes.Abstract) != 0) return -1;
@@ -185,7 +250,7 @@ sealed class AssemblyPlan
             foreach (int local in method.Locals) EncodeType(encoder.AddVariable().Type(), local);
             locals = metadata.AddStandaloneSignature(metadata.GetOrAddBlob(signature));
         }
-        return bodies.AddMethodBody(il, maxStack: ushort.MaxValue, localVariablesSignature: locals, attributes: MethodBodyAttributes.InitLocals);
+        return bodies.AddMethodBody(il, maxStack: MaxStack(method), localVariablesSignature: locals, attributes: MethodBodyAttributes.InitLocals);
     }
     public byte[] Build()
     {
