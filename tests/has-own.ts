@@ -30,3 +30,32 @@ let visits = 0;
 function receiver() { visits++; return point; }
 function key() { visits += 10; return "value"; }
 console.log(Object.hasOwn(receiver(), key()), visits);
+
+const numericKeys: any = { "undefined": 1, "NaN": 2, "Infinity": 3, "-1": 4, "1.5": 5, "4294967295": 6 };
+function numericOwn(value: any, key?: number) { return Object.hasOwn(value, key as number); }
+console.log(numericOwn(numericKeys), numericOwn(numericKeys, 0 / 0), numericOwn(numericKeys, 1 / 0));
+console.log(numericOwn(numericKeys, -1), numericOwn(numericKeys, 1.5), numericOwn(numericKeys, 4294967295));
+console.log(numericOwn(numbers), numericOwn(numbers, 0 / 0), numericOwn(numbers, -0));
+const specialArray: any = [];
+specialArray.undefined = 1;
+specialArray.NaN = 2;
+specialArray[4294967295] = 3;
+console.log(numericOwn(specialArray), numericOwn(specialArray, 0 / 0), numericOwn(specialArray, 4294967295));
+console.log(numericOwn("abc", 1), numericOwn("abc", -0), numericOwn("abc", 1.5), numericOwn("abc"));
+
+console.log(Object.hasOwn(numericKeys, -1 | 0), Object.hasOwn(numericKeys, 1 << 0), Object.hasOwn(numericKeys, 2147483647));
+const negativeIndex: any = [];
+negativeIndex[-1] = undefined;
+console.log(Object.hasOwn(negativeIndex, -1 | 0), Object.hasOwn(negativeIndex, 0));
+console.log(Object.hasOwn("abc" as any, -1 | 0), Object.hasOwn("abc" as any, 1 << 0));
+
+const packedPresence: (number | undefined)[] = [1, 2, 3];
+console.log(Object.hasOwn(packedPresence, 0), Object.hasOwn(packedPresence, 2));
+packedPresence[1] = undefined;
+console.log(Object.hasOwn(packedPresence, 1), Object.hasOwn(packedPresence, 2));
+packedPresence.length = 1;
+packedPresence.length = 3;
+console.log(Object.hasOwn(packedPresence, 0), Object.hasOwn(packedPresence, 1), Object.hasOwn(packedPresence, 2));
+packedPresence[1] = 4;
+packedPresence[2] = 5;
+console.log(Object.hasOwn(packedPresence, 1), Object.hasOwn(packedPresence, 2));

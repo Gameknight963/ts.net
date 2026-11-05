@@ -292,13 +292,15 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         if (il_array_call(entry,c)) { il_emit_array_call(entry,c,b); }
         else if (builtin_has_own(n.left,c)) {
             if (il_scalar_own(entry,c,b)) { return; }
-            NodeId argument=n.children;
+            NodeId argument=n.children;NodeId key=argument!=0 ? get_node(argument,c).next : 0;
+            bool numeric=key!=0 && get_type(get_node(key,c).type,c).kind==TypeKind::Number;
+            bool integer=numeric && (il_int_result(key,c) || (get_node(key,c).kind==NodeKind::Name && b.raw_slot(get_node(key,c).symbol)==-6));
             for (int i=0;i<2;i++) {
                 if (argument==0) { b.call(RuntimeMember::Undefined); }
-                else { il_boxed(argument,c,b);argument=get_node(argument,c).next; }
+                else { if (i==1 && integer) { il_integer(argument,c,b); } else if (i==1 && numeric) { il_expression(argument,c,b); } else { il_boxed(argument,c,b); }argument=get_node(argument,c).next; }
             }
             while (argument!=0) { il_expression(argument,c,b);if (get_type(get_node(argument,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }argument=get_node(argument,c).next; }
-            b.call(RuntimeMember::HasOwn);b.call(RuntimeMember::WrapBoolean);
+            b.call(integer ? RuntimeMember::HasOwnIndex : numeric ? RuntimeMember::HasOwnNumber : RuntimeMember::HasOwn);b.call(RuntimeMember::WrapBoolean);
         }
         else if (builtin(n.left,&text_performance,&text_now,c)) { b.call(RuntimeMember::Now);b.call(RuntimeMember::WrapNumber); }
         else if (builtin(n.left,&text_console,&text_log,c)) {

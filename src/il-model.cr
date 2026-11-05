@@ -2,7 +2,7 @@ import "assembly-plan.cr";
 
 enum class RuntimeMember {
     ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
-    Constructor, Get, Set, HasOwn, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
+    Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
@@ -277,6 +277,8 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::TsObjectType, b.plan.reference("Tsnet.Runtime", "", "TsObject"));
     int js = b.ref(RuntimeMember::JsType); int obj = b.ref(RuntimeMember::TsObjectType);
     b.ref_set(RuntimeMember::HasOwn,b.plan.method2(6,js,0,-2,-5,-5,"HasOwn"));
+    b.ref_set(RuntimeMember::HasOwnNumber,b.plan.method2(6,js,0,-2,-5,-10,"HasOwnNumber"));
+    b.ref_set(RuntimeMember::HasOwnIndex,b.plan.method2(6,js,0,-2,-5,-6,"HasOwnIndex"));
     b.ref_set(RuntimeMember::HasOwnBase,b.plan.method1(6,obj,1,-2,-4,"HasOwn"));
     b.ref_set(RuntimeMember::WrapNumber,b.plan.method1(6,js,0,-10,-3,"WrapNumber"));
     b.ref_set(RuntimeMember::WrapBoolean,b.plan.method1(6,js,0,-11,-2,"WrapBoolean"));

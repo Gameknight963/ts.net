@@ -144,7 +144,33 @@ public static class Js
     public static bool HasOwn(object receiver, object key)
     {
         if (IsNullish(receiver)) throw new InvalidOperationException("Cannot inspect properties of null or undefined");
-        string name = Text(key);
+        return key is double number ? HasOwnNumber(receiver, number) : HasOwnNamed(receiver, Text(key));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool HasOwnNumber(object receiver, double? key)
+    {
+        if (key.HasValue)
+        {
+            double index = key.GetValueOrDefault();
+            if (receiver is JsArray array && index >= 0 && index < uint.MaxValue && index == (uint)index)
+                return array.HasElement((uint)index);
+            if (receiver is string text) return index >= 0 && index < text.Length && index == (uint)index;
+        }
+        return HasOwnNamed(receiver, key.HasValue ? Text(key.GetValueOrDefault()) : "undefined");
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool HasOwnIndex(object receiver, int key)
+    {
+        if (receiver is JsArray array && key >= 0) return array.HasElement((uint)key);
+        if (receiver is string text) return (uint)key < (uint)text.Length;
+        return HasOwnNamed(receiver, Text((double)key));
+    }
+
+    static bool HasOwnNamed(object receiver, string name)
+    {
+        if (IsNullish(receiver)) throw new InvalidOperationException("Cannot inspect properties of null or undefined");
         if (receiver is TsObject obj) return obj.HasOwn(name);
         if (receiver is string text) return name == "length" ||
             uint.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out uint index) &&
