@@ -213,6 +213,17 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
     if (logical) { b.mark(logical_done);b.convert(value_type,n.type,c); }
 }
 
+NodeId il_numeric_property_key(NodeId entry, const Compiler& c) {
+    if (entry==0) { return 0; }
+    Node n=get_node(entry,c);
+    if (get_type(n.type,c).kind==TypeKind::Number) { return entry; }
+    if (n.kind!=NodeKind::Binary || !is_text(get_token(n.token,c).text,&text_plus,c)) { return 0; }
+    Node left=get_node(n.left,c);Node right=get_node(n.right,c);
+    if (left.kind==NodeKind::String && text_size(get_token(left.token,c).text,c)==0 && get_type(right.type,c).kind==TypeKind::Number) { return n.right; }
+    if (right.kind==NodeKind::String && text_size(get_token(right.token,c).text,c)==0 && get_type(left.type,c).kind==TypeKind::Number) { return n.left; }
+    return 0;
+}
+
 void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);
     if (n.kind == NodeKind::Undefined) {
@@ -293,11 +304,11 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         else if (builtin_has_own(n.left,c)) {
             if (il_scalar_own(entry,c,b)) { return; }
             NodeId argument=n.children;NodeId key=argument!=0 ? get_node(argument,c).next : 0;
-            bool numeric=key!=0 && get_type(get_node(key,c).type,c).kind==TypeKind::Number;
-            bool integer=numeric && (il_int_result(key,c) || (get_node(key,c).kind==NodeKind::Name && b.raw_slot(get_node(key,c).symbol)==-6));
+            NodeId numeric_key=il_numeric_property_key(key,c);bool numeric=numeric_key!=0;
+            bool integer=numeric && (il_int_result(numeric_key,c) || (get_node(numeric_key,c).kind==NodeKind::Name && b.raw_slot(get_node(numeric_key,c).symbol)==-6));
             for (int i=0;i<2;i++) {
                 if (argument==0) { b.call(RuntimeMember::Undefined); }
-                else { if (i==1 && integer) { il_integer(argument,c,b); } else if (i==1 && numeric) { il_expression(argument,c,b); } else { il_boxed(argument,c,b); }argument=get_node(argument,c).next; }
+                else { if (i==1 && integer) { il_integer(numeric_key,c,b); } else if (i==1 && numeric) { il_expression(numeric_key,c,b); } else { il_boxed(argument,c,b); }argument=get_node(argument,c).next; }
             }
             while (argument!=0) { il_expression(argument,c,b);if (get_type(get_node(argument,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }argument=get_node(argument,c).next; }
             b.call(integer ? RuntimeMember::HasOwnIndex : numeric ? RuntimeMember::HasOwnNumber : RuntimeMember::HasOwn);b.call(RuntimeMember::WrapBoolean);

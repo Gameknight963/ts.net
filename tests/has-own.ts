@@ -59,3 +59,15 @@ console.log(Object.hasOwn(packedPresence, 0), Object.hasOwn(packedPresence, 1), 
 packedPresence[1] = 4;
 packedPresence[2] = 5;
 console.log(Object.hasOwn(packedPresence, 1), Object.hasOwn(packedPresence, 2));
+
+function stringifiedKey(value: any, key?: number) { return Object.hasOwn(value, "" + key); }
+function trailingKey(value: any, key?: number) { return Object.hasOwn(value, key + ""); }
+console.log(stringifiedKey(numericKeys), stringifiedKey(numericKeys, 0 / 0), stringifiedKey(numericKeys, -1), stringifiedKey(numericKeys, 1.5));
+console.log(trailingKey(numericKeys), trailingKey(numericKeys, 0 / 0), trailingKey(specialArray, 4294967295));
+let keyVisits = 0;
+function changingKey() { keyVisits++; return -0; }
+console.log(Object.hasOwn(numbers, "" + changingKey()), Object.hasOwn(numbers, changingKey() + ""), keyVisits);
+console.log(Object.hasOwn(numericKeys, "prefix" + 1), Object.hasOwn(numericKeys, true + ""));
+
+const otherKeys = { prefix1: 1, "true": 2 };
+console.log(Object.hasOwn(otherKeys, "prefix" + 1), Object.hasOwn(otherKeys, true + ""));
