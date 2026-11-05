@@ -421,12 +421,17 @@ void emit_assembly(const char[]& path, const Compiler& c) {
             SymbolId symbol=get_node(parameter,c).symbol;b.slots.at_mut(symbol)=-(++index);b.raw_slots.at_mut(symbol)=0;
             parameter=get_node(parameter,c).next;
         }
+        il_prepare_iteration_vars(function,c,&b);
         parameter=n.children;
         while (parameter!=0) {
             Node p=get_node(parameter,c);
             if (p.left!=0) {
                 int done=b.label();b.load(p.symbol);b.missing(p.type,c);b.emit(0x39,done);
                 il_as(p.left,p.type,c,&b);b.store(p.symbol);b.mark(done);
+            }
+            if (p.right!=0) {
+                b.load(p.symbol);b.box(p.type,c);int source=b.local(-5);b.emit(0xfe0e,source);
+                il_binding_pattern(p.right,source,c,&b);
             }
             parameter=p.next;
         }
@@ -439,7 +444,6 @@ void emit_assembly(const char[]& path, const Compiler& c) {
             }
             parameter=p.next;
         }
-        il_prepare_iteration_vars(function,c,&b);
         il_statement(n.left,n.type,c,&b);
         if (get_type(n.type,c).kind != TypeKind::Void) { b.empty(n.type,c); }
         b.op(0x2a);
