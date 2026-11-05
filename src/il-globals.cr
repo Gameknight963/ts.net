@@ -18,6 +18,7 @@ void il_globals(int program, const Compiler& c, IlBackend& b) {
         int storage=b.type(type,c);b.global_fields.at_mut(n.symbol)=b.plan.field(program,0x11,storage,name.view());
         if (b.global_vars.at(n.symbol)==0) { b.global_flags.at_mut(n.symbol)=b.plan.field(program,0x11,-2,flag.view()); }
         b.raw_slots.at_mut(n.symbol)=0;
+        if (b.global_vars.at(n.symbol)!=0 && get_type(type,c).kind==TypeKind::Number) { b.numeric_globals=true; }
         SymbolId root=(SymbolId)b.scalar_roots.at(n.symbol);
         if (root!=0) {
             for (size_t alias=1;alias<b.scalar_roots.count();alias++) { if (b.scalar_roots.at(alias)==(int)root) { b.scalar_roots.at_mut(alias)=0; } }

@@ -1,4 +1,4 @@
-import "il-packed.cr";
+import "il-loop-globals.cr";
 
 NodeId il_loop_binding(NodeId entry, const Compiler& c) {
     Node loop=get_node(entry,c);
@@ -81,7 +81,7 @@ void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, cons
     b.mark(fallback);il_loop_code(entry,result,counter,bound,c,b);b.mark(done);
 }
 
-void il_loop(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {
+void il_loop_inner(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {
     SymbolId counter=il_counted_loop(entry,c,b);
     if (counter==0) { il_loop_body(entry,result,0,-1,c,b);return; }
     Node n=get_node(entry,c);Node condition=get_node(n.right,c);
@@ -105,6 +105,19 @@ void il_loop(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {
     b.raw_slots.at_mut(counter)=previous;b.nonnegative_ints.at_mut(counter)=0;
     b.mark(fallback);il_loop_body(entry,result,0,-1,c,b);b.mark(done);
     b.loop_versions--;
+}
+
+void il_loop(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {
+    Vector<int> globals=il_loop_globals(entry,c,b);Vector<int> slots=Vector<int>::create();
+    for (size_t i=0;i<globals.count();i++) {
+        SymbolId symbol=(SymbolId)globals.at(i);int slot=b.local(b.type(get_symbol(symbol,c).type,c));
+        b.load_storage(symbol);b.emit(0xfe0e,slot);slots.push(slot);b.global_cache.at_mut(symbol)=slot+1;
+    }
+    il_loop_inner(entry,result,c,b);
+    for (size_t i=0;i<globals.count();i++) {
+        SymbolId symbol=(SymbolId)globals.at(i);int slot=slots.at(i);int field=b.global_fields.at(symbol);
+        b.global_cache.at_mut(symbol)=0;b.emit(0xfe0c,slot);b.emit(0x80,field);
+    }
 }
 
 bool il_integer_remainder(NodeId entry, const Compiler& c, const IlBackend& b) {

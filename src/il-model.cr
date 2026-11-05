@@ -41,6 +41,7 @@ struct IlBackend {
     Vector<int> global_fields;
     Vector<int> global_flags;
     Vector<int> global_vars;
+    Vector<int> global_cache;
     Vector<int> slots;
     Vector<int> raw_slots;
     Vector<int> numeric_slots;
@@ -58,6 +59,7 @@ struct IlBackend {
     int local_count;
     int label_count;
     int loop_versions;
+    bool numeric_globals;
     static Self create(const Compiler& c) {
         size_t types = c.type_store.count() + 1;
         size_t fields = c.field_store.count() + 1;
@@ -65,14 +67,14 @@ struct IlBackend {
         return (Self){.plan=AssemblyPlan::create(), .runtime=zero_ids((size_t)RuntimeMember::Count),
             .interfaces=zero_ids(types), .classes=zero_ids(types), .constructors=zero_ids(types),
             .fields=zero_ids(fields), .getters=zero_ids(fields), .setters=zero_ids(fields),
-            .casts=zero_ids(types), .methods=zero_ids(symbols), .binding_methods=zero_ids(symbols), .global_fields=zero_ids(symbols), .global_flags=zero_ids(symbols), .global_vars=zero_ids(symbols), .slots=empty_slots(symbols),.raw_slots=zero_ids(symbols),
+            .casts=zero_ids(types), .methods=zero_ids(symbols), .binding_methods=zero_ids(symbols), .global_fields=zero_ids(symbols), .global_flags=zero_ids(symbols), .global_vars=zero_ids(symbols), .global_cache=zero_ids(symbols), .slots=empty_slots(symbols),.raw_slots=zero_ids(symbols),
             .numeric_slots=zero_ids(symbols),.numeric_methods=zero_ids(symbols),.written_symbols=zero_ids(symbols),
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
             .packed_arrays=zero_ids(symbols),
             .iteration_vars=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
-            .method=0, .local_count=0, .label_count=0,.loop_versions=0};
+            .method=0, .local_count=0, .label_count=0,.loop_versions=0,.numeric_globals=false};
     }
     int ref(RuntimeMember member) const { return this.runtime.at((size_t)member); }
     int field_token(FieldId id) const { return this.fields.at(id); }
@@ -104,6 +106,8 @@ struct IlBackend {
     int local(int type) { this.plan.local(this.method, type); return this.local_count++; }
     void begin(int method) { this.method=method; this.local_count=0; this.label_count=0;this.loop_versions=0; }
     void load_storage(SymbolId symbol) {
+        int cached=this.global_cache.at(symbol);
+        if (cached!=0) { this.emit(0xfe0c,cached-1);return; }
         int global=this.global_fields.at(symbol);
         if (global!=0) { this.check_global(symbol);this.emit(0x7e,global);return; }
         int slot = this.slots.at(symbol);
@@ -123,6 +127,8 @@ struct IlBackend {
         this.store_storage(symbol);
     }
     void store_storage(SymbolId symbol) {
+        int cached=this.global_cache.at(symbol);
+        if (cached!=0) { this.emit(0xfe0e,cached-1);return; }
         int global=this.global_fields.at(symbol);
         if (global!=0) { this.check_global(symbol);this.emit(0x80,global);return; }
         int slot = this.slots.at(symbol);
