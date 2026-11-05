@@ -26,7 +26,7 @@ try {
     [IO.File]::WriteAllText("$testRoot/boundaries.ts", $boundary.ToString(), $bom)
 
     # Differential execution checks against the actual TypeScript compiler.
-    foreach ($fixture in @('tests/behavior.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/straightforward.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
+    foreach ($fixture in @('tests/behavior.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/straightforward.ts', 'tests/nullable-values.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
         & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/$name" $fixture
@@ -41,6 +41,11 @@ try {
         }
         Write-Host "PASS differential: $name"
     }
+
+    & dotnet build tests/inspect-nullable/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Nullable metadata inspector build failed' }
+    & dotnet tests/inspect-nullable/bin/Release/net10.0/Inspect.dll "$testRoot/nullable-values/bin/Release/net10.0/App.dll"
+    if ($LASTEXITCODE) { throw 'Nullable storage was not emitted' }
 
     foreach ($case in @(
         @{ Name = 'bad-assertion'; Message = 'checked conversion failed' },
