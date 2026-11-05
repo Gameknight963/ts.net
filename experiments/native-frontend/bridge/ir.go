@@ -81,7 +81,8 @@ func (b *irBuilder) typ(t *checker.Type) int {
 	case flags&checker.TypeFlagsBooleanLike != 0:
 		kind = 2
 	case flags&checker.TypeFlagsVoid != 0:
-		kind = 3
+		// A void annotation does not erase a JavaScript return value.
+		kind = 4
 	case flags&checker.TypeFlagsUnknown != 0:
 		kind = 5
 	case flags&checker.TypeFlagsObject != 0:
@@ -422,6 +423,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			row.left = b.lower(call.Expression)
 		}
 		row.children = b.list(call.Arguments.Nodes)
+		if b.intrinsicVoidCall(row.left) {
+			row.typ = b.intrinsicVoidType()
+		}
 	case ast.KindBinaryExpression:
 		expr := n.AsBinaryExpression()
 		if expr.OperatorToken.Kind == ast.KindCommaToken {

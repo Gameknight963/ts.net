@@ -159,3 +159,22 @@ func (b *irBuilder) numberPredicateBindings(n *ast.Node) (int, bool) {
 	b.nodes[block-1].children = first
 	return block, true
 }
+
+// IR void denotes a CLR operation with no stack result, not a TS annotation.
+func (b *irBuilder) intrinsicVoidType() int {
+	if id := b.primitives[3]; id != 0 {
+		return id
+	}
+	b.types = append(b.types, irType{kind: 3})
+	id := len(b.types)
+	b.primitives[3] = id
+	return id
+}
+func (b *irBuilder) intrinsicVoidCall(callee int) bool {
+	property := b.nodes[callee-1]
+	if property.kind != 5 || property.name == 0 || property.left == 0 || b.texts[property.name-1] != "log" {
+		return false
+	}
+	owner := b.nodes[property.left-1]
+	return owner.kind == 3 && owner.name != 0 && b.texts[owner.name-1] == "console"
+}

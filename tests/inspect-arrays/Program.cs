@@ -108,7 +108,7 @@ if (args.Length != 0)
     if (allocated != 0 || !result.HasValue) throw new Exception("Packed traversal allocated or lost its result");
     var payloadMethod = assembly.GetType("Program")!.GetMethods().Single(m =>
         m.GetParameters().Length == 3 && m.GetParameters()[1].ParameterType == typeof(double?) && m.GetParameters()[2].ParameterType == typeof(double?));
-    var writePayload = payloadMethod.CreateDelegate<Action<object, double?, double?>>();
+    var writePayload = payloadMethod.CreateDelegate<Func<object, double?, double?, object>>();
     writePayload(packed, 8, BitConverter.Int64BitsToDouble(0x7ff8000000000001));
     if (!packed.GetNumberAt(0).HasValue || !double.IsNaN(packed.GetNumberAt(0)!.Value)) throw new Exception("Packed write turned numeric NaN into undefined");
     Console.WriteLine("PASS guarded packed buffer in emitted IL and allocation-free traversal");
