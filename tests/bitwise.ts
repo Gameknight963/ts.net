@@ -48,3 +48,25 @@ for (let i = -40; i < 40; i++) {
     }
 }
 console.log(checksum);
+
+// Values outside the signed-int proof must keep their full number semantics.
+let fractional = 1;
+fractional = 1.5;
+console.log(fractional, fractional | 0);
+let incremented = 2147483647;
+console.log(incremented++, incremented);
+let unsigned = 1;
+unsigned = -1 >>> 0;
+console.log(unsigned, unsigned + 1);
+let negativeZero = 1;
+negativeZero = -0;
+console.log(1 / negativeZero);
+function overwrite(value: any) { let local = 1; local = value; return local; }
+console.log(overwrite(undefined), overwrite(1.25));
+let reassigned = 5;
+console.log(reassigned ^= (reassigned = 1.5), reassigned);
+let signed = ~1;
+console.log(signed ^= 7, signed <<= 31, signed >>= 1);
+let arithmetic = 1;
+arithmetic += 0.5;
+console.log(arithmetic);

@@ -82,12 +82,17 @@ struct IlBackend {
     }
     void load(SymbolId symbol) {
         this.load_storage(symbol);
-        if (this.raw_slot(symbol)==-3) { this.call(RuntimeMember::WrapNumber); }
+        if (this.raw_slot(symbol)==-6) { this.op(0x6c);this.call(RuntimeMember::WrapNumber); }
+        else if (this.raw_slot(symbol)==-3) { this.call(RuntimeMember::WrapNumber); }
         else if (this.raw_slot(symbol)==-2) { this.call(RuntimeMember::WrapBoolean); }
     }
     void store(SymbolId symbol) {
-        if (this.raw_slot(symbol)==-3) { this.call(RuntimeMember::NumberValue); }
+        if (this.raw_slot(symbol)==-6) { this.call(RuntimeMember::NumberValue);this.op(0x69); }
+        else if (this.raw_slot(symbol)==-3) { this.call(RuntimeMember::NumberValue); }
         else if (this.raw_slot(symbol)==-2) { this.call(RuntimeMember::BooleanValue); }
+        this.store_storage(symbol);
+    }
+    void store_storage(SymbolId symbol) {
         int slot = this.slots.at(symbol);
         if (slot==-2147483647) { print("tsnetc: captured binding needs lowering");exit(1); }
         if (slot < 0) { this.emit(0xfe0b, -slot - 1); } else { this.emit(0xfe0e, slot); }
@@ -144,20 +149,45 @@ bool il_defined(NodeId entry, const Compiler& c) {
     }
     return false;
 }
+bool il_int_result(NodeId entry, const Compiler& c) {
+    if (entry==0) { return false; }
+    Node n=get_node(entry,c);
+    if (n.kind==NodeKind::Number) {
+        double value=number(get_token(n.token,c).text,c);
+        return value>=-2147483648.0 && value<=2147483647.0 && value==(double)(int)value;
+    }
+    if (n.kind==NodeKind::Conditional) { return il_int_result(n.right,c) && il_int_result(n.third,c); }
+    if (n.kind==NodeKind::Sequence) { return il_int_result(n.right,c); }
+    if (n.kind==NodeKind::Assert) { return il_int_result(n.left,c); }
+    if (n.kind!=NodeKind::Unary && n.kind!=NodeKind::Binary && n.kind!=NodeKind::Assign) { return false; }
+    TextId op=get_token(n.token,c).text;
+    if (n.kind==NodeKind::Unary) { return is_text(op,&text_bit_not,c); }
+    if (n.kind==NodeKind::Binary || n.kind==NodeKind::Assign) {
+        if (n.kind==NodeKind::Assign && is_text(op,&text_assign,c)) { return il_int_result(n.right,c); }
+        return is_text(op,&text_bit_and,c) || is_text(op,&text_bit_or,c) || is_text(op,&text_bit_xor,c) ||
+            is_text(op,&text_shift_left,c) || is_text(op,&text_shift_right,c) ||
+            is_text(op,&text_bit_and_assign,c) || is_text(op,&text_bit_or_assign,c) || is_text(op,&text_bit_xor_assign,c) ||
+            is_text(op,&text_shift_left_assign,c) || is_text(op,&text_shift_right_assign,c);
+    }
+    return false;
+}
 void il_prove_locals(const Compiler& c, IlBackend& b) {
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
         if (n.kind==NodeKind::Variable && il_defined(n.left,c)) {
             TypeKind kind=get_type(n.type,c).kind;
-            if (kind==TypeKind::Number) { b.raw_slots.at_mut(n.symbol)=-3; }
+            if (kind==TypeKind::Number) { b.raw_slots.at_mut(n.symbol)=il_int_result(n.left,c) ? -6 : -3; }
             else if (kind==TypeKind::Boolean) { b.raw_slots.at_mut(n.symbol)=-2; }
         }
     }
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
-        if (n.kind==NodeKind::Assign && !il_defined(i,c)) {
+        if (n.kind==NodeKind::Assign || n.kind==NodeKind::Update) {
             Node target=get_node(n.left,c);
-            if (target.kind==NodeKind::Name) { b.raw_slots.at_mut(target.symbol)=0; }
+            if (target.kind==NodeKind::Name) {
+                if (!il_defined(i,c)) { b.raw_slots.at_mut(target.symbol)=0; }
+                else if (b.raw_slot(target.symbol)==-6 && !il_int_result(i,c)) { b.raw_slots.at_mut(target.symbol)=-3; }
+            }
         }
     }
 }

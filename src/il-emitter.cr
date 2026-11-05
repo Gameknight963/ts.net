@@ -14,6 +14,7 @@ void il_boxed(NodeId entry, const Compiler& c, IlBackend& b) {
 void il_number(NodeId entry, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);
     if (n.kind==NodeKind::Name && b.raw_slot(n.symbol)==-3) { b.load_storage(n.symbol);return; }
+    if (n.kind==NodeKind::Name && b.raw_slot(n.symbol)==-6) { b.load_storage(n.symbol);b.op(0x6c);return; }
     il_expression(entry,c,b);
     if (get_type(get_node(entry,c).type,c).kind == TypeKind::Number) { b.call(RuntimeMember::NumberValue); }
     else { b.call(RuntimeMember::Number); }
@@ -37,6 +38,23 @@ void il_bitwise_result(int opcode, IlBackend& b) {
     b.op(opcode);
     b.op(opcode==0x64 ? 0x76 : 0x6c);
     b.call(RuntimeMember::WrapNumber);
+}
+void il_integer(NodeId entry, const Compiler& c, IlBackend& b) {
+    Node n=get_node(entry,c);
+    if (n.kind==NodeKind::Name && b.raw_slot(n.symbol)==-6) { b.load_storage(n.symbol);return; }
+    if (n.kind==NodeKind::Number && il_int_result(entry,c)) {
+        b.emit(0x20,(int)number(get_token(n.token,c).text,c));return;
+    }
+    if (n.kind==NodeKind::Unary && is_text(get_token(n.token,c).text,&text_bit_not,c)) {
+        il_integer(n.left,c,b);b.op(0x66);return;
+    }
+    int opcode=n.kind==NodeKind::Binary ? il_bitwise_code(get_token(n.token,c).text,c) : 0;
+    if (n.kind==NodeKind::Binary && opcode!=0) {
+        il_integer(n.left,c,b);il_integer(n.right,c,b);
+        if (opcode>=0x62) { b.emit(0x20,31);b.op(0x5f); }
+        b.op(opcode);return;
+    }
+    il_number(entry,c,b);b.call(RuntimeMember::ToInt32);
 }
 
 void il_load_target(NodeId entry, int receiver, const Compiler& c, IlBackend& b) {
@@ -66,6 +84,12 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
     int previous=-1;
     TextId op=get_token(n.token,c).text;
     int bitwise=il_bitwise_code(op,c);
+    if (target.kind==NodeKind::Name && b.raw_slot(target.symbol)==-6 && bitwise!=0 && bitwise!=0x64) {
+        b.load_storage(target.symbol);il_integer(n.right,c,b);
+        if (bitwise>=0x62) { b.emit(0x20,31);b.op(0x5f); }
+        b.op(bitwise);b.op(0x25);b.store_storage(target.symbol);
+        b.op(0x6c);b.call(RuntimeMember::WrapNumber);return;
+    }
     if (n.kind==NodeKind::Assign && is_text(op,&text_add_assign,c) && get_type(target.type,c).kind==TypeKind::String) {
         il_load_target(n.left,receiver,c,b);b.call(RuntimeMember::Text);
         il_boxed(n.right,c,b);b.call(RuntimeMember::Text);b.call(RuntimeMember::Concat);
@@ -163,7 +187,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         TextId op=get_token(n.token,c).text;
         if (is_text(op,&text_not,c)) { il_condition(n.left,c,b); il_invert(b);b.call(RuntimeMember::WrapBoolean); }
         else if (is_text(op,&text_bit_not,c)) {
-            il_number(n.left,c,b);b.call(RuntimeMember::ToInt32);b.op(0x66);b.op(0x6c);b.call(RuntimeMember::WrapNumber);
+            il_integer(n.left,c,b);b.op(0x66);b.op(0x6c);b.call(RuntimeMember::WrapNumber);
         }
         else { il_number(n.left,c,b); if (is_text(op,&text_minus,c)) { b.op(0x65); }b.call(RuntimeMember::WrapNumber); }
     } else if (n.kind == NodeKind::Call) {
@@ -221,8 +245,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             if (is_text(op,&text_strict_not_equal,c)) { il_invert(b); }
             b.call(RuntimeMember::WrapBoolean);
         } else if (il_bitwise_code(op,c)!=0) {
-            il_number(n.left,c,b);b.call(RuntimeMember::ToInt32);
-            il_number(n.right,c,b);b.call(RuntimeMember::ToInt32);
+            il_integer(n.left,c,b);il_integer(n.right,c,b);
             il_bitwise_result(il_bitwise_code(op,c),b);
         } else if (is_text(op,&text_plus,c) && get_type(n.type,c).kind == TypeKind::Any) {
             il_boxed(n.left,c,b); il_boxed(n.right,c,b); b.call(RuntimeMember::Add);
@@ -274,7 +297,9 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
         while (child != 0) { il_statement(child,return_type,c,b); child=get_node(child,c).next; }
     } else if (n.kind == NodeKind::Variable) {
         int raw=b.raw_slot(n.symbol);int slot=b.local(raw!=0 ? raw : b.type(n.type,c));
-        b.slots.at_mut(n.symbol)=slot;il_as(n.left,n.type,c,b);b.store(n.symbol);
+        b.slots.at_mut(n.symbol)=slot;
+        if (raw==-6) { il_integer(n.left,c,b);b.store_storage(n.symbol); }
+        else { il_as(n.left,n.type,c,b);b.store(n.symbol); }
     } else if (n.kind == NodeKind::Return) {
         if (n.left != 0) { il_as(n.left,return_type,c,b); }
         else if (b.type(return_type,c)!=-1) { b.empty(return_type,c); }
