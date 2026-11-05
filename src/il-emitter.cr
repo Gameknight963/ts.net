@@ -213,6 +213,21 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
     if (logical) { b.mark(logical_done);b.convert(value_type,n.type,c); }
 }
 
+bool il_number_type_test(NodeId entry, const Compiler& c, IlBackend& b) {
+    Node n=get_node(entry,c);
+    if (n.kind!=NodeKind::Binary) { return false; }
+    TextId op=get_token(n.token,c).text;
+    if (!is_text(op,&text_strict_equal,c) && !is_text(op,&text_strict_not_equal,c)) { return false; }
+    Node left=get_node(n.left,c);Node right=get_node(n.right,c);NodeId value=0;
+    if (left.kind==NodeKind::TypeOf && right.kind==NodeKind::String && is_text(get_token(right.token,c).text,&text_number,c)) { value=left.left; }
+    if (right.kind==NodeKind::TypeOf && left.kind==NodeKind::String && is_text(get_token(left.token,c).text,&text_number,c)) { value=right.left; }
+    if (value==0) { return false; }
+    if (get_type(get_node(value,c).type,c).kind==TypeKind::Number) { il_expression(value,c,b);b.call(RuntimeMember::NumberMissing);il_invert(b); }
+    else { il_boxed(value,c,b);b.call(RuntimeMember::IsNumber); }
+    if (is_text(op,&text_strict_not_equal,c)) { il_invert(b); }
+    b.call(RuntimeMember::WrapBoolean);return true;
+}
+
 NodeId il_numeric_property_key(NodeId entry, const Compiler& c) {
     if (entry==0) { return 0; }
     Node n=get_node(entry,c);
@@ -354,6 +369,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             b.convert(declared,n.type,c);
         }
     } else if (n.kind == NodeKind::Binary) {
+        if (il_number_type_test(entry,c,b)) { return; }
         TextId op=get_token(n.token,c).text;
         if (is_text(op,&text_and,c) || is_text(op,&text_or,c)) {
             int done=b.label();il_as(n.left,n.type,c,b);b.op(0x25);b.truth(n.type,c);

@@ -3,7 +3,7 @@ import "assembly-plan.cr";
 enum class RuntimeMember {
     ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
-    Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
+    Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
     ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, CheckInitialized, Count
@@ -347,6 +347,7 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::Boolean, b.plan.method1(6, js, 0, -2, -5, "Boolean"));
     b.ref_set(RuntimeMember::Truthy, b.plan.method1(6, js, 0, -2, -5, "Truthy"));
     b.ref_set(RuntimeMember::Undefined, b.plan.method0(6, js, 0, -5, "GetUndefined"));
+    b.ref_set(RuntimeMember::IsNumber,b.plan.method1(6,js,0,-2,-5,"IsNumber"));
     b.ref_set(RuntimeMember::IsUndefined,b.plan.method1(6,js,0,-2,-5,"IsUndefined"));
     b.ref_set(RuntimeMember::IsNullish,b.plan.method1(6,js,0,-2,-5,"IsNullish"));
     b.ref_set(RuntimeMember::RequireObject,b.plan.method1(6,js,0,-1,-5,"RequireObject"));

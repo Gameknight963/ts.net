@@ -34,6 +34,8 @@ public static class Js
     static readonly object BoxedTrue = true;
     static readonly object BoxedFalse = false;
     public static object GetUndefined() => Undefined;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool IsNumber(object value) => value is double;
     public static bool IsUndefined(object value) => ReferenceEquals(value, Undefined);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void CheckInitialized(bool initialized)
