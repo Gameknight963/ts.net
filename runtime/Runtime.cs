@@ -119,7 +119,7 @@ public static partial class Js
         double n => n,
         null => 0,
         bool b => b ? 1 : 0,
-        string s => s.Trim().Length == 0 ? 0 : double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double n) ? n : double.NaN,
+        string s => StringNumber(s),
         _ => double.NaN
     };
     public static bool Boolean(object value) => Cast<bool>(value, "Expected boolean");
