@@ -15,7 +15,7 @@ bool scalar_literal(NodeId entry, const Compiler& c) {
     int count=0;FieldId member=get_type(n.type,c).fields;
     while (member!=0) {
         TypeKind kind=get_type(get_field(member,c).type,c).kind;
-        if (kind!=TypeKind::Number && kind!=TypeKind::Boolean && kind!=TypeKind::String) { return false; }
+        if (kind==TypeKind::Void) { return false; }
         count++;member=get_field(member,c).next;
     }
     if (count==0 || count>8) { return false; }
@@ -70,7 +70,10 @@ void il_prove_scalars(const Compiler& c, IlBackend& b) {
             Node container=get_node((NodeId)parents.at(parent_id),c);
             TypeId actual=get_node(get_node(definition,c).left,c).type;
             FieldId original=field(actual,parent.name,c);FieldId view=field(n.type,parent.name,c);
-            if (container.kind!=NodeKind::Object && original!=0 && view!=0 && get_field(original,c).type==get_field(view,c).type) { continue; }
+            if (container.kind!=NodeKind::Object && original!=0 && view!=0) {
+                TypeId original_type=get_field(original,c).type;TypeId view_type=get_field(view,c).type;
+                if (original_type==view_type || (get_type(original_type,c).kind==TypeKind::Array && get_type(view_type,c).kind==TypeKind::Array)) { continue; }
+            }
         }
         // Calls, captures, identity tests, rebinding and dynamic views escape.
         invalid.at_mut(root)=1;
