@@ -39,11 +39,12 @@ void il_key_layouts(const Compiler& c, IlBackend& b) {
     }
 }
 
-void il_object_keys_call(NodeId entry, const Compiler& c, IlBackend& b) {
+void il_object_keys_call(NodeId entry, bool count, const Compiler& c, IlBackend& b) {
     Node call=get_node(entry,c);NodeId argument=call.children;
     if (argument==0) { b.call(RuntimeMember::Undefined); }
     else { il_boxed(argument,c,b);argument=get_node(argument,c).next; }
     int source=b.local(-5);b.emit(0xfe0e,source);
     while (argument!=0) { il_expression(argument,c,b);if (get_type(get_node(argument,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }argument=get_node(argument,c).next; }
-    b.emit(0xfe0c,source);b.call(RuntimeMember::ObjectKeys);
+    b.emit(0xfe0c,source);b.call(count ? RuntimeMember::ObjectKeyCount : RuntimeMember::ObjectKeys);
+    if (count) { b.call(RuntimeMember::WrapNumber); }
 }

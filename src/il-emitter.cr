@@ -343,6 +343,11 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             b.op(0x25); il_as(p.left,get_field(member,c).type,c,b); b.emit(0x7d,(int)b.field_token(member)); property=p.next;
         }
     } else if (n.kind == NodeKind::Property) {
+        Node receiver=get_node(n.left,c);
+        if (is_text(n.name,&text_length,c) && receiver.kind==NodeKind::Call &&
+            get_node(receiver.left,c).kind==NodeKind::ObjectKeysFunction && !il_call_has_spread(n.left,c)) {
+            il_object_keys_call(n.left,true,c,b);return;
+        }
         ScalarField scalar=il_scalar_field(entry,c,b);
         if (scalar.slot>=0) { b.emit(0xfe0c,scalar.slot);b.convert(scalar.type,n.type,c);return; }
         il_expression(n.left,c,b); TypeId owner=get_node(n.left,c).type;
@@ -372,7 +377,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     } else if (n.kind == NodeKind::Call) {
         if (il_number_predicate(entry,true,c,b)) { return; }
         if (il_call_has_spread(entry,c)) { il_spread_call(entry,c,b);return; }
-        if (get_node(n.left,c).kind==NodeKind::ObjectKeysFunction) { il_object_keys_call(entry,c,b);return; }
+        if (get_node(n.left,c).kind==NodeKind::ObjectKeysFunction) { il_object_keys_call(entry,false,c,b);return; }
         if (il_array_call(entry,c)) { il_emit_array_call(entry,c,b); }
         else if (builtin_has_own(n.left,c)) {
             if (il_scalar_own(entry,c,b)) { return; }

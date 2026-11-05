@@ -1,7 +1,7 @@
 import "assembly-plan.cr";
 
 enum class RuntimeMember {
-    ObjectKeys, ObjectKeysFunction, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
@@ -342,6 +342,8 @@ void il_runtime(IlBackend& b) {
     int object_type=b.ref(RuntimeMember::ObjectType);
     b.ref_set(RuntimeMember::ObjectConstructor,b.plan.method0(6,object_type,1,-1,".ctor"));
     int js = b.ref(RuntimeMember::JsType); int obj = b.ref(RuntimeMember::TsObjectType);
+    b.ref_set(RuntimeMember::ObjectKeyCount,b.plan.method1(6,js,0,-3,-5,"ObjectKeyCount"));
+    b.ref_set(RuntimeMember::KeyCountWithFixed,b.plan.method1(6,obj,1,-3,-6,"KeyCountWithFixed"));
     b.ref_set(RuntimeMember::ObjectKeys,b.plan.method1(6,js,0,-5,-5,"ObjectKeys"));
     b.ref_set(RuntimeMember::ObjectKeysFunction,b.plan.method0(6,js,0,-5,"GetObjectKeysFunction"));
     b.ref_set(RuntimeMember::KeysFromFixed,b.plan.method1(6,obj,1,-5,-7,"KeysFromFixed"));
@@ -610,6 +612,8 @@ void il_shapes(const Compiler& c, IlBackend& b) {
             b.emit(0x20,key_count);b.emit(0x8d,b.ref(RuntimeMember::ObjectType));member=get_type(type,c).fields;int key_index=0;
             while (member!=0) { b.op(0x25);b.emit(0x20,key_index++);il_text(get_field(member,c).name,c,b);b.op(0xa2);member=get_field(member,c).next; }
             b.call(RuntimeMember::KeysFromFixed);b.op(0x2a);
+            b.begin(b.plan.method0(5,klass,0xc6,-3,"OwnKeyCount"));
+            b.emit(0xfe09,0);b.emit(0x20,key_count);b.call(RuntimeMember::KeyCountWithFixed);b.op(0x2a);
             b.begin(b.plan.method1(5,klass,0xc6,-2,-4,"HasOwn"));
             member=get_type(type,c).fields;
             while (member!=0) {

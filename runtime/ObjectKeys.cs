@@ -5,6 +5,11 @@ using System.Globalization;
 public abstract partial class TsObject
 {
     public virtual object OwnKeys() => KeysFromFixed(Array.Empty<object>());
+    protected double ExtraKeyCount => extra?.Count ?? 0;
+    // Unknown subclasses retain their enumeration behavior; generated shapes
+    // and array representations override this with allocation-free counts.
+    public virtual double OwnKeyCount() => ((JsArray)OwnKeys()).Length();
+    public double KeyCountWithFixed(int count) => count + ExtraKeyCount;
     public object KeysFromFixed(object[] names)
     {
         if (extra == null || extra.Count == 0) return Js.OrderOwnKeys(names);
@@ -21,6 +26,13 @@ public abstract partial class TsObject
 
 partial struct ArrayStorage<T>
 {
+    internal double CountPresent(Func<T, bool> present)
+    {
+        double count = 0;uint end = Math.Min(Length, (uint)dense.Length);
+        for (uint i = 0; i < end; i++) if (present(dense[i])) count++;
+        if (sparse != null) foreach (var item in sparse) if (item.Key < Length && present(item.Value)) count++;
+        return count;
+    }
     internal List<uint> PresentIndices(Func<T, bool> present)
     {
         var result = new List<uint>();
@@ -35,6 +47,8 @@ partial struct ArrayStorage<T>
 
 public partial class JsArray
 {
+    internal virtual double ElementKeyCount() => values.CountPresent(static value => !ReferenceEquals(value, Hole));
+    public override double OwnKeyCount() => ElementKeyCount() + ExtraKeyCount;
     internal virtual List<uint> PresentIndices() => values.PresentIndices(static value => !ReferenceEquals(value, Hole));
     public override object OwnKeys()
     {
@@ -47,11 +61,19 @@ public partial class JsArray
 
 public sealed partial class NumberArray
 {
+    internal override double ElementKeyCount() => numbers.CountPresent(static value => BitConverter.DoubleToInt64Bits(value) != MissingBits);
     internal override List<uint> PresentIndices() => numbers.PresentIndices(static value => BitConverter.DoubleToInt64Bits(value) != MissingBits);
 }
 
 public sealed partial class TaggedArray
 {
+    internal override double ElementKeyCount()
+    {
+        if (materialized != null) return materialized.ElementKeyCount();
+        double count = 0;uint end = Math.Min(length, (uint)tags.Length);
+        for (uint i = 0; i < end; i++) if (tags[i] != 0) count++;
+        return count;
+    }
     internal override List<uint> PresentIndices()
     {
         if (materialized != null) return materialized.PresentIndices();
@@ -109,6 +131,12 @@ public static partial class Js
             return new JsArray(names);
         }
         return new JsArray(0);
+    }
+    public static double ObjectKeyCount(object source)
+    {
+        if (source == null || ReferenceEquals(source, Undefined)) throw new InvalidOperationException("Cannot convert null or undefined to object");
+        if (source is TsObject value) return value.OwnKeyCount();
+        return source is string text ? text.Length : 0;
     }
     static class ObjectKeysCache
     {

@@ -2,6 +2,7 @@ using System.Globalization;
 
 static string Keys(object value) {
     var keys = (JsArray)Js.ObjectKeys(value);
+    if (Js.ObjectKeyCount(value) != keys.Length()) throw new Exception("Key count disagrees with enumeration");
     var result = new List<string>();
     for (int i = 0; i < keys.Length(); i++) result.Add((string)keys.Get(i.ToString(CultureInfo.InvariantCulture)));
     return string.Join("|", result);
@@ -35,4 +36,14 @@ if (args.Length != 0) {
     first.Set("z", 5d);
     if (Keys(second) != "b|a") throw new Exception("Instances shared dynamic properties");
     Console.WriteLine("PASS shared property-order classes retain independent object storage");
+}
+
+var provider = new CustomKeys();
+if (Js.ObjectKeyCount(provider) != 1 || provider.Calls != 1)
+    throw new Exception("Custom enumeration must run once when only the key count is requested");
+Console.WriteLine("PASS key counts preserve custom enumeration");
+
+sealed class CustomKeys : TsObject {
+    public int Calls;
+    public override object OwnKeys() { Calls++;return new JsArray(new object[] {"provided"}); }
 }
