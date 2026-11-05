@@ -138,9 +138,20 @@ public class JsArray : TsObject
             throw new InvalidOperationException("Invalid array length");
         Resize((uint)length);
     }
-    static bool Index(string key, out uint index) =>
-        uint.TryParse(key, NumberStyles.None, CultureInfo.InvariantCulture, out index) &&
-        index != uint.MaxValue && key == index.ToString(CultureInfo.InvariantCulture);
+    internal static bool Index(string key, out uint index)
+    {
+        index = 0;
+        if (key.Length == 0 || key.Length > 10 || key.Length > 1 && key[0] == '0') return false;
+        ulong value = 0;
+        for (int i = 0; i < key.Length; i++)
+        {
+            uint digit = (uint)(key[i] - '0');
+            if (digit > 9) return false;
+            value = value * 10 + digit;
+        }
+        index = (uint)value;
+        return value < uint.MaxValue;
+    }
     public override bool HasOwn(string key) => key == "length" || (Index(key, out uint index) ? HasElement(index) : base.HasOwn(key));
     public override object Get(string key) => key == "length" ? (double)Count : Index(key, out uint index) ? Read(index) : base.Get(key);
     public override object Set(string key, object value)

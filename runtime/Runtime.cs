@@ -173,8 +173,7 @@ public static class Js
         if (IsNullish(receiver)) throw new InvalidOperationException("Cannot inspect properties of null or undefined");
         if (receiver is TsObject obj) return obj.HasOwn(name);
         if (receiver is string text) return name == "length" ||
-            uint.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out uint index) &&
-            index < text.Length && name == index.ToString(CultureInfo.InvariantCulture);
+            JsArray.Index(name, out uint index) && index < text.Length;
         return false;
     }
 
@@ -182,7 +181,7 @@ public static class Js
     {
         if (receiver is JsArray array) return array.GetIndex(key);
         string text = Text(key);
-        if (receiver is string value && uint.TryParse(text, out uint index) && index < value.Length && text == index.ToString(CultureInfo.InvariantCulture))
+        if (receiver is string value && JsArray.Index(text, out uint index) && index < value.Length)
             return value.Substring((int)index, 1);
         return Get(receiver, text);
     }
