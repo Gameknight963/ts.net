@@ -1,7 +1,7 @@
 import "il-globals.cr";
 
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
-    if (get_node(entry,c).kind==NodeKind::Array && get_type(target,c).kind==TypeKind::Array) {
+    if (get_node(entry,c).kind==NodeKind::Array && (get_type(target,c).kind==TypeKind::Array || get_type(target,c).kind==TypeKind::Any || get_type(target,c).kind==TypeKind::Unknown)) {
         il_array_literal(entry,target,c,b);return;
     }
     TypeId source=get_node(entry,c).type;
