@@ -4,16 +4,16 @@ using System.Globalization;
 
 public abstract partial class TsObject
 {
-    public void DefineOwn(string key, object value) => (extra ??= new Dictionary<string, object>())[key] = value;
+    public void DefineOwn(string key, object value) => (extra ??= new OwnProperties())[key] = value;
     public virtual void MarkPresent(string key) { }
     public void CopySpreadExtras(object destination)
     {
-        if (extra != null) ((TsObject)destination).extra = new Dictionary<string, object>(extra);
+        if (extra != null) ((TsObject)destination).extra = new OwnProperties(extra);
     }
     public virtual object CloneForSpread()
     {
         var result = (TsObject)MemberwiseClone();
-        if (extra != null) result.extra = new Dictionary<string, object>(extra);
+        if (extra != null) result.extra = new OwnProperties(extra);
         return result;
     }
 }

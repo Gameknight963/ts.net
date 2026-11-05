@@ -76,6 +76,11 @@ try {
     & node tests/property-key-numbers.cjs "$testRoot/property-key-numbers.tsv"
     if ($LASTEXITCODE) { throw 'Numeric property keys disagree with Node' }
 
+    & dotnet build tests/inspect-property-bag/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Property bag inspector build failed' }
+    & dotnet tests/inspect-property-bag/bin/Release/net10.0/Inspect.dll
+    if ($LASTEXITCODE) { throw 'Dynamic property storage checks failed' }
+
     & dotnet build tests/inspect-arrays/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Array runtime checks failed to build' }
     & dotnet tests/inspect-arrays/bin/Release/net10.0/Inspect.dll "$testRoot/packed-arrays/bin/Release/net10.0/App.dll" "$testRoot/union-arrays/bin/Release/net10.0/App.dll"

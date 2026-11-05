@@ -106,3 +106,12 @@ const attributes: {[key: `data${string}`]: number} = {};
 attributes.dataX = 3;
 attributes["dataY"] = 4;
 console.log(attributes.dataX, attributes.dataY, keys(attributes));
+
+const large: any = {};
+for(let i=0;i<40;i++) large["key"+i] = i;
+for(let i=0;i<40;i+=2) large["key"+i] += 100;
+large["2"] = "index";
+large["00"] = "named";
+const largeCopy = {...large};
+largeCopy.key39 = "changed";
+console.log(keys(largeCopy), large.key0, large.key39, largeCopy.key39);

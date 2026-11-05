@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 // does not pass through this representation.
 public abstract partial class TsObject
 {
-    private Dictionary<string, object> extra;
+    private OwnProperties extra;
 
     public virtual bool HasOwn(string key) => extra != null && extra.ContainsKey(key);
 
@@ -17,7 +17,7 @@ public abstract partial class TsObject
 
     public virtual object Set(string key, object value)
     {
-        (extra ??= new Dictionary<string, object>())[key] = value;
+        (extra ??= new OwnProperties())[key] = value;
         return value;
     }
 }
