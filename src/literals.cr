@@ -208,3 +208,6 @@ const char text_function_declaration_prefix[3] = " f";
 const char text_signature_end[3] = ")\n";
 const char text_public_static_void_main[29] = "public static void Main() {\n";
 const char text_program_end[5] = "}\n}\n";
+
+const char text_power[3] = "**";
+const char text_power_assign[4] = "**=";

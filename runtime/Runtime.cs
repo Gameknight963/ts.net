@@ -347,6 +347,13 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool EqualBooleans(bool? left, bool? right) => left == right;
 
+    public static double Power(double value, double exponent)
+    {
+        // ECMAScript differs from Math.Pow for unit bases and nonfinite exponents.
+        if (double.IsNaN(exponent) || Math.Abs(value) == 1 && double.IsInfinity(exponent)) return double.NaN;
+        return Math.Pow(value, exponent);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double Remainder(double value, double divisor)
     {

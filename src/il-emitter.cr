@@ -176,6 +176,7 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
         else {
             if (is_text(op,&text_increment,c) || is_text(op,&text_add_assign,c)) { b.op(0x58); }
             else if (is_text(op,&text_decrement,c) || is_text(op,&text_subtract_assign,c)) { b.op(0x59); }
+            else if (is_text(op,&text_power_assign,c)) { b.call(RuntimeMember::Power); }
             else if (is_text(op,&text_multiply_assign,c)) { b.op(0x5a); }
             else if (is_text(op,&text_modulo_assign,c)) { b.call(RuntimeMember::Remainder); }
             else { b.op(0x5b); }
@@ -473,6 +474,8 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         } else if (il_bitwise_code(op,c)!=0) {
             il_integer(n.left,c,b);il_integer(n.right,c,b);
             il_bitwise_result(il_bitwise_code(op,c),b);
+        } else if (is_text(op,&text_power,c) && get_node(n.right,c).kind==NodeKind::Number && number(get_token(get_node(n.right,c).token,c).text,c)==2) {
+            il_number(n.left,c,b);b.op(0x25);b.op(0x5a);b.call(RuntimeMember::WrapNumber);
         } else if (is_text(op,&text_plus,c) && get_type(n.type,c).kind == TypeKind::Any) {
             il_boxed(n.left,c,b); il_boxed(n.right,c,b); b.call(RuntimeMember::Add);
         } else if (is_text(op,&text_plus,c) && get_type(n.type,c).kind == TypeKind::String) {
@@ -481,6 +484,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             il_number(n.left,c,b); il_number(n.right,c,b);
             if (is_text(op,&text_plus,c)) { b.op(0x58); }
             else if (is_text(op,&text_minus,c)) { b.op(0x59); }
+            else if (is_text(op,&text_power,c)) { b.call(RuntimeMember::Power); }
             else if (is_text(op,&text_star,c)) { b.op(0x5a); }
             else if (is_text(op,&text_slash,c)) { b.op(0x5b); }
             else if (is_text(op,&text_modulo,c)) { b.call(RuntimeMember::Remainder); }
