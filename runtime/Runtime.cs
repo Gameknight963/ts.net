@@ -64,6 +64,12 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int ToInt32(double value)
     {
+        if (System.Runtime.Intrinsics.X86.Sse2.IsSupported) {
+            int result = System.Runtime.Intrinsics.X86.Sse2.ConvertToInt32WithTruncation(
+                System.Runtime.Intrinsics.Vector128.CreateScalar(value));
+            if (result != int.MinValue) return result;
+            return ToInt32Slow(value);
+        }
         if (value >= int.MinValue && value <= int.MaxValue) return (int)value;
         return ToInt32Slow(value);
     }
