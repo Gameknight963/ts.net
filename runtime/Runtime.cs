@@ -43,6 +43,7 @@ public static class Js
     };
     public static double Now() => Stopwatch.GetTimestamp() * (1000.0 / Stopwatch.Frequency);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T Cast<T>(object value, string message)
     {
         if (ReferenceEquals(value, Undefined) && Nullable.GetUnderlyingType(typeof(T)) != null) return default;
@@ -115,6 +116,21 @@ public static class Js
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool EqualBooleans(bool? left, bool? right) => left == right;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double Remainder(double value, double divisor)
+    {
+        // Preserve general floating-point semantics outside this exact integer case.
+        // Excluding zero also preserves the sign of negative zero in the fallback.
+        if (divisor >= 1 && divisor <= int.MaxValue && value > 0 && value <= int.MaxValue)
+        {
+            int modulus = (int)divisor;
+            int integer = (int)value;
+            if (modulus == divisor && integer == value && (modulus & (modulus - 1)) == 0)
+                return integer & (modulus - 1);
+        }
+        return value % divisor;
+    }
 
     public static bool Equal(object left, object right)
     {

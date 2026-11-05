@@ -3,6 +3,8 @@ import "il-model.cr";
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
     TypeId source=get_node(entry,c).type;
     il_expression(entry,c,b);
+    // The freshly allocated class implements every compatible shape interface.
+    if (get_node(entry,c).kind==NodeKind::Object && fits(source,target,c)) { return; }
     b.convert(source,target,c);
 }
 void il_boxed(NodeId entry, const Compiler& c, IlBackend& b) {
@@ -204,7 +206,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             else if (is_text(op,&text_minus,c)) { b.op(0x59); }
             else if (is_text(op,&text_star,c)) { b.op(0x5a); }
             else if (is_text(op,&text_slash,c)) { b.op(0x5b); }
-            else if (is_text(op,&text_modulo,c)) { b.op(0x5d); }
+            else if (is_text(op,&text_modulo,c)) { b.call(RuntimeMember::Remainder); }
             else if (is_text(op,&text_less,c)) { b.op(0xfe04); }
             else if (is_text(op,&text_greater,c)) { b.op(0xfe02); }
             else if (is_text(op,&text_less_equal,c)) { b.op(0xfe03); il_invert(b); }
