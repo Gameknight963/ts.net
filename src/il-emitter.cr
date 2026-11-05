@@ -277,12 +277,19 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
                     if (get_type(get_node(argument,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }
                     argument=get_node(argument,c).next;continue;
                 }
+                Node p=get_node(parameter,c);
+                if (p.third!=0) {
+                    il_rest_arguments(argument,get_node(p.third,c).type,c,b);argument=0;parameter=p.next;continue;
+                }
                 il_as(argument,get_node(parameter,c).type,c,b);
                 argument=get_node(argument,c).next; parameter=get_node(parameter,c).next;
             }
             while (parameter!=0) {
                 if (!get_node(parameter,c).constant) { fail(n.token,"omitted required argument",c); }
-                b.empty(get_node(parameter,c).type,c);parameter=get_node(parameter,c).next;
+                Node p=get_node(parameter,c);
+                if (p.third!=0) { il_rest_arguments(0,get_node(p.third,c).type,c,b); }
+                else { b.empty(p.type,c); }
+                parameter=p.next;
             }
             b.emit(0x28,(int)b.function(symbol));
             TypeId declared=get_symbol(symbol,c).type;

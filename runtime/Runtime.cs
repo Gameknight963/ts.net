@@ -148,6 +148,7 @@ public static class Js
     public static double ArrayPush(object receiver, object[] values) =>
         receiver is JsArray array ? array.PushMany(values) : throw new InvalidOperationException("push requires an array");
     public static void ArrayAppend(object receiver, object value) => ((JsArray)receiver).Append(value);
+    public static void ArraySetAt(object receiver, int index, object value) => ((JsArray)receiver).SetAt(index, value);
     public static void ArrayHole(object receiver) => ((JsArray)receiver).AppendHole();
     public static void ArraySpread(object receiver, object source, int extra) => ((JsArray)receiver).Spread(source, extra);
     public static object ArrayPop(object receiver) =>

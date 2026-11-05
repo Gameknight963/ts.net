@@ -4,7 +4,7 @@ NodeId il_flat_parameter(NodeId function, const Compiler& c) {
     Node n=get_node(function,c);NodeId parameter=n.children;
     if (parameter==0) { return 0; }
     Node p=get_node(parameter,c);
-    if (p.next!=0 || p.left!=0 || p.right==0) { return 0; }
+    if (p.next!=0 || p.left!=0 || p.right==0 || p.third!=0) { return 0; }
     Node pattern=get_node(p.right,c);
     if (!pattern.constant) { return 0; }
     NodeId child=pattern.children;int count=0;
@@ -14,6 +14,20 @@ NodeId il_flat_parameter(NodeId function, const Compiler& c) {
         child=binding.next;
     }
     return p.right;
+}
+
+void il_rest_arguments(NodeId argument, TypeId type, const Compiler& c, IlBackend& b) {
+    int count=0;NodeId child=argument;
+    while (child!=0) { count++;child=get_node(child,c).next; }
+    bool numeric=il_number_array(type,c);
+    b.emit(0x20,count);b.emit(0x73,b.ref(numeric ? RuntimeMember::NumberArrayConstructor : RuntimeMember::ArrayConstructor));
+    child=argument;int index=0;
+    while (child!=0) {
+        b.op(0x25);b.emit(0x20,index++);
+        if (numeric) { il_as(child,get_type(type,c).element,c,b);b.call(RuntimeMember::NumberIndexSetAt); }
+        else { il_boxed(child,c,b);b.call(RuntimeMember::ArrayIndexSetAt); }
+        child=get_node(child,c).next;
+    }
 }
 
 bool il_has_flat_calls(SymbolId symbol, const Compiler& c) {

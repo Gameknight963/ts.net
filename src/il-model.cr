@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -287,6 +287,8 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::ArrayPush,b.plan.method2(6,js,0,-3,-5,-7,"ArrayPush"));
     b.ref_set(RuntimeMember::ArrayAppend,b.plan.method2(6,js,0,-1,-5,-5,"ArrayAppend"));
     b.ref_set(RuntimeMember::ArrayHole,b.plan.method1(6,js,0,-1,-5,"ArrayHole"));
+    Vector<int> array_set_parameters=Vector<int>::create();array_set_parameters.push(-5);array_set_parameters.push(-6);array_set_parameters.push(-5);
+    b.ref_set(RuntimeMember::ArrayIndexSetAt,b.plan.method(6,js,0,-1,array_set_parameters.view(),"ArraySetAt"));
     Vector<int> spread_parameters=Vector<int>::create();spread_parameters.push(-5);spread_parameters.push(-5);spread_parameters.push(-6);
     b.ref_set(RuntimeMember::ArraySpread,b.plan.method(6,js,0,-1,spread_parameters.view(),"ArraySpread"));
     b.ref_set(RuntimeMember::ArrayPop,b.plan.method1(6,js,0,-5,-5,"ArrayPop"));

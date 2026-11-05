@@ -118,6 +118,11 @@ public class JsArray : TsObject
     }
     public object GetIndex(object key) => Get(Js.Text(key));
     public object ElementAt(uint index) => Read(index);
+    public void SetAt(int index, object value)
+    {
+        if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
+        Write((uint)index, value);
+    }
     public void SetIndex(object key, object value) => Set(Js.Text(key), value);
     public void Append(object value)
     {

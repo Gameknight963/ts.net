@@ -433,9 +433,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			b.nodes[id-1].left = initializer
 			return id
 		}
-		if n.Kind == ast.KindParameter && n.AsParameterDeclaration().DotDotDotToken != nil {
-			b.unsupported(n)
-		}
+		rest := n.Kind == ast.KindParameter && n.AsParameterDeclaration().DotDotDotToken != nil
 		pattern := n.Name().Kind == ast.KindArrayBindingPattern || n.Name().Kind == ast.KindObjectBindingPattern
 		if n.Name().Kind != ast.KindIdentifier && !(n.Kind == ast.KindParameter && pattern) {
 			b.unsupported(n)
@@ -456,6 +454,11 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		}
 		row.left = b.lower(n.Initializer())
 		row.typ = b.typ(b.c.GetTypeAtLocation(n.Name()))
+		if rest {
+			row.third = b.node(32, n, "rest")
+			b.nodes[row.third-1].typ = row.typ
+			row.constant = 1
+		}
 		if n.Kind == ast.KindParameter && (n.Initializer() != nil || n.AsParameterDeclaration().QuestionToken != nil) {
 			if b.types[row.typ-1].kind != 0 && b.types[row.typ-1].kind != 2 {
 				row.typ = b.typ(b.c.GetAnyType())
