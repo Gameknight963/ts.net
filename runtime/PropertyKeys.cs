@@ -5,7 +5,7 @@ using System.Text;
 
 public static partial class Js
 {
-    public static string PropertyKey(object value) => PropertyKey(value, null);
+    public static string PropertyKey(object value) => value is string text ? text : PropertyKey(value, null);
 
     static bool KeyPrimitive(object value) => value == null || ReferenceEquals(value, Undefined) ||
         value is string || value is double || value is bool;
