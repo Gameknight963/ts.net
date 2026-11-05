@@ -18,6 +18,12 @@ Vector<int> empty_slots(size_t count) {
     return move(result);
 }
 
+struct ScalarField {
+    SymbolId root;
+    TextId name;
+    TypeId type;
+    int slot;
+};
 struct IlBackend {
     AssemblyPlan plan;
     Vector<int> runtime;
@@ -31,6 +37,8 @@ struct IlBackend {
     Vector<int> methods;
     Vector<int> slots;
     Vector<int> raw_slots;
+    Vector<int> scalar_roots;
+    Vector<ScalarField> scalar_fields;
     Vector<int> breaks;
     Vector<int> continues;
     int method;
@@ -44,6 +52,7 @@ struct IlBackend {
             .interfaces=zero_ids(types), .classes=zero_ids(types), .constructors=zero_ids(types),
             .fields=zero_ids(fields), .getters=zero_ids(fields), .setters=zero_ids(fields),
             .casts=zero_ids(types), .methods=zero_ids(symbols), .slots=empty_slots(symbols),.raw_slots=zero_ids(symbols),
+            .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
             .method=0, .local_count=0, .label_count=0};
     }

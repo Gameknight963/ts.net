@@ -26,7 +26,7 @@ try {
     [IO.File]::WriteAllText("$testRoot/boundaries.ts", $boundary.ToString(), $bom)
 
     # Differential execution checks against the actual TypeScript compiler.
-    foreach ($fixture in @('tests/behavior.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/straightforward.ts', 'tests/nullable-values.ts', 'tests/numeric-fastpaths.ts', 'tests/bitwise.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
+    foreach ($fixture in @('tests/behavior.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/straightforward.ts', 'tests/nullable-values.ts', 'tests/numeric-fastpaths.ts', 'tests/bitwise.ts', 'tests/scalar-objects.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
         & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/$name" $fixture
@@ -47,9 +47,15 @@ try {
     & dotnet tests/inspect-nullable/bin/Release/net10.0/Inspect.dll "$testRoot/nullable-values/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Nullable storage was not emitted' }
 
+    & dotnet build tests/inspect-scalars/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Scalar replacement inspector build failed' }
+    & dotnet tests/inspect-scalars/bin/Release/net10.0/Inspect.dll "$testRoot/scalar-objects/bin/Release/net10.0/App.dll"
+    if ($LASTEXITCODE) { throw 'Local object allocation was not eliminated' }
+
     foreach ($case in @(
         @{ Name = 'bad-assertion'; Message = 'checked conversion failed' },
         @{ Name = 'bad-write'; Message = 'property write violates static field type' },
+        @{ Name = 'scalar-bad-write'; Message = 'checked conversion failed' },
         @{ Name = 'bad-structural-cast'; Message = 'checked conversion failed' }
     )) {
         $name = $case.Name

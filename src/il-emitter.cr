@@ -1,4 +1,4 @@
-import "il-model.cr";
+import "il-scalar.cr";
 
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
     TypeId source=get_node(entry,c).type;
@@ -59,6 +59,8 @@ void il_integer(NodeId entry, const Compiler& c, IlBackend& b) {
 
 void il_load_target(NodeId entry, int receiver, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);
+    ScalarField scalar=il_scalar_field(entry,c,b);
+    if (scalar.slot>=0) { b.emit(0xfe0c,scalar.slot);b.convert(scalar.type,n.type,c);return; }
     if (n.kind == NodeKind::Name) { il_expression(entry,c,b); }
     else {
         b.emit(0xfe0c,receiver);
@@ -77,8 +79,9 @@ void il_load_target(NodeId entry, int receiver, const Compiler& c, IlBackend& b)
 }
 void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c); Node target=get_node(n.left,c);
+    ScalarField scalar=il_scalar_field(n.left,c,b);
     int receiver=-1;
-    if (target.kind == NodeKind::Property) {
+    if (target.kind == NodeKind::Property && scalar.slot<0) {
         il_expression(target.left,c,b); receiver=b.local(b.type(get_node(target.left,c).type,c)); b.emit(0xfe0e,receiver);
     }
     int previous=-1;
@@ -117,7 +120,9 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
         b.convert(target.type,get_symbol(target.symbol,c).type,c);
         b.store(target.symbol);
     }
-    else {
+    else if (scalar.slot>=0) {
+        b.emit(0xfe0c,value);b.convert(target.type,scalar.type,c);b.emit(0xfe0e,scalar.slot);
+    } else {
         b.emit(0xfe0c,receiver);
         TypeId owner=get_node(target.left,c).type;
         if (get_type(owner,c).kind == TypeKind::Any) {
@@ -169,6 +174,8 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             b.op(0x25); il_as(p.left,get_field(member,c).type,c,b); b.emit(0x7d,(int)b.field_token(member)); property=p.next;
         }
     } else if (n.kind == NodeKind::Property) {
+        ScalarField scalar=il_scalar_field(entry,c,b);
+        if (scalar.slot>=0) { b.emit(0xfe0c,scalar.slot);b.convert(scalar.type,n.type,c);return; }
         il_expression(n.left,c,b); TypeId owner=get_node(n.left,c).type;
         if (get_type(owner,c).kind == TypeKind::Any) {
             il_text(n.name,c,b);b.call(RuntimeMember::DynamicGet);
@@ -296,6 +303,11 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
         NodeId child=n.children;
         while (child != 0) { il_statement(child,return_type,c,b); child=get_node(child,c).next; }
     } else if (n.kind == NodeKind::Variable) {
+        SymbolId root=(SymbolId)b.scalar_roots.at(n.symbol);
+        if (root!=0) {
+            if (root==n.symbol) { il_scalar_initialize(entry,c,b); }
+            return;
+        }
         int raw=b.raw_slot(n.symbol);int slot=b.local(raw!=0 ? raw : b.type(n.type,c));
         b.slots.at_mut(n.symbol)=slot;
         if (raw==-6) { il_integer(n.left,c,b);b.store_storage(n.symbol); }
@@ -327,7 +339,7 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
 }
 
 void emit_assembly(const char[]& path, const Compiler& c) {
-    IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_runtime(&b);il_shapes(c,&b);
+    IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_runtime(&b);il_shapes(c,&b);
     int object_type=b.ref(RuntimeMember::ObjectType);
     int program=b.plan.type("Program",object_type,0x181);
     NodeId function=c.functions;
