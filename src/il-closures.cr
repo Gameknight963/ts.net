@@ -15,7 +15,7 @@ NodeId il_binding_scope(NodeId entry, const Compiler& c, const IlBackend& b) {
     NodeId current=(NodeId)b.node_parents.at(entry);
     while (current!=0) {
         Node scope=get_node(current,c);
-        if (scope.kind==NodeKind::Function || scope.kind==NodeKind::For || scope.kind==NodeKind::ForOf || scope.kind==NodeKind::Switch || (scope.kind==NodeKind::Block && scope.name!=0)) { return current; }
+        if (scope.kind==NodeKind::Function || scope.kind==NodeKind::For || scope.kind==NodeKind::ForOf || (scope.kind==NodeKind::Switch && !scope.constant) || (scope.kind==NodeKind::Block && scope.name!=0)) { return current; }
         current=(NodeId)b.node_parents.at(current);
     }
     return owner;

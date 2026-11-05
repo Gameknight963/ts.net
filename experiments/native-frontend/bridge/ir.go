@@ -493,11 +493,13 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		id = b.node(9, n, "as")
 		row = b.nodes[id-1]
 		row.left = b.lower(n.Expression())
+	case ast.KindFunctionDeclaration:
+		return b.localFunction(n)
 	case ast.KindBlock:
 		id = b.node(12, n, "{")
 		row = b.nodes[id-1]
 		row.name = b.text("scope")
-		row.children = b.list(n.AsBlock().Statements.Nodes)
+		row.children = b.blockStatements(n.AsBlock().Statements.Nodes)
 	case ast.KindVariableStatement:
 		return b.lower(n.AsVariableStatement().DeclarationList)
 	case ast.KindVariableDeclarationList:
@@ -699,14 +701,38 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.left = b.lower(s.Expression)
 		b.beginControl(n, id, false)
-		row.children = b.list(s.CaseBlock.AsCaseBlock().Clauses.Nodes)
+		clauses := s.CaseBlock.AsCaseBlock().Clauses.Nodes
+		declarations := []*ast.Node{}
+		for _, clause := range clauses {
+			for _, statement := range clause.AsCaseOrDefaultClause().Statements.Nodes {
+				if statement.Kind == ast.KindFunctionDeclaration && statement.Body() != nil {
+					declarations = append(declarations, statement)
+				}
+			}
+		}
+		first := b.list(declarations)
+		row.children = b.list(clauses)
 		b.endControl()
+		if first != 0 {
+			// The wrapper owns both hoisted functions and case-local bindings.
+			row.constant = 1
+			b.nodes[id-1] = row
+			tail := first
+			for b.nodes[tail-1].next != 0 {
+				tail = b.nodes[tail-1].next
+			}
+			b.nodes[tail-1].next = id
+			id = b.node(12, n, "{")
+			row = b.nodes[id-1]
+			row.name = b.text("scope")
+			row.children = first
+		}
 	case ast.KindCaseClause, ast.KindDefaultClause:
 		s := n.AsCaseOrDefaultClause()
 		id = b.node(28, n, "case")
 		row = b.nodes[id-1]
 		row.left = b.lower(s.Expression)
-		row.children = b.list(s.Statements.Nodes)
+		row.children = b.list(nonFunctionStatements(s.Statements.Nodes))
 	case ast.KindForStatement:
 		s := n.AsForStatement()
 		id = b.node(17, n, "for")
