@@ -82,7 +82,7 @@ void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, cons
         int snapshot=b.local(-7);int fallback=b.label();int done=b.label();
         // Empty loops must not read the array binding before the body would.
         b.emit(0xfe0c,bound);b.plan.number(b.method,0);b.op(0xfe02);b.emit(0x39,fallback);
-        b.load(array);b.emit(0xfe0c,bound);b.call(RuntimeMember::ArrayTryDense);b.emit(0xfe0e,snapshot);
+        b.load(array);il_buffer_bound(entry,bound,c,b);b.call(RuntimeMember::ArrayTryDense);b.emit(0xfe0e,snapshot);
         b.emit(0xfe0c,snapshot);b.emit(0x39,fallback);
         b.dense_arrays.at_mut(array)=snapshot+1;
         il_loop_code(entry,result,counter,bound,c,b);b.emit(0x38,done);
@@ -90,7 +90,8 @@ void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, cons
         b.mark(fallback);il_loop_code(entry,result,counter,bound,c,b);b.mark(done);return;
     }
     int snapshot=b.local(-12);int fallback=b.label();int done=b.label();
-    b.load(array);b.emit(0xfe0c,bound);b.call(RuntimeMember::ArrayTryPacked);b.emit(0xfe0e,snapshot);
+    b.emit(0xfe0c,bound);b.plan.number(b.method,0);b.op(0xfe02);b.emit(0x39,fallback);
+    b.load(array);il_buffer_bound(entry,bound,c,b);b.call(RuntimeMember::ArrayTryPacked);b.emit(0xfe0e,snapshot);
     b.emit(0xfe0c,snapshot);b.emit(0x39,fallback);
     b.packed_arrays.at_mut(array)=snapshot+1;
     il_loop_code(entry,result,counter,bound,c,b);b.emit(0x38,done);

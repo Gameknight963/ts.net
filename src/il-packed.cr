@@ -6,9 +6,41 @@ bool il_inside(NodeId entry, NodeId scope, const IlBackend& b) {
     return parent==scope;
 }
 
+int il_index_extent(NodeId entry, const Compiler& c, const IlBackend& b) {
+    Node n=get_node(entry,c);
+    if (n.kind==NodeKind::Number && il_nonnegative_integer(entry,c,b)) {
+        double value=number(get_token(n.token,c).text,c);
+        return value<2147483647 ? (int)value+1 : 0;
+    }
+    if (il_integer_remainder(entry,c,b)) { return (int)number(get_token(get_node(n.right,c).token,c).text,c); }
+    if (n.kind==NodeKind::Binary && is_text(get_token(n.token,c).text,&text_bit_and,c)) {
+        int left=il_index_extent(n.left,c,b);int right=il_index_extent(n.right,c,b);
+        return left==0 ? right : right==0 || left<right ? left : right;
+    }
+    return 0;
+}
+
+int il_buffer_extent(NodeId entry, const Compiler& c, const IlBackend& b) {
+    NodeId body=get_node(entry,c).fourth;int extent=0;
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        Node n=get_node(i,c);
+        if (n.kind!=NodeKind::Index || !il_inside(i,body,b)) { continue; }
+        int current=il_index_extent(n.right,c,b);
+        if (current==0) { return 0; }
+        if (current>extent) { extent=current; }
+    }
+    return extent;
+}
+
+void il_buffer_bound(NodeId entry, int bound, const Compiler& c, IlBackend& b) {
+    int extent=il_buffer_extent(entry,c,b);
+    if (extent!=0) { b.plan.number(b.method,(double)extent); }
+    else { b.emit(0xfe0c,bound); }
+}
+
 SymbolId il_buffer_loop(NodeId entry, SymbolId counter, bool numeric, const Compiler& c, const IlBackend& b) {
     if (counter==0) { return 0; }
-    Node loop=get_node(entry,c);NodeId body=loop.fourth;SymbolId array=0;
+    Node loop=get_node(entry,c);NodeId body=loop.fourth;SymbolId array=0;int mode=-1;
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
         if (!il_inside(i,body,b)) { continue; }
@@ -17,7 +49,13 @@ SymbolId il_buffer_loop(NodeId entry, SymbolId counter, bool numeric, const Comp
         if (n.kind==NodeKind::Index) {
             Node receiver=get_node(n.left,c);Node index=get_node(n.right,c);
             if (receiver.kind!=NodeKind::Name || get_type(receiver.type,c).kind!=TypeKind::Array ||
-                (get_type(get_type(receiver.type,c).element,c).kind==TypeKind::Number)!=numeric || index.kind!=NodeKind::Name || index.symbol!=counter) { return 0; }
+                (get_type(get_type(receiver.type,c).element,c).kind==TypeKind::Number)!=numeric) { return 0; }
+            int current=il_index_extent(n.right,c,b)>0 ? 1 : 0;
+            if (current==0 && (index.kind!=NodeKind::Name || index.symbol!=counter)) { return 0; }
+            // A constant extent and the loop limit need separate guards. Keep
+            // mixed accesses on the ordinary path until both can be checked.
+            if (mode!=-1 && current!=mode) { return 0; }
+            mode=current;
             if (array!=0 && array!=receiver.symbol) { return 0; }
             array=receiver.symbol;
         }
