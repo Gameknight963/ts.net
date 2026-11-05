@@ -204,7 +204,13 @@ public static class Js
         throw new InvalidOperationException("slice requires an array or string");
     }
     public static void ArrayAppend(object receiver, object value) => ((JsArray)receiver).Append(value);
-    public static void ArraySetAt(object receiver, int index, object value) => ((JsArray)receiver).SetAt(index, value);
+    // The compiler proves these indexes are non-negative.
+    public static object ArrayGetAt(object receiver, int index) => receiver is JsArray array ? array.ElementAt((uint)index) : IndexGet(receiver, (double)index);
+    public static void ArraySetAt(object receiver, int index, object value)
+    {
+        if (receiver is JsArray array) array.SetAt(index, value);
+        else IndexSet(receiver, (double)index, value);
+    }
     public static void ArrayHole(object receiver) => ((JsArray)receiver).AppendHole();
     public static void ArraySpread(object receiver, object source, int extra) => ((JsArray)receiver).Spread(source, extra);
     public static object CallRest(object arguments, int start, bool numeric)

@@ -79,7 +79,7 @@ void il_load_target(NodeId entry, int receiver, int index, const Compiler& c, Il
         b.emit(0xfe0c,receiver);b.emit(0xfe0c,index);
         if (il_direct_array_index(entry,c,b)) { b.call(RuntimeMember::NumberIndexGetAt); }
         else if (il_number_index(entry,c)) { b.call(RuntimeMember::NumberIndexGet); }
-        else { b.call(RuntimeMember::IndexGet);b.from_object(n.type,c); }
+        else { b.call(il_direct_index(entry,c,b) ? RuntimeMember::ArrayIndexGetAt : RuntimeMember::IndexGet);b.from_object(n.type,c); }
         return;
     }
     if (n.kind == NodeKind::Name) { il_expression(entry,c,b); }
@@ -111,7 +111,7 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
     }
     if (target.kind==NodeKind::Index) {
         bool numeric=il_number_index(n.left,c);
-        bool direct=il_direct_array_index(n.left,c,b);
+        bool direct=il_direct_index(n.left,c,b);
         if (direct) { il_integer(target.right,c,b); }
         else if (numeric) { il_number(target.right,c,b); } else { il_boxed(target.right,c,b); }
         index=b.local(direct ? -6 : numeric ? -3 : -5);b.emit(0xfe0e,index);
@@ -192,7 +192,7 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
             b.emit(0xfe0c,receiver);b.emit(0xfe0c,index);b.emit(0xfe0c,value);
             if (il_direct_array_index(n.left,c,b)) { b.call(RuntimeMember::NumberIndexSetAt); }
             else if (il_number_index(n.left,c)) { b.call(RuntimeMember::NumberIndexSet); }
-            else { b.box(value_type,c);b.call(RuntimeMember::IndexSet); }
+            else { b.box(value_type,c);b.call(il_direct_index(n.left,c,b) ? RuntimeMember::ArrayIndexSetAt : RuntimeMember::IndexSet); }
         }
     } else if (scalar.slot>=0) {
         b.emit(0xfe0c,value);b.convert(value_type,scalar.type,c);b.emit(0xfe0e,scalar.slot);
@@ -262,7 +262,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         il_expression(n.left,c,b);
         if (il_direct_array_index(entry,c,b)) { il_integer(n.right,c,b);b.call(RuntimeMember::NumberIndexGetAt); }
         else if (il_number_index(entry,c)) { il_number(n.right,c,b);b.call(RuntimeMember::NumberIndexGet); }
-        else { il_boxed(n.right,c,b);b.call(RuntimeMember::IndexGet);b.from_object(n.type,c); }
+        else { if (il_direct_index(entry,c,b)) { il_integer(n.right,c,b);b.call(RuntimeMember::ArrayIndexGetAt); } else { il_boxed(n.right,c,b);b.call(RuntimeMember::IndexGet); }b.from_object(n.type,c); }
     }
     else if (n.kind == NodeKind::Object) {
         b.emit(0x73,b.constructor(n.type));

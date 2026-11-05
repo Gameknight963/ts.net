@@ -32,7 +32,9 @@ void il_iteration_store(NodeId entry, TypeId type, int value, const Compiler& c,
     ScalarField scalar=il_scalar_field(entry,c,b);
     if (scalar.slot>=0) { b.emit(0xfe0c,value);b.convert(type,scalar.type,c);b.emit(0xfe0e,scalar.slot);return; }
     if (target.kind==NodeKind::Index) {
-        il_expression(target.left,c,b);il_boxed(target.right,c,b);b.emit(0xfe0c,value);b.box(type,c);b.call(RuntimeMember::IndexSet);return;
+        bool direct=il_direct_index(entry,c,b);
+        il_expression(target.left,c,b);if (direct) { il_integer(target.right,c,b); } else { il_boxed(target.right,c,b); }
+        b.emit(0xfe0c,value);b.box(type,c);b.call(direct ? RuntimeMember::ArrayIndexSetAt : RuntimeMember::IndexSet);return;
     }
     if (target.kind!=NodeKind::Property) { fail(target.token,"unsupported iteration binding",c); }
     il_expression(target.left,c,b);TypeId owner=get_node(target.left,c).type;

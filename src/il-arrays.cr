@@ -7,11 +7,15 @@ bool il_number_index(NodeId entry, const Compiler& c) {
     Node n=get_node(entry,c);
     return n.kind==NodeKind::Index && il_number_array(get_node(n.left,c).type,c) && get_type(get_node(n.right,c).type,c).kind==TypeKind::Number;
 }
-bool il_direct_array_index(NodeId entry, const Compiler& c, const IlBackend& b) {
-    if (!il_number_index(entry,c)) { return false; }
+bool il_direct_index(NodeId entry, const Compiler& c, const IlBackend& b) {
+    Node n=get_node(entry,c);
+    if (n.kind!=NodeKind::Index || get_type(get_node(n.left,c).type,c).kind!=TypeKind::Array || get_type(get_node(n.right,c).type,c).kind!=TypeKind::Number) { return false; }
     Node index=get_node(get_node(entry,c).right,c);
     if (index.kind==NodeKind::Name) { return b.raw_slot(index.symbol)==-6 && b.nonnegative_ints.at(index.symbol)!=0; }
     return index.kind==NodeKind::Number && il_int_result(get_node(entry,c).right,c) && number(get_token(index.token,c).text,c)>=0;
+}
+bool il_direct_array_index(NodeId entry, const Compiler& c, const IlBackend& b) {
+    return il_number_index(entry,c) && il_direct_index(entry,c,b);
 }
 void il_array_literal(NodeId entry, TypeId type, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);int count=0;NodeId value=n.children;
