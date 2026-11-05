@@ -15,12 +15,24 @@ bool il_direct_array_index(NodeId entry, const Compiler& c, const IlBackend& b) 
 }
 void il_array_literal(NodeId entry, TypeId type, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);int count=0;NodeId value=n.children;
-    while (value!=0) { count++;value=get_node(value,c).next; }
+    bool spread=false;
+    while (value!=0) { count++;if (get_node(value,c).kind==NodeKind::Spread) { spread=true; }value=get_node(value,c).next; }
     bool numeric=il_number_array(type,c);
-    b.emit(0x20,count);b.emit(0x73,b.ref(numeric ? RuntimeMember::NumberArrayConstructor : RuntimeMember::ArrayConstructor));
+    b.emit(0x20,spread ? 0 : count);b.emit(0x73,b.ref(numeric ? RuntimeMember::NumberArrayConstructor : RuntimeMember::ArrayConstructor));
     value=n.children;int index=0;
     while (value!=0) {
         Node item=get_node(value,c);
+        if (spread) {
+            b.op(0x25);
+            if (item.kind==NodeKind::Spread) {
+                il_expression(item.left,c,b);int extra=0;NodeId tail=item.next;
+                while (tail!=0) { if (get_node(tail,c).kind!=NodeKind::Spread) { extra++; }tail=get_node(tail,c).next; }
+                b.emit(0x20,extra);b.call(RuntimeMember::ArraySpread);
+            } else if (item.kind==NodeKind::Undefined && item.constant) { b.call(RuntimeMember::ArrayHole); }
+            else if (numeric) { il_as(value,get_type(type,c).element,c,b);b.call(RuntimeMember::NumberPush);b.op(0x26); }
+            else { il_boxed(value,c,b);b.call(RuntimeMember::ArrayAppend); }
+            value=item.next;continue;
+        }
         if (!(item.kind==NodeKind::Undefined && item.constant)) {
             b.op(0x25);
             if (numeric) { b.emit(0x20,index);il_as(value,get_type(type,c).element,c,b);b.call(RuntimeMember::NumberIndexSetAt); }

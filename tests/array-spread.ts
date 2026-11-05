@@ -1,0 +1,26 @@
+const input = [1.5, 2.5, 3.5];
+const copy = [0, ...input, 4, ...[], 5];
+console.log(copy.length, copy[0], copy[1], copy[3], copy[5]);
+copy[1] = 99;
+console.log(input[0], copy[1]);
+const sparse = [1, , undefined, 4];
+const filled = [...sparse];
+console.log(filled.length, filled[0], filled[1], filled[2], filled[3]);
+const holes = [, ...[2], , 4];
+console.log(holes.length, holes[0], holes[1], holes[2], holes[3]);
+const characters = [..."A🦀B"];
+console.log(characters.length, characters[0], characters[1].length, characters[2]);
+const flags = [false, ...[true, false]];
+console.log(flags.length, flags[0], flags[1], flags[2]);
+const point = { x: 1 };
+const objects = [...[point]];
+objects[0].x = 7;
+console.log(point.x);
+function change(values: number[]) { values[0] = 8; return 9; }
+const ordered = [...input, change(input), ...input];
+console.log(ordered[0], ordered[3], ordered[4]);
+const unusual = [...[0 / 0, -0, 1 / 0, undefined]];
+console.log(unusual[0], 1 / unusual[1]!, unusual[2], unusual[3]);
+const dynamic: any = [3, undefined, 7];
+const checked: number[] = [...dynamic];
+console.log(checked[0], checked[1], checked[2]);

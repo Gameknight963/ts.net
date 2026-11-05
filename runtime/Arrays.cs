@@ -12,6 +12,16 @@ sealed class ArrayStorage<T>
     readonly T missing;
     public uint Length;
     public T[] Dense => dense;
+    public bool InitializeCopy(T[] source, int count, int extra)
+    {
+        if (Length != 0 || dense.Length != 0) return false;
+        // Every slot is initialized before publishing the new backing array.
+        T[] copy = GC.AllocateUninitializedArray<T>(count + extra);
+        Array.Copy(source, copy, count);
+        Array.Fill(copy, missing, count, extra);
+        dense = copy;Length = (uint)count;
+        return true;
+    }
     public void Reserve(int capacity)
     {
         if (capacity <= dense.Length) return;
@@ -79,11 +89,13 @@ sealed class ArrayStorage<T>
 
 public class JsArray : TsObject
 {
+    static readonly object Hole = new object();
     readonly ArrayStorage<object> values;
-    public JsArray(int length) { values = new ArrayStorage<object>(length, Js.Undefined); }
+    public JsArray(int length) { values = new ArrayStorage<object>(length, Hole); }
     protected JsArray() { }
     protected virtual uint Count => values.Length;
-    protected virtual object Read(uint index) => values.Get(index);
+    protected virtual object Read(uint index) { object value = values.Get(index); return ReferenceEquals(value, Hole) ? Js.Undefined : value; }
+    public virtual bool HasElement(uint index) => index < Count && !ReferenceEquals(values.Get(index), Hole);
     protected virtual void Write(uint index, object value) => values.Set(index, value);
     protected virtual void Resize(uint length) => values.Resize(length);
     public double Length() => Count;
@@ -107,6 +119,32 @@ public class JsArray : TsObject
     public object GetIndex(object key) => Get(Js.Text(key));
     public object ElementAt(uint index) => Read(index);
     public void SetIndex(object key, object value) => Set(Js.Text(key), value);
+    public void Append(object value)
+    {
+        uint index = Count;
+        if (index == uint.MaxValue) throw new InvalidOperationException("Invalid array length");
+        Write(index, value);
+    }
+    public void AppendHole()
+    {
+        if (Count == uint.MaxValue) throw new InvalidOperationException("Invalid array length");
+        Resize(Count + 1);
+    }
+    public void Spread(object source, int extra)
+    {
+        if (this is NumberArray destination && source is NumberArray numbers)
+        {
+            if (destination.AppendPacked(numbers, extra)) return;
+            for (uint i = 0; i < numbers.Length(); i++) destination.PushNumber(numbers.GetNumberAt(unchecked((int)i)));
+            return;
+        }
+        for (uint i = 0; i < Iteration.Length(source);)
+        {
+            int position = unchecked((int)i);
+            Append(Iteration.Value(source, position));
+            i += (uint)Iteration.Step(source, position);
+        }
+    }
     public double PushMany(object[] items)
     {
         foreach (object value in items)
@@ -128,16 +166,18 @@ public class JsArray : TsObject
 public sealed class NumberArray : JsArray
 {
     // Canonicalize stored numeric NaNs, reserving a distinct NaN payload for
-    // undefined. Public reads still return the nullable scalar ABI.
+    // holes and explicit undefined. Public reads use the nullable scalar ABI.
     const long MissingBits = 0x7ff8000000000001;
     static readonly double Missing = BitConverter.Int64BitsToDouble(MissingBits);
+    static readonly double Undefined = BitConverter.Int64BitsToDouble(MissingBits + 1);
     readonly ArrayStorage<double> numbers;
     uint packedPrefix;
     public NumberArray(int length) { numbers = new ArrayStorage<double>(length, Missing); }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static double Encode(double? value) => !value.HasValue ? Missing : double.IsNaN(value.Value) ? double.NaN : value.Value;
+    static double Encode(double? value) => !value.HasValue ? Undefined : double.IsNaN(value.Value) ? double.NaN : value.Value;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static double? Decode(double value) => BitConverter.DoubleToInt64Bits(value) == MissingBits ? null : value;
+    static double? Decode(double value) => unchecked((ulong)(BitConverter.DoubleToInt64Bits(value) - MissingBits)) <= 1 ? null : value;
+    public override bool HasElement(uint index) => index < Count && BitConverter.DoubleToInt64Bits(numbers.Get(index)) != MissingBits;
     protected override uint Count => numbers.Length;
     protected override object Read(uint index) => Js.BoxNumber(Decode(numbers.Get(index)));
     protected override void Write(uint index, object value) => Store(index, Js.Cast<double?>(value, "Array write violates number element type"));
@@ -154,6 +194,22 @@ public sealed class NumberArray : JsArray
     }
     public double[] TryPacked(double limit) =>
         limit >= 0 && limit <= packedPrefix && limit <= numbers.Dense.Length ? numbers.Dense : null;
+    public bool AppendPacked(NumberArray source, int extra)
+    {
+        uint count = source.numbers.Length, start = numbers.Length;
+        double[] buffer = source.TryPacked(count);
+        ulong required = (ulong)start + count;
+        if (buffer == null || required + (uint)extra > (ulong)Array.MaxLength) return false;
+        if (numbers.InitializeCopy(buffer, (int)count, extra)) { packedPrefix = count; return true; }
+        int capacity = (int)(required + (uint)extra);
+        if (capacity > numbers.Dense.Length && numbers.Dense.Length != 0)
+            capacity = (int)Math.Min(Array.MaxLength, Math.Max((long)capacity, (long)numbers.Dense.Length * 2));
+        numbers.Reserve(capacity);
+        Array.Copy(buffer, 0, numbers.Dense, (int)start, (int)count);
+        numbers.Length = (uint)required;
+        if (packedPrefix == start) packedPrefix += count;
+        return true;
+    }
     public void ReservePushes(double additions)
     {
         if (additions > 0 && additions <= 1048576 && numbers.Length <= 1048576 - Math.Ceiling(additions))

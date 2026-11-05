@@ -302,6 +302,10 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		id = b.node(20, n, "hole")
 		row = b.nodes[id-1]
 		row.constant = 1
+	case ast.KindSpreadElement:
+		id = b.node(35, n, "...")
+		row = b.nodes[id-1]
+		row.left = b.lower(n.Expression())
 	case ast.KindElementAccessExpression:
 		expr := n.AsElementAccessExpression()
 		if expr.QuestionDotToken != nil {

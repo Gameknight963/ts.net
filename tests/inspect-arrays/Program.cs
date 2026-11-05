@@ -1,5 +1,5 @@
 var array = new NumberArray(4);
-long[] nanPatterns = [0x7ff8000000000000, 0x7ff8000000000001, 0x7ff0000000000001, unchecked((long)0xfff8000000000001UL)];
+long[] nanPatterns = [0x7ff8000000000000, 0x7ff8000000000001, 0x7ff8000000000002, 0x7ff0000000000001, unchecked((long)0xfff8000000000001UL)];
 foreach (long bits in nanPatterns)
 {
     double value = BitConverter.Int64BitsToDouble(bits);
@@ -29,6 +29,24 @@ var large = new NumberArray(0);
 for (int i = 0; i < 1048577; i++) large.PushNumber(i);
 if (large.TryPacked(1048577) == null || large.GetNumberAt(1048576) != 1048576) throw new Exception("Sequential growth unexpectedly became sparse");
 Console.WriteLine("PASS sequential dense growth beyond one million elements");
+foreach (JsArray original in new JsArray[] { new JsArray(3), new NumberArray(3) })
+{
+    original.SetIndex(1.0, Js.Undefined);
+    if (original.HasElement(0) || !original.HasElement(1)) throw new Exception("Holes and undefined share presence");
+    JsArray clone = original is NumberArray ? new NumberArray(0) : new JsArray(0);
+    clone.Spread(original, 0);
+    if (clone.Length() != 3 || !clone.HasElement(0) || !clone.HasElement(1) || !clone.HasElement(2)) throw new Exception("Spread retained holes");
+    clone.AppendHole();
+    if (clone.HasElement(3)) throw new Exception("Literal elision created an element");
+}
+var packedSource = new NumberArray(0);
+packedSource.PushNumber(-0.0);packedSource.PushNumber(double.NaN);
+var packedCopy = new NumberArray(0);
+packedCopy.Spread(packedSource, 1);
+packedCopy.PushNumber(9);
+packedSource.SetNumberAt(0, 5);
+if (packedCopy.TryPacked(3) == null || BitConverter.DoubleToInt64Bits(packedCopy.GetNumberAt(0)!.Value) != long.MinValue || !double.IsNaN(packedCopy.GetNumberAt(1)!.Value)) throw new Exception("Packed spread changed values or shared storage");
+Console.WriteLine("PASS spread presence, independent buffers, NaN, and negative zero");
 if (args.Length != 0)
 {
     var assembly = System.Reflection.Assembly.LoadFrom(System.IO.Path.GetFullPath(args[0]));
