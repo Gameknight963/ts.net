@@ -28,7 +28,7 @@ if (sparseCopy.Length() != uint.MaxValue || !Equals(sparseCopy.ElementAt(4294967
 sparseSlice.SetNumber(4294967294, 9);
 if (!Equals(sparseCopy.ElementAt(4294967294), 7.0)) throw new Exception("Sparse slice shared its dictionary");
 Console.WriteLine("PASS slice holes, undefined, negative zero, independent buffers, and sparse length limit");
-foreach (JsArray reversed in new JsArray[] { new JsArray(0), new NumberArray(0) })
+foreach (JsArray reversed in new JsArray[] { new JsArray(0), new NumberArray(0), new ReversibleArray(0) })
 {
     reversed.Set("0", 7.0);reversed.Set("2", Js.Undefined);reversed.Set("4294967294", 9.0);reversed.Set("named", shared);
     if (!ReferenceEquals(reversed.Reverse(), reversed) || reversed.Length() != uint.MaxValue) throw new Exception("Reverse changed identity or length");

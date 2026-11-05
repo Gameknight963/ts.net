@@ -28,9 +28,9 @@ void il_array_literal(NodeId entry, TypeId type, const Compiler& c, IlBackend& b
             else { il_boxed(value,c,b); }
             b.op(0xa2);value=item.next;
         }
-        b.emit(0x73,b.ref(RuntimeMember::ArrayBufferConstructor));return;
+        b.emit(0x73,b.ref(b.reversible_literals.at(entry)!=0 ? RuntimeMember::ReversibleBufferConstructor : RuntimeMember::ArrayBufferConstructor));return;
     }
-    b.emit(0x20,spread ? 0 : count);b.emit(0x73,b.ref(numeric ? RuntimeMember::NumberArrayConstructor : RuntimeMember::ArrayConstructor));
+    b.emit(0x20,spread ? 0 : count);b.emit(0x73,b.ref(numeric ? RuntimeMember::NumberArrayConstructor : b.reversible_literals.at(entry)!=0 ? RuntimeMember::ReversibleConstructor : RuntimeMember::ArrayConstructor));
     value=n.children;int index=0;
     while (value!=0) {
         Node item=get_node(value,c);

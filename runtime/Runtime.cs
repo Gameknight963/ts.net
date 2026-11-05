@@ -227,7 +227,12 @@ public static class Js
     {
         if (receiver is JsArray array && limit > 0 && limit <= int.MaxValue) array.ReserveCapacity((int)Math.Ceiling(limit));
     }
-    public static object[] ArrayTryDense(object receiver, double limit) => receiver is JsArray array && receiver.GetType() == typeof(JsArray) ? array.DenseRange(limit) : null;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object[] ArrayTryDense(object receiver, double limit)
+    {
+        if (receiver is JsArray array && receiver.GetType() == typeof(JsArray)) return array.DenseRange(limit);
+        return receiver is ReversibleArray view ? view.DenseRange(limit) : null;
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object ArrayDecode(object value) => JsArray.DecodeElement(value);
     // The compiler proves these indexes are non-negative.

@@ -106,11 +106,11 @@ partial struct ArrayStorage<T>
 public partial class JsArray : TsObject
 {
     static readonly object Hole = new object();
-    ArrayStorage<object> values;
+    private protected ArrayStorage<object> values;
     public JsArray(int length) { values = new ArrayStorage<object>(length, Hole); }
     // Generated code transfers its freshly initialized buffer to this array.
     public JsArray(object[] items) { values = new ArrayStorage<object>(items, Hole); }
-    JsArray(ArrayStorage<object> storage) { values = storage; }
+    private protected JsArray(ArrayStorage<object> storage) { values = storage; }
     public static object HoleValue() => Hole;
     protected JsArray() { }
     protected virtual uint Count => values.Length;

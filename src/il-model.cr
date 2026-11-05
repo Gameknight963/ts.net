@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, CheckInitialized, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, ReversibleConstructor, ReversibleBufferConstructor, CheckInitialized, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -51,6 +51,7 @@ struct IlBackend {
     Vector<int> node_parents;
     Vector<int> packed_arrays;
     Vector<int> dense_arrays;
+    Vector<int> reversible_literals;
     Vector<int> iteration_vars;
     Vector<int> scalar_roots;
     Vector<ScalarField> scalar_fields;
@@ -72,6 +73,7 @@ struct IlBackend {
             .numeric_slots=zero_ids(symbols),.numeric_methods=zero_ids(symbols),.written_symbols=zero_ids(symbols),
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
             .packed_arrays=zero_ids(symbols),.dense_arrays=zero_ids(symbols),
+            .reversible_literals=zero_ids(c.node_store.count()+1),
             .iteration_vars=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
@@ -314,6 +316,9 @@ void il_runtime(IlBackend& b) {
     int numbers=b.plan.reference("Tsnet.Runtime","","NumberArray");b.ref_set(RuntimeMember::NumberArrayType,numbers);
     b.ref_set(RuntimeMember::ArrayConstructor,b.plan.method1(6,array,1,-1,-6,".ctor"));
     b.ref_set(RuntimeMember::ArrayBufferConstructor,b.plan.method1(6,array,1,-1,-7,".ctor"));
+    int reversible=b.plan.reference("Tsnet.Runtime","","ReversibleArray");
+    b.ref_set(RuntimeMember::ReversibleConstructor,b.plan.method1(6,reversible,1,-1,-6,".ctor"));
+    b.ref_set(RuntimeMember::ReversibleBufferConstructor,b.plan.method1(6,reversible,1,-1,-7,".ctor"));
     b.ref_set(RuntimeMember::ArrayHoleValue,b.plan.method0(6,array,0,-5,"HoleValue"));
     b.ref_set(RuntimeMember::NumberArrayConstructor,b.plan.method1(6,numbers,1,-1,-6,".ctor"));
     b.ref_set(RuntimeMember::IndexGet,b.plan.method2(6,js,0,-5,-5,-5,"IndexGet"));

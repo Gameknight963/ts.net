@@ -1,5 +1,25 @@
 import "il-scalar.cr";
 
+void il_prove_reversible_arrays(const Compiler& c, IlBackend& b) {
+    Vector<int> definitions=zero_ids(c.symbol_store.count()+1);
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        Node n=get_node(i,c);
+        if (n.kind==NodeKind::Variable && n.left!=0 && b.written_symbols.at(n.symbol)==0 && get_node(n.left,c).kind==NodeKind::Array) {
+            definitions.at_mut(n.symbol)=(int)n.left;
+        }
+    }
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        Node n=get_node(i,c);
+        if (n.kind!=NodeKind::Call) { continue; }
+        Node callee=get_node(n.left,c);
+        if (callee.kind!=NodeKind::Property || !is_text(callee.name,&text_reverse,c)) { continue; }
+        Node receiver=get_node(callee.left,c);NodeId literal=0;
+        if (receiver.kind==NodeKind::Array) { literal=callee.left; }
+        if (receiver.kind==NodeKind::Name) { literal=(NodeId)definitions.at(receiver.symbol); }
+        if (literal!=0) { b.reversible_literals.at_mut(literal)=1; }
+    }
+}
+
 TypeId il_numeric_array_type(Compiler& c) {
     for (size_t i=1;i<=c.type_store.count();i++) {
         Type t=get_type(i,c);
@@ -89,6 +109,9 @@ void il_infer_array_values(TypeId numeric, Compiler& c, const IlBackend& b) {
             if (is_text(p.name,&text_length,c) && il_local_array_write(parent,root,c,b)) { continue; }
             NodeId call_id=(NodeId)b.node_parents.at(parent);Node call=get_node(call_id,c);
             if (call.kind==NodeKind::Call && call.left==parent) {
+                // reverse returns the same array. Its ignored result cannot
+                // introduce an alias that could later write other types.
+                if (is_text(p.name,&text_reverse,c) && get_node((NodeId)b.node_parents.at(call_id),c).kind==NodeKind::Expression) { continue; }
                 if (is_text(p.name,&text_pop,c) || is_text(p.name,&text_includes,c) || is_text(p.name,&text_index_of,c)) { continue; }
                 if (is_text(p.name,&text_push,c)) {
                     bool valid=true;NodeId argument=call.children;
