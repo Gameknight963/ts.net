@@ -1,11 +1,11 @@
 import "assembly-plan.cr";
 
 enum class RuntimeMember {
-    IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
-    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
+    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
     ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionType, FunctionConstructor, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction0, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, Count
 };
 
@@ -113,6 +113,15 @@ struct IlBackend {
             .method=0, .local_count=0, .label_count=0,.push_bound=-1,.loop_versions=0,.numeric_globals=false,.raw_function_return=false};
     }
     int ref(RuntimeMember member) const { return this.runtime.at((size_t)member); }
+    int field_storage(TypeId type, const Compiler& c) const { return get_type(type,c).kind==TypeKind::Number ? -3 : this.type(type,c); }
+    void load_field(FieldId member, const Compiler& c) {
+        this.emit(0x7b,this.field_token(member));
+        if (get_type(get_field(member,c).type,c).kind==TypeKind::Number) { this.call(RuntimeMember::DecodeNumberField); }
+    }
+    void store_field(FieldId member, const Compiler& c) {
+        if (get_type(get_field(member,c).type,c).kind==TypeKind::Number) { this.call(RuntimeMember::EncodeNumberField); }
+        this.emit(0x7d,this.field_token(member));
+    }
     int field_token(FieldId id) const { return this.fields.at(id); }
     int getter(FieldId id) const { return this.getters.at(id); }
     int setter(FieldId id) const { return this.setters.at(id); }
@@ -350,6 +359,8 @@ void il_runtime(IlBackend& b) {
     int object_type=b.ref(RuntimeMember::ObjectType);
     b.ref_set(RuntimeMember::ObjectConstructor,b.plan.method0(6,object_type,1,-1,".ctor"));
     int js = b.ref(RuntimeMember::JsType); int obj = b.ref(RuntimeMember::TsObjectType);
+    b.ref_set(RuntimeMember::EncodeNumberField,b.plan.method1(6,js,0,-3,-10,"EncodeNumberField"));
+    b.ref_set(RuntimeMember::DecodeNumberField,b.plan.method1(6,js,0,-10,-3,"DecodeNumberField"));
     b.ref_set(RuntimeMember::IsExactSpread,b.plan.method1(6,js,2,-2,-5,"IsExactSpread"));
     b.ref_set(RuntimeMember::CopySpreadExtras,b.plan.method1(6,obj,1,-1,-5,"CopySpreadExtras"));
     b.ref_set(RuntimeMember::ObjectSpread,b.plan.method2(6,js,0,-1,-5,-5,"ObjectSpread"));
@@ -542,9 +553,9 @@ void il_optional_members(TypeId type, int klass, const Compiler& c, IlBackend& b
                     b.begin(b.plan.method0(5,klass,0x1e6,value_type,get.view()));
                     if (adapted) {
                         TypeId original=get_field(actual,c).type;
-                        b.emit(0xfe09,0);b.emit(0x7b,b.field_token(actual));b.convert(original,record.type,c);b.op(0x2a);
+                        b.emit(0xfe09,0);b.load_field(actual,c);b.convert(original,record.type,c);b.op(0x2a);
                         b.begin(b.plan.method1(5,klass,0x1e6,-1,value_type,set.view()));
-                        b.emit(0xfe09,0);b.emit(0xfe09,1);b.convert(record.type,original,c);b.emit(0x7d,b.field_token(actual));
+                        b.emit(0xfe09,0);b.emit(0xfe09,1);b.convert(record.type,original,c);b.store_field(actual,c);
                         if (b.spread_types.at(type)!=0) { b.emit(0xfe09,0);il_text(record.name,c,b);b.emit(0x6f,b.ref(RuntimeMember::MarkPresent)); }
                         b.op(0x2a);
                     } else {
@@ -614,16 +625,16 @@ void il_shapes(const Compiler& c, IlBackend& b) {
             while (member != 0) {
                 Field record=get_field(member,c); int value_type=b.type(record.type,c);
                 Vector<char> storage=field_name(record.name,"p_",c);
-                int value=b.plan.field(klass,6,value_type,storage.view()); b.fields.at_mut(member)=value;
+                int storage_type=b.field_storage(record.type,c);int value=b.plan.field(klass,6,storage_type,storage.view()); b.fields.at_mut(member)=value;
                 Vector<char> get=field_name(record.name,"get_p_",c);
                 Vector<char> set=field_name(record.name,"set_p_",c);
                 b.begin(b.plan.method0(5,klass,0x1e6,value_type,get.view()));
-                b.emit(0xfe09,0); b.emit(0x7b,value); b.op(0x2a);
+                b.emit(0xfe09,0); b.load_field(member,c); b.op(0x2a);
                 b.begin(b.plan.method1(5,klass,0x1e6,-1,value_type,set.view()));
                 b.emit(0xfe09,0); b.emit(0xfe09,1);
                 TypeKind member_kind=get_type(record.type,c).kind;
                 if (member_kind==TypeKind::String || member_kind==TypeKind::Shape || member_kind==TypeKind::Array) { b.from_object(record.type,c); }
-                b.emit(0x7d,value);
+                b.store_field(member,c);
                 if (b.spread_types.at(type)!=0) { b.emit(0xfe09,0);il_text(record.name,c,b);b.emit(0x6f,b.ref(RuntimeMember::MarkPresent)); }
                 b.op(0x2a);
                 member=record.next;
@@ -649,7 +660,7 @@ void il_shapes(const Compiler& c, IlBackend& b) {
             while (member != 0) {
                 Field record=get_field(member,c); int next=b.label();
                 b.emit(0xfe09,1); il_text(record.name,c,b); b.call(RuntimeMember::StringEqual); b.emit(0x39,next);
-                b.emit(0xfe09,0); b.emit(0x7b,(int)b.field_token(member)); b.box(record.type,c); b.op(0x2a); b.mark(next);
+                b.emit(0xfe09,0); b.load_field(member,c); b.box(record.type,c); b.op(0x2a); b.mark(next);
                 member=record.next;
             }
             b.emit(0xfe09,0); b.emit(0xfe09,1); b.call(RuntimeMember::Get); b.op(0x2a);
@@ -663,7 +674,7 @@ void il_shapes(const Compiler& c, IlBackend& b) {
                 if (b.type(record.type,c)!=-5 || value_kind==TypeKind::String || value_kind==TypeKind::Shape || value_kind==TypeKind::Array) {
                     b.plan.string(b.method,"property write violates static field type"); b.emit(0x28,(int)b.cast(record.type));
                 }
-                b.emit(0x7d,(int)b.field_token(member));
+                b.store_field(member,c);
                 if (b.spread_types.at(type)!=0) { b.emit(0xfe09,0);il_text(record.name,c,b);b.emit(0x6f,b.ref(RuntimeMember::MarkPresent)); }
                 b.emit(0xfe09,2); b.op(0x2a); b.mark(next);
                 member=record.next;

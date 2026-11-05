@@ -341,7 +341,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         NodeId property=n.children;
         while (property != 0) {
             Node p=get_node(property,c); FieldId member=field(n.type,p.name,c);
-            b.op(0x25); il_as(p.left,get_field(member,c).type,c,b); b.emit(0x7d,(int)b.field_token(member)); property=p.next;
+            b.op(0x25); il_as(p.left,get_field(member,c).type,c,b); b.store_field(member,c); property=p.next;
         }
     } else if (n.kind == NodeKind::Property) {
         Node receiver=get_node(n.left,c);

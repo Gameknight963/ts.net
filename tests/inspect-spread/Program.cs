@@ -12,3 +12,10 @@ long largeBytes = GC.GetAllocatedBytesForCurrentThread() - before;
 if (small != 3 || large != 10000200000 || smallBytes != largeBytes || largeBytes > 64)
     throw new Exception($"Spread arithmetic or allocation changed: {small}, {large}, {smallBytes}, {largeBytes}");
 Console.WriteLine("PASS local spread copies allocate no objects per iteration");
+
+foreach (long bits in new long[] {0x7ff8000000000001, 0x7ff8000000000002, 0x7ff0000000000001, unchecked((long)0xfff8000000000001)}) {
+    double? value = Js.DecodeNumberField(Js.EncodeNumberField(BitConverter.Int64BitsToDouble(bits)));
+    if (!value.HasValue || !double.IsNaN(value.Value)) throw new Exception("A numeric NaN became undefined");
+}
+if (Js.DecodeNumberField(Js.EncodeNumberField(null)).HasValue) throw new Exception("Undefined became a number");
+Console.WriteLine("PASS numeric NaN payloads remain distinct from undefined in fields");
