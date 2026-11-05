@@ -1,5 +1,15 @@
 import "il-call-spread.cr";
 
+NodeId il_module_owner(NodeId entry, const Compiler& c, const IlBackend& b) {
+    NodeId current=entry;
+    while (current!=0) {
+        Node n=get_node(current,c);
+        if (n.kind==NodeKind::Block && n.constant) { return current; }
+        current=(NodeId)b.node_parents.at(current);
+    }
+    return 0;
+}
+
 void il_globals(int program, const Compiler& c, IlBackend& b) {
     Vector<int> declarations=zero_ids(c.symbol_store.count()+1);
     for (size_t i=1;i<=c.node_store.count();i++) {
@@ -11,7 +21,9 @@ void il_globals(int program, const Compiler& c, IlBackend& b) {
     }
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
-        if (n.kind!=NodeKind::Name || n.symbol==0 || declarations.at(n.symbol)==0 || scalar_owner(i,&b.node_parents,c)==0 || b.global_fields.at(n.symbol)!=0) { continue; }
+        if (n.kind!=NodeKind::Name || n.symbol==0 || declarations.at(n.symbol)==0 || b.global_fields.at(n.symbol)!=0) { continue; }
+        NodeId declaration=(NodeId)declarations.at(n.symbol);
+        if (scalar_owner(i,&b.node_parents,c)==0 && il_module_owner(i,c,b)==il_module_owner(declaration,c,b)) { continue; }
         TypeId type=get_symbol(n.symbol,c).type;
         if (get_type(type,c).kind==TypeKind::Void) { fail(n.token,"void-valued globals need lowering",c); }
         Vector<char> name=numbered_name('v',(int)n.symbol);Vector<char> flag=numbered_name('i',(int)n.symbol);

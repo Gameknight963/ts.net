@@ -1,0 +1,13 @@
+import * as values from "./modules/values.js";
+import multiply, { count, read } from "./modules/values.js";
+import { total, bump, shared, offset } from "./modules/forward.js";
+import type { Point } from "./modules/erased.js";
+import { unused } from "./modules/erased.js";
+import "./modules/side.js";
+import "./modules/side.js";
+import { cyclic } from "./modules/cycle-a.js";
+const point: Point = { x: 10 };
+console.log(count, total, read(), shared.x, offset, point.x, cyclic);
+bump();
+console.log(count, total, read(), shared.x, multiply(4));
+console.log(values.count, values.read(), values.default(5));

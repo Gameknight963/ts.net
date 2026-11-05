@@ -153,6 +153,9 @@ func (b *irBuilder) symbol(n *ast.Node) int {
 	if s == nil {
 		return 0
 	}
+	if s.Flags&ast.SymbolFlagsAlias != 0 {
+		s = b.c.GetAliasedSymbol(s)
+	}
 	if id := b.symbolIDs[s]; id != 0 {
 		return id
 	}
@@ -223,7 +226,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	var row irNode
 	id := 0
 	switch n.Kind {
-	case ast.KindInterfaceDeclaration, ast.KindTypeAliasDeclaration:
+	case ast.KindInterfaceDeclaration, ast.KindTypeAliasDeclaration, ast.KindImportDeclaration, ast.KindExportDeclaration:
 		return 0
 	case ast.KindEmptyStatement:
 		id = b.node(12, n, ";")
@@ -329,6 +332,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindPropertyAccessExpression:
 		if n.AsPropertyAccessExpression().QuestionDotToken != nil {
 			b.unsupported(n)
+		}
+		if symbol := b.c.GetSymbolAtLocation(n.Expression()); symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 && b.c.GetAliasedSymbol(symbol).IsExternalModule() {
+			return b.lower(n.Name())
 		}
 		id = b.node(5, n, n.Name().Text())
 		row = b.nodes[id-1]
@@ -681,55 +687,82 @@ func exportIR(s *session) (result []byte, err error) {
 		}
 	}()
 	c, release := s.program.GetTypeCheckerForFileExclusive(context.Background(), s.file)
-	defer release()
+	// Emit-resolver queries lock the checker themselves; discover modules before
+	// holding its exclusive lock for IR construction.
+	release()
 	b := &irBuilder{c: c, file: s.file, textIDs: map[string]int{}, typeIDs: map[*checker.Type]int{}, primitives: map[int]int{}, symbolIDs: map[*ast.Symbol]int{}}
 	b.controlIDs = map[*ast.Node]int{}
 	b.labels = map[string]irLabel{}
+	files := b.moduleFiles(s)
+	c, release = s.program.GetTypeCheckerForFileExclusive(context.Background(), s.file)
+	defer release()
+	b.c = c
 	functions := map[*ast.Node]int{}
 	last := 0
-	for _, n := range s.file.Statements.Nodes {
-		if n.Kind != ast.KindFunctionDeclaration || n.Body() == nil {
-			continue
+	for _, file := range files {
+		b.file = file
+		for _, n := range file.Statements.Nodes {
+			if n.Kind != ast.KindFunctionDeclaration || n.Body() == nil {
+				continue
+			}
+			if n.Name() == nil {
+				b.unsupported(n)
+			}
+			id := b.node(19, n, n.Name().Text())
+			symbol := b.symbol(n.Name())
+			typ := b.typ(c.GetReturnTypeOfSignature(c.GetSignatureFromDeclaration(n)))
+			b.nodes[id-1].name = b.text(n.Name().Text())
+			b.nodes[id-1].symbol = symbol
+			b.nodes[id-1].typ = typ
+			b.symbols[symbol-1].typ = typ
+			b.symbols[symbol-1].function = id
+			functions[n] = id
+			if last == 0 {
+				b.functions = id
+			} else {
+				b.nodes[last-1].next = id
+			}
+			last = id
 		}
-		id := b.node(19, n, n.Name().Text())
-		symbol := b.symbol(n.Name())
-		typ := b.typ(c.GetReturnTypeOfSignature(c.GetSignatureFromDeclaration(n)))
-		b.nodes[id-1].name = b.text(n.Name().Text())
-		b.nodes[id-1].symbol = symbol
-		b.nodes[id-1].typ = typ
-		b.symbols[symbol-1].typ = typ
-		b.symbols[symbol-1].function = id
-		functions[n] = id
-		if last == 0 {
-			b.functions = id
-		} else {
-			b.nodes[last-1].next = id
-		}
-		last = id
 	}
-	for _, n := range s.file.Statements.Nodes {
-		if id := functions[n]; id != 0 {
-			children := b.list(n.Parameters())
-			body := b.lower(n.Body())
-			b.nodes[id-1].children = children
-			b.nodes[id-1].left = body
+	for _, file := range files {
+		b.file = file
+		for _, n := range file.Statements.Nodes {
+			if id := functions[n]; id != 0 {
+				children := b.list(n.Parameters())
+				body := b.lower(n.Body())
+				b.nodes[id-1].children = children
+				b.nodes[id-1].left = body
+			}
 		}
 	}
 	last = 0
-	for _, n := range s.file.Statements.Nodes {
-		if n.Kind == ast.KindFunctionDeclaration {
-			continue
-		}
-		id := b.lower(n)
-		if id == 0 {
-			continue
-		}
+	for _, file := range files {
+		b.file = file
+		block := b.node(12, file.AsNode(), "module")
+		b.nodes[block-1].constant = 1
 		if last == 0 {
-			b.statements = id
+			b.statements = block
 		} else {
-			b.nodes[last-1].next = id
+			b.nodes[last-1].next = block
 		}
-		last = id
+		last = block
+		child := 0
+		for _, n := range file.Statements.Nodes {
+			if n.Kind == ast.KindFunctionDeclaration {
+				continue
+			}
+			id := b.lower(n)
+			if id == 0 {
+				continue
+			}
+			if child == 0 {
+				b.nodes[block-1].children = id
+			} else {
+				b.nodes[child-1].next = id
+			}
+			child = id
+		}
 	}
 	var data bytes.Buffer
 	put := func(v int) { _ = binary.Write(&data, binary.LittleEndian, int32(v)) }
