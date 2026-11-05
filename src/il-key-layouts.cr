@@ -32,10 +32,10 @@ void il_key_layouts(const Compiler& c, IlBackend& b) {
         int type=b.plan.type(name.view(),parent,0x101);int constructor=b.plan.method0(5,type,0x1886,-1,".ctor");
         b.literal_classes.at_mut(i)=type;b.literal_constructors.at_mut(i)=constructor;b.begin(constructor);b.emit(0xfe09,0);b.emit(0x28,b.constructor(n.type));b.op(0x2a);
         b.begin(b.plan.method0(5,type,0xc6,-5,"OwnKeys"));b.emit(0xfe09,0);
-        int count=0;NodeId child=n.children;while (child!=0) { count++;child=get_node(child,c).next; }
+        int count=0;bool text_keys=true;NodeId child=n.children;while (child!=0) { count++;TextId name=get_node(child,c).name;if (text_size(name,c)>0 && text_byte(name,0,c)>='0' && text_byte(name,0,c)<='9') { text_keys=false; }child=get_node(child,c).next; }
         b.emit(0x20,count);b.emit(0x8d,b.ref(RuntimeMember::ObjectType));int index=0;child=n.children;
         while (child!=0) { Node p=get_node(child,c);b.op(0x25);b.emit(0x20,index++);il_text(p.name,c,b);b.op(0xa2);child=p.next; }
-        b.call(RuntimeMember::KeysFromFixed);b.op(0x2a);il_enumeration_shape(n.type,type,i,c,b);
+        b.call(text_keys ? RuntimeMember::KeysFromTextFields : RuntimeMember::KeysFromFixed);b.op(0x2a);il_enumeration_shape(n.type,type,i,c,b);
     }
 }
 

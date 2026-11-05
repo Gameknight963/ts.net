@@ -10,6 +10,10 @@ public abstract partial class TsObject
     // and array representations override this with allocation-free counts.
     public virtual double OwnKeyCount() => ((JsArray)OwnKeys()).Length();
     public double KeyCountWithFixed(int count) => count + ExtraKeyCount;
+    // Generated callers prove that none of the fixed names are array indices.
+    // Extras may introduce indices, so they still need the general ordering path.
+    public object KeysFromTextFields(object[] names) => extra == null || extra.Count == 0
+        ? new JsArray(names) : KeysFromFixed(names);
     public object KeysFromFixed(object[] names)
     {
         if (extra == null || extra.Count == 0) return Js.OrderOwnKeys(names);

@@ -1,7 +1,7 @@
 import "assembly-plan.cr";
 
 enum class RuntimeMember {
-    OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
@@ -386,6 +386,7 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::ObjectKeys,b.plan.method1(6,js,0,-5,-5,"ObjectKeys"));
     b.ref_set(RuntimeMember::ObjectKeysFunction,b.plan.method0(6,js,0,-5,"GetObjectKeysFunction"));
     b.ref_set(RuntimeMember::KeysFromFixed,b.plan.method1(6,obj,1,-5,-7,"KeysFromFixed"));
+    b.ref_set(RuntimeMember::KeysFromTextFields,b.plan.method1(6,obj,1,-5,-7,"KeysFromTextFields"));
     int integer_loop_parameters[4]={-10,-3,-6,-6};
     b.ref_set(RuntimeMember::GuardIntegerLoop,b.plan.method(6,js,0,-2,&integer_loop_parameters,"GuardIntegerLoop"));
     b.ref_set(RuntimeMember::NumberPredicate,b.plan.method2(6,js,0,-2,-5,-6,"NumberPredicate"));
@@ -653,11 +654,11 @@ void il_shapes(const Compiler& c, IlBackend& b) {
                 member=record.next;
             }
             b.begin(b.plan.method0(5,klass,0xc6,-5,"OwnKeys"));
-            b.emit(0xfe09,0);int key_count=0;member=get_type(type,c).fields;
-            while (member!=0) { key_count++;member=get_field(member,c).next; }
+            b.emit(0xfe09,0);int key_count=0;bool text_keys=true;member=get_type(type,c).fields;
+            while (member!=0) { key_count++;TextId name=get_field(member,c).name;if (text_size(name,c)>0 && text_byte(name,0,c)>='0' && text_byte(name,0,c)<='9') { text_keys=false; }member=get_field(member,c).next; }
             b.emit(0x20,key_count);b.emit(0x8d,b.ref(RuntimeMember::ObjectType));member=get_type(type,c).fields;int key_index=0;
             while (member!=0) { b.op(0x25);b.emit(0x20,key_index++);il_text(get_field(member,c).name,c,b);b.op(0xa2);member=get_field(member,c).next; }
-            b.call(RuntimeMember::KeysFromFixed);b.op(0x2a);
+            b.call(text_keys ? RuntimeMember::KeysFromTextFields : RuntimeMember::KeysFromFixed);b.op(0x2a);
             b.begin(b.plan.method0(5,klass,0xc6,-3,"OwnKeyCount"));
             b.emit(0xfe09,0);b.emit(0x20,key_count);b.call(RuntimeMember::KeyCountWithFixed);b.op(0x2a);
             b.begin(b.plan.method1(5,klass,0xc6,-2,-4,"HasOwn"));
