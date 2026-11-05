@@ -1,5 +1,5 @@
 var assembly = System.Reflection.Assembly.LoadFrom(Path.GetFullPath(args[0]));
-foreach (string name in new[] { "f0", "f1", "f2", "f4" })
+foreach (string name in new[] { "f0", "f1", "f2", "f4", "f6", "f8" })
 {
     var kernel = assembly.GetType("Program")!.GetMethod(name)!.CreateDelegate<Func<double?, double?, double?>>();
     for (int i = 0; i < 20; i++) kernel(1000, 3);

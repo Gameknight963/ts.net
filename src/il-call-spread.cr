@@ -6,6 +6,24 @@ bool il_call_has_spread(NodeId entry, const Compiler& c) {
     return false;
 }
 
+bool il_static_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
+    Node call=get_node(entry,c);SymbolId symbol=get_node(call.left,c).symbol;
+    if (symbol==0 || get_symbol(symbol,c).function==0) { return false; }
+    NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;NodeId p=parameter;
+    while (p!=0) { if (get_node(p,c).third!=0) { return false; }p=get_node(p,c).next; }
+    Vector<int> arguments=Vector<int>::create();if (!il_flat_arguments(call.children,&arguments,c)) { return false; }
+    for (size_t i=0;i<arguments.count();i++) {
+        NodeId argument=(NodeId)arguments.at(i);Node value=get_node(argument,c);
+        if (parameter==0) { il_expression(argument,c,b);if (get_type(value.type,c).kind!=TypeKind::Void) { b.op(0x26); }continue; }
+        Node target=get_node(parameter,c);
+        if (get_type(value.type,c).kind==TypeKind::Void) { il_boxed(argument,c,b);b.from_object(target.type,c); }
+        else { il_as(argument,target.type,c,b); }
+        parameter=target.next;
+    }
+    while (parameter!=0) { Node target=get_node(parameter,c);b.empty(target.type,c);parameter=target.next; }
+    b.emit(0x28,(int)b.function(symbol));b.convert(get_symbol(symbol,c).type,call.type,c);return true;
+}
+
 TypeId il_call_number_type(NodeId entry, const Compiler& c) {
     Node call=get_node(entry,c);Node callee=get_node(call.left,c);
     if (il_array_call(entry,c)) {
@@ -42,6 +60,8 @@ void il_append_call_argument(NodeId entry, int array, TypeId number, const Compi
 
 void il_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
     Node call=get_node(entry,c);Node callee=get_node(call.left,c);int receiver=-1;
+    if (callee.symbol!=0 && get_symbol(callee.symbol,c).function!=0 && il_flat_parameter_call(entry,c,b)) { return; }
+    if (il_static_spread_call(entry,c,b)) { return; }
     bool array_call=il_array_call(entry,c);
     if (array_call) { il_expression(callee.left,c,b);receiver=b.local(-5);b.emit(0xfe0e,receiver); }
     TypeId numeric=il_call_number_type(entry,c);

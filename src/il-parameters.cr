@@ -37,9 +37,8 @@ bool il_has_flat_calls(SymbolId symbol, const Compiler& c) {
         Node call=get_node(i,c);
         if (call.kind!=NodeKind::Call || get_node(call.left,c).symbol!=symbol) { continue; }
         if (!pattern.constant) {
-            NodeId argument=call.children;int count=0;bool spread=false;
-            while (argument!=0) { if (get_node(argument,c).kind==NodeKind::Spread) { spread=true; }count++;argument=get_node(argument,c).next; }
-            if (!spread && count<=16) { return true; }
+            Vector<int> arguments=Vector<int>::create();
+            if (il_flat_arguments(call.children,&arguments,c)) { return true; }
             continue;
         }
         if (call.children==0) { continue; }
@@ -52,19 +51,36 @@ bool il_has_flat_calls(SymbolId symbol, const Compiler& c) {
     return false;
 }
 
+bool il_flat_arguments(NodeId first, Vector<int>& arguments, const Compiler& c) {
+    NodeId child=first;
+    while (child!=0) {
+        Node n=get_node(child,c);
+        if (n.kind==NodeKind::Spread) {
+            Node source=get_node(n.left,c);
+            while (source.kind==NodeKind::Assert && (get_type(source.type,c).kind==TypeKind::Array || get_type(source.type,c).kind==TypeKind::Any || get_type(source.type,c).kind==TypeKind::Unknown)) { source=get_node(source.left,c); }
+            if (source.kind!=NodeKind::Array || !il_flat_arguments(source.children,arguments,c)) { return false; }
+        } else {
+            if (arguments.count()>=16) { return false; }arguments.push((int)child);
+        }
+        child=n.next;
+    }
+    return true;
+}
+
 bool il_flat_rest_call(NodeId entry, NodeId pattern, SymbolId symbol, const Compiler& c, IlBackend& b) {
-    Node call=get_node(entry,c);NodeId argument=call.children;int count=0;
-    while (argument!=0) { if (get_node(argument,c).kind==NodeKind::Spread || ++count>16) { return false; }argument=get_node(argument,c).next; }
+    Node call=get_node(entry,c);Vector<int> arguments=Vector<int>::create();
+    if (!il_flat_arguments(call.children,&arguments,c)) { return false; }
     Node parameter=get_node(get_node(get_symbol(symbol,c).function,c).children,c);TypeId rest=get_node(parameter.third,c).type;
     TypeId element=get_type(rest,c).kind==TypeKind::Array ? get_type(rest,c).element : rest;
-    Vector<int> slots=Vector<int>::create();Vector<int> types=Vector<int>::create();argument=call.children;
-    while (argument!=0) {
+    Vector<int> slots=Vector<int>::create();Vector<int> types=Vector<int>::create();
+    for (size_t i=0;i<arguments.count();i++) {
+        NodeId argument=(NodeId)arguments.at(i);
         Node value=get_node(argument,c);TypeId storage=element;
         if ((get_type(element,c).kind==TypeKind::Any || get_type(element,c).kind==TypeKind::Unknown) && get_type(value.type,c).kind!=TypeKind::Void) { storage=value.type; }
         int slot=b.local(b.type(storage,c));
         if (get_type(value.type,c).kind==TypeKind::Void) { il_boxed(argument,c,b); }
         else { il_as(argument,storage,c,b); }
-        b.emit(0xfe0e,slot);slots.push(slot);types.push((int)storage);argument=value.next;
+        b.emit(0xfe0e,slot);slots.push(slot);types.push((int)storage);
     }
     NodeId child=get_node(pattern,c).children;size_t index=0;
     while (child!=0) {
