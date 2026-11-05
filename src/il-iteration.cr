@@ -3,7 +3,7 @@ import "il-arrays.cr";
 void il_prepare_iteration_vars(NodeId owner, const Compiler& c, IlBackend& b) {
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
-        if (scalar_owner(i,&b.node_parents,c)!=owner) { continue; }
+        if (scalar_owner(i,&b.node_parents,c)!=owner || (n.symbol!=0 && b.capture_fields.at(n.symbol)!=0)) { continue; }
         if ((n.kind==NodeKind::Variable || n.kind==NodeKind::Binding) && n.symbol!=0 && b.global_fields.at(n.symbol)!=0) { continue; }
         if (n.kind==NodeKind::Binding && n.symbol!=0 && n.name!=0 && is_text(n.name,&text_var,c)) { b.iteration_vars.at_mut(n.symbol)=1; }
         Node target=n;
@@ -27,7 +27,8 @@ void il_prepare_iteration_vars(NodeId owner, const Compiler& c, IlBackend& b) {
 void il_iteration_store(NodeId entry, TypeId type, int value, const Compiler& c, IlBackend& b) {
     Node target=get_node(entry,c);
     if (target.kind==NodeKind::Variable || target.kind==NodeKind::Name) {
-        b.emit(0xfe0c,value);b.convert(type,get_symbol(target.symbol,c).type,c);b.store(target.symbol);return;
+        b.emit(0xfe0c,value);b.convert(type,get_symbol(target.symbol,c).type,c);
+        if (target.kind==NodeKind::Variable && b.capture_fields.at(target.symbol)!=0) { b.initialize(target.symbol); } else { b.store(target.symbol); }return;
     }
     ScalarField scalar=il_scalar_field(entry,c,b);
     if (scalar.slot>=0) { b.emit(0xfe0c,value);b.convert(type,scalar.type,c);b.emit(0xfe0e,scalar.slot);return; }
@@ -54,8 +55,9 @@ void il_for_of(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {
         if (target.children==0 || get_node(target.children,c).next!=0) { fail(n.token,"unsupported iteration declaration",c); }
         binding=target.children;target=get_node(binding,c);
     }
+    int scope=b.context_scope;int context_slot=b.context_slot;il_context_enter(entry,c,b);
     TypeId type=(target.kind==NodeKind::Name || target.kind==NodeKind::Variable) ? get_symbol(target.symbol,c).type : target.type;
-    if (target.kind==NodeKind::Variable && b.global_fields.at(target.symbol)==0 && b.slots.at(target.symbol)==-2147483647) {
+    if (target.kind==NodeKind::Variable && b.capture_fields.at(target.symbol)==0 && b.global_fields.at(target.symbol)==0 && b.slots.at(target.symbol)==-2147483647) {
         int slot=b.local(b.type(type,c));b.slots.at_mut(target.symbol)=slot;b.empty(type,c);b.store(target.symbol);
     }
     il_expression(n.right,c,b);int iterable=b.local(-5);b.emit(0xfe0e,iterable);
@@ -74,8 +76,9 @@ void il_for_of(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {
     if (get_type(get_node(n.right,c).type,c).kind==TypeKind::Array) { b.emit(0x20,1); }
     else { b.emit(0xfe0c,iterable);b.emit(0xfe0c,position);b.call(RuntimeMember::ForOfStep); }
     b.op(0x58);b.emit(0xfe0e,position);
+    il_context_enter(entry,c,b);
     if (target.kind==NodeKind::Destructure) { il_binding_pattern(binding,value,c,b); }
     else { il_iteration_store(binding,type,value,c,b); }
     il_statement(n.fourth,result,c,b);
-    b.emit(0x38,start);b.mark(done);
+    b.emit(0x38,start);b.mark(done);b.context_scope=scope;b.context_slot=context_slot;
 }

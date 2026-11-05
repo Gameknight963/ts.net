@@ -14,7 +14,7 @@ void il_globals(int program, const Compiler& c, IlBackend& b) {
     Vector<int> declarations=zero_ids(c.symbol_store.count()+1);
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
-        if ((n.kind==NodeKind::Variable || n.kind==NodeKind::Binding) && n.symbol!=0 && scalar_owner(i,&b.node_parents,c)==0) {
+        if ((n.kind==NodeKind::Variable || n.kind==NodeKind::Binding) && n.symbol!=0 && scalar_owner(i,&b.node_parents,c)==0 && b.capture_fields.at(n.symbol)==0) {
             declarations.at_mut(n.symbol)=(int)i;
             if ((n.kind==NodeKind::Variable && n.fourth!=0) || (n.kind==NodeKind::Binding && n.name!=0 && is_text(n.name,&text_var,c))) { b.global_vars.at_mut(n.symbol)=1; }
         }

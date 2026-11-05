@@ -496,6 +496,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindBlock:
 		id = b.node(12, n, "{")
 		row = b.nodes[id-1]
+		row.name = b.text("scope")
 		row.children = b.list(n.AsBlock().Statements.Nodes)
 	case ast.KindVariableStatement:
 		return b.lower(n.AsVariableStatement().DeclarationList)

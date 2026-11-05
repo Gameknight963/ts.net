@@ -105,6 +105,7 @@ void il_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
         return;
     }
     SymbolId symbol=il_direct_function(call.left,c,b);
+    int context=b.function_contexts.at(symbol);if (context!=0) { b.load_context(context); }
     NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;int index=0;
     while (parameter!=0) {
         Node p=get_node(parameter,c);b.emit(0xfe0c,array);b.emit(0x20,index);

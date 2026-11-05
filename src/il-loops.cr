@@ -46,6 +46,7 @@ void il_loop_code(NodeId entry, TypeId result, SymbolId counter, int bound, cons
     int start=b.label();int next=b.label();int done=b.label();
     b.breaks.at_mut(entry)=done;b.continues.at_mut(entry)=n.kind==NodeKind::While ? start : next;
     if (n.kind==NodeKind::For && n.left!=0) { il_statement(n.left,result,c,b); }
+    if (n.kind==NodeKind::For) { il_context_clone(entry,c,b); }
     int stop=-1;
     if (counter!=0) { stop=b.local(-6);b.emit(0xfe0c,bound);b.call(RuntimeMember::LoopLimit);b.emit(0xfe0e,stop); }
     b.mark(start);
@@ -57,6 +58,7 @@ void il_loop_code(NodeId entry, TypeId result, SymbolId counter, int bound, cons
     }
     il_statement(n.kind==NodeKind::For ? n.fourth : n.right,result,c,b);b.mark(next);
     if (n.kind==NodeKind::Do) { il_condition(n.left,c,b);b.emit(0x39,done); }
+    if (n.kind==NodeKind::For) { il_context_clone(entry,c,b); }
     if (counter!=0) {
         b.load_storage(counter);b.emit(0x20,1);b.op(0x58);b.store_storage(counter);
     } else if (n.kind==NodeKind::For && n.third!=0) {
@@ -153,6 +155,7 @@ void il_loop_inner(NodeId entry, TypeId result, const Compiler& c, IlBackend& b)
 }
 
 void il_loop(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {
+    int scope=b.context_scope;int context_slot=b.context_slot;il_context_enter(entry,c,b);
     Vector<int> globals=il_loop_globals(entry,c,b);Vector<int> slots=Vector<int>::create();
     for (size_t i=0;i<globals.count();i++) {
         SymbolId symbol=(SymbolId)globals.at(i);int slot=b.local(b.type(get_symbol(symbol,c).type,c));
@@ -163,6 +166,7 @@ void il_loop(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {
         SymbolId symbol=(SymbolId)globals.at(i);int slot=slots.at(i);int field=b.global_fields.at(symbol);
         b.global_cache.at_mut(symbol)=0;b.emit(0xfe0c,slot);b.emit(0x80,field);
     }
+    b.context_scope=scope;b.context_slot=context_slot;
 }
 
 bool il_integer_remainder(NodeId entry, const Compiler& c, const IlBackend& b) {

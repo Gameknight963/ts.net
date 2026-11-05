@@ -9,7 +9,7 @@ void il_finish_binding(NodeId entry, const Compiler& c, IlBackend& b) {
     if (binding.right!=0) {
         b.box(binding.type,c);int nested=b.local(-5);b.emit(0xfe0e,nested);il_binding_pattern(binding.right,nested,c,b);
     } else {
-        if (b.global_fields.at(binding.symbol)!=0) { b.initialize(binding.symbol);return; }
+        if (b.global_fields.at(binding.symbol)!=0 || b.capture_fields.at(binding.symbol)!=0) { b.initialize(binding.symbol);return; }
         if (b.iteration_vars.at(binding.symbol)==0) { b.slots.at_mut(binding.symbol)=b.local(b.type(binding.type,c)); }
         b.store(binding.symbol);
     }

@@ -1,7 +1,7 @@
 import "assembly-plan.cr";
 
 enum class RuntimeMember {
-    ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
@@ -58,6 +58,18 @@ struct IlBackend {
     Vector<int> raw_functions;
     Vector<int> function_caches;
     Vector<int> function_constructors;
+    Vector<int> capture_fields;
+    Vector<int> capture_flags;
+    Vector<int> capture_scopes;
+    Vector<int> capture_types;
+    Vector<int> capture_vars;
+    Vector<int> function_contexts;
+    Vector<int> context_types;
+    Vector<int> context_constructors;
+    Vector<int> context_parents;
+    Vector<int> context_parent_fields;
+    int context_scope;
+    int context_slot;
     Vector<int> function_targets;
     Vector<int> predicate_targets;
     Vector<int> function_values_needed;
@@ -84,7 +96,7 @@ struct IlBackend {
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
             .packed_arrays=zero_ids(symbols),.dense_arrays=zero_ids(symbols),.tag_arrays=zero_ids(symbols),
             .reversible_literals=zero_ids(c.node_store.count()+1),.tagged_literals=zero_ids(c.node_store.count()+1),
-            .function_adapters=zero_ids(symbols),.raw_functions=zero_ids(symbols),.function_caches=zero_ids(symbols),.function_constructors=zero_ids(symbols),.function_targets=zero_ids(symbols),.predicate_targets=zero_ids(symbols),.function_values_needed=zero_ids(symbols),
+            .function_adapters=zero_ids(symbols),.raw_functions=zero_ids(symbols),.function_caches=zero_ids(symbols),.function_constructors=zero_ids(symbols),.capture_fields=zero_ids(symbols),.capture_flags=zero_ids(symbols),.capture_scopes=zero_ids(symbols),.capture_types=zero_ids(symbols),.capture_vars=zero_ids(symbols),.function_contexts=zero_ids(symbols),.context_types=zero_ids(c.node_store.count()+1),.context_constructors=zero_ids(c.node_store.count()+1),.context_parents=zero_ids(c.node_store.count()+1),.context_parent_fields=zero_ids(c.node_store.count()+1),.context_scope=0,.context_slot=-1,.function_targets=zero_ids(symbols),.predicate_targets=zero_ids(symbols),.function_values_needed=zero_ids(symbols),
             .iteration_vars=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
@@ -100,7 +112,7 @@ struct IlBackend {
     int interface_type(TypeId id) const { return this.interfaces.at(id); }
     int break_target(NodeId id) const { return this.breaks.at(id); }
     int continue_target(NodeId id) const { return this.continues.at(id); }
-    int raw_slot(SymbolId id) const { return this.raw_slots.at(id); }
+    int raw_slot(SymbolId id) const { return this.capture_fields.at(id)!=0 ? 0 : this.raw_slots.at(id); }
     void ref_set(RuntimeMember member, int id) { this.runtime.at_mut((size_t)member) = id; }
     int type(TypeId type, const Compiler& c) const {
         if (type == 0) { return -1; }
@@ -118,8 +130,23 @@ struct IlBackend {
     int label() { return ++this.label_count; }
     void mark(int label) { this.emit(-1, label); }
     int local(int type) { this.plan.local(this.method, type); return this.local_count++; }
-    void begin(int method) { this.method=method; this.local_count=0; this.label_count=0;this.loop_versions=0; }
+    void begin(int method) { this.method=method; this.local_count=0; this.label_count=0;this.loop_versions=0;this.context_scope=0;this.context_slot=-1; }
+    void load_context(int scope) {
+        if (this.context_scope==0) { print("tsnetc: closure environment missing");exit(1); }
+        if (this.context_slot<0) { this.emit(0xfe09,0); } else { this.emit(0xfe0c,this.context_slot); }
+        int current=this.context_scope;
+        while (current!=scope) {
+            int field=this.context_parent_fields.at(current);
+            if (field==0) { print("tsnetc: closure environment is outside lexical scope");exit(1); }
+            this.emit(0x7b,field);current=this.context_parents.at(current);
+        }
+    }
     void load_storage(SymbolId symbol) {
+        int capture=this.capture_fields.at(symbol);
+        if (capture!=0) {
+            int scope=this.capture_scopes.at(symbol);this.load_context(scope);this.op(0x25);
+            int flag=this.capture_flags.at(symbol);this.emit(0x7b,flag);this.call(RuntimeMember::CheckInitialized);this.emit(0x7b,capture);return;
+        }
         int cached=this.global_cache.at(symbol);
         if (cached!=0) { this.emit(0xfe0c,cached-1);return; }
         int global=this.global_fields.at(symbol);
@@ -141,6 +168,13 @@ struct IlBackend {
         this.store_storage(symbol);
     }
     void store_storage(SymbolId symbol) {
+        int capture=this.capture_fields.at(symbol);
+        if (capture!=0) {
+            int storage=this.capture_types.at(symbol);int value=this.local(storage);this.emit(0xfe0e,value);
+            int scope=this.capture_scopes.at(symbol);this.load_context(scope);this.op(0x25);
+            int flag=this.capture_flags.at(symbol);this.emit(0x7b,flag);this.call(RuntimeMember::CheckInitialized);
+            this.emit(0xfe0c,value);this.emit(0x7d,capture);return;
+        }
         int cached=this.global_cache.at(symbol);
         if (cached!=0) { this.emit(0xfe0e,cached-1);return; }
         int global=this.global_fields.at(symbol);
@@ -155,6 +189,12 @@ struct IlBackend {
         }
     }
     void initialize(SymbolId symbol) {
+        int capture=this.capture_fields.at(symbol);
+        if (capture!=0) {
+            int storage=this.capture_types.at(symbol);int value=this.local(storage);this.emit(0xfe0e,value);
+            int scope=this.capture_scopes.at(symbol);this.load_context(scope);this.op(0x25);
+            this.emit(0xfe0c,value);this.emit(0x7d,capture);this.emit(0x20,1);int flag=this.capture_flags.at(symbol);this.emit(0x7d,flag);return;
+        }
         int global=this.global_fields.at(symbol);
         if (global==0) { this.store(symbol);return; }
         this.emit(0x80,global);int flag=this.global_flags.at(symbol);
@@ -297,6 +337,8 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::StringType, b.plan.reference("System.Runtime", "System", "String"));
     b.ref_set(RuntimeMember::JsType, b.plan.reference("Tsnet.Runtime", "", "Js"));
     b.ref_set(RuntimeMember::TsObjectType, b.plan.reference("Tsnet.Runtime", "", "TsObject"));
+    int object_type=b.ref(RuntimeMember::ObjectType);
+    b.ref_set(RuntimeMember::ObjectConstructor,b.plan.method0(6,object_type,1,-1,".ctor"));
     int js = b.ref(RuntimeMember::JsType); int obj = b.ref(RuntimeMember::TsObjectType);
     b.ref_set(RuntimeMember::NumberPredicate,b.plan.method2(6,js,0,-2,-5,-6,"NumberPredicate"));
     b.ref_set(RuntimeMember::NumberPredicateNumber,b.plan.method2(6,js,0,-2,-10,-6,"NumberPredicateNumber"));

@@ -399,6 +399,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             if (symbol==0) { il_value_call(entry,c,b);return; }
             if (get_node(n.left,c).kind==NodeKind::Name && b.global_flags.at(get_node(n.left,c).symbol)!=0) { b.check_global(get_node(n.left,c).symbol); }
             if (get_node(n.left,c).symbol==symbol && il_flat_parameter_call(entry,c,b)) { return; }
+            int context=b.function_contexts.at(symbol);if (context!=0) { b.load_context(context); }
             NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;
             NodeId argument=n.children;
             while (argument != 0) {
@@ -507,6 +508,7 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
     } else if (n.kind == NodeKind::Label) {
         int done=b.label();b.breaks.at_mut(entry)=done;il_statement(n.left,return_type,c,b);b.mark(done);
     } else if (n.kind == NodeKind::Switch) {
+        int scope=b.context_scope;int context_slot=b.context_slot;il_context_enter(entry,c,b);
         int done=b.label();b.breaks.at_mut(entry)=done;
         il_boxed(n.left,c,b);int value=b.local(-5);b.emit(0xfe0e,value);
         int fallback=done;NodeId clause=n.children;
@@ -522,14 +524,21 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
             while (child!=0) { il_statement(child,return_type,c,b);child=get_node(child,c).next; }
             clause=get_node(clause,c).next;
         }
-        b.mark(done);
+        b.mark(done);b.context_scope=scope;b.context_slot=context_slot;
     } else if (n.kind == NodeKind::Block) {
+        int scope=b.context_scope;int slot=b.context_slot;il_context_enter(entry,c,b);
         NodeId child=n.children;
         while (child != 0) { il_statement(child,return_type,c,b); child=get_node(child,c).next; }
+        b.context_scope=scope;b.context_slot=slot;
     } else if (n.kind==NodeKind::Destructure) {
         if (il_literal_bindings(entry,c,b)) { return; }
         il_boxed(n.left,c,b);int source=b.local(-5);b.emit(0xfe0e,source);il_binding_pattern(entry,source,c,b);
     } else if (n.kind == NodeKind::Variable) {
+        if (b.capture_fields.at(n.symbol)!=0) {
+            Node initial=get_node(n.left,c);
+            if (n.fourth!=0 && initial.kind==NodeKind::Undefined && initial.constant) { return; }
+            il_as(n.left,n.type,c,b);b.initialize(n.symbol);return;
+        }
         if (b.function_targets.at(n.symbol)!=0 && b.function_values_needed.at(n.symbol)==0 && b.global_fields.at(n.symbol)==0) {
             Node value=get_node(n.left,c);
             // Reading an alias can still throw before its binding initializes.
@@ -578,7 +587,7 @@ void emit_assembly(const char[]& path, Compiler& c) {
     IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_prove_reversible_arrays(c,&b);il_choose_tagged_arrays(c,&b);il_runtime(&b);il_shapes(c,&b);
     int object_type=b.ref(RuntimeMember::ObjectType);
     int program=b.plan.type("Program",object_type,0x181);
-    il_prepare_function_values(program,c,&b);
+    il_prepare_closures(c,&b);il_prepare_function_values(program,c,&b);
     il_globals(program,c,&b);il_infer_scalar_values(c,&b);il_infer_array_values(numeric_array,c,&b);
     NodeId function=c.functions;
     while (function != 0) {
@@ -586,9 +595,10 @@ void emit_assembly(const char[]& path, Compiler& c) {
         while (parameter != 0) { parameters.push(b.type(get_node(parameter,c).type,c)); parameter=get_node(parameter,c).next; }
         Vector<char> name=numbered_name('f',get_symbol(n.symbol,c).id);
         int result_type=b.type(n.type,c);
-        b.methods.at_mut(n.symbol)=b.plan.method(5,program,0x16,result_type,parameters.view(),name.view());
+        int context=b.function_contexts.at(n.symbol);int owner=context==0 ? program : b.context_types.at((size_t)context);int attributes=context==0 ? 0x16 : 6;
+        b.methods.at_mut(n.symbol)=b.plan.method(5,owner,attributes,result_type,parameters.view(),name.view());
         Vector<char> adapter=numbered_name('a',get_symbol(n.symbol,c).id);
-        b.function_adapters.at_mut(n.symbol)=b.plan.method1(5,program,0x16,-5,-7,adapter.view());
+        b.function_adapters.at_mut(n.symbol)=b.plan.method1(5,owner,attributes,-5,-7,adapter.view());
         if (il_raw_numeric_function(function,c,&b)) {
             Vector<int> raw_parameters=Vector<int>::create();NodeId p=n.children;
             while (p!=0) { raw_parameters.push(-3);p=get_node(p,c).next; }
@@ -596,7 +606,7 @@ void emit_assembly(const char[]& path, Compiler& c) {
             b.raw_functions.at_mut(n.symbol)=b.plan.method(5,program,0x16,-3,raw_parameters.view(),raw_name.view());
         }
         NodeId pattern=il_flat_parameter(function,c);
-        if (pattern!=0 && il_has_flat_calls(n.symbol,c)) {
+        if (pattern!=0 && context==0 && !il_owns_context(function,c,&b) && il_has_flat_calls(n.symbol,c)) {
             Vector<int> fields=Vector<int>::create();NodeId child=get_node(pattern,c).children;
             while (child!=0) { fields.push(b.type(get_node(child,c).type,c));child=get_node(child,c).next; }
             Vector<char> flat_name=numbered_name('g',get_symbol(n.symbol,c).id);
@@ -610,16 +620,25 @@ void emit_assembly(const char[]& path, Compiler& c) {
     int entry=b.plan.method0(5,program,0x16,-6,"Main");
     function=c.functions;
     while (function != 0) {
-        Node n=get_node(function,c); b.begin((int)b.function(n.symbol)); NodeId parameter=n.children; int index=0;
+        Node n=get_node(function,c); b.begin((int)b.function(n.symbol));
+        int context=b.function_contexts.at(n.symbol);b.context_scope=context;b.context_slot=-1;
+        NodeId parameter=n.children;int index=context==0 ? 0 : 1;
         while (parameter != 0) {
             SymbolId symbol=get_node(parameter,c).symbol;b.slots.at_mut(symbol)=-(++index);b.raw_slots.at_mut(symbol)=0;
             parameter=get_node(parameter,c).next;
         }
-        il_prepare_iteration_vars(function,c,&b);
+        il_context_enter(function,c,&b);il_prepare_iteration_vars(function,c,&b);
         parameter=n.children;
         while (parameter!=0) {
             Node p=get_node(parameter,c);
-            if (p.left!=0) {
+            if (b.capture_fields.at(p.symbol)!=0) {
+                int argument=-b.slots.at(p.symbol)-1;int value=b.local(b.type(p.type,c));b.emit(0xfe09,argument);b.emit(0xfe0e,value);
+                if (p.left!=0) {
+                    int defined=b.label();b.emit(0xfe0c,value);b.missing(p.type,c);b.emit(0x39,defined);
+                    il_as(p.left,p.type,c,&b);b.emit(0xfe0e,value);b.mark(defined);
+                }
+                b.emit(0xfe0c,value);b.initialize(p.symbol);
+            } else if (p.left!=0) {
                 int done=b.label();b.load(p.symbol);b.missing(p.type,c);b.emit(0x39,done);
                 il_as(p.left,p.type,c,&b);b.store(p.symbol);b.mark(done);
             }

@@ -26,7 +26,7 @@ try {
     [IO.File]::WriteAllText("$testRoot/boundaries.ts", $boundary.ToString(), $bom)
 
     # Differential execution checks against the actual TypeScript compiler.
-    foreach ($fixture in @('tests/behavior.ts', 'tests/globals.ts', 'tests/modules.ts', 'tests/default-modules.ts', 'tests/structural-fields.ts', 'tests/optional-context.ts', 'tests/has-own.ts', 'tests/string-index.ts', 'tests/has-own-fastpath.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/functions.ts', 'tests/function-dispatch.ts', 'tests/call-arity.ts', 'tests/function-aliases.ts', 'tests/void-values.ts', 'tests/straightforward.ts', 'tests/logical-assignment.ts', 'tests/dynamic-arithmetic.ts', 'tests/nullable-values.ts', 'tests/numeric-fastpaths.ts', 'tests/numeric-constants.ts', 'tests/number-predicates.ts', 'tests/number-bindings.ts', 'tests/bitwise.ts', 'tests/scalar-objects.ts', 'tests/scalar-dynamic.ts', 'tests/scalar-references.ts', 'tests/integer-loops.ts', 'tests/arrays.ts', 'tests/mixed-index.ts', 'tests/union-arrays.ts', 'tests/loop-accumulators.ts', 'tests/computed-index.ts', 'tests/dense-read.ts', 'tests/typeof-number.ts', 'tests/slice.ts', 'tests/reverse.ts', 'tests/array-search.ts', 'tests/packed-arrays.ts', 'tests/array-ranges.ts', 'tests/inferred-arrays.ts', 'tests/fresh-any-arrays.ts', 'tests/for-of.ts', 'tests/array-spread.ts', 'tests/array-destructuring.ts', 'tests/object-destructuring.ts', 'tests/destructuring-fastpath.ts', 'tests/destructured-parameters.ts', 'tests/rest-parameters.ts', 'tests/call-spread.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
+    foreach ($fixture in @('tests/behavior.ts', 'tests/globals.ts', 'tests/modules.ts', 'tests/default-modules.ts', 'tests/structural-fields.ts', 'tests/optional-context.ts', 'tests/has-own.ts', 'tests/string-index.ts', 'tests/has-own-fastpath.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/functions.ts', 'tests/closures.ts', 'tests/closure-loop.ts', 'tests/function-dispatch.ts', 'tests/call-arity.ts', 'tests/function-aliases.ts', 'tests/void-values.ts', 'tests/straightforward.ts', 'tests/logical-assignment.ts', 'tests/dynamic-arithmetic.ts', 'tests/nullable-values.ts', 'tests/numeric-fastpaths.ts', 'tests/numeric-constants.ts', 'tests/number-predicates.ts', 'tests/number-bindings.ts', 'tests/bitwise.ts', 'tests/scalar-objects.ts', 'tests/scalar-dynamic.ts', 'tests/scalar-references.ts', 'tests/integer-loops.ts', 'tests/arrays.ts', 'tests/mixed-index.ts', 'tests/union-arrays.ts', 'tests/loop-accumulators.ts', 'tests/computed-index.ts', 'tests/dense-read.ts', 'tests/typeof-number.ts', 'tests/slice.ts', 'tests/reverse.ts', 'tests/array-search.ts', 'tests/packed-arrays.ts', 'tests/array-ranges.ts', 'tests/inferred-arrays.ts', 'tests/fresh-any-arrays.ts', 'tests/for-of.ts', 'tests/array-spread.ts', 'tests/array-destructuring.ts', 'tests/object-destructuring.ts', 'tests/destructuring-fastpath.ts', 'tests/destructured-parameters.ts', 'tests/rest-parameters.ts', 'tests/call-spread.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
         & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/$name" $fixture
@@ -59,6 +59,11 @@ try {
     & dotnet tests/inspect-arrays/bin/Release/net10.0/Inspect.dll "$testRoot/packed-arrays/bin/Release/net10.0/App.dll" "$testRoot/union-arrays/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Array runtime checks failed' }
 
+    & dotnet build tests/inspect-closures/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Closure inspector build failed' }
+    & dotnet tests/inspect-closures/bin/Release/net10.0/Inspect.dll "$testRoot/closure-loop/bin/Release/net10.0/App.dll"
+    if ($LASTEXITCODE) { throw 'Closure storage or allocation check failed' }
+
     & dotnet build tests/inspect-functions/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Function inspector build failed' }
     & dotnet tests/inspect-functions/bin/Release/net10.0/Inspect.dll "$testRoot/functions/bin/Release/net10.0/App.dll" "$testRoot/function-dispatch/bin/Release/net10.0/App.dll"
@@ -90,6 +95,9 @@ try {
 
     foreach ($case in @(
         @{ Name = 'bad-assertion'; Message = 'checked conversion failed' },
+        @{ Name = 'closure-default-tdz'; Message = 'Cannot access binding before initialization' },
+        @{ Name = 'closure-tdz'; Message = 'Cannot access binding before initialization' },
+        @{ Name = 'closure-write-tdz'; Message = 'Cannot access binding before initialization' },
         @{ Name = 'predicate-tdz'; Message = 'Cannot access binding before initialization' },
         @{ Name = 'function-alias-tdz'; Message = 'Cannot access binding before initialization' },
         @{ Name = 'number-binding-tdz'; Message = 'Cannot access binding before initialization' },
