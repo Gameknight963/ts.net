@@ -26,7 +26,7 @@ try {
     [IO.File]::WriteAllText("$testRoot/boundaries.ts", $boundary.ToString(), $bom)
 
     # Differential execution checks against the actual TypeScript compiler.
-    foreach ($fixture in @('tests/behavior.ts', 'tests/globals.ts', 'tests/modules.ts', 'tests/structural-fields.ts', 'tests/optional-context.ts', 'tests/has-own.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/straightforward.ts', 'tests/logical-assignment.ts', 'tests/dynamic-arithmetic.ts', 'tests/nullable-values.ts', 'tests/numeric-fastpaths.ts', 'tests/bitwise.ts', 'tests/scalar-objects.ts', 'tests/scalar-dynamic.ts', 'tests/scalar-references.ts', 'tests/integer-loops.ts', 'tests/arrays.ts', 'tests/slice.ts', 'tests/packed-arrays.ts', 'tests/for-of.ts', 'tests/array-spread.ts', 'tests/array-destructuring.ts', 'tests/object-destructuring.ts', 'tests/destructuring-fastpath.ts', 'tests/destructured-parameters.ts', 'tests/rest-parameters.ts', 'tests/call-spread.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
+    foreach ($fixture in @('tests/behavior.ts', 'tests/globals.ts', 'tests/modules.ts', 'tests/structural-fields.ts', 'tests/optional-context.ts', 'tests/has-own.ts', 'tests/has-own-fastpath.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/straightforward.ts', 'tests/logical-assignment.ts', 'tests/dynamic-arithmetic.ts', 'tests/nullable-values.ts', 'tests/numeric-fastpaths.ts', 'tests/bitwise.ts', 'tests/scalar-objects.ts', 'tests/scalar-dynamic.ts', 'tests/scalar-references.ts', 'tests/integer-loops.ts', 'tests/arrays.ts', 'tests/slice.ts', 'tests/packed-arrays.ts', 'tests/for-of.ts', 'tests/array-spread.ts', 'tests/array-destructuring.ts', 'tests/object-destructuring.ts', 'tests/destructuring-fastpath.ts', 'tests/destructured-parameters.ts', 'tests/rest-parameters.ts', 'tests/call-spread.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
         & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/$name" $fixture
@@ -50,6 +50,8 @@ try {
     & dotnet build tests/inspect-scalars/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Scalar replacement inspector build failed' }
     & dotnet tests/inspect-scalars/bin/Release/net10.0/Inspect.dll "$testRoot/scalar-objects/bin/Release/net10.0/App.dll"
+    if ($LASTEXITCODE) { throw 'Scalar allocation checks failed' }
+    & dotnet tests/inspect-scalars/bin/Release/net10.0/Inspect.dll "$testRoot/has-own-fastpath/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Local object allocation was not eliminated' }
 
     & dotnet build tests/inspect-arrays/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet

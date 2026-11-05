@@ -291,6 +291,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         if (il_call_has_spread(entry,c)) { il_spread_call(entry,c,b);return; }
         if (il_array_call(entry,c)) { il_emit_array_call(entry,c,b); }
         else if (builtin_has_own(n.left,c)) {
+            if (il_scalar_own(entry,c,b)) { return; }
             NodeId argument=n.children;
             for (int i=0;i<2;i++) {
                 if (argument==0) { b.call(RuntimeMember::Undefined); }

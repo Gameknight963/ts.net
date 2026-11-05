@@ -44,14 +44,26 @@ bool scalar_numeric_value(NodeId entry, const Vector<int>& definitions, const Il
     return false;
 }
 
+bool scalar_own_call(NodeId entry, const Compiler& c) {
+    Node call=get_node(entry,c);
+    if (call.kind!=NodeKind::Call || !builtin_has_own(call.left,c) || call.children==0) { return false; }
+    Node receiver=get_node(call.children,c);
+    return receiver.kind==NodeKind::Name && receiver.next!=0 && get_node(receiver.next,c).kind==NodeKind::String && get_node(receiver.next,c).next==0;
+}
+
 void il_prove_scalars(const Compiler& c, IlBackend& b) {
     Vector<int> parents=zero_ids(c.node_store.count()+1);
     Vector<int> definitions=zero_ids(c.symbol_store.count()+1);
     Vector<int> invalid=zero_ids(c.symbol_store.count()+1);
     Vector<int> declarations=zero_ids(c.symbol_store.count()+1);
+    Vector<int> parameters=zero_ids(c.symbol_store.count()+1);
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
         if (n.kind==NodeKind::Variable || n.kind==NodeKind::Binding) { declarations.at_mut(n.symbol)++; }
+        if (n.kind==NodeKind::Function) {
+            NodeId parameter=n.children;
+            while (parameter!=0) { Node p=get_node(parameter,c);parameters.at_mut(p.symbol)=1;parameter=p.next; }
+        }
     }
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
@@ -63,14 +75,14 @@ void il_prove_scalars(const Compiler& c, IlBackend& b) {
         if (n.fourth!=0) { parents.at_mut(n.fourth)=(int)i; }
         NodeId child=n.children;
         while (child!=0) { parents.at_mut(child)=(int)i;child=get_node(child,c).next; }
-        if (n.kind==NodeKind::Variable && n.left!=0 && declarations.at(n.symbol)==1 && (get_type(n.type,c).kind==TypeKind::Shape || get_type(n.type,c).kind==TypeKind::Any) && scalar_literal(n.left,c)) {
+        if (n.kind==NodeKind::Variable && n.left!=0 && parameters.at(n.symbol)==0 && declarations.at(n.symbol)==1 && (get_type(n.type,c).kind==TypeKind::Shape || get_type(n.type,c).kind==TypeKind::Any) && scalar_literal(n.left,c)) {
             b.scalar_roots.at_mut(n.symbol)=(int)n.symbol;definitions.at_mut(n.symbol)=(int)i;
         }
     }
     // Aliases share field locals; any later rebinding invalidates their root.
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
-        if (n.kind!=NodeKind::Variable || n.left==0 || declarations.at(n.symbol)!=1 || (get_type(n.type,c).kind!=TypeKind::Shape && get_type(n.type,c).kind!=TypeKind::Any)) { continue; }
+        if (n.kind!=NodeKind::Variable || n.left==0 || parameters.at(n.symbol)!=0 || declarations.at(n.symbol)!=1 || (get_type(n.type,c).kind!=TypeKind::Shape && get_type(n.type,c).kind!=TypeKind::Any)) { continue; }
         Node value=get_node(n.left,c);
         if (value.kind!=NodeKind::Name) { continue; }
         SymbolId root=(SymbolId)b.scalar_roots.at(value.symbol);
@@ -85,6 +97,7 @@ void il_prove_scalars(const Compiler& c, IlBackend& b) {
         if (scalar_owner(i,&parents,c)!=scalar_owner(definition,&parents,c)) { invalid.at_mut(root)=1;continue; }
         Node parent=get_node((NodeId)parents.at(i),c);
         if (parent.kind==NodeKind::Variable && parent.left==i && b.scalar_roots.at(parent.symbol)==(int)root) { continue; }
+        if (parent.kind==NodeKind::Call && parent.children==i && get_node(definition,c).constant && scalar_own_call((NodeId)parents.at(i),c)) { continue; }
         if (parent.kind==NodeKind::Property && parent.left==i) {
             NodeId parent_id=(NodeId)parents.at(i);
             // Literal members share Property's representation with field reads.
@@ -189,4 +202,17 @@ void il_infer_scalar_values(Compiler& c, const IlBackend& b) {
             set_node_type(i,get_node(n.left,c).type,c);
         }
     }
+}
+
+bool il_scalar_own(NodeId entry, const Compiler& c, IlBackend& b) {
+    if (!scalar_own_call(entry,c)) { return false; }
+    Node receiver=get_node(get_node(entry,c).children,c);
+    SymbolId root=(SymbolId)b.scalar_roots.at(receiver.symbol);
+    if (root==0) { return false; }
+    TextId key=get_token(get_node(receiver.next,c).token,c).text;bool present=false;
+    for (size_t i=0;i<b.scalar_fields.count();i++) {
+        ScalarField member=b.scalar_fields.at(i);
+        if (member.root==root && same(member.name,key,c)) { present=true; }
+    }
+    b.emit(0x20,present ? 1 : 0);b.call(RuntimeMember::WrapBoolean);return true;
 }
