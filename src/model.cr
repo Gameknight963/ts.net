@@ -57,7 +57,15 @@ enum class NodeKind {
     Spread,
     Destructure,
     Binding,
-    FunctionValue
+    FunctionValue,
+    NumberIsNaN,
+    NumberIsFinite,
+    NumberIsInteger,
+    NumberIsSafeInteger,
+    NumberIsNaNFunction,
+    NumberIsFiniteFunction,
+    NumberIsIntegerFunction,
+    NumberIsSafeIntegerFunction
 };
 struct Token {
     TokenKind kind;

@@ -49,3 +49,37 @@ func identifierWrite(n *ast.Node) bool {
 	}
 	return false
 }
+
+func (b *irBuilder) numberPredicate(n *ast.Node) int {
+	for n.Kind == ast.KindParenthesizedExpression {
+		n = n.Expression()
+	}
+	var owner *ast.Node
+	name := ""
+	switch n.Kind {
+	case ast.KindPropertyAccessExpression:
+		owner, name = n.Expression(), n.Name().Text()
+	case ast.KindElementAccessExpression:
+		expression := n.AsElementAccessExpression()
+		if expression.ArgumentExpression.Kind != ast.KindStringLiteral {
+			return -1
+		}
+		owner, name = expression.Expression, expression.ArgumentExpression.Text()
+	default:
+		return -1
+	}
+	if owner.Kind != ast.KindIdentifier || owner.Text() != "Number" || !b.isBuiltinIdentifier(owner) {
+		return -1
+	}
+	switch name {
+	case "isNaN":
+		return 0
+	case "isFinite":
+		return 1
+	case "isInteger":
+		return 2
+	case "isSafeInteger":
+		return 3
+	}
+	return -1
+}

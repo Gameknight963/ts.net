@@ -27,7 +27,7 @@ void il_number(NodeId entry, const Compiler& c, IlBackend& b) {
     else { b.call(RuntimeMember::Number); }
 }
 void il_condition(NodeId entry, const Compiler& c, IlBackend& b) {
-    if (il_number_type_test(entry,false,c,b)) { return; }
+    if (il_number_predicate(entry,false,c,b) || il_number_type_test(entry,false,c,b)) { return; }
     il_expression(entry,c,b);b.truth(get_node(entry,c).type,c);
 }
 void il_invert(IlBackend& b) { b.emit(0x20,0); b.op(0xfe01); }
@@ -236,6 +236,33 @@ bool il_number_type_test(NodeId entry, bool wrap, const Compiler& c, IlBackend& 
     if (wrap) { b.call(RuntimeMember::WrapBoolean); }return true;
 }
 
+bool il_number_predicate(NodeId entry, bool wrap, const Compiler& c, IlBackend& b) {
+    Node n=get_node(entry,c);int mode=(int)n.kind-(int)NodeKind::NumberIsNaN;
+    if (mode<0 || mode>3) { return false; }
+    if (n.children==0) {
+        b.emit(0x20,0);if (wrap) { b.call(RuntimeMember::WrapBoolean); }return true;
+    }
+    Node argument=get_node(n.children,c);
+    bool numeric=false;
+    if (n.children!=0 && argument.next==0 && argument.kind!=NodeKind::Spread) {
+        if (il_integer_value(n.children,c,b)) {
+            // A proven int32 is finite, integral, safe, and never NaN. Retain
+            // argument evaluation even when the predicate result is constant.
+            il_expression(n.children,c,b);b.op(0x26);b.emit(0x20,mode==0 ? 0 : 1);
+            if (wrap) { b.call(RuntimeMember::WrapBoolean); }return true;
+        }
+        numeric=get_type(argument.type,c).kind==TypeKind::Number;
+        if (numeric) { il_expression(n.children,c,b); } else { il_boxed(n.children,c,b); }
+    } else {
+        b.emit(0x20,0);b.emit(0x73,b.ref(RuntimeMember::ArrayConstructor));int array=b.local(-5);b.emit(0xfe0e,array);
+        NodeId item=n.children;
+        while (item!=0) { il_append_call_argument(item,array,0,c,b);item=get_node(item,c).next; }
+        b.emit(0xfe0c,array);b.emit(0x20,0);b.call(RuntimeMember::ForOfValue);
+    }
+    b.emit(0x20,mode);b.call(numeric ? RuntimeMember::NumberPredicateNumber : RuntimeMember::NumberPredicate);
+    if (wrap) { b.call(RuntimeMember::WrapBoolean); }return true;
+}
+
 NodeId il_numeric_property_key(NodeId entry, const Compiler& c) {
     if (entry==0) { return 0; }
     Node n=get_node(entry,c);
@@ -273,7 +300,9 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     else if (n.kind == NodeKind::Boolean) { b.emit(0x20,is_text(get_token(n.token,c).text,&text_true,c) ? 1 : 0);b.call(RuntimeMember::WrapBoolean); }
     else if (n.kind == NodeKind::String) {
         il_text(get_token(n.token,c).text,c,b);
-    } else if (n.kind==NodeKind::FunctionValue) { il_function_object(n.symbol,c,b); }
+    } else if (n.kind>=NodeKind::NumberIsNaN && n.kind<=NodeKind::NumberIsSafeInteger) { il_number_predicate(entry,true,c,b); }
+    else if (n.kind>=NodeKind::NumberIsNaNFunction && n.kind<=NodeKind::NumberIsSafeIntegerFunction) { b.emit(0x20,(int)n.kind-(int)NodeKind::NumberIsNaNFunction);b.call(RuntimeMember::NumberPredicateFunction); }
+    else if (n.kind==NodeKind::FunctionValue) { il_function_object(n.symbol,c,b); }
     else if (n.kind == NodeKind::Name) {
         if (get_symbol(n.symbol,c).function!=0) { il_function_reference(n.symbol,c,b);return; }
         b.load(n.symbol);

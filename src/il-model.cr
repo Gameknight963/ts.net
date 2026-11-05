@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionConstructor, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionConstructor, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -296,6 +296,10 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::JsType, b.plan.reference("Tsnet.Runtime", "", "Js"));
     b.ref_set(RuntimeMember::TsObjectType, b.plan.reference("Tsnet.Runtime", "", "TsObject"));
     int js = b.ref(RuntimeMember::JsType); int obj = b.ref(RuntimeMember::TsObjectType);
+    b.ref_set(RuntimeMember::NumberPredicate,b.plan.method2(6,js,0,-2,-5,-6,"NumberPredicate"));
+    b.ref_set(RuntimeMember::NumberPredicateNumber,b.plan.method2(6,js,0,-2,-10,-6,"NumberPredicateNumber"));
+    b.ref_set(RuntimeMember::NumberPredicateFunction,b.plan.method1(6,js,0,-5,-6,"NumberPredicateFunction"));
+
     int tagged=b.plan.reference("Tsnet.Runtime","","TaggedArray");
     b.ref_set(RuntimeMember::TaggedConstructor,b.plan.method1(6,tagged,1,-1,-6,".ctor"));
     b.ref_set(RuntimeMember::TaggedBufferConstructor,b.plan.method1(6,tagged,1,-1,-7,".ctor"));

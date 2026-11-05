@@ -21,6 +21,9 @@ func (b *irBuilder) preserveDynamicType(n *ast.Node, row *irNode) {
 			}
 		}
 	case ast.KindElementAccessExpression:
+		if row.kind != 33 {
+			return
+		}
 		owner := b.nodes[row.left-1].typ
 		if owner != 0 {
 			typ := b.types[owner-1]

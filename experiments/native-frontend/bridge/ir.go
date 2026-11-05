@@ -349,6 +349,15 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.left = b.lower(n.Expression())
 	case ast.KindElementAccessExpression:
+		if mode := b.numberPredicate(n); mode >= 0 {
+			if identifierWrite(n) {
+				b.unsupported(n)
+			}
+			id = b.node(43+mode, n, "number predicate function")
+			row = b.nodes[id-1]
+			row.typ = b.typ(b.c.GetTypeAtLocation(n))
+			break
+		}
 		expr := n.AsElementAccessExpression()
 		if expr.QuestionDotToken != nil {
 			b.unsupported(n)
@@ -367,6 +376,15 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			row.left = b.lower(n.Name())
 		}
 	case ast.KindPropertyAccessExpression:
+		if mode := b.numberPredicate(n); mode >= 0 {
+			if identifierWrite(n) {
+				b.unsupported(n)
+			}
+			id = b.node(43+mode, n, "number predicate function")
+			row = b.nodes[id-1]
+			row.typ = b.typ(b.c.GetTypeAtLocation(n))
+			break
+		}
 		if n.AsPropertyAccessExpression().QuestionDotToken != nil {
 			b.unsupported(n)
 		}
@@ -379,6 +397,13 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.left = b.lower(n.Expression())
 	case ast.KindCallExpression:
 		call := n.AsCallExpression()
+		if mode := b.numberPredicate(call.Expression); mode >= 0 {
+			id = b.node(39+mode, n, "number predicate")
+			row = b.nodes[id-1]
+			row.typ = b.typ(b.c.GetTypeAtLocation(n))
+			row.children = b.list(call.Arguments.Nodes)
+			break
+		}
 		id = b.node(6, n, "(")
 		row = b.nodes[id-1]
 		own := b.isBuiltinHasOwn(call.Expression)
