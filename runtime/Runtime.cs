@@ -109,6 +109,13 @@ public static class Js
         return Number(left) + Number(right);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool EqualNumbers(double? left, double? right) =>
+        left.HasValue == right.HasValue && (!left.HasValue || left.GetValueOrDefault() == right.GetValueOrDefault());
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool EqualBooleans(bool? left, bool? right) => left == right;
+
     public static bool Equal(object left, object right)
     {
         if (left is double a && right is double b) return a == b;

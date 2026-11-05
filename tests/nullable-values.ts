@@ -51,6 +51,12 @@ function three(value: number | null | undefined) { return value; }
 console.log(three(null) === null, three(undefined) === undefined, three(0) === 0);
 const nan = 0 / 0;
 console.log(nan === undefined, nan !== nan, nan ?? 9, -0);
+function equalNumbers(a: number | undefined, b: number | undefined) { return a === b; }
+function equalBooleans(a: boolean | undefined, b: boolean | undefined) { return a === b; }
+console.log(equalNumbers(undefined, undefined), equalNumbers(undefined, 0), equalNumbers(0, undefined));
+console.log(equalNumbers(nan, nan), equalNumbers(-0, 0), equalNumbers(2, 3));
+console.log(equalBooleans(undefined, undefined), equalBooleans(undefined, false), equalBooleans(false, undefined));
+console.log(equalBooleans(false, false), equalBooleans(false, true), equalBooleans(true, true));
 type Optional = { n?: number; b?: boolean };
 const optional: Optional = {};
 console.log(optional.n, optional.b, optional.n === undefined, optional.b === undefined);

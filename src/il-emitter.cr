@@ -179,7 +179,19 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             int done=b.label();il_as(n.left,n.type,c,b);b.op(0x25);b.truth(n.type,c);
             b.emit(is_text(op,&text_and,c) ? 0x39 : 0x3a,done);b.op(0x26);il_as(n.right,n.type,c,b);b.mark(done);
         } else if (is_text(op,&text_strict_equal,c) || is_text(op,&text_strict_not_equal,c)) {
-            il_boxed(n.left,c,b); il_boxed(n.right,c,b); b.call(RuntimeMember::Equal);
+            TypeKind left_kind=get_type(get_node(n.left,c).type,c).kind;
+            TypeKind right_kind=get_type(get_node(n.right,c).type,c).kind;
+            Node left=get_node(n.left,c);Node right=get_node(n.right,c);
+            bool left_defined=il_defined(n.left,c) || (left.kind==NodeKind::Name && b.raw_slot(left.symbol)==-3);
+            bool right_defined=il_defined(n.right,c) || (right.kind==NodeKind::Name && b.raw_slot(right.symbol)==-3);
+            if (left_kind==TypeKind::Number && right_kind==TypeKind::Number && left_defined && right_defined) {
+                il_number(n.left,c,b);il_number(n.right,c,b);b.op(0xfe01);
+            } else if (left_kind==right_kind && (left_kind==TypeKind::Number || left_kind==TypeKind::Boolean)) {
+                il_expression(n.left,c,b);il_expression(n.right,c,b);
+                b.call(left_kind==TypeKind::Number ? RuntimeMember::EqualNumbers : RuntimeMember::EqualBooleans);
+            } else {
+                il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember::Equal);
+            }
             if (is_text(op,&text_strict_not_equal,c)) { il_invert(b); }
             b.call(RuntimeMember::WrapBoolean);
         } else if (is_text(op,&text_plus,c) && get_type(n.type,c).kind == TypeKind::Any) {
