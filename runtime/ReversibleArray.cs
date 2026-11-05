@@ -2,7 +2,7 @@ using System;
 
 // Selected at known reverse call sites. Ordinary arrays keep their direct
 // indexing path; only this representation pays for mapping reversed indexes.
-public sealed class ReversibleArray : JsArray
+public sealed partial class ReversibleArray : JsArray
 {
     bool reversed;
     public ReversibleArray(int length) : base(length) { }

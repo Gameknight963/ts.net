@@ -1,0 +1,118 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+
+public abstract partial class TsObject
+{
+    public virtual object OwnKeys() => KeysFromFixed(Array.Empty<object>());
+    public object KeysFromFixed(object[] names)
+    {
+        if (extra == null || extra.Count == 0) return Js.OrderOwnKeys(names);
+        var all = new object[names.Length + extra.Count];
+        Array.Copy(names, all, names.Length);
+        var seen = new HashSet<string>();
+        foreach (string name in names) seen.Add(name);
+        int count = names.Length;
+        foreach (string name in extra.Keys) if (seen.Add(name)) all[count++] = name;
+        if (count != all.Length) Array.Resize(ref all, count);
+        return Js.OrderOwnKeys(all);
+    }
+}
+
+partial struct ArrayStorage<T>
+{
+    internal List<uint> PresentIndices(Func<T, bool> present)
+    {
+        var result = new List<uint>();
+        uint end = Math.Min(Length, (uint)dense.Length);
+        for (uint i = 0; i < end; i++) if (present(dense[i])) result.Add(i);
+        if (sparse != null)
+            foreach (var item in sparse) if (item.Key < Length && present(item.Value)) result.Add(item.Key);
+        result.Sort();
+        return result;
+    }
+}
+
+public partial class JsArray
+{
+    internal virtual List<uint> PresentIndices() => values.PresentIndices(static value => !ReferenceEquals(value, Hole));
+    public override object OwnKeys()
+    {
+        var indices = PresentIndices();
+        var names = new object[indices.Count];
+        for (int i = 0; i < names.Length; i++) names[i] = indices[i].ToString(CultureInfo.InvariantCulture);
+        return KeysFromFixed(names);
+    }
+}
+
+public sealed partial class NumberArray
+{
+    internal override List<uint> PresentIndices() => numbers.PresentIndices(static value => BitConverter.DoubleToInt64Bits(value) != MissingBits);
+}
+
+public sealed partial class TaggedArray
+{
+    internal override List<uint> PresentIndices()
+    {
+        if (materialized != null) return materialized.PresentIndices();
+        var result = new List<uint>();
+        uint end = Math.Min(length, (uint)tags.Length);
+        for (uint i = 0; i < end; i++) if (tags[i] != 0) result.Add(i);
+        return result;
+    }
+}
+
+public sealed partial class ReversibleArray
+{
+    internal override List<uint> PresentIndices()
+    {
+        var result = base.PresentIndices();
+        if (reversed) {
+            for (int i = 0; i < result.Count; i++) result[i] = Count - 1 - result[i];
+            result.Sort();
+        }
+        return result;
+    }
+}
+
+public static partial class Js
+{
+    internal static object OrderOwnKeys(object[] names)
+    {
+        bool text = false, unordered = false, haveIndex = false;
+        uint previous = 0;
+        foreach (string name in names) {
+            if (JsArray.Index(name, out uint index)) {
+                if (text || haveIndex && index < previous) unordered = true;
+                haveIndex = true; previous = index;
+            } else text = true;
+        }
+        if (!unordered) return new JsArray(names);
+        var indices = new List<KeyValuePair<uint, object>>();
+        var strings = new List<object>();
+        foreach (string name in names)
+            if (JsArray.Index(name, out uint index)) indices.Add(new KeyValuePair<uint, object>(index, name));
+            else strings.Add(name);
+        indices.Sort(static (a, b) => a.Key.CompareTo(b.Key));
+        int position = 0;
+        foreach (var item in indices) names[position++] = item.Value;
+        foreach (var name in strings) names[position++] = name;
+        return new JsArray(names);
+    }
+    public static object ObjectKeys(object source)
+    {
+        if (source == null || ReferenceEquals(source, Undefined)) throw new InvalidOperationException("Cannot convert null or undefined to object");
+        if (source is TsObject value) return value.OwnKeys();
+        if (source is string text) {
+            var names = new object[text.Length];
+            for (int i = 0; i < names.Length; i++) names[i] = i.ToString(CultureInfo.InvariantCulture);
+            return new JsArray(names);
+        }
+        return new JsArray(0);
+    }
+    static class ObjectKeysCache
+    {
+        internal static readonly JsFunction Function = new JsFunction((FunctionBody)(arguments => ObjectKeys(FunctionArgument(arguments, 0))), null, "keys", 1);
+    }
+    public static object GetObjectKeysFunction() => ObjectKeysCache.Function;
+}

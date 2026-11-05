@@ -350,6 +350,15 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.left = b.lower(n.Expression())
 	case ast.KindElementAccessExpression:
+		if b.isBuiltinObjectKeys(n) {
+			if identifierWrite(n) {
+				b.unsupported(n)
+			}
+			id = b.node(47, n, "Object.keys")
+			row = b.nodes[id-1]
+			row.typ = b.typ(b.c.GetTypeAtLocation(n))
+			break
+		}
 		if mode := b.numberPredicate(n); mode >= 0 {
 			if identifierWrite(n) {
 				b.unsupported(n)
@@ -377,6 +386,15 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			row.left = b.lower(n.Name())
 		}
 	case ast.KindPropertyAccessExpression:
+		if b.isBuiltinObjectKeys(n) {
+			if identifierWrite(n) {
+				b.unsupported(n)
+			}
+			id = b.node(47, n, "Object.keys")
+			row = b.nodes[id-1]
+			row.typ = b.typ(b.c.GetTypeAtLocation(n))
+			break
+		}
 		if mode := b.numberPredicate(n); mode >= 0 {
 			if identifierWrite(n) {
 				b.unsupported(n)

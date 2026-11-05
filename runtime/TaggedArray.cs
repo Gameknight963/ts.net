@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 // Keep numeric payloads unboxed while reference values remain visible to the GC.
 // Operations requiring the ordinary backing store materialize it once, retaining
 // this wrapper so aliases continue to observe the same array.
-public sealed class TaggedArray : JsArray
+public sealed partial class TaggedArray : JsArray
 {
     byte[] tags = Array.Empty<byte>(); // 0: hole, 1: number, 2: reference
     double[] numbers = Array.Empty<double>();

@@ -1,7 +1,7 @@
 import "assembly-plan.cr";
 
 enum class RuntimeMember {
-    GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    ObjectKeys, ObjectKeysFunction, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
@@ -54,6 +54,8 @@ struct IlBackend {
     Vector<int> tag_arrays;
     Vector<int> reversible_literals;
     Vector<int> tagged_literals;
+    Vector<int> layout_needed;
+    Vector<int> literal_constructors;
     Vector<int> function_adapters;
     Vector<int> raw_functions;
     Vector<int> function_caches;
@@ -96,7 +98,7 @@ struct IlBackend {
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
             .packed_arrays=zero_ids(symbols),.dense_arrays=zero_ids(symbols),.tag_arrays=zero_ids(symbols),
             .reversible_literals=zero_ids(c.node_store.count()+1),.tagged_literals=zero_ids(c.node_store.count()+1),
-            .function_adapters=zero_ids(symbols),.raw_functions=zero_ids(symbols),.function_caches=zero_ids(symbols),.function_constructors=zero_ids(symbols),.capture_fields=zero_ids(symbols),.capture_flags=zero_ids(symbols),.capture_scopes=zero_ids(symbols),.capture_types=zero_ids(symbols),.capture_vars=zero_ids(symbols),.function_contexts=zero_ids(symbols),.context_types=zero_ids(c.node_store.count()+1),.context_constructors=zero_ids(c.node_store.count()+1),.context_parents=zero_ids(c.node_store.count()+1),.context_parent_fields=zero_ids(c.node_store.count()+1),.context_scope=0,.context_slot=-1,.function_targets=zero_ids(symbols),.predicate_targets=zero_ids(symbols),.function_values_needed=zero_ids(symbols),
+            .layout_needed=zero_ids(types),.literal_constructors=zero_ids(c.node_store.count()+1),.function_adapters=zero_ids(symbols),.raw_functions=zero_ids(symbols),.function_caches=zero_ids(symbols),.function_constructors=zero_ids(symbols),.capture_fields=zero_ids(symbols),.capture_flags=zero_ids(symbols),.capture_scopes=zero_ids(symbols),.capture_types=zero_ids(symbols),.capture_vars=zero_ids(symbols),.function_contexts=zero_ids(symbols),.context_types=zero_ids(c.node_store.count()+1),.context_constructors=zero_ids(c.node_store.count()+1),.context_parents=zero_ids(c.node_store.count()+1),.context_parent_fields=zero_ids(c.node_store.count()+1),.context_scope=0,.context_slot=-1,.function_targets=zero_ids(symbols),.predicate_targets=zero_ids(symbols),.function_values_needed=zero_ids(symbols),
             .iteration_vars=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
@@ -340,6 +342,9 @@ void il_runtime(IlBackend& b) {
     int object_type=b.ref(RuntimeMember::ObjectType);
     b.ref_set(RuntimeMember::ObjectConstructor,b.plan.method0(6,object_type,1,-1,".ctor"));
     int js = b.ref(RuntimeMember::JsType); int obj = b.ref(RuntimeMember::TsObjectType);
+    b.ref_set(RuntimeMember::ObjectKeys,b.plan.method1(6,js,0,-5,-5,"ObjectKeys"));
+    b.ref_set(RuntimeMember::ObjectKeysFunction,b.plan.method0(6,js,0,-5,"GetObjectKeysFunction"));
+    b.ref_set(RuntimeMember::KeysFromFixed,b.plan.method1(6,obj,1,-5,-7,"KeysFromFixed"));
     int integer_loop_parameters[4]={-10,-3,-6,-6};
     b.ref_set(RuntimeMember::GuardIntegerLoop,b.plan.method(6,js,0,-2,&integer_loop_parameters,"GuardIntegerLoop"));
     b.ref_set(RuntimeMember::NumberPredicate,b.plan.method2(6,js,0,-2,-5,-6,"NumberPredicate"));
@@ -573,7 +578,7 @@ void il_shapes(const Compiler& c, IlBackend& b) {
         if (get_type(type,c).kind == TypeKind::Shape) {
             Vector<char> name=numbered_name('O',get_type(type,c).id);
             int base_type=b.ref(RuntimeMember::TsObjectType);
-            int klass=b.plan.type(name.view(),base_type,0x101);
+            int klass=b.plan.type(name.view(),base_type,b.layout_needed.at(type)!=0 ? 1 : 0x101);
             b.classes.at_mut(type)=klass;
             TypeId target=c.types;
             while (target != 0) {
@@ -599,6 +604,12 @@ void il_shapes(const Compiler& c, IlBackend& b) {
                 b.emit(0x7d,value); b.op(0x2a);
                 member=record.next;
             }
+            b.begin(b.plan.method0(5,klass,0xc6,-5,"OwnKeys"));
+            b.emit(0xfe09,0);int key_count=0;member=get_type(type,c).fields;
+            while (member!=0) { key_count++;member=get_field(member,c).next; }
+            b.emit(0x20,key_count);b.emit(0x8d,b.ref(RuntimeMember::ObjectType));member=get_type(type,c).fields;int key_index=0;
+            while (member!=0) { b.op(0x25);b.emit(0x20,key_index++);il_text(get_field(member,c).name,c,b);b.op(0xa2);member=get_field(member,c).next; }
+            b.call(RuntimeMember::KeysFromFixed);b.op(0x2a);
             b.begin(b.plan.method1(5,klass,0xc6,-2,-4,"HasOwn"));
             member=get_type(type,c).fields;
             while (member!=0) {

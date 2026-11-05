@@ -65,7 +65,8 @@ enum class NodeKind {
     NumberIsNaNFunction,
     NumberIsFiniteFunction,
     NumberIsIntegerFunction,
-    NumberIsSafeIntegerFunction
+    NumberIsSafeIntegerFunction,
+    ObjectKeysFunction
 };
 struct Token {
     TokenKind kind;

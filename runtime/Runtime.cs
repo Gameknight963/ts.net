@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 
 // Support for operations that cannot be resolved statically. Typed numeric code
 // does not pass through this representation.
-public abstract class TsObject
+public abstract partial class TsObject
 {
     private Dictionary<string, object> extra;
 

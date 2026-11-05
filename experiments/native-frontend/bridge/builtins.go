@@ -178,3 +178,20 @@ func (b *irBuilder) intrinsicVoidCall(callee int) bool {
 	owner := b.nodes[property.left-1]
 	return owner.kind == 3 && owner.name != 0 && b.texts[owner.name-1] == "console"
 }
+
+func (b *irBuilder) isBuiltinObjectKeys(n *ast.Node) bool {
+	if n.Kind == ast.KindPropertyAccessExpression {
+		if n.Name().Text() != "keys" {
+			return false
+		}
+	} else if n.Kind == ast.KindElementAccessExpression {
+		argument := n.AsElementAccessExpression().ArgumentExpression
+		if argument.Kind != ast.KindStringLiteral || argument.Text() != "keys" {
+			return false
+		}
+	} else {
+		return false
+	}
+	owner := n.Expression()
+	return owner.Kind == ast.KindIdentifier && owner.Text() == "Object" && b.isBuiltinIdentifier(owner)
+}

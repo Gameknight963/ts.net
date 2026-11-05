@@ -1,4 +1,4 @@
-import "il-globals.cr";
+import "il-key-layouts.cr";
 
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
     if (get_node(entry,c).kind==NodeKind::Array && (get_type(target,c).kind==TypeKind::Array || get_type(target,c).kind==TypeKind::Any || get_type(target,c).kind==TypeKind::Unknown)) {
@@ -316,6 +316,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         il_text(get_token(n.token,c).text,c,b);
     } else if (n.kind>=NodeKind::NumberIsNaN && n.kind<=NodeKind::NumberIsSafeInteger) { il_number_predicate(entry,true,c,b); }
     else if (n.kind>=NodeKind::NumberIsNaNFunction && n.kind<=NodeKind::NumberIsSafeIntegerFunction) { b.emit(0x20,(int)n.kind-(int)NodeKind::NumberIsNaNFunction);b.call(RuntimeMember::NumberPredicateFunction); }
+    else if (n.kind==NodeKind::ObjectKeysFunction) { b.call(RuntimeMember::ObjectKeysFunction); }
     else if (n.kind==NodeKind::FunctionValue) { il_function_object(n.symbol,c,b); }
     else if (n.kind == NodeKind::Name) {
         if (get_symbol(n.symbol,c).function!=0) { il_function_reference(n.symbol,c,b);return; }
@@ -335,7 +336,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         else { if (il_direct_index(entry,c,b)) { il_integer(n.right,c,b);b.call(RuntimeMember::ArrayIndexGetAt); } else { il_boxed(n.right,c,b);b.call(RuntimeMember::IndexGet); }b.from_object(n.type,c); }
     }
     else if (n.kind == NodeKind::Object) {
-        b.emit(0x73,b.constructor(n.type));
+        int constructor=b.literal_constructors.at(entry);b.emit(0x73,constructor>0 ? constructor : b.constructor(n.type));
         NodeId property=n.children;
         while (property != 0) {
             Node p=get_node(property,c); FieldId member=field(n.type,p.name,c);
@@ -371,6 +372,7 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     } else if (n.kind == NodeKind::Call) {
         if (il_number_predicate(entry,true,c,b)) { return; }
         if (il_call_has_spread(entry,c)) { il_spread_call(entry,c,b);return; }
+        if (get_node(n.left,c).kind==NodeKind::ObjectKeysFunction) { il_object_keys_call(entry,c,b);return; }
         if (il_array_call(entry,c)) { il_emit_array_call(entry,c,b); }
         else if (builtin_has_own(n.left,c)) {
             if (il_scalar_own(entry,c,b)) { return; }
@@ -584,7 +586,7 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
 
 void emit_assembly(const char[]& path, Compiler& c) {
     TypeId numeric_array=il_numeric_array_type(c);
-    IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_prove_reversible_arrays(c,&b);il_choose_tagged_arrays(c,&b);il_runtime(&b);il_shapes(c,&b);
+    IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_prove_reversible_arrays(c,&b);il_choose_tagged_arrays(c,&b);il_runtime(&b);il_prepare_key_layouts(c,&b);il_shapes(c,&b);il_key_layouts(c,&b);
     int object_type=b.ref(RuntimeMember::ObjectType);
     int program=b.plan.type("Program",object_type,0x181);
     il_prepare_closures(c,&b);il_prepare_function_values(program,c,&b);
