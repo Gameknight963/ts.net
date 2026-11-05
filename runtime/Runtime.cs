@@ -232,6 +232,7 @@ public static partial class Js
     public static object[] ArrayTryDense(object receiver, double limit)
     {
         if (receiver is JsArray array && receiver.GetType() == typeof(JsArray)) return array.DenseRange(limit);
+        if (receiver is TaggedArray tagged) return tagged.MaterializedDenseRange(limit);
         return receiver is ReversibleArray view ? view.DenseRange(limit) : null;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

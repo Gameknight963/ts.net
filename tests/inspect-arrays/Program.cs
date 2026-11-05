@@ -12,7 +12,7 @@ for (int i = 0; i < booleans.Length; i++) booleans[i] = Js.BoxBoolean(i % 3 == 0
 long booleanBytes = GC.GetAllocatedBytesForCurrentThread() - booleanStart;
 if (booleanBytes != 0 || !ReferenceEquals(booleans[0], Js.Undefined) || !Equals(booleans[1], true) || !Equals(booleans[2], false)) throw new Exception("Boxing booleans allocated or changed values");
 Console.WriteLine("PASS adopted literal holes, null, aliases, truncation, and allocation-free boxed booleans");
-foreach (JsArray source in new JsArray[] { new JsArray(4), new NumberArray(4) })
+foreach (JsArray source in new JsArray[] { new JsArray(4), new NumberArray(4), new TaggedArray(4) })
 {
     source.SetAt(1, Js.Undefined);source.SetAt(3, -0.0);
     JsArray sliced = source.Slice(0.0, Js.Undefined);
@@ -28,7 +28,7 @@ if (sparseCopy.Length() != uint.MaxValue || !Equals(sparseCopy.ElementAt(4294967
 sparseSlice.SetNumber(4294967294, 9);
 if (!Equals(sparseCopy.ElementAt(4294967294), 7.0)) throw new Exception("Sparse slice shared its dictionary");
 Console.WriteLine("PASS slice holes, undefined, negative zero, independent buffers, and sparse length limit");
-foreach (JsArray reversed in new JsArray[] { new JsArray(0), new NumberArray(0), new ReversibleArray(0) })
+foreach (JsArray reversed in new JsArray[] { new JsArray(0), new NumberArray(0), new ReversibleArray(0), new TaggedArray(0) })
 {
     reversed.Set("0", 7.0);reversed.Set("2", Js.Undefined);reversed.Set("4294967294", 9.0);reversed.Set("named", shared);
     if (!ReferenceEquals(reversed.Reverse(), reversed) || reversed.Length() != uint.MaxValue) throw new Exception("Reverse changed identity or length");
@@ -112,4 +112,38 @@ if (args.Length != 0)
     writePayload(packed, 8, BitConverter.Int64BitsToDouble(0x7ff8000000000001));
     if (!packed.GetNumberAt(0).HasValue || !double.IsNaN(packed.GetNumberAt(0)!.Value)) throw new Exception("Packed write turned numeric NaN into undefined");
     Console.WriteLine("PASS guarded packed buffer in emitted IL and allocation-free traversal");
+}
+
+var tagged = new TaggedArray(new object[] { JsArray.HoleValue(), Js.Undefined, null!, shared, -0.0, double.NaN });
+if (tagged.HasElement(0) || !tagged.HasElement(1) || !tagged.HasElement(2)) throw new Exception("Tagged literal lost element presence");
+var tags = tagged.TryTags(6) ?? throw new Exception("Tagged literal has no type buffer");
+if (tags[0] != 0 || tags[1] == 1 || tags[4] != 1 || tags[5] != 1) throw new Exception("Tagged literal misclassified a value");
+for (int i = 0; i < 100; i++) { tagged.SetNumberAt(4, i);tagged.SetReferenceAt(3, shared); }
+long taggedStart = GC.GetAllocatedBytesForCurrentThread();
+for (int i = 0; i < 1000; i++) { tagged.SetNumberAt(4, i);tagged.SetReferenceAt(3, shared); }
+if (GC.GetAllocatedBytesForCurrentThread() != taggedStart || tags[4] != 1) throw new Exception("Tagged writes allocated");
+tagged.SetNumberAt(4, -0.0);
+if (BitConverter.DoubleToInt64Bits((double)tagged.ElementAt(4)) != long.MinValue || !double.IsNaN((double)tagged.ElementAt(5))) throw new Exception("Tagged materialization lost numeric payloads");
+if (tagged.ElementAt(2) != null || !ReferenceEquals(tagged.ElementAt(3), shared) || !ReferenceEquals(tagged.ElementAt(1), Js.Undefined)) throw new Exception("Tagged materialization lost references");
+if (tagged.TryTags(6) != null) throw new Exception("Materialized tags remained available");
+tagged.SetNumberAt(4, 42);tagged.SetReferenceAt(3, null!);
+if (!Equals(tagged.ElementAt(4), 42.0) || tagged.ElementAt(3) != null) throw new Exception("Materialized writes failed");
+var truncatedTags = new TaggedArray(new object[] { 1.0, "text", 3.0 });
+truncatedTags.SetLength(1);truncatedTags.SetLength(3);
+if (truncatedTags.IsNumberAt(1) || truncatedTags.IsNumberAt(2) || truncatedTags.HasElement(2)) throw new Exception("Tagged truncation retained values");
+Console.WriteLine("PASS tagged holes, payloads, allocation-free writes, materialization, and truncation");
+
+if (args.Length > 1)
+{
+    var context = new System.Runtime.Loader.AssemblyLoadContext("tagged-selection", isCollectible: true);
+    context.Resolving += (_, name) => name.Name == typeof(Js).Assembly.GetName().Name ? typeof(Js).Assembly : null;
+    var emitted = context.LoadFromAssemblyPath(Path.GetFullPath(args[1])).GetType("Program")!;
+    var arrays = emitted.GetMethods().Where(m => m.ReturnType == typeof(object) && m.GetParameters().Length == 0)
+        .Select(m => m.Invoke(null, null)).OfType<JsArray>().ToArray();
+    if (arrays.Length != 2 || arrays.Count(a => a is TaggedArray) != 1 || arrays.Count(a => a.GetType() == typeof(JsArray)) != 1)
+        throw new Exception("Storage selection lost the tag-scan optimization or changed payload-only arrays");
+    if (!emitted.GetMethods().Any(m => m.GetMethodBody()?.LocalVariables.Any(v => v.LocalType == typeof(byte[])) == true))
+        throw new Exception("Tag scans have no guarded byte buffer in emitted IL");
+    context.Unload();
+    Console.WriteLine("PASS selective tagged storage and guarded byte-buffer traversal in emitted IL");
 }
