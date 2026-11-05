@@ -1,4 +1,4 @@
-import "il-scalar.cr";
+import "il-array-inference.cr";
 
 bool il_inside(NodeId entry, NodeId scope, const IlBackend& b) {
     NodeId parent=entry;

@@ -490,10 +490,11 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
 }
 
 void emit_assembly(const char[]& path, Compiler& c) {
+    TypeId numeric_array=il_numeric_array_type(c);
     IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_runtime(&b);il_shapes(c,&b);
     int object_type=b.ref(RuntimeMember::ObjectType);
     int program=b.plan.type("Program",object_type,0x181);
-    il_globals(program,c,&b);il_infer_scalar_values(c,&b);
+    il_globals(program,c,&b);il_infer_scalar_values(c,&b);il_infer_array_values(numeric_array,c,&b);
     NodeId function=c.functions;
     while (function != 0) {
         Node n=get_node(function,c); Vector<int> parameters=Vector<int>::create(); NodeId parameter=n.children;
