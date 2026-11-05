@@ -17,7 +17,7 @@ struct TextRange {
 };
 
 enum class TokenKind { End, Name, Number, String, Punctuation };
-enum class TypeKind { Number, String, Boolean, Void, Any, Unknown, Shape };
+enum class TypeKind { Number, String, Boolean, Void, Any, Unknown, Shape, Array };
 enum class NodeKind {
     Number,
     String,
@@ -50,7 +50,9 @@ enum class NodeKind {
     Case,
     Label,
     Nullish,
-    Sequence
+    Sequence,
+    Array,
+    Index
 };
 struct Token {
     TokenKind kind;
@@ -64,6 +66,7 @@ struct Type {
     TextId name;
     int id;
     FieldId fields;
+    TypeId element;
     bool defined;
     TypeId next;
 };
@@ -188,7 +191,7 @@ void set_type_next(TypeId id, TypeId value, Compiler& c) {
     c.type_store.at_mut(id).next = value;
 }
 TypeId new_type_record(Compiler& c) {
-    Type record = {.kind = TypeKind::Number, .name = 0, .id = 0, .fields = 0, .defined = false, .next = 0};
+    Type record = {.kind = TypeKind::Number, .name = 0, .id = 0, .fields = 0,.element=0, .defined = false, .next = 0};
     return c.type_store.add(record);
 }
 Field get_field(FieldId id, const Compiler& c) {

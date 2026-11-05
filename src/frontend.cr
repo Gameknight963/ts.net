@@ -35,13 +35,13 @@ void import_frontend(const char[]& path, Compiler& c) {
     if (snapshot.code()!=0) { print(snapshot.view());exit(1); }
     session.close();
     IrReader r=IrReader::create(snapshot.view());
-    if (r.integer()!=0x32524954) { print("tsnetc: unsupported frontend IR version");exit(1); }
+    if (r.integer()!=0x33524954) { print("tsnetc: unsupported frontend IR version");exit(1); }
     size_t count=r.id();
     for (size_t i=0;i<count;i++) { r.text(c); }
     count=r.id();c.next_type=(int)count;c.types=count==0 ? 0 : 1;
     for (size_t i=1;i<=count;i++) {
-        int kind=r.integer();TextId name=r.id();FieldId fields=r.id();
-        Type record={.kind=(TypeKind)kind,.name=name,.id=(int)i-1,.fields=fields,.defined=true,.next=i==count ? 0 : i+1};
+        int kind=r.integer();TextId name=r.id();FieldId fields=r.id();TypeId element=r.id();
+        Type record={.kind=(TypeKind)kind,.name=name,.id=(int)i-1,.fields=fields,.element=element,.defined=true,.next=i==count ? 0 : i+1};
         c.type_store.add(record);
     }
     count=r.id();

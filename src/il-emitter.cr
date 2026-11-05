@@ -1,6 +1,9 @@
-import "il-loops.cr";
+import "il-arrays.cr";
 
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
+    if (get_node(entry,c).kind==NodeKind::Array && get_type(target,c).kind==TypeKind::Array) {
+        il_array_literal(entry,target,c,b);return;
+    }
     TypeId source=get_node(entry,c).type;
     il_expression(entry,c,b);
     // The freshly allocated class implements every compatible shape interface.
@@ -63,21 +66,31 @@ void il_integer(NodeId entry, const Compiler& c, IlBackend& b) {
     il_number(entry,c,b);b.call(RuntimeMember::ToInt32);
 }
 
-void il_load_target(NodeId entry, int receiver, const Compiler& c, IlBackend& b) {
+void il_load_target(NodeId entry, int receiver, int index, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);
     ScalarField scalar=il_scalar_field(entry,c,b);
     if (scalar.slot>=0) { b.emit(0xfe0c,scalar.slot);b.convert(scalar.type,n.type,c);return; }
+    if (n.kind==NodeKind::Index) {
+        b.emit(0xfe0c,receiver);b.emit(0xfe0c,index);
+        if (il_direct_array_index(entry,c,b)) { b.call(RuntimeMember::NumberIndexGetAt); }
+        else if (il_number_index(entry,c)) { b.call(RuntimeMember::NumberIndexGet); }
+        else { b.call(RuntimeMember::IndexGet);b.from_object(n.type,c); }
+        return;
+    }
     if (n.kind == NodeKind::Name) { il_expression(entry,c,b); }
     else {
         b.emit(0xfe0c,receiver);
         TypeId owner=get_node(n.left,c).type;
-        if (get_type(owner,c).kind == TypeKind::Any) {
+        if (get_type(owner,c).kind==TypeKind::Array && is_text(n.name,&text_length,c)) {
+            b.call(RuntimeMember::ArrayLength);b.call(RuntimeMember::WrapNumber);
+        } else if (get_type(owner,c).kind == TypeKind::Any) {
             il_text(n.name,c,b);b.call(RuntimeMember::DynamicGet);
             b.from_object(n.type,c);
         }
         else {
             FieldId member=field(owner,n.name,c);
             if (member==0) { fail(n.token,"unresolved lowered field",c); }
+            b.emit(0x74,b.interface_type(owner));
             b.emit(0x6f,b.getter(member));
             b.convert(get_field(member,c).type,n.type,c);
         }
@@ -87,8 +100,16 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c); Node target=get_node(n.left,c);
     ScalarField scalar=il_scalar_field(n.left,c,b);
     int receiver=-1;
-    if (target.kind == NodeKind::Property && scalar.slot<0) {
+    int index=-1;
+    if ((target.kind == NodeKind::Property || target.kind==NodeKind::Index) && scalar.slot<0) {
         il_expression(target.left,c,b); receiver=b.local(b.type(get_node(target.left,c).type,c)); b.emit(0xfe0e,receiver);
+    }
+    if (target.kind==NodeKind::Index) {
+        bool numeric=il_number_index(n.left,c);
+        bool direct=il_direct_array_index(n.left,c,b);
+        if (direct) { il_integer(target.right,c,b); }
+        else if (numeric) { il_number(target.right,c,b); } else { il_boxed(target.right,c,b); }
+        index=b.local(direct ? -6 : numeric ? -3 : -5);b.emit(0xfe0e,index);
     }
     int previous=-1;
     TextId op=get_token(n.token,c).text;
@@ -100,11 +121,11 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
         b.op(0x6c);b.call(RuntimeMember::WrapNumber);return;
     }
     if (n.kind==NodeKind::Assign && is_text(op,&text_add_assign,c) && get_type(target.type,c).kind==TypeKind::String) {
-        il_load_target(n.left,receiver,c,b);b.call(RuntimeMember::Text);
+        il_load_target(n.left,receiver,index,c,b);b.call(RuntimeMember::Text);
         il_boxed(n.right,c,b);b.call(RuntimeMember::Text);b.call(RuntimeMember::Concat);
     } else if (n.kind == NodeKind::Update || !is_text(op,&text_assign,c)) {
         if (target.kind==NodeKind::Name) { il_number(n.left,c,b); }
-        else { il_load_target(n.left,receiver,c,b);b.call(RuntimeMember::NumberValue); }
+        else { il_load_target(n.left,receiver,index,c,b);b.call(RuntimeMember::NumberValue); }
         if (bitwise!=0) { b.call(RuntimeMember::ToInt32); }
         if (n.kind == NodeKind::Update) {
             previous=b.local(b.type(target.type,c));
@@ -126,15 +147,22 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
         b.convert(target.type,get_symbol(target.symbol,c).type,c);
         b.store(target.symbol);
     }
-    else if (scalar.slot>=0) {
+    else if (target.kind==NodeKind::Index) {
+        b.emit(0xfe0c,receiver);b.emit(0xfe0c,index);b.emit(0xfe0c,value);
+        if (il_direct_array_index(n.left,c,b)) { b.call(RuntimeMember::NumberIndexSetAt); }
+        else if (il_number_index(n.left,c)) { b.call(RuntimeMember::NumberIndexSet); }
+        else { b.box(target.type,c);b.call(RuntimeMember::IndexSet); }
+    } else if (scalar.slot>=0) {
         b.emit(0xfe0c,value);b.convert(target.type,scalar.type,c);b.emit(0xfe0e,scalar.slot);
     } else {
         b.emit(0xfe0c,receiver);
         TypeId owner=get_node(target.left,c).type;
-        if (get_type(owner,c).kind == TypeKind::Any) {
+        if (get_type(owner,c).kind==TypeKind::Array && is_text(target.name,&text_length,c)) {
+            b.emit(0xfe0c,value);b.call(RuntimeMember::NumberValue);b.call(RuntimeMember::ArraySetLength);
+        } else if (get_type(owner,c).kind == TypeKind::Any) {
             il_text(target.name,c,b); b.emit(0xfe0c,value);b.box(target.type,c);b.call(RuntimeMember::DynamicSet); b.op(0x26);
         } else {
-            FieldId member=field(owner,target.name,c);b.emit(0xfe0c,value);
+            FieldId member=field(owner,target.name,c);b.emit(0x74,b.interface_type(owner));b.emit(0xfe0c,value);
             b.convert(target.type,get_field(member,c).type,c);b.emit(0x6f,b.setter(member));
         }
     }
@@ -172,6 +200,13 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         TypeId stored=get_symbol(n.symbol,c).type;
         b.convert(stored,n.type,c);
     }
+    else if (n.kind==NodeKind::Array) { il_array_literal(entry,n.type,c,b); }
+    else if (n.kind==NodeKind::Index) {
+        il_expression(n.left,c,b);
+        if (il_direct_array_index(entry,c,b)) { il_integer(n.right,c,b);b.call(RuntimeMember::NumberIndexGetAt); }
+        else if (il_number_index(entry,c)) { il_number(n.right,c,b);b.call(RuntimeMember::NumberIndexGet); }
+        else { il_boxed(n.right,c,b);b.call(RuntimeMember::IndexGet);b.from_object(n.type,c); }
+    }
     else if (n.kind == NodeKind::Object) {
         b.emit(0x73,b.constructor(n.type));
         NodeId property=n.children;
@@ -183,14 +218,17 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         ScalarField scalar=il_scalar_field(entry,c,b);
         if (scalar.slot>=0) { b.emit(0xfe0c,scalar.slot);b.convert(scalar.type,n.type,c);return; }
         il_expression(n.left,c,b); TypeId owner=get_node(n.left,c).type;
-        if (get_type(owner,c).kind == TypeKind::Any) {
+        if (get_type(owner,c).kind==TypeKind::Array && is_text(n.name,&text_length,c)) {
+            b.call(RuntimeMember::ArrayLength);b.call(RuntimeMember::WrapNumber);
+        } else if (get_type(owner,c).kind == TypeKind::Any) {
             il_text(n.name,c,b);b.call(RuntimeMember::DynamicGet);
             b.from_object(n.type,c);
         }
-        else if (get_type(owner,c).kind == TypeKind::String) { b.emit(0x6f,b.ref(RuntimeMember::Length)); b.op(0x6c);b.call(RuntimeMember::WrapNumber); }
+        else if (get_type(owner,c).kind == TypeKind::String) { b.call(RuntimeMember::Length); b.op(0x6c);b.call(RuntimeMember::WrapNumber); }
         else {
             FieldId member=field(owner,n.name,c);
             if (member==0 || b.getter(member)==0) { fail(n.token,"unresolved lowered getter",c); }
+            b.emit(0x74,b.interface_type(owner));
             b.emit(0x6f,b.getter(member));
             b.convert(get_field(member,c).type,n.type,c);
         }
@@ -204,7 +242,8 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         }
         else { il_number(n.left,c,b); if (is_text(op,&text_minus,c)) { b.op(0x65); }b.call(RuntimeMember::WrapNumber); }
     } else if (n.kind == NodeKind::Call) {
-        if (builtin(n.left,&text_performance,&text_now,c)) { b.call(RuntimeMember::Now);b.call(RuntimeMember::WrapNumber); }
+        if (il_array_call(entry,c)) { il_emit_array_call(entry,c,b); }
+        else if (builtin(n.left,&text_performance,&text_now,c)) { b.call(RuntimeMember::Now);b.call(RuntimeMember::WrapNumber); }
         else if (builtin(n.left,&text_console,&text_log,c)) {
             int count=0; NodeId argument=n.children;
             while (argument != 0) { count++; argument=get_node(argument,c).next; }

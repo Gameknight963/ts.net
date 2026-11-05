@@ -15,7 +15,7 @@ import (
 )
 
 // Versioned, pointer-free typed IR. Display strings are never used as types.
-type irType struct{ kind, name, fields int }
+type irType struct{ kind, name, fields, element int }
 type irField struct{ name, typ, next, optional int }
 type irToken struct{ text, line, column int }
 type irNode struct{ kind, token, name, typ, left, right, third, fourth, children, next, symbol, constant int }
@@ -86,6 +86,9 @@ func (b *irBuilder) typ(t *checker.Type) int {
 	case flags&checker.TypeFlagsObject != 0:
 		kind = 6
 	}
+	if b.c.IsArrayType(t) || checker.IsTupleType(t) {
+		kind = 7
+	}
 	// Scalar unions containing only undefined use the same nullable ABI as scalars.
 	// A union also containing JS null deliberately remains object-backed.
 	if flags&checker.TypeFlagsUnion != 0 && kind == 4 {
@@ -105,7 +108,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			kind = 2
 		}
 	}
-	if kind != 6 {
+	if kind != 6 && kind != 7 {
 		if id := b.primitives[kind]; id != 0 {
 			b.typeIDs[t] = id
 			return id
@@ -114,6 +117,11 @@ func (b *irBuilder) typ(t *checker.Type) int {
 	b.types = append(b.types, irType{kind: kind})
 	id := len(b.types)
 	b.typeIDs[t] = id
+	if kind == 7 {
+		element := b.typ(b.c.GetElementTypeOfArrayType(t))
+		b.types[id-1].element = element
+		return id
+	}
 	if kind != 6 {
 		b.primitives[kind] = id
 		return id
@@ -286,6 +294,23 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		id = b.node(4, n, "{")
 		row = b.nodes[id-1]
 		row.children = b.list(n.AsObjectLiteralExpression().Properties.Nodes)
+	case ast.KindArrayLiteralExpression:
+		id = b.node(32, n, "[")
+		row = b.nodes[id-1]
+		row.children = b.list(n.AsArrayLiteralExpression().Elements.Nodes)
+	case ast.KindOmittedExpression:
+		id = b.node(20, n, "hole")
+		row = b.nodes[id-1]
+		row.constant = 1
+	case ast.KindElementAccessExpression:
+		expr := n.AsElementAccessExpression()
+		if expr.QuestionDotToken != nil {
+			b.unsupported(n)
+		}
+		id = b.node(33, n, "[]")
+		row = b.nodes[id-1]
+		row.left = b.lower(expr.Expression)
+		row.right = b.lower(expr.ArgumentExpression)
 	case ast.KindPropertyAssignment, ast.KindShorthandPropertyAssignment:
 		id = b.node(5, n, n.Name().Text())
 		row = b.nodes[id-1]
@@ -536,7 +561,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	if row.token == 0 {
 		row = b.nodes[id-1]
 	}
-	if row.typ == 0 && (row.kind <= 11 || row.kind >= 20 && row.kind <= 23 || row.kind == 30 || row.kind == 31) {
+	if row.typ == 0 && (row.kind <= 11 || row.kind >= 20 && row.kind <= 23 || row.kind >= 30 && row.kind <= 33) {
 		row.typ = b.typ(b.c.GetTypeAtLocation(n))
 	}
 	if row.kind == 20 {
@@ -604,7 +629,7 @@ func exportIR(s *session) (result []byte, err error) {
 	}
 	var data bytes.Buffer
 	put := func(v int) { _ = binary.Write(&data, binary.LittleEndian, int32(v)) }
-	put(0x32524954)
+	put(0x33524954)
 	put(len(b.texts))
 	for _, text := range b.texts {
 		put(len(text))
@@ -615,6 +640,7 @@ func exportIR(s *session) (result []byte, err error) {
 		put(t.kind)
 		put(t.name)
 		put(t.fields)
+		put(t.element)
 	}
 	put(len(b.fields))
 	for _, f := range b.fields {

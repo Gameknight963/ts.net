@@ -33,7 +33,7 @@ bool AllocatesObject(MethodInfo method)
 var scalar = methods.Single(m => m.Name == "f0");
 if (AllocatesObject(scalar)) throw new Exception("Local object was not eliminated");
 if (!scalar.GetMethodBody()!.LocalVariables.Any(v => v.LocalType == typeof(int))) throw new Exception("Counted loop has no integer counter");
-if (!methods.Any(m => m.ReturnType.IsInterface && AllocatesObject(m))) throw new Exception("Escaping object lost its class representation");
+if (!methods.Any(m => m.ReturnType == typeof(object) && AllocatesObject(m))) throw new Exception("Escaping object lost its class representation");
 var kernel = scalar.CreateDelegate<Func<double?, double?, double?>>();
 for (int i = 0; i < 10; i++) kernel(1000, i);
 long before = GC.GetAllocatedBytesForCurrentThread();

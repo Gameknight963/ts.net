@@ -26,7 +26,7 @@ try {
     [IO.File]::WriteAllText("$testRoot/boundaries.ts", $boundary.ToString(), $bom)
 
     # Differential execution checks against the actual TypeScript compiler.
-    foreach ($fixture in @('tests/behavior.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/straightforward.ts', 'tests/nullable-values.ts', 'tests/numeric-fastpaths.ts', 'tests/bitwise.ts', 'tests/scalar-objects.ts', 'tests/integer-loops.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
+    foreach ($fixture in @('tests/behavior.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/straightforward.ts', 'tests/nullable-values.ts', 'tests/numeric-fastpaths.ts', 'tests/bitwise.ts', 'tests/scalar-objects.ts', 'tests/integer-loops.ts', 'tests/arrays.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
         & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/$name" $fixture
@@ -52,10 +52,18 @@ try {
     & dotnet tests/inspect-scalars/bin/Release/net10.0/Inspect.dll "$testRoot/scalar-objects/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Local object allocation was not eliminated' }
 
+    & dotnet build tests/inspect-arrays/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Array runtime checks failed to build' }
+    & dotnet tests/inspect-arrays/bin/Release/net10.0/Inspect.dll
+    if ($LASTEXITCODE) { throw 'Array runtime checks failed' }
+
     foreach ($case in @(
         @{ Name = 'bad-assertion'; Message = 'checked conversion failed' },
         @{ Name = 'bad-write'; Message = 'property write violates static field type' },
         @{ Name = 'scalar-bad-write'; Message = 'checked conversion failed' },
+        @{ Name = 'array-bad-write'; Message = 'Array write violates number element type' },
+        @{ Name = 'array-bad-length'; Message = 'Invalid array length' },
+        @{ Name = 'reference-bad-write'; Message = 'property write violates static field type' },
         @{ Name = 'bad-structural-cast'; Message = 'checked conversion failed' }
     )) {
         $name = $case.Name
@@ -83,7 +91,7 @@ try {
         @{ Source = 'function f(): number { const x = 1; }'; Error = '"code":2355' },
         @{ Source = 'function f(n: number): number { return n; } f("bad");'; Error = '"code":2345' },
         @{ Source = 'const p = { x: 1 }; console.log(p.y);'; Error = '"code":2339' },
-        @{ Source = 'const x = [1, 2];'; Error = 'unsupported lowering' },
+        @{ Source = 'const x = [...[1, 2]];'; Error = 'unsupported lowering' },
         @{ Source = 'const s = "unterminated'; Error = '"code":1002' },
         @{ Source = '/* unterminated'; Error = '"code":1010' },
         @{ Source = 'let x = 1; let x = 2;'; Error = '"code":2451' },

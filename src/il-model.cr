@@ -2,9 +2,10 @@ import "assembly-plan.cr";
 
 enum class RuntimeMember {
     ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
-    Constructor, Get, Set, Cast, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
+    Constructor, Get, Set, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
-    WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32, Count
+    WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
+    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -71,6 +72,7 @@ struct IlBackend {
     int cast(TypeId id) const { return this.casts.at(id); }
     int function(SymbolId id) const { return this.methods.at(id); }
     int constructor(TypeId id) const { return this.constructors.at(id); }
+    int interface_type(TypeId id) const { return this.interfaces.at(id); }
     int break_target(NodeId id) const { return this.breaks.at(id); }
     int continue_target(NodeId id) const { return this.continues.at(id); }
     int raw_slot(SymbolId id) const { return this.raw_slots.at(id); }
@@ -80,9 +82,9 @@ struct IlBackend {
         TypeKind kind = get_type(type, c).kind;
         if (kind == TypeKind::Number) { return -10; }
         if (kind == TypeKind::Boolean) { return -11; }
-        if (kind == TypeKind::String) { return -4; }
+        if (kind == TypeKind::String) { return -5; }
         if (kind == TypeKind::Void) { return -1; }
-        if (kind == TypeKind::Shape) { return this.interfaces.at(type); }
+        if (kind == TypeKind::Shape || kind==TypeKind::Array) { return -5; }
         return -5;
     }
     void emit(int opcode, int operand) { this.plan.instruction(this.method, opcode, operand); }
@@ -119,10 +121,16 @@ struct IlBackend {
         else if (get_type(type, c).kind == TypeKind::Boolean) { this.call(RuntimeMember::BoxBoolean); }
     }
     void from_object(TypeId target, const Compiler& c) {
-        if (this.type(target,c)!=-5) { this.plan.string(this.method,"checked conversion failed");this.emit(0x28,this.cast(target)); }
+        TypeKind kind=get_type(target,c).kind;
+        if (this.type(target,c)!=-5 || kind==TypeKind::String || kind==TypeKind::Shape || kind==TypeKind::Array) {
+            this.plan.string(this.method,"checked conversion failed");this.emit(0x28,this.cast(target));
+        }
     }
     void convert(TypeId source, TypeId target, const Compiler& c) {
-        if (this.type(source,c)==this.type(target,c)) { return; }
+        TypeKind target_kind=get_type(target,c).kind;
+        if (source==target || (this.type(source,c)==this.type(target,c) && target_kind!=TypeKind::String && target_kind!=TypeKind::Shape && target_kind!=TypeKind::Array)) { return; }
+        if ((get_type(source,c).kind==TypeKind::String && target_kind==TypeKind::String) ||
+            (get_type(source,c).kind==TypeKind::Array && target_kind==TypeKind::Array) || fits(source,target,c)) { return; }
         if (get_type(source,c).kind==TypeKind::Void) { this.call(RuntimeMember::Undefined); }
         else { this.box(source,c); }
         if (get_type(target,c).kind==TypeKind::Void) { this.op(0x26); }
@@ -233,11 +241,31 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::Get, b.plan.method1(6, obj, 1, -5, -4, "Get"));
     b.ref_set(RuntimeMember::Set, b.plan.method2(6, obj, 1, -5, -4, -5, "Set"));
     b.ref_set(RuntimeMember::Cast, b.plan.method2(6, js, 2, -8, -5, -4, "Cast"));
+    b.ref_set(RuntimeMember::Check, b.plan.method2(6, js, 2, -5, -5, -4, "Check"));
     b.ref_set(RuntimeMember::Add, b.plan.method2(6, js, 0, -5, -5, -5, "Add"));
     b.ref_set(RuntimeMember::Equal, b.plan.method2(6, js, 0, -2, -5, -5, "Equal"));
     b.ref_set(RuntimeMember::EqualNumbers, b.plan.method2(6, js, 0, -2, -10, -10, "EqualNumbers"));
     b.ref_set(RuntimeMember::Remainder, b.plan.method2(6, js, 0, -3, -3, -3, "Remainder"));
     b.ref_set(RuntimeMember::ToInt32, b.plan.method1(6, js, 0, -6, -3, "ToInt32"));
+    int array=b.plan.reference("Tsnet.Runtime","","JsArray");b.ref_set(RuntimeMember::ArrayType,array);
+    int numbers=b.plan.reference("Tsnet.Runtime","","NumberArray");b.ref_set(RuntimeMember::NumberArrayType,numbers);
+    b.ref_set(RuntimeMember::ArrayConstructor,b.plan.method1(6,array,1,-1,-6,".ctor"));
+    b.ref_set(RuntimeMember::NumberArrayConstructor,b.plan.method1(6,numbers,1,-1,-6,".ctor"));
+    b.ref_set(RuntimeMember::IndexGet,b.plan.method2(6,js,0,-5,-5,-5,"IndexGet"));
+    Vector<int> index_parameters=Vector<int>::create();index_parameters.push(-5);index_parameters.push(-5);index_parameters.push(-5);
+    b.ref_set(RuntimeMember::IndexSet,b.plan.method(6,js,0,-1,index_parameters.view(),"IndexSet"));
+    b.ref_set(RuntimeMember::NumberIndexGet,b.plan.method2(6,js,0,-10,-5,-3,"ArrayGetNumber"));
+    Vector<int> number_index_parameters=Vector<int>::create();number_index_parameters.push(-5);number_index_parameters.push(-3);number_index_parameters.push(-10);
+    b.ref_set(RuntimeMember::NumberIndexSet,b.plan.method(6,js,0,-1,number_index_parameters.view(),"ArraySetNumber"));
+    b.ref_set(RuntimeMember::NumberIndexGetAt,b.plan.method2(6,js,0,-10,-5,-6,"ArrayGetNumberAt"));
+    Vector<int> integer_index_parameters=Vector<int>::create();integer_index_parameters.push(-5);integer_index_parameters.push(-6);integer_index_parameters.push(-10);
+    b.ref_set(RuntimeMember::NumberIndexSetAt,b.plan.method(6,js,0,-1,integer_index_parameters.view(),"ArraySetNumberAt"));
+    b.ref_set(RuntimeMember::ArrayLength,b.plan.method1(6,js,0,-3,-5,"ArrayLength"));
+    b.ref_set(RuntimeMember::ArraySetLength,b.plan.method2(6,js,0,-1,-5,-3,"ArraySetLength"));
+    b.ref_set(RuntimeMember::ArrayPush,b.plan.method2(6,js,0,-3,-5,-7,"ArrayPush"));
+    b.ref_set(RuntimeMember::ArrayPop,b.plan.method1(6,js,0,-5,-5,"ArrayPop"));
+    b.ref_set(RuntimeMember::NumberPush,b.plan.method2(6,js,0,-3,-5,-10,"ArrayPushNumber"));
+    b.ref_set(RuntimeMember::NumberPop,b.plan.method1(6,js,0,-10,-5,"ArrayPopNumber"));
     b.ref_set(RuntimeMember::EqualBooleans, b.plan.method2(6, js, 0, -2, -11, -11, "EqualBooleans"));
     b.ref_set(RuntimeMember::Number, b.plan.method1(6, js, 0, -3, -5, "Number"));
     b.ref_set(RuntimeMember::Boolean, b.plan.method1(6, js, 0, -2, -5, "Boolean"));
@@ -253,7 +281,7 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::Log, b.plan.method1(6, js, 0, -1, -7, "Log"));
     b.ref_set(RuntimeMember::Now, b.plan.method0(6, js, 0, -3, "Now"));
     int string_type=b.ref(RuntimeMember::StringType);
-    b.ref_set(RuntimeMember::Length, b.plan.method0(6, string_type, 1, -6, "get_Length"));
+    b.ref_set(RuntimeMember::Length, b.plan.method1(6, js, 0, -6, -5, "StringLength"));
     b.ref_set(RuntimeMember::StringEqual, b.plan.method2(6, string_type, 0, -2, -4, -4, "op_Equality"));
     b.ref_set(RuntimeMember::Concat, b.plan.method2(6, string_type, 0, -4, -4, -4, "Concat"));
     int action_type=b.plan.reference("System.Runtime","System","Action");
@@ -321,6 +349,11 @@ void il_shapes(const Compiler& c, IlBackend& b) {
         }
         if (get_type(type,c).kind != TypeKind::Any && get_type(type,c).kind != TypeKind::Unknown && get_type(type,c).kind != TypeKind::Void) {
             int cast=b.ref(RuntimeMember::Cast); int signature_type=b.type(type,c);
+            TypeKind kind=get_type(type,c).kind;
+            if (kind==TypeKind::String || kind==TypeKind::Shape || kind==TypeKind::Array) {
+                cast=b.ref(RuntimeMember::Check);
+                signature_type=kind==TypeKind::String ? b.ref(RuntimeMember::StringType) : kind==TypeKind::Shape ? b.interfaces.at(type) : b.ref(RuntimeMember::ArrayType);
+            }
             b.casts.at_mut(type)=b.plan.specialize(cast,signature_type);
         }
         type=get_type(type,c).next;
@@ -368,7 +401,8 @@ void il_shapes(const Compiler& c, IlBackend& b) {
                 Field record=get_field(member,c); int next=b.label();
                 b.emit(0xfe09,1); il_text(record.name,c,b); b.call(RuntimeMember::StringEqual); b.emit(0x39,next);
                 b.emit(0xfe09,0); b.emit(0xfe09,2);
-                if (b.type(record.type,c) != -5) {
+                TypeKind value_kind=get_type(record.type,c).kind;
+                if (b.type(record.type,c)!=-5 || value_kind==TypeKind::String || value_kind==TypeKind::Shape || value_kind==TypeKind::Array) {
                     b.plan.string(b.method,"property write violates static field type"); b.emit(0x28,(int)b.cast(record.type));
                 }
                 b.emit(0x7d,(int)b.field_token(member)); b.emit(0xfe09,2); b.op(0x2a); b.mark(next);

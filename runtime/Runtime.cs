@@ -66,6 +66,12 @@ public static class Js
         return value is T result ? result : throw new InvalidCastException(message);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object Check<T>(object value, string message) where T : class =>
+        ReferenceEquals(value, Undefined) || value is T ? value : throw new InvalidCastException(message);
+    public static int StringLength(object value) =>
+        value is string text ? text.Length : throw new InvalidOperationException("Expected string");
+
     // Empty nullable values mean JS undefined; CLR null stays a separate JS value.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double? WrapNumber(double value) => value;
@@ -119,6 +125,53 @@ public static class Js
     public static object Set(object receiver, string key, object value) =>
         receiver is TsObject obj ? obj.Set(key, value) :
         throw new InvalidOperationException("Property write requires an object");
+
+    public static object IndexGet(object receiver, object key)
+    {
+        if (receiver is JsArray array) return array.GetIndex(key);
+        string text = Text(key);
+        if (receiver is string value && uint.TryParse(text, out uint index) && index < value.Length && text == index.ToString(CultureInfo.InvariantCulture))
+            return value.Substring((int)index, 1);
+        return Get(receiver, text);
+    }
+    public static void IndexSet(object receiver, object key, object value)
+    {
+        if (receiver is JsArray array) array.SetIndex(key, value);
+        else Set(receiver, Text(key), value);
+    }
+    public static double ArrayPush(object receiver, object[] values) =>
+        receiver is JsArray array ? array.PushMany(values) : throw new InvalidOperationException("push requires an array");
+    public static object ArrayPop(object receiver) =>
+        receiver is JsArray array ? array.Pop() : throw new InvalidOperationException("pop requires an array");
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double? ArrayGetNumber(object receiver, double index) => receiver is NumberArray numbers ? numbers.GetNumber(index) :
+        Cast<double?>(IndexGet(receiver, index), "Array element is not a number");
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ArraySetNumber(object receiver, double index, double? value)
+    {
+        if (receiver is NumberArray numbers) numbers.SetNumber(index, value);
+        else IndexSet(receiver, index, BoxNumber(value));
+    }
+    public static double ArrayLength(object receiver) =>
+        receiver is JsArray array ? array.Length() : throw new InvalidOperationException("Expected array");
+    public static void ArraySetLength(object receiver, double length)
+    {
+        if (receiver is not JsArray array) throw new InvalidOperationException("Expected array");
+        array.SetLength(length);
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double? ArrayGetNumberAt(object receiver, int index) => receiver is NumberArray numbers ? numbers.GetNumberAt(index) : ArrayGetNumber(receiver, index);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ArraySetNumberAt(object receiver, int index, double? value)
+    {
+        if (receiver is NumberArray numbers) numbers.SetNumberAt(index, value);
+        else ArraySetNumber(receiver, index, value);
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double ArrayPushNumber(object receiver, double? value) => receiver is NumberArray numbers ? numbers.PushNumber(value) :
+        ArrayPush(receiver, new object[] { BoxNumber(value) });
+    public static double? ArrayPopNumber(object receiver) => receiver is NumberArray numbers ? numbers.PopNumber() :
+        Cast<double?>(ArrayPop(receiver), "Array element is not a number");
 
     public static object Add(object left, object right)
     {
