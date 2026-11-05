@@ -1,4 +1,4 @@
-import "checker.cr";
+import "lowering.cr";
 
 #pragma crust begin_c
 #include <stdint.h>
@@ -116,7 +116,7 @@ Vector<char> field_name(TextId name, const char[]& prefix, const Compiler& c) {
     Vector<char> result = Vector<char>::create();
     for (size_t i = 0; i + 1 < prefix.length; i++) { result.push(prefix[i]); }
     for (size_t i = 0; i < text_size(name, c); i++) {
-        int value = (unsigned char)text_byte(name, i, c);
+        int value = tsnet_unsigned_byte(text_byte(name, i, c));
         int high = value / 16; int low = value % 16;
         result.push((char)(high < 10 ? '0' + high : 'a' + high - 10));
         result.push((char)(low < 10 ? '0' + low : 'a' + low - 10));

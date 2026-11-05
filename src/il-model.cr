@@ -3,12 +3,17 @@ import "assembly-plan.cr";
 enum class RuntimeMember {
     ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, Cast, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
-    Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Count
+    Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, Count
 };
 
 Vector<int> zero_ids(size_t count) {
     Vector<int> result = Vector<int>::create();
     for (size_t i = 0; i < count; i++) { result.push(0); }
+    return move(result);
+}
+Vector<int> empty_slots(size_t count) {
+    Vector<int> result=Vector<int>::create();
+    for (size_t i=0;i<count;i++) { result.push(-2147483647); }
     return move(result);
 }
 
@@ -34,7 +39,7 @@ struct IlBackend {
         return (Self){.plan=AssemblyPlan::create(), .runtime=zero_ids((size_t)RuntimeMember::Count),
             .interfaces=zero_ids(types), .classes=zero_ids(types), .constructors=zero_ids(types),
             .fields=zero_ids(fields), .getters=zero_ids(fields), .setters=zero_ids(fields),
-            .casts=zero_ids(types), .methods=zero_ids(symbols), .slots=zero_ids(symbols),
+            .casts=zero_ids(types), .methods=zero_ids(symbols), .slots=empty_slots(symbols),
             .method=0, .local_count=0, .label_count=0};
     }
     int ref(RuntimeMember member) const { return this.runtime.at((size_t)member); }
@@ -64,10 +69,12 @@ struct IlBackend {
     void begin(int method) { this.method=method; this.local_count=0; this.label_count=0; }
     void load(SymbolId symbol) {
         int slot = this.slots.at(symbol);
+        if (slot==-2147483647) { print("tsnetc: captured binding or function value needs lowering");exit(1); }
         if (slot < 0) { this.emit(0xfe09, -slot - 1); } else { this.emit(0xfe0c, slot); }
     }
     void store(SymbolId symbol) {
         int slot = this.slots.at(symbol);
+        if (slot==-2147483647) { print("tsnetc: captured binding needs lowering");exit(1); }
         if (slot < 0) { this.emit(0xfe0b, -slot - 1); } else { this.emit(0xfe0e, slot); }
     }
     void box(TypeId type, const Compiler& c) {
@@ -92,6 +99,9 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::Equal, b.plan.method2(6, js, 0, -2, -5, -5, "Equal"));
     b.ref_set(RuntimeMember::Number, b.plan.method1(6, js, 0, -3, -5, "Number"));
     b.ref_set(RuntimeMember::Boolean, b.plan.method1(6, js, 0, -2, -5, "Boolean"));
+    b.ref_set(RuntimeMember::Truthy, b.plan.method1(6, js, 0, -2, -5, "Truthy"));
+    b.ref_set(RuntimeMember::Undefined, b.plan.method0(6, js, 0, -5, "GetUndefined"));
+    b.ref_set(RuntimeMember::TypeOf, b.plan.method1(6, js, 0, -4, -5, "TypeOf"));
     b.ref_set(RuntimeMember::Text, b.plan.method1(6, js, 0, -4, -5, "Text"));
     b.ref_set(RuntimeMember::DynamicGet, b.plan.method2(6, js, 0, -5, -5, -4, "Get"));
     Vector<int> set_parameters = Vector<int>::create(); set_parameters.push(-5); set_parameters.push(-4); set_parameters.push(-5);

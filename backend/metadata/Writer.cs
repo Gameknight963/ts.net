@@ -169,6 +169,7 @@ sealed class AssemblyPlan
                 case 0xfe0e: il.StoreLocal(operand); break;
                 case 0x38: case 0x39: case 0x3a: il.Branch((ILOpCode)instruction.Code, Label(operand)); break;
                 case 0x28: case 0x6f: case 0x73: case 0x74: case 0x75: case 0x7b: case 0x7d: case 0x7e: case 0x80: case 0x8c: case 0x8d: case 0xa5: case 0xfe06:
+                    if (operand == 0) throw new InvalidDataException($"Missing IL operand in {method.Name}, opcode {instruction.Code:x}");
                     il.OpCode((ILOpCode)instruction.Code); il.Token(Handle(operand)); break;
                 default: il.OpCode((ILOpCode)instruction.Code); break;
             }

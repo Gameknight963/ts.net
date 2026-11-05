@@ -3,19 +3,23 @@ import "il-model.cr";
 void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
     TypeId source=get_node(entry,c).type;
     il_expression(entry,c,b);
-    if (b.type(target,c) == -5) { b.box(source,c); }
+    if (b.type(target,c) == -5) {
+        if (get_type(source,c).kind==TypeKind::Void) { b.call(RuntimeMember::Undefined); } else { b.box(source,c); }
+    }
     else if (source != target && (b.type(source,c) == -5 || get_type(target,c).kind == TypeKind::Shape || !fits(source,target,c))) {
         b.box(source,c); b.plan.string(b.method,"checked conversion failed"); b.emit(0x28,(int)b.cast(target));
     }
 }
-void il_boxed(NodeId entry, const Compiler& c, IlBackend& b) { il_expression(entry,c,b); b.box(get_node(entry,c).type,c); }
+void il_boxed(NodeId entry, const Compiler& c, IlBackend& b) {
+    il_expression(entry,c,b);
+    if (get_type(get_node(entry,c).type,c).kind==TypeKind::Void) { b.call(RuntimeMember::Undefined); } else { b.box(get_node(entry,c).type,c); }
+}
 void il_number(NodeId entry, const Compiler& c, IlBackend& b) {
     il_expression(entry,c,b);
     if (get_type(get_node(entry,c).type,c).kind == TypeKind::Any) { b.call(RuntimeMember::Number); }
 }
 void il_condition(NodeId entry, const Compiler& c, IlBackend& b) {
-    il_expression(entry,c,b);
-    if (get_type(get_node(entry,c).type,c).kind == TypeKind::Any) { b.call(RuntimeMember::Boolean); }
+    il_boxed(entry,c,b);b.call(RuntimeMember::Truthy);
 }
 void il_invert(IlBackend& b) { b.emit(0x20,0); b.op(0xfe01); }
 
@@ -25,8 +29,15 @@ void il_load_target(NodeId entry, int receiver, const Compiler& c, IlBackend& b)
     else {
         b.emit(0xfe0c,receiver);
         TypeId owner=get_node(n.left,c).type;
-        if (get_type(owner,c).kind == TypeKind::Any) { il_text(n.name,c,b); b.call(RuntimeMember::DynamicGet); }
-        else { b.emit(0x6f,b.getter(field(owner,n.name,c))); }
+        if (get_type(owner,c).kind == TypeKind::Any) {
+            il_text(n.name,c,b);b.call(RuntimeMember::DynamicGet);
+            if (b.type(n.type,c)!=-5) { b.plan.string(b.method,"checked conversion failed");b.emit(0x28,b.cast(n.type)); }
+        }
+        else {
+            FieldId member=field(owner,n.name,c);
+            if (member==0) { fail(n.token,"unresolved lowered field",c); }
+            b.emit(0x6f,b.getter(member));
+        }
     }
 }
 void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
@@ -47,12 +58,16 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
         else { b.op(0x5b); }
     } else { il_as(n.right,target.type,c,b); }
     int value=b.local(b.type(target.type,c)); b.emit(0xfe0e,value);
-    if (target.kind == NodeKind::Name) { b.emit(0xfe0c,value); b.store(target.symbol); }
+    if (target.kind == NodeKind::Name) {
+        b.emit(0xfe0c,value);
+        if (b.type(get_symbol(target.symbol,c).type,c)==-5) { b.box(target.type,c); }
+        b.store(target.symbol);
+    }
     else {
         b.emit(0xfe0c,receiver);
         TypeId owner=get_node(target.left,c).type;
         if (get_type(owner,c).kind == TypeKind::Any) {
-            il_text(target.name,c,b); b.emit(0xfe0c,value); b.call(RuntimeMember::DynamicSet); b.op(0x26);
+            il_text(target.name,c,b); b.emit(0xfe0c,value);b.box(target.type,c);b.call(RuntimeMember::DynamicSet); b.op(0x26);
         } else { b.emit(0xfe0c,value); b.emit(0x6f,b.setter(field(owner,target.name,c))); }
     }
     b.emit(0xfe0c,previous >= 0 ? previous : value);
@@ -60,20 +75,27 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
 
 void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);
-    if (n.kind == NodeKind::Number) { b.plan.number(b.method,number(get_token(n.token,c).text,c)); }
+    if (n.kind == NodeKind::Undefined) {
+        if (n.left!=0) { il_expression(n.left,c,b);if (get_type(get_node(n.left,c).type,c).kind!=TypeKind::Void) { b.op(0x26); } }
+        b.call(RuntimeMember::Undefined);
+    }
+    else if (n.kind == NodeKind::Null) { b.op(0x14); }
+    else if (n.kind == NodeKind::TypeOf) { il_boxed(n.left,c,b);b.call(RuntimeMember::TypeOf); }
+    else if (n.kind == NodeKind::Conditional) {
+        int alternate=b.label();int done=b.label();il_condition(n.left,c,b);b.emit(0x39,alternate);
+        il_as(n.right,n.type,c,b);b.emit(0x38,done);b.mark(alternate);il_as(n.third,n.type,c,b);b.mark(done);
+    }
+    else if (n.kind == NodeKind::Number) { b.plan.number(b.method,number(get_token(n.token,c).text,c)); }
     else if (n.kind == NodeKind::Boolean) { b.emit(0x20,is_text(get_token(n.token,c).text,&text_true,c) ? 1 : 0); }
     else if (n.kind == NodeKind::String) {
-        TextId text=get_token(n.token,c).text; Vector<char> value=Vector<char>::create();
-        for (size_t i=1; i+1<text_size(text,c); i++) {
-            char ch=text_byte(text,i,c);
-            if (ch == '\\') {
-                ch=text_byte(text,++i,c);
-                if (ch == 'n') { ch='\n'; } else if (ch == 'r') { ch='\r'; } else if (ch == 't') { ch='\t'; }
-            }
-            value.push(ch);
+        il_text(get_token(n.token,c).text,c,b);
+    } else if (n.kind == NodeKind::Name) {
+        b.load(n.symbol);
+        TypeId stored=get_symbol(n.symbol,c).type;
+        if (b.type(stored,c)==-5 && b.type(n.type,c)!=-5) {
+            b.plan.string(b.method,"checked conversion failed");b.emit(0x28,b.cast(n.type));
         }
-        b.plan.raw_string(b.method,value.view());
-    } else if (n.kind == NodeKind::Name) { b.load(n.symbol); }
+    }
     else if (n.kind == NodeKind::Object) {
         b.emit(0x73,b.constructor(n.type));
         NodeId property=n.children;
@@ -83,9 +105,16 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
         }
     } else if (n.kind == NodeKind::Property) {
         il_expression(n.left,c,b); TypeId owner=get_node(n.left,c).type;
-        if (get_type(owner,c).kind == TypeKind::Any) { il_text(n.name,c,b); b.call(RuntimeMember::DynamicGet); }
+        if (get_type(owner,c).kind == TypeKind::Any) {
+            il_text(n.name,c,b);b.call(RuntimeMember::DynamicGet);
+            if (b.type(n.type,c)!=-5) { b.plan.string(b.method,"checked conversion failed");b.emit(0x28,b.cast(n.type)); }
+        }
         else if (get_type(owner,c).kind == TypeKind::String) { b.emit(0x6f,b.ref(RuntimeMember::Length)); b.op(0x6c); }
-        else { b.emit(0x6f,b.getter(field(owner,n.name,c))); }
+        else {
+            FieldId member=field(owner,n.name,c);
+            if (member==0 || b.getter(member)==0) { fail(n.token,"unresolved lowered getter",c); }
+            b.emit(0x6f,b.getter(member));
+        }
     } else if (n.kind == NodeKind::Assert) { il_as(n.left,n.type,c,b); }
     else if (n.kind == NodeKind::Assign || n.kind == NodeKind::Update) { il_mutation(entry,c,b); }
     else if (n.kind == NodeKind::Unary) {
@@ -105,19 +134,27 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             b.call(RuntimeMember::Log);
         } else {
             SymbolId symbol=get_node(n.left,c).symbol;
+            if (symbol==0 || get_symbol(symbol,c).function==0) { fail(n.token,"function value calls need lowering",c); }
             NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;
             NodeId argument=n.children;
             while (argument != 0) {
+                if (parameter==0) { fail(n.token,"variable-arity calls need lowering",c); }
                 il_as(argument,get_node(parameter,c).type,c,b);
                 argument=get_node(argument,c).next; parameter=get_node(parameter,c).next;
             }
+            if (parameter!=0) { fail(n.token,"omitted arguments need lowering",c); }
             b.emit(0x28,(int)b.function(symbol));
+            TypeId declared=get_symbol(symbol,c).type;
+            if (b.type(n.type,c)==-5 && get_type(declared,c).kind!=TypeKind::Void) { b.box(declared,c); }
+            else if (b.type(declared,c)==-5 && b.type(n.type,c)!=-5) {
+                b.plan.string(b.method,"checked conversion failed");b.emit(0x28,b.cast(n.type));
+            }
         }
     } else if (n.kind == NodeKind::Binary) {
         TextId op=get_token(n.token,c).text;
         if (is_text(op,&text_and,c) || is_text(op,&text_or,c)) {
-            int done=b.label(); il_condition(n.left,c,b); b.op(0x25);
-            b.emit(is_text(op,&text_and,c) ? 0x39 : 0x3a,done); b.op(0x26); il_condition(n.right,c,b); b.mark(done);
+            int done=b.label();il_as(n.left,n.type,c,b);b.op(0x25);b.box(n.type,c);b.call(RuntimeMember::Truthy);
+            b.emit(is_text(op,&text_and,c) ? 0x39 : 0x3a,done);b.op(0x26);il_as(n.right,n.type,c,b);b.mark(done);
         } else if (is_text(op,&text_strict_equal,c) || is_text(op,&text_strict_not_equal,c)) {
             il_boxed(n.left,c,b); il_boxed(n.right,c,b); b.call(RuntimeMember::Equal);
             if (is_text(op,&text_strict_not_equal,c)) { il_invert(b); }

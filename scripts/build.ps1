@@ -9,6 +9,7 @@ $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
     if (!$SkipCompilerBuild) {
+        & "$PSScriptRoot/native-frontend.ps1"
         & "$PSScriptRoot/build-metadata-writer.ps1"
         & crust build --release
         if ($LASTEXITCODE) { throw 'Crust compiler build failed' }

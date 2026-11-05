@@ -1,4 +1,5 @@
 import "il-emitter.cr";
+import "frontend.cr";
 
 int compile(const Arguments& arguments) {
     if (arguments.count() != 3) {
@@ -6,9 +7,7 @@ int compile(const Arguments& arguments) {
         return 2;
     }
     Compiler compiler = Compiler::create(arguments.at(1).view());
-    compiler.token = lex(&compiler);
-    parse(&compiler);
-    check_program(&compiler);
+    import_frontend(arguments.at(1).view(), &compiler);
     emit_assembly(arguments.at(2).view(), &compiler);
     return 0;
 }

@@ -38,7 +38,11 @@ enum class NodeKind {
     While,
     For,
     Expression,
-    Function
+    Function,
+    Undefined,
+    Null,
+    Conditional,
+    TypeOf
 };
 struct Token {
     TokenKind kind;

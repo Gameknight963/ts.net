@@ -28,13 +28,38 @@ public static class Js
     }
     private sealed class UndefinedValue { }
     public static readonly object Undefined = new UndefinedValue();
+    public static object GetUndefined() => Undefined;
+    public static string TypeOf(object value) => value switch
+    {
+        null => "object",
+        bool => "boolean",
+        double => "number",
+        string => "string",
+        Delegate => "function",
+        _ => ReferenceEquals(value, Undefined) ? "undefined" : "object"
+    };
     public static double Now() => Stopwatch.GetTimestamp() * (1000.0 / Stopwatch.Frequency);
 
     public static T Cast<T>(object value, string message) =>
         value is T result ? result : throw new InvalidCastException(message);
 
-    public static double Number(object value) => Cast<double>(value, "Expected number");
+    public static double Number(object value) => value switch
+    {
+        double n => n,
+        null => 0,
+        bool b => b ? 1 : 0,
+        string s => s.Trim().Length == 0 ? 0 : double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double n) ? n : double.NaN,
+        _ => double.NaN
+    };
     public static bool Boolean(object value) => Cast<bool>(value, "Expected boolean");
+    public static bool Truthy(object value) => value switch
+    {
+        null => false,
+        bool b => b,
+        double n => n != 0 && !double.IsNaN(n),
+        string s => s.Length != 0,
+        _ => !ReferenceEquals(value, Undefined)
+    };
 
     public static object Get(object receiver, string key) => receiver switch
     {

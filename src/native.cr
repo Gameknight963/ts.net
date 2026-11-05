@@ -7,6 +7,7 @@ import <std/vector.cr>;
 static FILE *tsnet_console(void) {
     return stdout;
 }
+static int tsnet_unsigned_byte(char value) { return (unsigned char)value; }
 #pragma crust end_c
 
 // Native pointer validity is established by the owners below, not by C's types.
@@ -184,6 +185,7 @@ struct Source {
         return (Self){.bytes = move(bytes)};
     }
     size_t length() const { return this.bytes.count(); }
+    void append(char byte) { this.bytes.push(byte); }
     char peek(size_t index) const {
         if (index >= this.bytes.count()) {
             return 0;
