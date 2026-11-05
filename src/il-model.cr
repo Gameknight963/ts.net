@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionConstructor, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionConstructor, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -51,7 +51,9 @@ struct IlBackend {
     Vector<int> node_parents;
     Vector<int> packed_arrays;
     Vector<int> dense_arrays;
+    Vector<int> tag_arrays;
     Vector<int> reversible_literals;
+    Vector<int> tagged_literals;
     Vector<int> function_adapters;
     Vector<int> raw_functions;
     Vector<int> function_caches;
@@ -78,8 +80,8 @@ struct IlBackend {
             .casts=zero_ids(types), .methods=zero_ids(symbols), .binding_methods=zero_ids(symbols), .global_fields=zero_ids(symbols), .global_flags=zero_ids(symbols), .global_vars=zero_ids(symbols), .global_cache=zero_ids(symbols), .slots=empty_slots(symbols),.raw_slots=zero_ids(symbols),
             .numeric_slots=zero_ids(symbols),.numeric_methods=zero_ids(symbols),.written_symbols=zero_ids(symbols),
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
-            .packed_arrays=zero_ids(symbols),.dense_arrays=zero_ids(symbols),
-            .reversible_literals=zero_ids(c.node_store.count()+1),
+            .packed_arrays=zero_ids(symbols),.dense_arrays=zero_ids(symbols),.tag_arrays=zero_ids(symbols),
+            .reversible_literals=zero_ids(c.node_store.count()+1),.tagged_literals=zero_ids(c.node_store.count()+1),
             .function_adapters=zero_ids(symbols),.raw_functions=zero_ids(symbols),.function_caches=zero_ids(symbols),.function_targets=zero_ids(symbols),.function_values_needed=zero_ids(symbols),
             .iteration_vars=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
@@ -294,6 +296,14 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::JsType, b.plan.reference("Tsnet.Runtime", "", "Js"));
     b.ref_set(RuntimeMember::TsObjectType, b.plan.reference("Tsnet.Runtime", "", "TsObject"));
     int js = b.ref(RuntimeMember::JsType); int obj = b.ref(RuntimeMember::TsObjectType);
+    int tagged=b.plan.reference("Tsnet.Runtime","","TaggedArray");
+    b.ref_set(RuntimeMember::TaggedConstructor,b.plan.method1(6,tagged,1,-1,-6,".ctor"));
+    b.ref_set(RuntimeMember::TaggedBufferConstructor,b.plan.method1(6,tagged,1,-1,-7,".ctor"));
+    b.ref_set(RuntimeMember::ArrayTryTags,b.plan.method2(6,js,0,-13,-5,-3,"ArrayTryTags"));
+    b.ref_set(RuntimeMember::ArrayIsNumberAt,b.plan.method2(6,js,0,-2,-5,-6,"ArrayIsNumberAt"));
+    int tagged_parameters[3]={-5,-6,-10};
+    b.ref_set(RuntimeMember::ArraySetTaggedNumberAt,b.plan.method(6,js,0,-1,&tagged_parameters,"ArraySetTaggedNumberAt"));
+
     int function_body=b.plan.reference("Tsnet.Runtime","","FunctionBody");
     int function_type=b.plan.reference("Tsnet.Runtime","","JsFunction");
     int number0=b.plan.reference("Tsnet.Runtime","","NumberFunction0");
@@ -375,6 +385,7 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::ArrayDecode,b.plan.method1(6,js,0,-5,-5,"ArrayDecode"));
     b.ref_set(RuntimeMember::ArrayIndexGetAt,b.plan.method2(6,js,0,-5,-5,-6,"ArrayGetAt"));
     b.ref_set(RuntimeMember::ArrayIndexSetAt,b.plan.method(6,js,0,-1,array_set_parameters.view(),"ArraySetAt"));
+    b.ref_set(RuntimeMember::ArraySetTaggedReferenceAt,b.plan.method(6,js,0,-1,array_set_parameters.view(),"ArraySetTaggedReferenceAt"));
     Vector<int> spread_parameters=Vector<int>::create();spread_parameters.push(-5);spread_parameters.push(-5);spread_parameters.push(-6);
     b.ref_set(RuntimeMember::ArraySpread,b.plan.method(6,js,0,-1,spread_parameters.view(),"ArraySpread"));
     b.ref_set(RuntimeMember::LogArguments,b.plan.method1(6,js,0,-1,-5,"LogArguments"));

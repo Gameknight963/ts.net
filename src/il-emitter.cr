@@ -224,6 +224,12 @@ bool il_number_type_test(NodeId entry, const Compiler& c, IlBackend& b) {
     if (right.kind==NodeKind::TypeOf && left.kind==NodeKind::String && is_text(get_token(left.token,c).text,&text_number,c)) { value=right.left; }
     if (value==0) { return false; }
     if (get_type(get_node(value,c).type,c).kind==TypeKind::Number) { il_expression(value,c,b);b.call(RuntimeMember::NumberMissing);il_invert(b); }
+    else if (il_direct_index(value,c,b)) {
+        Node index=get_node(value,c);int tags=get_node(index.left,c).kind==NodeKind::Name ? b.tag_arrays.at(get_node(index.left,c).symbol)-1 : -1;
+        if (tags>=0) { b.emit(0xfe0c,tags);il_integer(index.right,c,b);b.op(0x91);b.emit(0x20,1);b.op(0xfe01); }
+        else if (il_dense_slot(value,c,b)>=0) { b.emit(0xfe0c,il_dense_slot(value,c,b));il_integer(index.right,c,b);b.op(0x9a);b.call(RuntimeMember::IsNumber); }
+        else { il_expression(index.left,c,b);il_integer(index.right,c,b);b.call(RuntimeMember::ArrayIsNumberAt); }
+    }
     else { il_boxed(value,c,b);b.call(RuntimeMember::IsNumber); }
     if (is_text(op,&text_strict_not_equal,c)) { il_invert(b); }
     b.call(RuntimeMember::WrapBoolean);return true;
@@ -424,6 +430,28 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     else { fail(n.token,"unsupported lowered expression",c); }
 }
 
+void il_tagged_store_value(NodeId entry, int receiver, int index, const Compiler& c, IlBackend& b) {
+    Node n=get_node(entry,c);
+    if (n.kind==NodeKind::Conditional) {
+        int alternate=b.label();int done=b.label();il_condition(n.left,c,b);b.emit(0x39,alternate);
+        il_tagged_store_value(n.right,receiver,index,c,b);b.emit(0x38,done);
+        b.mark(alternate);il_tagged_store_value(n.third,receiver,index,c,b);b.mark(done);return;
+    }
+    b.emit(0xfe0c,receiver);b.emit(0xfe0c,index);
+    if (get_type(n.type,c).kind==TypeKind::Number) { il_expression(entry,c,b);b.call(RuntimeMember::ArraySetTaggedNumberAt); }
+    else { il_boxed(entry,c,b);b.call(get_type(n.type,c).kind==TypeKind::String || get_type(n.type,c).kind==TypeKind::Boolean || get_type(n.type,c).kind==TypeKind::Shape || get_type(n.type,c).kind==TypeKind::Array ? RuntimeMember::ArraySetTaggedReferenceAt : RuntimeMember::ArrayIndexSetAt); }
+}
+
+bool il_tagged_store(NodeId entry, const Compiler& c, IlBackend& b) {
+    Node n=get_node(entry,c);
+    if (n.kind!=NodeKind::Assign || !is_text(get_token(n.token,c).text,&text_assign,c) || !il_direct_index(n.left,c,b)) { return false; }
+    Node target=get_node(n.left,c);
+    if (get_type(target.type,c).kind!=TypeKind::Any) { return false; }
+    il_expression(target.left,c,b);int receiver=b.local(-5);b.emit(0xfe0e,receiver);
+    il_integer(target.right,c,b);int index=b.local(-6);b.emit(0xfe0e,index);
+    il_tagged_store_value(n.right,receiver,index,c,b);return true;
+}
+
 void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);
     if (n.kind == NodeKind::Break || n.kind == NodeKind::Continue) {
@@ -481,6 +509,7 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
         else if (b.type(return_type,c)!=-1) { b.empty(return_type,c); }
         b.op(0x2a);
     } else if (n.kind == NodeKind::Expression) {
+        if (il_tagged_store(n.left,c,b)) { return; }
         il_expression(n.left,c,b); if (get_type(get_node(n.left,c).type,c).kind != TypeKind::Void) { b.op(0x26); }
     } else if (n.kind == NodeKind::If) {
         int alternate=b.label(); int done=b.label();
@@ -495,7 +524,7 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
 
 void emit_assembly(const char[]& path, Compiler& c) {
     TypeId numeric_array=il_numeric_array_type(c);
-    IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_prove_reversible_arrays(c,&b);il_runtime(&b);il_shapes(c,&b);
+    IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_prove_reversible_arrays(c,&b);il_choose_tagged_arrays(c,&b);il_runtime(&b);il_shapes(c,&b);
     int object_type=b.ref(RuntimeMember::ObjectType);
     int program=b.plan.type("Program",object_type,0x181);
     il_prepare_function_values(program,c,&b);

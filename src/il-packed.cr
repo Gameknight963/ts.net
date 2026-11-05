@@ -86,6 +86,23 @@ SymbolId il_buffer_loop(NodeId entry, SymbolId counter, bool numeric, const Comp
 SymbolId il_packed_loop(NodeId entry, SymbolId counter, const Compiler& c, const IlBackend& b) { return il_buffer_loop(entry,counter,true,c,b); }
 SymbolId il_dense_loop(NodeId entry, SymbolId counter, const Compiler& c, const IlBackend& b) { return il_buffer_loop(entry,counter,false,c,b); }
 
+SymbolId il_tag_loop(NodeId entry, SymbolId array, const Compiler& c, const IlBackend& b) {
+    NodeId body=get_node(entry,c).fourth;
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        Node n=get_node(i,c);
+        if (n.kind!=NodeKind::Index || !il_inside(i,body,b)) { continue; }
+        Node parent=get_node((NodeId)b.node_parents.at(i),c);
+        if (parent.kind!=NodeKind::TypeOf) { return 0; }
+        Node compare=get_node((NodeId)b.node_parents.at((NodeId)b.node_parents.at(i)),c);
+        if (compare.kind!=NodeKind::Binary) { return 0; }
+        TextId op=get_token(compare.token,c).text;
+        if (!is_text(op,&text_strict_equal,c) && !is_text(op,&text_strict_not_equal,c)) { return 0; }
+        Node other=get_node(compare.left==(NodeId)b.node_parents.at(i) ? compare.right : compare.left,c);
+        if (other.kind!=NodeKind::String || !is_text(get_token(other.token,c).text,&text_number,c)) { return 0; }
+    }
+    return array;
+}
+
 int il_dense_slot(NodeId entry, const Compiler& c, const IlBackend& b) {
     Node n=get_node(entry,c);
     if (n.kind!=NodeKind::Index || get_node(n.left,c).kind!=NodeKind::Name) { return -1; }

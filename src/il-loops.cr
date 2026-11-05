@@ -79,6 +79,17 @@ void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, cons
     if (array==0) {
         array=il_dense_loop(entry,counter,c,b);
         if (array==0) { il_loop_code(entry,result,counter,bound,c,b);return; }
+        int tagged_done=0;
+        if (il_tag_loop(entry,array,c,b)!=0) {
+            int tags=b.local(-13);int ordinary=b.label();tagged_done=b.label();
+            b.emit(0xfe0c,bound);b.plan.number(b.method,0);b.op(0xfe02);b.emit(0x39,ordinary);
+            b.load(array);il_buffer_bound(entry,bound,c,b);b.call(RuntimeMember::ArrayTryTags);b.emit(0xfe0e,tags);
+            b.emit(0xfe0c,tags);b.emit(0x39,ordinary);
+            b.tag_arrays.at_mut(array)=tags+1;
+            il_loop_code(entry,result,counter,bound,c,b);b.emit(0x38,tagged_done);
+            b.tag_arrays.at_mut(array)=0;
+            b.mark(ordinary);
+        }
         int snapshot=b.local(-7);int fallback=b.label();int done=b.label();
         // Empty loops must not read the array binding before the body would.
         b.emit(0xfe0c,bound);b.plan.number(b.method,0);b.op(0xfe02);b.emit(0x39,fallback);
@@ -87,7 +98,7 @@ void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, cons
         b.dense_arrays.at_mut(array)=snapshot+1;
         il_loop_code(entry,result,counter,bound,c,b);b.emit(0x38,done);
         b.dense_arrays.at_mut(array)=0;
-        b.mark(fallback);il_loop_code(entry,result,counter,bound,c,b);b.mark(done);return;
+        b.mark(fallback);il_loop_code(entry,result,counter,bound,c,b);b.mark(done);if (tagged_done!=0) { b.mark(tagged_done); }return;
     }
     int snapshot=b.local(-12);int fallback=b.label();int done=b.label();
     b.emit(0xfe0c,bound);b.plan.number(b.method,0);b.op(0xfe02);b.emit(0x39,fallback);

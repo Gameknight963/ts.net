@@ -20,6 +20,22 @@ void il_array_literal(NodeId entry, TypeId type, const Compiler& c, IlBackend& b
     bool spread=false;
     while (value!=0) { count++;if (get_node(value,c).kind==NodeKind::Spread) { spread=true; }value=get_node(value,c).next; }
     bool numeric=il_number_array(type,c);
+    bool tagged=b.tagged_literals.at(entry)!=0 && get_type(type,c).kind==TypeKind::Array && get_type(get_type(type,c).element,c).kind==TypeKind::Any;
+    if (tagged && !spread && b.reversible_literals.at(entry)==0) {
+        b.emit(0x20,count);b.emit(0x73,b.ref(RuntimeMember::TaggedConstructor));
+        if (count!=0) { b.op(0x25);b.plan.number(b.method,(double)count);b.call(RuntimeMember::ArrayReserveCapacity); }
+        value=n.children;int index=0;
+        while (value!=0) {
+            Node item=get_node(value,c);
+            if (!(item.kind==NodeKind::Undefined && item.constant)) {
+                b.op(0x25);b.emit(0x20,index);
+                if (get_type(item.type,c).kind==TypeKind::Number) { il_expression(value,c,b);b.call(RuntimeMember::ArraySetTaggedNumberAt); }
+                else { il_boxed(value,c,b);b.call(RuntimeMember::ArrayIndexSetAt); }
+            }
+            index++;value=item.next;
+        }
+        return;
+    }
     if (!numeric && !spread) {
         b.emit(0x20,count);b.emit(0x8d,b.ref(RuntimeMember::ObjectType));value=n.children;int index=0;
         while (value!=0) {
@@ -28,9 +44,9 @@ void il_array_literal(NodeId entry, TypeId type, const Compiler& c, IlBackend& b
             else { il_boxed(value,c,b); }
             b.op(0xa2);value=item.next;
         }
-        b.emit(0x73,b.ref(b.reversible_literals.at(entry)!=0 ? RuntimeMember::ReversibleBufferConstructor : RuntimeMember::ArrayBufferConstructor));return;
+        b.emit(0x73,b.ref(b.reversible_literals.at(entry)!=0 ? RuntimeMember::ReversibleBufferConstructor : tagged ? RuntimeMember::TaggedBufferConstructor : RuntimeMember::ArrayBufferConstructor));return;
     }
-    b.emit(0x20,spread ? 0 : count);b.emit(0x73,b.ref(numeric ? RuntimeMember::NumberArrayConstructor : b.reversible_literals.at(entry)!=0 ? RuntimeMember::ReversibleConstructor : RuntimeMember::ArrayConstructor));
+    b.emit(0x20,spread ? 0 : count);b.emit(0x73,b.ref(numeric ? RuntimeMember::NumberArrayConstructor : b.reversible_literals.at(entry)!=0 ? RuntimeMember::ReversibleConstructor : tagged ? RuntimeMember::TaggedConstructor : RuntimeMember::ArrayConstructor));
     value=n.children;int index=0;
     while (value!=0) {
         Node item=get_node(value,c);

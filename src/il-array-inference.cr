@@ -20,6 +20,49 @@ void il_prove_reversible_arrays(const Compiler& c, IlBackend& b) {
     }
 }
 
+// Storage selection is a preference, not a correctness proof: runtime fallbacks
+// still support aliases and operations that need ordinary object storage.
+void il_choose_tagged_arrays(const Compiler& c, IlBackend& b) {
+    Vector<int> wanted=zero_ids(c.symbol_store.count()+1);
+    for (size_t i=1;i<=c.node_store.count();i++) {
+        Node n=get_node(i,c);
+        if (n.kind!=NodeKind::Index || get_node(n.left,c).kind!=NodeKind::Name) { continue; }
+        NodeId parent=(NodeId)b.node_parents.at(i);
+        if (get_node(parent,c).kind!=NodeKind::TypeOf) { continue; }
+        Node compare=get_node((NodeId)b.node_parents.at(parent),c);
+        if (compare.kind!=NodeKind::Binary) { continue; }
+        TextId op=get_token(compare.token,c).text;
+        if (!is_text(op,&text_strict_equal,c) && !is_text(op,&text_strict_not_equal,c)) { continue; }
+        Node other=get_node(compare.left==parent ? compare.right : compare.left,c);
+        if (other.kind==NodeKind::String && is_text(get_token(other.token,c).text,&text_number,c)) { wanted.at_mut(get_node(n.left,c).symbol)=1; }
+    }
+    bool changed=true;
+    while (changed) {
+        changed=false;
+        for (size_t i=1;i<=c.node_store.count();i++) {
+            Node n=get_node(i,c);
+            if (n.kind==NodeKind::Variable && wanted.at(n.symbol)!=0 && n.left!=0) {
+                Node value=get_node(n.left,c);
+                if (value.kind==NodeKind::Array) { b.tagged_literals.at_mut(n.left)=1; }
+                if (value.kind==NodeKind::Name && wanted.at(value.symbol)==0) { wanted.at_mut(value.symbol)=1;changed=true; }
+            }
+            if (n.kind!=NodeKind::Call) { continue; }
+            Node callee=get_node(n.left,c);SymbolId symbol=callee.symbol;
+            if (symbol==0 || get_symbol(symbol,c).function==0) { continue; }
+            NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;NodeId argument=n.children;
+            while (parameter!=0 && argument!=0) {
+                Node p=get_node(parameter,c);Node a=get_node(argument,c);
+                if (p.third!=0 || a.kind==NodeKind::Spread) { break; }
+                if (wanted.at(p.symbol)!=0) {
+                    if (a.kind==NodeKind::Array) { b.tagged_literals.at_mut(argument)=1; }
+                    if (a.kind==NodeKind::Name && wanted.at(a.symbol)==0) { wanted.at_mut(a.symbol)=1;changed=true; }
+                }
+                parameter=p.next;argument=a.next;
+            }
+        }
+    }
+}
+
 TypeId il_numeric_array_type(Compiler& c) {
     for (size_t i=1;i<=c.type_store.count();i++) {
         Type t=get_type(i,c);
