@@ -30,7 +30,7 @@ SymbolId il_packed_loop(NodeId entry, SymbolId counter, const Compiler& c, const
         if (n.kind==NodeKind::Assign || n.kind==NodeKind::Update) {
             Node target=get_node(n.left,c);
             if (target.kind==NodeKind::Property || (target.kind==NodeKind::Name && target.symbol==array)) { return 0; }
-            if (target.kind==NodeKind::Index && n.kind==NodeKind::Assign && is_text(get_token(n.token,c).text,&text_assign,c)) {
+            if (target.kind==NodeKind::Index && n.kind==NodeKind::Assign && (is_text(get_token(n.token,c).text,&text_assign,c) || il_logical_assignment(get_token(n.token,c).text,c))) {
                 Node value=get_node(n.right,c);
                 if (!il_defined(n.right,c) && !(value.kind==NodeKind::Name && b.raw_slot(value.symbol)!=0)) { return 0; }
             }

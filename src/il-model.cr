@@ -185,6 +185,9 @@ struct IlBackend {
 
 // This proof concerns values, not TS annotations. Calls, property reads, and
 // names are unknown; arithmetic results are defined even when they are NaN.
+bool il_logical_assignment(TextId op, const Compiler& c) {
+    return is_text(op,&text_and_assign,c) || is_text(op,&text_or_assign,c) || is_text(op,&text_nullish_assign,c);
+}
 bool il_defined(NodeId entry, const Compiler& c) {
     if (entry==0) { return false; }
     Node n=get_node(entry,c);
@@ -195,6 +198,7 @@ bool il_defined(NodeId entry, const Compiler& c) {
     if (n.kind==NodeKind::Conditional) { return il_defined(n.right,c) && il_defined(n.third,c); }
     if (n.kind==NodeKind::Nullish) { return il_defined(n.right,c); }
     if (n.kind==NodeKind::Assign) {
+        if (il_logical_assignment(get_token(n.token,c).text,c)) { return false; }
         return !is_text(get_token(n.token,c).text,&text_assign,c) || il_defined(n.right,c);
     }
     if (n.kind==NodeKind::Binary) {

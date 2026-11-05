@@ -206,6 +206,7 @@ func (b *irBuilder) list(nodes []*ast.Node) int {
 var operators = map[ast.Kind]string{
 	ast.KindPlusToken: "+", ast.KindMinusToken: "-", ast.KindAsteriskToken: "*", ast.KindSlashToken: "/", ast.KindPercentToken: "%",
 	ast.KindEqualsToken: "=", ast.KindPlusEqualsToken: "+=", ast.KindMinusEqualsToken: "-=", ast.KindAsteriskEqualsToken: "*=", ast.KindSlashEqualsToken: "/=",
+	ast.KindAmpersandAmpersandEqualsToken: "&&=", ast.KindBarBarEqualsToken: "||=", ast.KindQuestionQuestionEqualsToken: "??=",
 	ast.KindEqualsEqualsEqualsToken: "===", ast.KindExclamationEqualsEqualsToken: "!==", ast.KindLessThanToken: "<", ast.KindGreaterThanToken: ">",
 	ast.KindLessThanEqualsToken: "<=", ast.KindGreaterThanEqualsToken: ">=", ast.KindAmpersandAmpersandToken: "&&", ast.KindBarBarToken: "||",
 	ast.KindExclamationToken: "!", ast.KindPlusPlusToken: "++", ast.KindMinusMinusToken: "--",
@@ -373,7 +374,8 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		if expr.OperatorToken.Kind >= ast.KindFirstAssignment && expr.OperatorToken.Kind <= ast.KindLastAssignment {
 			kind = 10
 			stringAdd := op == "+=" && b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Left)).Flags()&checker.TypeFlagsStringLike != 0
-			if op != "=" && !stringAdd && (b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Left)).Flags()&checker.TypeFlagsNumberLike == 0 || b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Right)).Flags()&checker.TypeFlagsNumberLike == 0) {
+			logical := op == "&&=" || op == "||=" || op == "??="
+			if op != "=" && !stringAdd && !logical && (b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Left)).Flags()&checker.TypeFlagsNumberLike == 0 || b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Right)).Flags()&checker.TypeFlagsNumberLike == 0) {
 				b.unsupported(n)
 			}
 		}

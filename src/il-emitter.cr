@@ -6,6 +6,7 @@ void il_as(NodeId entry, TypeId target, const Compiler& c, IlBackend& b) {
     }
     TypeId source=get_node(entry,c).type;
     il_expression(entry,c,b);
+    if (get_type(source,c).kind==TypeKind::Void && get_type(target,c).kind!=TypeKind::Void) { b.empty(target,c);return; }
     // The freshly allocated class implements every compatible shape interface.
     if (get_node(entry,c).kind==NodeKind::Object && fits(source,target,c)) { return; }
     b.convert(source,target,c);
@@ -118,13 +119,35 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
     int previous=-1;
     TextId op=get_token(n.token,c).text;
     int bitwise=il_bitwise_code(op,c);
+    bool logical=n.kind==NodeKind::Assign && il_logical_assignment(op,c);int logical_done=-1;TypeId value_type=target.type;
+    if (logical) {
+        if (target.kind==NodeKind::Name) { value_type=get_symbol(target.symbol,c).type; }
+        else if (scalar.slot>=0) { value_type=scalar.type; }
+        else {
+            TypeId owner=get_node(target.left,c).type;TypeKind kind=get_type(owner,c).kind;
+            if (kind==TypeKind::Any) { value_type=owner; }
+            else if (target.kind==NodeKind::Index && kind==TypeKind::Array) { value_type=get_type(owner,c).element; }
+            else if (target.kind==NodeKind::Property && kind==TypeKind::Shape) { value_type=get_field(field(owner,target.name,c),c).type; }
+        }
+        logical_done=b.label();il_load_target(n.left,receiver,index,c,b);b.convert(target.type,value_type,c);b.op(0x25);
+        if (is_text(op,&text_nullish_assign,c)) {
+            TypeKind kind=get_type(value_type,c).kind;
+            if (kind==TypeKind::Number || kind==TypeKind::Boolean) { b.missing(value_type,c); }
+            else { b.call(RuntimeMember::IsNullish); }
+            b.emit(0x39,logical_done);
+        } else { b.truth(value_type,c);b.emit(is_text(op,&text_and_assign,c) ? 0x39 : 0x3a,logical_done); }
+        b.op(0x26);il_as(n.right,value_type,c,b);
+    }
     if (target.kind==NodeKind::Name && b.raw_slot(target.symbol)==-6 && bitwise!=0 && bitwise!=0x64) {
         b.load_storage(target.symbol);il_integer(n.right,c,b);
         if (bitwise>=0x62) { b.emit(0x20,31);b.op(0x5f); }
         b.op(bitwise);b.op(0x25);b.store_storage(target.symbol);
         b.op(0x6c);b.call(RuntimeMember::WrapNumber);return;
     }
-    if (n.kind==NodeKind::Assign && is_text(op,&text_add_assign,c) && get_type(target.type,c).kind==TypeKind::String) {
+    if (logical) {
+        // The assignment value is already on the stack; the skip path bypasses
+        // both the RHS and the store and keeps the original operand value.
+    } else if (n.kind==NodeKind::Assign && is_text(op,&text_add_assign,c) && get_type(target.type,c).kind==TypeKind::String) {
         il_load_target(n.left,receiver,index,c,b);b.call(RuntimeMember::Text);
         il_boxed(n.right,c,b);b.call(RuntimeMember::Text);b.call(RuntimeMember::Concat);
     } else if (n.kind == NodeKind::Update || !is_text(op,&text_assign,c)) {
@@ -145,10 +168,10 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
             b.call(RuntimeMember::WrapNumber);
         }
     } else { il_as(n.right,target.type,c,b); }
-    int value=b.local(b.type(target.type,c)); b.emit(0xfe0e,value);
+    int value=b.local(b.type(value_type,c)); b.emit(0xfe0e,value);
     if (target.kind == NodeKind::Name) {
         b.emit(0xfe0c,value);
-        b.convert(target.type,get_symbol(target.symbol,c).type,c);
+        b.convert(value_type,get_symbol(target.symbol,c).type,c);
         b.store(target.symbol);
     }
     else if (target.kind==NodeKind::Index) {
@@ -160,23 +183,24 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
             b.emit(0xfe0c,receiver);b.emit(0xfe0c,index);b.emit(0xfe0c,value);
             if (il_direct_array_index(n.left,c,b)) { b.call(RuntimeMember::NumberIndexSetAt); }
             else if (il_number_index(n.left,c)) { b.call(RuntimeMember::NumberIndexSet); }
-            else { b.box(target.type,c);b.call(RuntimeMember::IndexSet); }
+            else { b.box(value_type,c);b.call(RuntimeMember::IndexSet); }
         }
     } else if (scalar.slot>=0) {
-        b.emit(0xfe0c,value);b.convert(target.type,scalar.type,c);b.emit(0xfe0e,scalar.slot);
+        b.emit(0xfe0c,value);b.convert(value_type,scalar.type,c);b.emit(0xfe0e,scalar.slot);
     } else {
         b.emit(0xfe0c,receiver);
         TypeId owner=get_node(target.left,c).type;
         if (get_type(owner,c).kind==TypeKind::Array && is_text(target.name,&text_length,c)) {
             b.emit(0xfe0c,value);b.call(RuntimeMember::NumberValue);b.call(RuntimeMember::ArraySetLength);
         } else if (get_type(owner,c).kind == TypeKind::Any) {
-            il_text(target.name,c,b); b.emit(0xfe0c,value);b.box(target.type,c);b.call(RuntimeMember::DynamicSet); b.op(0x26);
+            il_text(target.name,c,b); b.emit(0xfe0c,value);b.box(value_type,c);b.call(RuntimeMember::DynamicSet); b.op(0x26);
         } else {
             FieldId member=field(owner,target.name,c);b.emit(0x74,b.interface_type(owner));b.emit(0xfe0c,value);
-            b.convert(target.type,get_field(member,c).type,c);b.emit(0x6f,b.setter(member));
+            b.convert(value_type,get_field(member,c).type,c);b.emit(0x6f,b.setter(member));
         }
     }
     b.emit(0xfe0c,previous >= 0 && !n.constant ? previous : value);
+    if (logical) { b.mark(logical_done);b.convert(value_type,n.type,c); }
 }
 
 void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
