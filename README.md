@@ -49,4 +49,4 @@ Object.values and Object.entries run 6.5x and 2.7x faster than Node in these tes
 
 Compilation times remain close to Microsoft’s Go-based TypeScript compiler, though the larger source takes about 18% longer.
 
-Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11 (SDK 10.0.400), TypeScript 7.0.2. Runtime results use matching sources and checksums, at least 100 warmups and 500 ms of warmup per engine, and 35 timed samples across five fresh processes per engine; compilation results are medians of seven fresh processes with warm filesystem caches. Runtime timings exclude startup and compilation.
+Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
