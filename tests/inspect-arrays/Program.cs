@@ -12,6 +12,22 @@ for (int i = 0; i < booleans.Length; i++) booleans[i] = Js.BoxBoolean(i % 3 == 0
 long booleanBytes = GC.GetAllocatedBytesForCurrentThread() - booleanStart;
 if (booleanBytes != 0 || !ReferenceEquals(booleans[0], Js.Undefined) || !Equals(booleans[1], true) || !Equals(booleans[2], false)) throw new Exception("Boxing booleans allocated or changed values");
 Console.WriteLine("PASS adopted literal holes, null, aliases, truncation, and allocation-free boxed booleans");
+foreach (JsArray source in new JsArray[] { new JsArray(4), new NumberArray(4) })
+{
+    source.SetAt(1, Js.Undefined);source.SetAt(3, -0.0);
+    JsArray sliced = source.Slice(0.0, Js.Undefined);
+    if (sliced.Length() != 4 || sliced.HasElement(0) || !sliced.HasElement(1) || sliced.HasElement(2) || !sliced.HasElement(3)) throw new Exception("Slice changed element presence");
+    if (BitConverter.DoubleToInt64Bits((double)sliced.ElementAt(3)) != long.MinValue) throw new Exception("Slice lost negative zero");
+    source.SetAt(3, 9.0);
+    if (!Equals(sliced.ElementAt(3), -0.0)) throw new Exception("Slice shared its backing buffer");
+}
+var sparseSlice = new NumberArray(0);
+sparseSlice.SetNumber(4294967294, 7);
+var sparseCopy = sparseSlice.Slice(0.0, Js.Undefined);
+if (sparseCopy.Length() != uint.MaxValue || !Equals(sparseCopy.ElementAt(4294967294), 7.0) || sparseCopy.HasElement(1)) throw new Exception("Sparse slice materialized or lost distant elements");
+sparseSlice.SetNumber(4294967294, 9);
+if (!Equals(sparseCopy.ElementAt(4294967294), 7.0)) throw new Exception("Sparse slice shared its dictionary");
+Console.WriteLine("PASS slice holes, undefined, negative zero, independent buffers, and sparse length limit");
 long[] nanPatterns = [0x7ff8000000000000, 0x7ff8000000000001, 0x7ff8000000000002, 0x7ff0000000000001, unchecked((long)0xfff8000000000001UL)];
 foreach (long bits in nanPatterns)
 {

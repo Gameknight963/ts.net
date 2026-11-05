@@ -46,6 +46,18 @@ struct ArrayStorage<T>
     {
         this.missing = missing;dense = items;Length = (uint)items.Length;
     }
+    public ArrayStorage<T> Slice(uint start, uint count)
+    {
+        uint end = Math.Min(Length, (uint)dense.Length);
+        int copied = start < end ? (int)Math.Min(count, end - start) : 0;
+        T[] buffer = copied == 0 ? Array.Empty<T>() : GC.AllocateUninitializedArray<T>(copied);
+        if (copied != 0) Array.Copy(dense, (int)start, buffer, 0, copied);
+        var result = new ArrayStorage<T>(buffer, missing) { Length = count };
+        if (sparse != null)
+            foreach (var item in sparse)
+                if (item.Key >= start && item.Key - start < count) result.Set(item.Key - start, item.Value);
+        return result;
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Get(uint index)
     {
@@ -98,6 +110,7 @@ public class JsArray : TsObject
     public JsArray(int length) { values = new ArrayStorage<object>(length, Hole); }
     // Generated code transfers its freshly initialized buffer to this array.
     public JsArray(object[] items) { values = new ArrayStorage<object>(items, Hole); }
+    JsArray(ArrayStorage<object> storage) { values = storage; }
     public static object HoleValue() => Hole;
     protected JsArray() { }
     protected virtual uint Count => values.Length;
@@ -106,6 +119,19 @@ public class JsArray : TsObject
     protected virtual void Write(uint index, object value) => values.Set(index, value);
     protected virtual void Resize(uint length) => values.Resize(length);
     public double Length() => Count;
+    internal static uint SliceBound(object value, uint length)
+    {
+        double index = Math.Truncate(Js.Number(value));
+        if (double.IsNaN(index)) return 0;
+        return (uint)(index < 0 ? Math.Max(length + index, 0) : Math.Min(index, length));
+    }
+    public JsArray Slice(object start, object end)
+    {
+        uint length = Count, first = SliceBound(start, length);
+        uint last = Js.IsUndefined(end) ? length : SliceBound(end, length);
+        return SliceRange(first, last > first ? last - first : 0);
+    }
+    protected virtual JsArray SliceRange(uint start, uint count) => new JsArray(values.Slice(start, count));
     public void SetLength(double length)
     {
         if (!(length >= 0 && length <= uint.MaxValue && length == (uint)length))
@@ -185,6 +211,9 @@ public sealed class NumberArray : JsArray
     ArrayStorage<double> numbers;
     uint packedPrefix;
     public NumberArray(int length) { numbers = new ArrayStorage<double>(length, Missing); }
+    NumberArray(ArrayStorage<double> storage, uint prefix) { numbers = storage;packedPrefix = prefix; }
+    protected override JsArray SliceRange(uint start, uint count) =>
+        new NumberArray(numbers.Slice(start, count), start < packedPrefix ? Math.Min(count, packedPrefix - start) : 0);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static double Encode(double? value) => !value.HasValue ? Undefined : double.IsNaN(value.Value) ? double.NaN : value.Value;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

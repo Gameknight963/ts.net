@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -298,6 +298,8 @@ void il_runtime(IlBackend& b) {
     Vector<int> call_rest_parameters=Vector<int>::create();call_rest_parameters.push(-5);call_rest_parameters.push(-6);call_rest_parameters.push(-2);
     b.ref_set(RuntimeMember::CallRest,b.plan.method(6,js,0,-5,call_rest_parameters.view(),"CallRest"));
     b.ref_set(RuntimeMember::ArrayPop,b.plan.method1(6,js,0,-5,-5,"ArrayPop"));
+    Vector<int> slice_parameters=Vector<int>::create();slice_parameters.push(-5);slice_parameters.push(-5);slice_parameters.push(-5);
+    b.ref_set(RuntimeMember::Slice,b.plan.method(6,js,0,-5,slice_parameters.view(),"Slice"));
     b.ref_set(RuntimeMember::NumberPush,b.plan.method2(6,js,0,-3,-5,-10,"ArrayPushNumber"));
     b.ref_set(RuntimeMember::NumberPop,b.plan.method1(6,js,0,-10,-5,"ArrayPopNumber"));
     b.ref_set(RuntimeMember::ArrayTryPacked,b.plan.method2(6,js,0,-12,-5,-3,"ArrayTryPacked"));

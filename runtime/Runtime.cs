@@ -149,6 +149,17 @@ public static class Js
     }
     public static double ArrayPush(object receiver, object[] values) =>
         receiver is JsArray array ? array.PushMany(values) : throw new InvalidOperationException("push requires an array");
+    public static object Slice(object receiver, object start, object end)
+    {
+        if (receiver is JsArray array) return array.Slice(start, end);
+        if (receiver is string text)
+        {
+            uint first = JsArray.SliceBound(start, (uint)text.Length);
+            uint last = IsUndefined(end) ? (uint)text.Length : JsArray.SliceBound(end, (uint)text.Length);
+            return text.Substring((int)first, last > first ? (int)(last - first) : 0);
+        }
+        throw new InvalidOperationException("slice requires an array or string");
+    }
     public static void ArrayAppend(object receiver, object value) => ((JsArray)receiver).Append(value);
     public static void ArraySetAt(object receiver, int index, object value) => ((JsArray)receiver).SetAt(index, value);
     public static void ArrayHole(object receiver) => ((JsArray)receiver).AppendHole();
