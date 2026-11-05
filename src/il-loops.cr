@@ -80,7 +80,7 @@ void il_tagged_loop_code(NodeId entry, TypeId result, SymbolId counter, int boun
     b.emit(0x38,done);b.mark(fallback);il_loop_code(entry,result,counter,bound,c,b);b.mark(done);
 }
 
-void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, const Compiler& c, IlBackend& b) {
+void il_loop_body_inner(NodeId entry, TypeId result, SymbolId counter, int bound, const Compiler& c, IlBackend& b) {
     if (il_integer_call_loop(entry,result,counter,bound,c,b)) { return; }
     if (counter!=0) {
         SymbolId pushes=il_push_loop(entry,c,b);
@@ -124,6 +124,11 @@ void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, cons
     il_loop_code(entry,result,counter,bound,c,b);b.emit(0x38,done);
     b.packed_arrays.at_mut(array)=0;
     b.mark(fallback);il_loop_code(entry,result,counter,bound,c,b);b.mark(done);
+}
+
+void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, const Compiler& c, IlBackend& b) {
+    int previous=b.push_bound;b.push_bound=counter!=0 ? bound : -1;
+    il_loop_body_inner(entry,result,counter,bound,c,b);b.push_bound=previous;
 }
 
 void il_loop_inner(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {

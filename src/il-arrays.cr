@@ -119,6 +119,10 @@ void il_emit_array_call(NodeId entry, const Compiler& c, IlBackend& b) {
     }
     if (il_number_array(owner,c) && n.children!=0 && get_node(n.children,c).next==0) {
         il_as(n.children,get_type(owner,c).element,c,b);b.call(RuntimeMember::NumberPush);
+    } else if (n.children!=0 && get_node(n.children,c).next==0) {
+        il_boxed(n.children,c,b);
+        if (b.push_bound>=0) { b.emit(0xfe0c,b.push_bound);b.call(RuntimeMember::ArrayPushOneReserved); }
+        else { b.call(RuntimeMember::ArrayPushOne); }
     } else {
         int count=0;NodeId argument=n.children;
         while (argument!=0) { count++;argument=get_node(argument,c).next; }

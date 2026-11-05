@@ -5,7 +5,7 @@ enum class RuntimeMember {
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
-    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
+    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
     ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionType, FunctionConstructor, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction0, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, Count
 };
 
@@ -90,6 +90,7 @@ struct IlBackend {
     int method;
     int local_count;
     int label_count;
+    int push_bound;
     int loop_versions;
     bool numeric_globals;
     bool raw_function_return;
@@ -109,7 +110,7 @@ struct IlBackend {
             .iteration_vars=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
-            .method=0, .local_count=0, .label_count=0,.loop_versions=0,.numeric_globals=false,.raw_function_return=false};
+            .method=0, .local_count=0, .label_count=0,.push_bound=-1,.loop_versions=0,.numeric_globals=false,.raw_function_return=false};
     }
     int ref(RuntimeMember member) const { return this.runtime.at((size_t)member); }
     int field_token(FieldId id) const { return this.fields.at(id); }
@@ -139,7 +140,7 @@ struct IlBackend {
     int label() { return ++this.label_count; }
     void mark(int label) { this.emit(-1, label); }
     int local(int type) { this.plan.local(this.method, type); return this.local_count++; }
-    void begin(int method) { this.method=method; this.local_count=0; this.label_count=0;this.loop_versions=0;this.context_scope=0;this.context_slot=-1; }
+    void begin(int method) { this.method=method; this.local_count=0; this.label_count=0;this.loop_versions=0;this.push_bound=-1;this.context_scope=0;this.context_slot=-1; }
     void load_context(int scope) {
         if (this.context_scope==0) { print("tsnetc: closure environment missing");exit(1); }
         if (this.context_slot<0) { this.emit(0xfe09,0); } else { this.emit(0xfe0c,this.context_slot); }
@@ -449,6 +450,9 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::NumberIndexSetAt,b.plan.method(6,js,0,-1,integer_index_parameters.view(),"ArraySetNumberAt"));
     b.ref_set(RuntimeMember::ArrayLength,b.plan.method1(6,js,0,-3,-5,"ArrayLength"));
     b.ref_set(RuntimeMember::ArraySetLength,b.plan.method2(6,js,0,-1,-5,-3,"ArraySetLength"));
+    Vector<int> push_hint_parameters=Vector<int>::create();push_hint_parameters.push(-5);push_hint_parameters.push(-5);push_hint_parameters.push(-3);
+    b.ref_set(RuntimeMember::ArrayPushOneReserved,b.plan.method(6,js,0,-3,push_hint_parameters.view(),"ArrayPushOneReserved"));
+    b.ref_set(RuntimeMember::ArrayPushOne,b.plan.method2(6,js,0,-3,-5,-5,"ArrayPushOne"));
     b.ref_set(RuntimeMember::ArrayPush,b.plan.method2(6,js,0,-3,-5,-7,"ArrayPush"));
     b.ref_set(RuntimeMember::ArrayAppend,b.plan.method2(6,js,0,-1,-5,-5,"ArrayAppend"));
     b.ref_set(RuntimeMember::ArrayHole,b.plan.method1(6,js,0,-1,-5,"ArrayHole"));

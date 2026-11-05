@@ -193,6 +193,21 @@ public static partial class Js
         if (receiver is JsArray array) array.SetIndex(key, value);
         else Set(receiver, Text(key), value);
     }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double ArrayPushOne(object receiver, object value)
+    {
+        if (receiver is not JsArray array) throw new InvalidOperationException("push requires an array");
+        array.Append(value);
+        return array.Length();
+    }
+    public static double ArrayPushOneReserved(object receiver, object value, double hint)
+    {
+        // Reserve only when the push actually executes, after its argument.
+        // A hint changes capacity, never array length or occupied indices.
+        if (receiver is JsArray array && array.Length() == 0 && hint > 0 && hint <= 1048576)
+            array.ReserveCapacity((int)Math.Ceiling(hint));
+        return ArrayPushOne(receiver, value);
+    }
     public static double ArrayPush(object receiver, object[] values) =>
         receiver is JsArray array ? array.PushMany(values) : throw new InvalidOperationException("push requires an array");
     public static bool ArrayReverseBuiltin(object receiver)
@@ -301,7 +316,7 @@ public static partial class Js
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double ArrayPushNumber(object receiver, double? value) => receiver is NumberArray numbers ? numbers.PushNumber(value) :
-        ArrayPush(receiver, new object[] { BoxNumber(value) });
+        ArrayPushOne(receiver, BoxNumber(value));
     public static double? ArrayPopNumber(object receiver) => receiver is NumberArray numbers ? numbers.PopNumber() :
         Cast<double?>(ArrayPop(receiver), "Array element is not a number");
     public static double[] ArrayTryPacked(object receiver, double limit) => receiver is NumberArray numbers ? numbers.TryPacked(limit) : null;
