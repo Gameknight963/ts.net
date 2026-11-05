@@ -87,6 +87,9 @@ func (b *irBuilder) typ(t *checker.Type) int {
 	case flags&checker.TypeFlagsObject != 0:
 		kind = 6
 	}
+	if len(b.c.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 {
+		kind = 4
+	}
 	if b.c.IsArrayType(t) || checker.IsTupleType(t) {
 		kind = 7
 	}
@@ -251,6 +254,8 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.typ = b.symbols[row.symbol-1].typ
 		row.constant = 1
 		row.left = b.lower(n.Expression())
+	case ast.KindArrowFunction, ast.KindFunctionExpression:
+		return b.functionValue(n)
 	case ast.KindEmptyStatement:
 		id = b.node(12, n, ";")
 	case ast.KindParenthesizedExpression:
@@ -470,6 +475,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			initializer := b.lower(n.Initializer())
 			b.nodes[id-1].left = initializer
 			return id
+		}
+		if n.Kind == ast.KindParameter && n.Name().Kind == ast.KindIdentifier && n.Name().Text() == "this" {
+			return 0
 		}
 		rest := n.Kind == ast.KindParameter && n.AsParameterDeclaration().DotDotDotToken != nil
 		pattern := n.Name().Kind == ast.KindArrayBindingPattern || n.Name().Kind == ast.KindObjectBindingPattern

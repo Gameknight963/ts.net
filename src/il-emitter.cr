@@ -266,7 +266,9 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     else if (n.kind == NodeKind::Boolean) { b.emit(0x20,is_text(get_token(n.token,c).text,&text_true,c) ? 1 : 0);b.call(RuntimeMember::WrapBoolean); }
     else if (n.kind == NodeKind::String) {
         il_text(get_token(n.token,c).text,c,b);
-    } else if (n.kind == NodeKind::Name) {
+    } else if (n.kind==NodeKind::FunctionValue) { il_function_object(n.symbol,c,b); }
+    else if (n.kind == NodeKind::Name) {
+        if (get_symbol(n.symbol,c).function!=0) { il_function_reference(n.symbol,c,b);return; }
         b.load(n.symbol);
         TypeId stored=get_symbol(n.symbol,c).type;
         b.convert(stored,n.type,c);
@@ -342,9 +344,10 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
             }
             b.call(RuntimeMember::Log);
         } else {
-            SymbolId symbol=get_node(n.left,c).symbol;
-            if (symbol==0 || get_symbol(symbol,c).function==0) { fail(n.token,"function value calls need lowering",c); }
-            if (il_flat_parameter_call(entry,c,b)) { return; }
+            SymbolId symbol=il_direct_function(n.left,c,b);
+            if (symbol==0) { il_value_call(entry,c,b);return; }
+            if (get_node(n.left,c).kind==NodeKind::Name && b.global_flags.at(get_node(n.left,c).symbol)!=0) { b.check_global(get_node(n.left,c).symbol); }
+            if (get_node(n.left,c).symbol==symbol && il_flat_parameter_call(entry,c,b)) { return; }
             NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;
             NodeId argument=n.children;
             while (argument != 0) {
@@ -453,6 +456,7 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
         if (il_literal_bindings(entry,c,b)) { return; }
         il_boxed(n.left,c,b);int source=b.local(-5);b.emit(0xfe0e,source);il_binding_pattern(entry,source,c,b);
     } else if (n.kind == NodeKind::Variable) {
+        if (b.function_targets.at(n.symbol)!=0 && b.function_values_needed.at(n.symbol)==0 && b.global_fields.at(n.symbol)==0) { return; }
         if (b.global_fields.at(n.symbol)!=0) {
             Node initial=get_node(n.left,c);
             if (b.global_vars.at(n.symbol)!=0 && initial.kind==NodeKind::Undefined && initial.constant) { return; }
@@ -473,7 +477,7 @@ void il_statement(NodeId entry, TypeId return_type, const Compiler& c, IlBackend
         if (raw==-6) { il_integer(n.left,c,b);b.store_storage(n.symbol); }
         else { il_as(n.left,n.type,c,b);b.store(n.symbol); }
     } else if (n.kind == NodeKind::Return) {
-        if (n.left != 0) { il_as(n.left,return_type,c,b); }
+        if (n.left != 0) { if (b.raw_function_return) { il_number(n.left,c,b); } else { il_as(n.left,return_type,c,b); } }
         else if (b.type(return_type,c)!=-1) { b.empty(return_type,c); }
         b.op(0x2a);
     } else if (n.kind == NodeKind::Expression) {
@@ -494,6 +498,7 @@ void emit_assembly(const char[]& path, Compiler& c) {
     IlBackend b=IlBackend::create(c);il_prove_locals(c,&b);il_prove_scalars(c,&b);il_prove_reversible_arrays(c,&b);il_runtime(&b);il_shapes(c,&b);
     int object_type=b.ref(RuntimeMember::ObjectType);
     int program=b.plan.type("Program",object_type,0x181);
+    il_prepare_function_values(program,c,&b);
     il_globals(program,c,&b);il_infer_scalar_values(c,&b);il_infer_array_values(numeric_array,c,&b);
     NodeId function=c.functions;
     while (function != 0) {
@@ -502,6 +507,14 @@ void emit_assembly(const char[]& path, Compiler& c) {
         Vector<char> name=numbered_name('f',get_symbol(n.symbol,c).id);
         int result_type=b.type(n.type,c);
         b.methods.at_mut(n.symbol)=b.plan.method(5,program,0x16,result_type,parameters.view(),name.view());
+        Vector<char> adapter=numbered_name('a',get_symbol(n.symbol,c).id);
+        b.function_adapters.at_mut(n.symbol)=b.plan.method1(5,program,0x16,-5,-7,adapter.view());
+        if (il_raw_numeric_function(function,c,&b)) {
+            Vector<int> raw_parameters=Vector<int>::create();NodeId p=n.children;
+            while (p!=0) { raw_parameters.push(-3);p=get_node(p,c).next; }
+            Vector<char> raw_name=numbered_name('r',get_symbol(n.symbol,c).id);
+            b.raw_functions.at_mut(n.symbol)=b.plan.method(5,program,0x16,-3,raw_parameters.view(),raw_name.view());
+        }
         NodeId pattern=il_flat_parameter(function,c);
         if (pattern!=0 && il_has_flat_calls(n.symbol,c)) {
             Vector<int> fields=Vector<int>::create();NodeId child=get_node(pattern,c).children;
@@ -549,6 +562,8 @@ void emit_assembly(const char[]& path, Compiler& c) {
         il_flat_parameter_body(function,c,&b);
         function=n.next;
     }
+    function=c.functions;
+    while (function!=0) { il_raw_function_body(function,c,&b);il_function_adapter(function,c,&b);function=get_node(function,c).next; }
     b.begin(main);il_prepare_iteration_vars(0,c,&b); NodeId statement=c.statements;
     while (statement != 0) { il_statement(statement,0,c,&b); statement=get_node(statement,c).next; }
     b.op(0x2a);

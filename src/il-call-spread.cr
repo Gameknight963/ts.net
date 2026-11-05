@@ -1,4 +1,4 @@
-import "il-parameters.cr";
+import "il-functions.cr";
 
 bool il_call_has_spread(NodeId entry, const Compiler& c) {
     NodeId argument=get_node(entry,c).children;
@@ -7,7 +7,7 @@ bool il_call_has_spread(NodeId entry, const Compiler& c) {
 }
 
 bool il_static_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
-    Node call=get_node(entry,c);SymbolId symbol=get_node(call.left,c).symbol;
+    Node call=get_node(entry,c);SymbolId symbol=il_direct_function(call.left,c,b);
     if (symbol==0 || get_symbol(symbol,c).function==0) { return false; }
     NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;NodeId p=parameter;
     while (p!=0) { if (get_node(p,c).third!=0) { return false; }p=get_node(p,c).next; }
@@ -24,15 +24,16 @@ bool il_static_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
     b.emit(0x28,(int)b.function(symbol));b.convert(get_symbol(symbol,c).type,call.type,c);return true;
 }
 
-TypeId il_call_number_type(NodeId entry, const Compiler& c) {
+TypeId il_call_number_type(NodeId entry, const Compiler& c, const IlBackend& b) {
     Node call=get_node(entry,c);Node callee=get_node(call.left,c);
     if (il_array_call(entry,c)) {
         if (is_text(callee.name,&text_slice,c) || is_text(callee.name,&text_reverse,c) || il_array_search(entry,c)) { return 0; }
         TypeId owner=get_node(callee.left,c).type;
         return il_number_array(owner,c) ? get_type(owner,c).element : 0;
     }
-    if (callee.symbol==0 || get_symbol(callee.symbol,c).function==0) { return 0; }
-    NodeId parameter=get_node(get_symbol(callee.symbol,c).function,c).children;TypeId number=0;
+    SymbolId symbol=il_direct_function(call.left,c,b);
+    if (symbol==0) { return 0; }
+    NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;TypeId number=0;
     while (parameter!=0) {
         Node p=get_node(parameter,c);
         if (p.third!=0) {
@@ -62,16 +63,20 @@ void il_append_call_argument(NodeId entry, int array, TypeId number, const Compi
 void il_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
     Node call=get_node(entry,c);Node callee=get_node(call.left,c);int receiver=-1;int reverse_builtin=-1;
     if (callee.symbol!=0 && get_symbol(callee.symbol,c).function!=0 && il_flat_parameter_call(entry,c,b)) { return; }
+    if (il_direct_function(call.left,c,b)!=0 && callee.kind==NodeKind::Name && b.global_flags.at(callee.symbol)!=0) { b.check_global(callee.symbol); }
     if (il_static_spread_call(entry,c,b)) { return; }
     bool array_call=il_array_call(entry,c);
+    bool value_call=!array_call && il_direct_function(call.left,c,b)==0 && !builtin(call.left,&text_console,&text_log,c) && !builtin(call.left,&text_performance,&text_now,c) && !builtin_has_own(call.left,c);
+    int target=-1;if (value_call) { il_boxed(call.left,c,b);target=b.local(-5);b.emit(0xfe0e,target); }
     if (array_call) { il_expression(callee.left,c,b);receiver=b.local(-5);b.emit(0xfe0e,receiver); }
     if (array_call && is_text(callee.name,&text_reverse,c)) {
         b.emit(0xfe0c,receiver);b.call(RuntimeMember::ArrayReverseBuiltin);reverse_builtin=b.local(-2);b.emit(0xfe0e,reverse_builtin);
     }
-    TypeId numeric=il_call_number_type(entry,c);
+    TypeId numeric=il_call_number_type(entry,c,b);
     b.emit(0x20,0);b.emit(0x73,b.ref(numeric!=0 ? RuntimeMember::NumberArrayConstructor : RuntimeMember::ArrayConstructor));
     int array=b.local(-5);b.emit(0xfe0e,array);NodeId argument=call.children;
     while (argument!=0) { il_append_call_argument(argument,array,numeric,c,b);argument=get_node(argument,c).next; }
+    if (value_call) { b.emit(0xfe0c,target);b.emit(0xfe0c,array);b.call(RuntimeMember::CallFunctionArguments);il_function_result(call.type,c,b);return; }
     if (builtin(call.left,&text_console,&text_log,c)) { b.emit(0xfe0c,array);b.call(RuntimeMember::LogArguments);return; }
     if (builtin_has_own(call.left,c)) {
         b.emit(0xfe0c,array);b.emit(0x20,0);b.call(RuntimeMember::ForOfValue);
@@ -99,8 +104,7 @@ void il_spread_call(NodeId entry, const Compiler& c, IlBackend& b) {
         else { b.call(RuntimeMember::ArrayPop);b.from_object(call.type,c); }
         return;
     }
-    SymbolId symbol=callee.symbol;
-    if (symbol==0 || get_symbol(symbol,c).function==0) { fail(call.token,"function value calls need lowering",c); }
+    SymbolId symbol=il_direct_function(call.left,c,b);
     NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;int index=0;
     while (parameter!=0) {
         Node p=get_node(parameter,c);b.emit(0xfe0c,array);b.emit(0x20,index);

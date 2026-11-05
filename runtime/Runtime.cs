@@ -22,7 +22,7 @@ public abstract class TsObject
     }
 }
 
-public static class Js
+public static partial class Js
 {
     public static int Run(Action entry)
     {
@@ -55,6 +55,7 @@ public static class Js
         bool => "boolean",
         double => "number",
         string => "string",
+        JsFunction => "function",
         Delegate => "function",
         _ => ReferenceEquals(value, Undefined) ? "undefined" : "object"
     };

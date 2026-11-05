@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, ReversibleConstructor, ReversibleBufferConstructor, CheckInitialized, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionConstructor, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -52,6 +52,11 @@ struct IlBackend {
     Vector<int> packed_arrays;
     Vector<int> dense_arrays;
     Vector<int> reversible_literals;
+    Vector<int> function_adapters;
+    Vector<int> raw_functions;
+    Vector<int> function_caches;
+    Vector<int> function_targets;
+    Vector<int> function_values_needed;
     Vector<int> iteration_vars;
     Vector<int> scalar_roots;
     Vector<ScalarField> scalar_fields;
@@ -62,6 +67,7 @@ struct IlBackend {
     int label_count;
     int loop_versions;
     bool numeric_globals;
+    bool raw_function_return;
     static Self create(const Compiler& c) {
         size_t types = c.type_store.count() + 1;
         size_t fields = c.field_store.count() + 1;
@@ -74,10 +80,11 @@ struct IlBackend {
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
             .packed_arrays=zero_ids(symbols),.dense_arrays=zero_ids(symbols),
             .reversible_literals=zero_ids(c.node_store.count()+1),
+            .function_adapters=zero_ids(symbols),.raw_functions=zero_ids(symbols),.function_caches=zero_ids(symbols),.function_targets=zero_ids(symbols),.function_values_needed=zero_ids(symbols),
             .iteration_vars=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
-            .method=0, .local_count=0, .label_count=0,.loop_versions=0,.numeric_globals=false};
+            .method=0, .local_count=0, .label_count=0,.loop_versions=0,.numeric_globals=false,.raw_function_return=false};
     }
     int ref(RuntimeMember member) const { return this.runtime.at((size_t)member); }
     int field_token(FieldId id) const { return this.fields.at(id); }
@@ -287,6 +294,33 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::JsType, b.plan.reference("Tsnet.Runtime", "", "Js"));
     b.ref_set(RuntimeMember::TsObjectType, b.plan.reference("Tsnet.Runtime", "", "TsObject"));
     int js = b.ref(RuntimeMember::JsType); int obj = b.ref(RuntimeMember::TsObjectType);
+    int function_body=b.plan.reference("Tsnet.Runtime","","FunctionBody");
+    int function_type=b.plan.reference("Tsnet.Runtime","","JsFunction");
+    int number0=b.plan.reference("Tsnet.Runtime","","NumberFunction0");
+    int number1=b.plan.reference("Tsnet.Runtime","","NumberFunction1");
+    int number2=b.plan.reference("Tsnet.Runtime","","NumberFunction2");
+    int raw0=b.plan.reference("Tsnet.Runtime","","RawNumberFunction0");
+    int raw1=b.plan.reference("Tsnet.Runtime","","RawNumberFunction1");
+    int raw2=b.plan.reference("Tsnet.Runtime","","RawNumberFunction2");
+    b.ref_set(RuntimeMember::FunctionBodyConstructor,b.plan.method2(6,function_body,1,-1,-5,-9,".ctor"));
+    b.ref_set(RuntimeMember::NumberFunction0Constructor,b.plan.method2(6,number0,1,-1,-5,-9,".ctor"));
+    b.ref_set(RuntimeMember::NumberFunction1Constructor,b.plan.method2(6,number1,1,-1,-5,-9,".ctor"));
+    b.ref_set(RuntimeMember::NumberFunction2Constructor,b.plan.method2(6,number2,1,-1,-5,-9,".ctor"));
+    b.ref_set(RuntimeMember::RawNumberFunction0Constructor,b.plan.method2(6,raw0,1,-1,-5,-9,".ctor"));
+    b.ref_set(RuntimeMember::RawNumberFunction1Constructor,b.plan.method2(6,raw1,1,-1,-5,-9,".ctor"));
+    b.ref_set(RuntimeMember::RawNumberFunction2Constructor,b.plan.method2(6,raw2,1,-1,-5,-9,".ctor"));
+    Vector<int> function_parameters=Vector<int>::create();function_parameters.push(-5);function_parameters.push(-5);function_parameters.push(-4);function_parameters.push(-6);
+    b.ref_set(RuntimeMember::FunctionConstructor,b.plan.method(6,function_type,1,-1,function_parameters.view(),".ctor"));
+    b.ref_set(RuntimeMember::FunctionArgument,b.plan.method2(6,js,0,-5,-7,-6,"FunctionArgument"));
+    Vector<int> function_rest=Vector<int>::create();function_rest.push(-7);function_rest.push(-6);function_rest.push(-2);
+    b.ref_set(RuntimeMember::FunctionRest,b.plan.method(6,js,0,-5,function_rest.view(),"FunctionRest"));
+    b.ref_set(RuntimeMember::CallFunction,b.plan.method2(6,js,0,-5,-5,-7,"CallFunction"));
+    b.ref_set(RuntimeMember::CallFunctionArguments,b.plan.method2(6,js,0,-5,-5,-5,"CallFunctionArguments"));
+    b.ref_set(RuntimeMember::CallFunctionNumber0,b.plan.method1(6,js,0,-10,-5,"CallFunctionNumber0"));
+    b.ref_set(RuntimeMember::CallFunctionNumber1,b.plan.method2(6,js,0,-10,-5,-10,"CallFunctionNumber1"));
+    Vector<int> function_number2=Vector<int>::create();function_number2.push(-5);function_number2.push(-10);function_number2.push(-10);
+    b.ref_set(RuntimeMember::CallFunctionNumber2,b.plan.method(6,js,0,-10,function_number2.view(),"CallFunctionNumber2"));
+
     b.ref_set(RuntimeMember::HasOwn,b.plan.method2(6,js,0,-2,-5,-5,"HasOwn"));
     b.ref_set(RuntimeMember::HasOwnNumber,b.plan.method2(6,js,0,-2,-5,-10,"HasOwnNumber"));
     b.ref_set(RuntimeMember::HasOwnIndex,b.plan.method2(6,js,0,-2,-5,-6,"HasOwnIndex"));
