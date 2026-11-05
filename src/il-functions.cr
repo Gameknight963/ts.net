@@ -123,6 +123,29 @@ void il_raw_function_body(NodeId entry, const Compiler& c, IlBackend& b) {
     parameter=f.children;while (parameter!=0) { Node p=get_node(parameter,c);b.raw_slots.at_mut(p.symbol)=0;parameter=p.next; }
 }
 
+// Give the CLR a virtual call it can devirtualize to the function body.
+// Other arities keep the base implementation, including missing arguments.
+void il_function_class(SymbolId symbol, const Compiler& c, IlBackend& b) {
+    int count=il_numeric_function(symbol,c);if (count<0) { return; }
+    Vector<char> name=numbered_name('F',get_symbol(symbol,c).id);
+    int parent=b.ref(RuntimeMember::FunctionType);int type=b.plan.type(name.view(),parent,0x101);
+    Vector<int> parameters=Vector<int>::create();parameters.push(-5);parameters.push(-5);parameters.push(-4);parameters.push(-6);
+    int constructor=b.plan.method(5,type,0x1886,-1,parameters.view(),".ctor");
+    b.function_constructors.at_mut(symbol)=constructor;b.begin(constructor);
+    for (int i=0;i<5;i++) { b.emit(0xfe09,i); }
+    b.call(RuntimeMember::FunctionConstructor);b.op(0x2a);
+    int method=0;
+    if (count==0) { method=b.plan.method0(5,type,0xc6,-10,"InvokeNumber0"); }
+    else if (count==1) { method=b.plan.method1(5,type,0xc6,-10,-10,"InvokeNumber1"); }
+    else { method=b.plan.method2(5,type,0xc6,-10,-10,-10,"InvokeNumber2"); }
+    b.begin(method);
+    int raw=b.raw_functions.at(symbol);
+    for (int i=0;i<count;i++) { b.emit(0xfe09,i+1);if (raw!=0) { b.call(RuntimeMember::NumberValue); } }
+    b.emit(0x28,raw!=0 ? raw : b.function(symbol));
+    if (raw!=0) { b.call(RuntimeMember::WrapNumber); }
+    b.op(0x2a);
+}
+
 void il_function_object(SymbolId symbol, const Compiler& c, IlBackend& b) {
     int adapter=b.function_adapters.at(symbol);b.op(0x14);b.emit(0xfe06,adapter);b.emit(0x73,b.ref(RuntimeMember::FunctionBodyConstructor));
     int numeric=il_numeric_function(symbol,c);
@@ -136,7 +159,8 @@ void il_function_object(SymbolId symbol, const Compiler& c, IlBackend& b) {
     il_text(get_symbol(symbol,c).name,c,b);
     int length=0;NodeId parameter=get_node(get_symbol(symbol,c).function,c).children;
     while (parameter!=0) { Node p=get_node(parameter,c);if (p.left!=0 || p.third!=0) { break; }length++;parameter=p.next; }
-    b.emit(0x20,length);b.emit(0x73,b.ref(RuntimeMember::FunctionConstructor));
+    b.emit(0x20,length);int constructor=b.function_constructors.at(symbol);
+    b.emit(0x73,constructor!=0 ? constructor : b.ref(RuntimeMember::FunctionConstructor));
 }
 
 void il_function_reference(SymbolId symbol, const Compiler& c, IlBackend& b) {

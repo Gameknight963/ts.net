@@ -604,6 +604,8 @@ void emit_assembly(const char[]& path, Compiler& c) {
         }
         function=n.next;
     }
+    function=c.functions;
+    while (function!=0) { Node n=get_node(function,c);il_function_class(n.symbol,c,&b);function=n.next; }
     int main=b.plan.method0(5,program,0x16,-1,"Body");
     int entry=b.plan.method0(5,program,0x16,-6,"Main");
     function=c.functions;

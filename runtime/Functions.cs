@@ -9,7 +9,7 @@ public delegate double RawNumberFunction0();
 public delegate double RawNumberFunction1(double first);
 public delegate double RawNumberFunction2(double first, double second);
 
-public sealed class JsFunction : TsObject
+public class JsFunction : TsObject
 {
     readonly FunctionBody body;
     readonly NumberFunction0 number0;
@@ -40,7 +40,7 @@ public sealed class JsFunction : TsObject
     }
     public object Invoke(object[] arguments) => body(arguments);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public double? InvokeNumber0()
+    public virtual double? InvokeNumber0()
     {
         if (raw0 != null) return raw0();
         if (raw1 != null) return raw1(double.NaN);
@@ -51,7 +51,7 @@ public sealed class JsFunction : TsObject
         return Js.Cast<double?>(body(Array.Empty<object>()), "Function result violates number type");
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public double? InvokeNumber1(double? first)
+    public virtual double? InvokeNumber1(double? first)
     {
         if (raw1 != null) return raw1(Js.NumberValue(first));
         if (raw0 != null) return raw0();
@@ -62,7 +62,7 @@ public sealed class JsFunction : TsObject
         return Js.Cast<double?>(body(new[] { Js.BoxNumber(first) }), "Function result violates number type");
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public double? InvokeNumber2(double? first, double? second)
+    public virtual double? InvokeNumber2(double? first, double? second)
     {
         if (raw2 != null) return raw2(Js.NumberValue(first), Js.NumberValue(second));
         if (raw1 != null) return raw1(Js.NumberValue(first));
