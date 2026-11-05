@@ -12,39 +12,42 @@ public static partial class Js
 
     static string PropertyKey(object value, HashSet<JsArray> active)
     {
-        if (value is TsObject obj) {
-            object primitive = obj;
-            for (int step = 0; step < 2; step++) {
-                string name = step == 0 ? "toString" : "valueOf";
-                if (obj.HasOwn(name)) {
-                    object method = obj.Get(name);
-                    if (method is JsFunction) {
-                        primitive = CallFunction0(method);
-                        if (KeyPrimitive(primitive)) break;
-                    }
-                } else if (step == 0) {
-                    if (obj is JsArray array) {
-                        if (array.HasOwn("join")) {
-                            object join = array.Get("join");
-                            primitive = join is JsFunction ? CallFunction0(join) : "[object Array]";
-                        } else primitive = ArrayKeyString(array, active);
-                    } else if (obj is JsFunction) {
-                        string functionName = obj.Get("name") as string ?? "";
-                        bool identifier = functionName.Length != 0;
-                        for (int i = 0; i < functionName.Length; i++) {
-                            char ch = functionName[i];
-                            if (!(ch is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_' or '$' || i != 0 && ch is >= '0' and <= '9')) identifier = false;
-                        }
-                        primitive = "function " + (identifier ? functionName : "") + "() { [native code] }";
-                    }
-                    else primitive = "[object Object]";
+        if (value is TsObject obj) value = OrdinaryPrimitive(obj, true, active);
+        return value is double number ? NumberKeyString(number) : Text(value);
+    }
+
+    static object OrdinaryPrimitive(TsObject obj, bool stringHint, HashSet<JsArray> active)
+    {
+        object primitive = obj;
+        for (int step = 0; step < 2; step++) {
+            string name = (step == 0) == stringHint ? "toString" : "valueOf";
+            if (obj.HasOwn(name)) {
+                object method = obj.Get(name);
+                if (method is JsFunction) {
+                    primitive = CallFunction0(method);
                     if (KeyPrimitive(primitive)) break;
                 }
+            } else if (name == "toString") {
+                if (obj is JsArray array) {
+                    if (array.HasOwn("join")) {
+                        object join = array.Get("join");
+                        primitive = join is JsFunction ? CallFunction0(join) : "[object Array]";
+                    } else primitive = ArrayKeyString(array, active);
+                } else if (obj is JsFunction) {
+                    string functionName = obj.Get("name") as string ?? "";
+                    bool identifier = functionName.Length != 0;
+                    for (int i = 0; i < functionName.Length; i++) {
+                        char ch = functionName[i];
+                        if (!(ch is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_' or '$' || i != 0 && ch is >= '0' and <= '9')) identifier = false;
+                    }
+                    primitive = "function " + (identifier ? functionName : "") + "() { [native code] }";
+                }
+                else primitive = "[object Object]";
+                if (KeyPrimitive(primitive)) break;
             }
-            if (!KeyPrimitive(primitive)) throw new InvalidOperationException("Cannot convert object to primitive value");
-            value = primitive;
         }
-        return value is double number ? NumberKeyString(number) : Text(value);
+        if (!KeyPrimitive(primitive)) throw new InvalidOperationException("Cannot convert object to primitive value");
+        return primitive;
     }
 
     static string ArrayKeyString(JsArray array, HashSet<JsArray> active)

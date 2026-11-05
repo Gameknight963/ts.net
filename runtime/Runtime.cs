@@ -120,6 +120,7 @@ public static partial class Js
         null => 0,
         bool b => b ? 1 : 0,
         string s => StringNumber(s),
+        TsObject obj => Number(OrdinaryPrimitive(obj, false, null)),
         _ => double.NaN
     };
     public static bool Boolean(object value) => Cast<bool>(value, "Expected boolean");
@@ -336,6 +337,8 @@ public static partial class Js
 
     public static object Add(object left, object right)
     {
+        if (left is TsObject first) left = OrdinaryPrimitive(first, false, null);
+        if (right is TsObject second) right = OrdinaryPrimitive(second, false, null);
         if (left is string || right is string) return Text(left) + Text(right);
         return Number(left) + Number(right);
     }

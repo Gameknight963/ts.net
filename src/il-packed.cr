@@ -45,14 +45,26 @@ bool il_key_may_invoke(Node n, const Compiler& c) {
     return kind!=TypeKind::String && kind!=TypeKind::Number && kind!=TypeKind::Boolean && kind!=TypeKind::Void;
 }
 
+bool il_coercion_may_invoke(Node n, const Compiler& c) {
+    if (n.kind==NodeKind::Unary) {
+        return !is_text(get_token(n.token,c).text,&text_not,c) && il_numeric_coercion_calls(n.left,c);
+    }
+    if (n.kind==NodeKind::Update) { return il_numeric_coercion_calls(n.left,c); }
+    if (n.kind!=NodeKind::Binary && n.kind!=NodeKind::Assign) { return false; }
+    TextId op=get_token(n.token,c).text;
+    if (is_text(op,&text_assign,c) || is_text(op,&text_strict_equal,c) || is_text(op,&text_strict_not_equal,c) ||
+        is_text(op,&text_and,c) || is_text(op,&text_or,c) || il_logical_assignment(op,c)) { return false; }
+    return il_numeric_coercion_calls(n.left,c) || il_numeric_coercion_calls(n.right,c);
+}
+
 SymbolId il_buffer_loop(NodeId entry, SymbolId counter, bool numeric, const Compiler& c, const IlBackend& b) {
     if (counter==0) { return 0; }
     Node loop=get_node(entry,c);NodeId body=loop.fourth;SymbolId array=0;int mode=-1;
     for (size_t i=1;i<=c.node_store.count();i++) {
         Node n=get_node(i,c);
         if (!il_inside(i,body,b)) { continue; }
-        // Explicit calls, key coercion, and nested loops can invalidate the buffer.
-        if (il_key_may_invoke(n,c) || n.kind==NodeKind::Call || n.kind==NodeKind::Function || n.kind==NodeKind::For || n.kind==NodeKind::ForOf || n.kind==NodeKind::While || n.kind==NodeKind::Do) { return 0; }
+        // Explicit or implicit calls and nested loops can invalidate the buffer.
+        if (il_key_may_invoke(n,c) || il_coercion_may_invoke(n,c) || n.kind==NodeKind::Call || n.kind==NodeKind::Function || n.kind==NodeKind::For || n.kind==NodeKind::ForOf || n.kind==NodeKind::While || n.kind==NodeKind::Do) { return 0; }
         if (n.kind==NodeKind::Index) {
             Node receiver=get_node(n.left,c);Node index=get_node(n.right,c);
             if (receiver.kind!=NodeKind::Name || get_type(receiver.type,c).kind!=TypeKind::Array ||
@@ -129,6 +141,7 @@ SymbolId il_loop_accumulator(NodeId entry, const Compiler& c, const IlBackend& b
     for (size_t i=1;i<=c.node_store.count();i++) {
         if (!il_inside(i,body,b)) { continue; }
         Node n=get_node(i,c);
+        if (il_coercion_may_invoke(n,c)) { return 0; }
         if (n.kind!=NodeKind::Block && n.kind!=NodeKind::Expression && n.kind!=NodeKind::If &&
             n.kind!=NodeKind::Name && n.kind!=NodeKind::Number && n.kind!=NodeKind::Boolean && n.kind!=NodeKind::String &&
             n.kind!=NodeKind::Undefined && n.kind!=NodeKind::TypeOf && n.kind!=NodeKind::Index &&
