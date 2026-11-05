@@ -136,6 +136,7 @@ sealed class AssemblyPlan
             case -9: encoder.IntPtr(); break;
             case -10: encoder.GenericInstantiation(nullableType, 1, isValueType: true).AddArgument().Double(); break;
             case -11: encoder.GenericInstantiation(nullableType, 1, isValueType: true).AddArgument().Boolean(); break;
+            case -12: encoder.SZArray().Double(); break;
             default: encoder.Type(Handle(type), isValueType: false); break;
         }
     }
@@ -184,10 +185,11 @@ sealed class AssemblyPlan
                 case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5d:
                 case 0x5f: case 0x60: case 0x61: case 0x62: case 0x63: case 0x64:
                 case 0xfe01: case 0xfe02: case 0xfe03: case 0xfe04: case 0xfe05: pop = 2; push = 1; break;
+                case 0x99: pop = 2; push = 1; break;
                 case 0x65: case 0x66: case 0x69: case 0x6c: case 0x74: case 0x75: case 0x76: case 0x7b:
                 case 0x8c: case 0x8d: case 0xa5: pop = 1; push = 1; break;
                 case 0x7d: pop = 2; break;
-                case 0xa2: pop = 3; break;
+                case 0xa1: case 0xa2: pop = 3; break;
                 case 0x28: case 0x6f: case 0x73:
                     int target = instruction.Operand;
                     if (!methodRows.ContainsKey(target)) target = specifications.First(s => s.Id == target).Method;

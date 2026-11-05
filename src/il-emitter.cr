@@ -71,6 +71,10 @@ void il_load_target(NodeId entry, int receiver, int index, const Compiler& c, Il
     ScalarField scalar=il_scalar_field(entry,c,b);
     if (scalar.slot>=0) { b.emit(0xfe0c,scalar.slot);b.convert(scalar.type,n.type,c);return; }
     if (n.kind==NodeKind::Index) {
+        int packed=il_packed_slot(entry,c,b);
+        if (packed>=0) {
+            b.emit(0xfe0c,packed);b.emit(0xfe0c,index);b.op(0x99);b.call(RuntimeMember::WrapNumber);return;
+        }
         b.emit(0xfe0c,receiver);b.emit(0xfe0c,index);
         if (il_direct_array_index(entry,c,b)) { b.call(RuntimeMember::NumberIndexGetAt); }
         else if (il_number_index(entry,c)) { b.call(RuntimeMember::NumberIndexGet); }
@@ -148,10 +152,16 @@ void il_mutation(NodeId entry, const Compiler& c, IlBackend& b) {
         b.store(target.symbol);
     }
     else if (target.kind==NodeKind::Index) {
-        b.emit(0xfe0c,receiver);b.emit(0xfe0c,index);b.emit(0xfe0c,value);
-        if (il_direct_array_index(n.left,c,b)) { b.call(RuntimeMember::NumberIndexSetAt); }
-        else if (il_number_index(n.left,c)) { b.call(RuntimeMember::NumberIndexSet); }
-        else { b.box(target.type,c);b.call(RuntimeMember::IndexSet); }
+        int packed=il_packed_slot(n.left,c,b);
+        if (packed>=0) {
+            b.emit(0xfe0c,packed);b.emit(0xfe0c,index);b.emit(0xfe0c,value);b.call(RuntimeMember::NumberValue);
+            b.call(RuntimeMember::CanonicalNumber);b.op(0xa1);
+        } else {
+            b.emit(0xfe0c,receiver);b.emit(0xfe0c,index);b.emit(0xfe0c,value);
+            if (il_direct_array_index(n.left,c,b)) { b.call(RuntimeMember::NumberIndexSetAt); }
+            else if (il_number_index(n.left,c)) { b.call(RuntimeMember::NumberIndexSet); }
+            else { b.box(target.type,c);b.call(RuntimeMember::IndexSet); }
+        }
     } else if (scalar.slot>=0) {
         b.emit(0xfe0c,value);b.convert(target.type,scalar.type,c);b.emit(0xfe0e,scalar.slot);
     } else {
@@ -202,6 +212,8 @@ void il_expression(NodeId entry, const Compiler& c, IlBackend& b) {
     }
     else if (n.kind==NodeKind::Array) { il_array_literal(entry,n.type,c,b); }
     else if (n.kind==NodeKind::Index) {
+        int packed=il_packed_slot(entry,c,b);
+        if (packed>=0) { b.emit(0xfe0c,packed);il_integer(n.right,c,b);b.op(0x99);b.call(RuntimeMember::WrapNumber);return; }
         il_expression(n.left,c,b);
         if (il_direct_array_index(entry,c,b)) { il_integer(n.right,c,b);b.call(RuntimeMember::NumberIndexGetAt); }
         else if (il_number_index(entry,c)) { il_number(n.right,c,b);b.call(RuntimeMember::NumberIndexGet); }

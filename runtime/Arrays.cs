@@ -11,6 +11,20 @@ sealed class ArrayStorage<T>
     Dictionary<uint, T> sparse;
     readonly T missing;
     public uint Length;
+    public T[] Dense => dense;
+    public void Reserve(int capacity)
+    {
+        if (capacity <= dense.Length) return;
+        int old = dense.Length;
+        Array.Resize(ref dense, capacity);
+        Array.Fill(dense, missing, old, capacity - old);
+        if (sparse != null)
+        {
+            var keys = new List<uint>(sparse.Keys);
+            foreach (uint key in keys)
+                if (key < (uint)capacity) { dense[key] = sparse[key]; sparse.Remove(key); }
+        }
+    }
     public ArrayStorage(int length, T missing)
     {
         this.missing = missing;
@@ -38,18 +52,10 @@ sealed class ArrayStorage<T>
     [MethodImpl(MethodImplOptions.NoInlining)]
     void SetSlow(uint index, T value)
     {
-        if (index < 1048576 && index <= Math.Max(16u, (uint)dense.Length * 2))
+        if (index < (uint)Array.MaxLength && index <= Math.Max(16u, (uint)dense.Length * 2))
         {
-            int old = dense.Length;
-            int capacity = (int)Math.Max(index + 1, Math.Max(16u, (uint)old * 2));
-            Array.Resize(ref dense, capacity);
-            Array.Fill(dense, missing, old, capacity - old);
-            if (sparse != null)
-            {
-                var keys = new List<uint>(sparse.Keys);
-                foreach (uint key in keys)
-                    if (key < (uint)capacity) { dense[key] = sparse[key]; sparse.Remove(key); }
-            }
+            int capacity = (int)Math.Min((uint)Array.MaxLength, Math.Max(index + 1, Math.Max(16u, (uint)dense.Length * 2)));
+            Reserve(capacity);
             dense[index] = value;
         }
         else (sparse ??= new Dictionary<uint, T>())[index] = value;
@@ -125,6 +131,7 @@ public sealed class NumberArray : JsArray
     const long MissingBits = 0x7ff8000000000001;
     static readonly double Missing = BitConverter.Int64BitsToDouble(MissingBits);
     readonly ArrayStorage<double> numbers;
+    uint packedPrefix;
     public NumberArray(int length) { numbers = new ArrayStorage<double>(length, Missing); }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static double Encode(double? value) => !value.HasValue ? Missing : double.IsNaN(value.Value) ? double.NaN : value.Value;
@@ -132,8 +139,25 @@ public sealed class NumberArray : JsArray
     static double? Decode(double value) => BitConverter.DoubleToInt64Bits(value) == MissingBits ? null : value;
     protected override uint Count => numbers.Length;
     protected override object Read(uint index) => Js.BoxNumber(Decode(numbers.Get(index)));
-    protected override void Write(uint index, object value) => numbers.Set(index, Encode(Js.Cast<double?>(value, "Array write violates number element type")));
-    protected override void Resize(uint length) => numbers.Resize(length);
+    protected override void Write(uint index, object value) => Store(index, Js.Cast<double?>(value, "Array write violates number element type"));
+    protected override void Resize(uint length)
+    {
+        numbers.Resize(length);packedPrefix = Math.Min(packedPrefix, length);
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    void Store(uint index, double? value)
+    {
+        numbers.Set(index, Encode(value));
+        if (!value.HasValue) { if (index < packedPrefix) packedPrefix = index; }
+        else if (index == packedPrefix) packedPrefix++;
+    }
+    public double[] TryPacked(double limit) =>
+        limit >= 0 && limit <= packedPrefix && limit <= numbers.Dense.Length ? numbers.Dense : null;
+    public void ReservePushes(double additions)
+    {
+        if (additions > 0 && additions <= 1048576 && numbers.Length <= 1048576 - Math.Ceiling(additions))
+            numbers.Reserve((int)(numbers.Length + Math.Ceiling(additions)));
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double? GetNumber(double index)
     {
@@ -143,11 +167,11 @@ public sealed class NumberArray : JsArray
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double? GetNumberAt(int index) => Decode(numbers.Get((uint)index));
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetNumberAt(int index, double? value) => numbers.Set((uint)index, Encode(value));
+    public void SetNumberAt(int index, double? value) => Store((uint)index, value);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetNumber(double index, double? value)
     {
-        if (index >= 0 && index < uint.MaxValue && index == (uint)index) numbers.Set((uint)index, Encode(value));
+        if (index >= 0 && index < uint.MaxValue && index == (uint)index) Store((uint)index, value);
         else Set(Js.Text(index), Js.BoxNumber(value));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -155,12 +179,12 @@ public sealed class NumberArray : JsArray
     {
         uint index = numbers.Length;
         if (index == uint.MaxValue) throw new InvalidOperationException("Invalid array length");
-        numbers.Set(index, Encode(value));return numbers.Length;
+        Store(index, value);return numbers.Length;
     }
     public double? PopNumber()
     {
         uint length = numbers.Length;
         if (length == 0) return null;
-        double? value = Decode(numbers.Get(length - 1));numbers.Resize(length - 1);return value;
+        double? value = Decode(numbers.Get(length - 1));Resize(length - 1);return value;
     }
 }

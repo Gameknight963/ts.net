@@ -5,7 +5,7 @@ enum class RuntimeMember {
     Constructor, Get, Set, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
-    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, Count
+    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -43,6 +43,7 @@ struct IlBackend {
     Vector<int> written_symbols;
     Vector<int> nonnegative_ints;
     Vector<int> node_parents;
+    Vector<int> packed_arrays;
     Vector<int> scalar_roots;
     Vector<ScalarField> scalar_fields;
     Vector<int> breaks;
@@ -61,6 +62,7 @@ struct IlBackend {
             .casts=zero_ids(types), .methods=zero_ids(symbols), .slots=empty_slots(symbols),.raw_slots=zero_ids(symbols),
             .numeric_slots=zero_ids(symbols),.numeric_methods=zero_ids(symbols),.written_symbols=zero_ids(symbols),
             .nonnegative_ints=zero_ids(symbols),.node_parents=Vector<int>::create(),
+            .packed_arrays=zero_ids(symbols),
             .scalar_roots=zero_ids(symbols),.scalar_fields=Vector<ScalarField>::create(),
             .breaks=zero_ids(c.node_store.count()+1),.continues=zero_ids(c.node_store.count()+1),
             .method=0, .local_count=0, .label_count=0,.loop_versions=0};
@@ -266,6 +268,9 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::ArrayPop,b.plan.method1(6,js,0,-5,-5,"ArrayPop"));
     b.ref_set(RuntimeMember::NumberPush,b.plan.method2(6,js,0,-3,-5,-10,"ArrayPushNumber"));
     b.ref_set(RuntimeMember::NumberPop,b.plan.method1(6,js,0,-10,-5,"ArrayPopNumber"));
+    b.ref_set(RuntimeMember::ArrayTryPacked,b.plan.method2(6,js,0,-12,-5,-3,"ArrayTryPacked"));
+    b.ref_set(RuntimeMember::ArrayReservePushes,b.plan.method2(6,js,0,-1,-5,-3,"ArrayReservePushes"));
+    b.ref_set(RuntimeMember::CanonicalNumber,b.plan.method1(6,js,0,-3,-3,"CanonicalNumber"));
     b.ref_set(RuntimeMember::EqualBooleans, b.plan.method2(6, js, 0, -2, -11, -11, "EqualBooleans"));
     b.ref_set(RuntimeMember::Number, b.plan.method1(6, js, 0, -3, -5, "Number"));
     b.ref_set(RuntimeMember::Boolean, b.plan.method1(6, js, 0, -2, -5, "Boolean"));

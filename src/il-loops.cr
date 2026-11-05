@@ -1,4 +1,4 @@
-import "il-scalar.cr";
+import "il-packed.cr";
 
 NodeId il_loop_binding(NodeId entry, const Compiler& c) {
     Node loop=get_node(entry,c);
@@ -40,7 +40,7 @@ SymbolId il_counted_loop(NodeId entry, const Compiler& c, const IlBackend& b) {
     return binding.symbol;
 }
 
-void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, const Compiler& c, IlBackend& b) {
+void il_loop_code(NodeId entry, TypeId result, SymbolId counter, int bound, const Compiler& c, IlBackend& b) {
     Node n=get_node(entry,c);
     int start=b.label();int next=b.label();int done=b.label();
     b.breaks.at_mut(entry)=done;b.continues.at_mut(entry)=n.kind==NodeKind::While ? start : next;
@@ -60,6 +60,22 @@ void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, cons
         il_expression(n.third,c,b);if (get_type(get_node(n.third,c).type,c).kind!=TypeKind::Void) { b.op(0x26); }
     }
     b.emit(0x38,start);b.mark(done);
+}
+
+void il_loop_body(NodeId entry, TypeId result, SymbolId counter, int bound, const Compiler& c, IlBackend& b) {
+    if (counter!=0) {
+        SymbolId pushes=il_push_loop(entry,c,b);
+        if (pushes!=0) { b.load(pushes);b.emit(0xfe0c,bound);b.call(RuntimeMember::ArrayReservePushes); }
+    }
+    SymbolId array=il_packed_loop(entry,counter,c,b);
+    if (array==0) { il_loop_code(entry,result,counter,bound,c,b);return; }
+    int snapshot=b.local(-12);int fallback=b.label();int done=b.label();
+    b.load(array);b.emit(0xfe0c,bound);b.call(RuntimeMember::ArrayTryPacked);b.emit(0xfe0e,snapshot);
+    b.emit(0xfe0c,snapshot);b.emit(0x39,fallback);
+    b.packed_arrays.at_mut(array)=snapshot+1;
+    il_loop_code(entry,result,counter,bound,c,b);b.emit(0x38,done);
+    b.packed_arrays.at_mut(array)=0;
+    b.mark(fallback);il_loop_code(entry,result,counter,bound,c,b);b.mark(done);
 }
 
 void il_loop(NodeId entry, TypeId result, const Compiler& c, IlBackend& b) {

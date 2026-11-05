@@ -172,6 +172,13 @@ public static class Js
         ArrayPush(receiver, new object[] { BoxNumber(value) });
     public static double? ArrayPopNumber(object receiver) => receiver is NumberArray numbers ? numbers.PopNumber() :
         Cast<double?>(ArrayPop(receiver), "Array element is not a number");
+    public static double[] ArrayTryPacked(object receiver, double limit) => receiver is NumberArray numbers ? numbers.TryPacked(limit) : null;
+    public static void ArrayReservePushes(object receiver, double additions)
+    {
+        if (receiver is NumberArray numbers) numbers.ReservePushes(additions);
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double CanonicalNumber(double value) => double.IsNaN(value) ? double.NaN : value;
 
     public static object Add(object left, object right)
     {
