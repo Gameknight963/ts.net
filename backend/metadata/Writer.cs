@@ -66,6 +66,7 @@ sealed class AssemblyPlan
     readonly Dictionary<int, MethodRow> methodRows = [];
     readonly Dictionary<int, EntityHandle> handles = [];
     readonly MetadataBuilder metadata = new();
+    TypeReferenceHandle nullableType;
     readonly int entry;
     readonly string name;
 
@@ -133,6 +134,8 @@ sealed class AssemblyPlan
             case -7: encoder.SZArray().Object(); break;
             case -8: encoder.GenericMethodTypeParameter(0); break;
             case -9: encoder.IntPtr(); break;
+            case -10: encoder.GenericInstantiation(nullableType, 1, isValueType: true).AddArgument().Double(); break;
+            case -11: encoder.GenericInstantiation(nullableType, 1, isValueType: true).AddArgument().Boolean(); break;
             default: encoder.Type(Handle(type), isValueType: false); break;
         }
     }
@@ -202,6 +205,7 @@ sealed class AssemblyPlan
             handles.Add(reference.Id, metadata.AddTypeReference(assembly, metadata.GetOrAddString(reference.Namespace), metadata.GetOrAddString(reference.Name)));
         }
         metadata.AddTypeDefinition(0, default, metadata.GetOrAddString("<Module>"), default, MetadataTokens.FieldDefinitionHandle(1), MetadataTokens.MethodDefinitionHandle(1));
+        nullableType = metadata.AddTypeReference(assemblies["System.Runtime"], metadata.GetOrAddString("System"), metadata.GetOrAddString("Nullable`1"));
         int typeIndex = 2, fieldIndex = 1, methodIndex = 1;
         foreach (var type in types)
         {

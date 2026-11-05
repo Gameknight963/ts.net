@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 // Support for operations that cannot be resolved statically. Typed numeric code
 // does not pass through this representation.
@@ -42,8 +43,35 @@ public static class Js
     };
     public static double Now() => Stopwatch.GetTimestamp() * (1000.0 / Stopwatch.Frequency);
 
-    public static T Cast<T>(object value, string message) =>
-        value is T result ? result : throw new InvalidCastException(message);
+    public static T Cast<T>(object value, string message)
+    {
+        if (ReferenceEquals(value, Undefined) && Nullable.GetUnderlyingType(typeof(T)) != null) return default;
+        return value is T result ? result : throw new InvalidCastException(message);
+    }
+
+    // Empty nullable values mean JS undefined; CLR null stays a separate JS value.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double? WrapNumber(double value) => value;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool? WrapBoolean(bool value) => value;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double? EmptyNumber() => null;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool? EmptyBoolean() => null;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object BoxNumber(double? value) => value.HasValue ? (object)value.Value : Undefined;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object BoxBoolean(bool? value) => value.HasValue ? (object)value.Value : Undefined;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double NumberValue(double? value) => value.GetValueOrDefault(double.NaN);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool BooleanValue(bool? value) => value.GetValueOrDefault();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool NumberMissing(double? value) => !value.HasValue;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool BooleanMissing(bool? value) => !value.HasValue;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool NumberTruthy(double? value) => value.HasValue && value.Value != 0 && !double.IsNaN(value.Value);
 
     public static double Number(object value) => value switch
     {
