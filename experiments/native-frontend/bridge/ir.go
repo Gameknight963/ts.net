@@ -151,20 +151,31 @@ func (b *irBuilder) symbol(n *ast.Node) int {
 	if n.Parent != nil && n.Parent.Kind == ast.KindShorthandPropertyAssignment {
 		s = b.c.GetShorthandAssignmentValueSymbol(n.Parent)
 	}
+	return b.symbolFor(s, n.Text())
+}
+
+func (b *irBuilder) symbolFor(s *ast.Symbol, name string) int {
 	if s == nil {
 		return 0
 	}
-	if s.Flags&ast.SymbolFlagsAlias != 0 {
-		s = b.c.GetAliasedSymbol(s)
-	}
 	if id := b.symbolIDs[s]; id != 0 {
+		if id < 0 {
+			panic("cyclic runtime value alias")
+		}
 		return id
 	}
-	b.symbols = append(b.symbols, irSymbol{name: b.text(n.Text()), typ: b.typ(b.c.GetTypeOfSymbol(s))})
+	if s.Flags&ast.SymbolFlagsAlias != 0 && !defaultSnapshot(s) {
+		b.symbolIDs[s] = -1
+		id := b.symbolFor(b.c.GetImmediateAliasedSymbol(s), name)
+		b.symbolIDs[s] = id
+		return id
+	}
+	b.symbols = append(b.symbols, irSymbol{name: b.text(name), typ: b.typ(b.c.GetTypeOfSymbol(s))})
 	id := len(b.symbols)
 	b.symbolIDs[s] = id
 	return id
 }
+
 func (b *irBuilder) token(n *ast.Node, text string) int {
 	pos := n.Pos()
 	source := b.file.Text()
@@ -229,6 +240,17 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	switch n.Kind {
 	case ast.KindInterfaceDeclaration, ast.KindTypeAliasDeclaration, ast.KindImportDeclaration, ast.KindExportDeclaration:
 		return 0
+	case ast.KindExportAssignment:
+		if n.AsExportAssignment().IsExportEquals {
+			b.unsupported(n)
+		}
+		id = b.node(13, n, "default")
+		row = b.nodes[id-1]
+		row.name = b.text("default")
+		row.symbol = b.symbolFor(n.Symbol(), "default")
+		row.typ = b.symbols[row.symbol-1].typ
+		row.constant = 1
+		row.left = b.lower(n.Expression())
 	case ast.KindEmptyStatement:
 		id = b.node(12, n, ";")
 	case ast.KindParenthesizedExpression:
@@ -716,13 +738,17 @@ func exportIR(s *session) (result []byte, err error) {
 			if n.Kind != ast.KindFunctionDeclaration || n.Body() == nil {
 				continue
 			}
+			name := "default"
+			symbol := 0
 			if n.Name() == nil {
-				b.unsupported(n)
+				symbol = b.symbolFor(n.Symbol(), name)
+			} else {
+				name = n.Name().Text()
+				symbol = b.symbol(n.Name())
 			}
-			id := b.node(19, n, n.Name().Text())
-			symbol := b.symbol(n.Name())
+			id := b.node(19, n, name)
 			typ := b.typ(c.GetReturnTypeOfSignature(c.GetSignatureFromDeclaration(n)))
-			b.nodes[id-1].name = b.text(n.Name().Text())
+			b.nodes[id-1].name = b.text(name)
 			b.nodes[id-1].symbol = symbol
 			b.nodes[id-1].typ = typ
 			b.symbols[symbol-1].typ = typ

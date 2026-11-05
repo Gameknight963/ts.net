@@ -77,3 +77,13 @@ func (b *irBuilder) moduleFiles(s *session) []*ast.SourceFile {
 	visit(s.file)
 	return ordered
 }
+
+// Export assignments evaluate a value once. Export specifiers keep live aliases.
+func defaultSnapshot(symbol *ast.Symbol) bool {
+	for _, declaration := range symbol.Declarations {
+		if declaration.Kind == ast.KindExportAssignment && !declaration.AsExportAssignment().IsExportEquals {
+			return true
+		}
+	}
+	return false
+}
