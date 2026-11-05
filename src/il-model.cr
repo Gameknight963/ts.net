@@ -6,7 +6,7 @@ enum class RuntimeMember {
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, Count
+    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, Count
 };
 
 Vector<int> zero_ids(size_t count) {
@@ -306,6 +306,7 @@ void il_runtime(IlBackend& b) {
     b.ref_set(RuntimeMember::IsUndefined,b.plan.method1(6,js,0,-2,-5,"IsUndefined"));
     b.ref_set(RuntimeMember::IsNullish,b.plan.method1(6,js,0,-2,-5,"IsNullish"));
     b.ref_set(RuntimeMember::RequireObject,b.plan.method1(6,js,0,-1,-5,"RequireObject"));
+    b.ref_set(RuntimeMember::LoopLimit,b.plan.method1(6,js,0,-6,-3,"LoopLimit"));
     b.ref_set(RuntimeMember::TypeOf, b.plan.method1(6, js, 0, -4, -5, "TypeOf"));
     b.ref_set(RuntimeMember::Text, b.plan.method1(6, js, 0, -4, -5, "Text"));
     b.ref_set(RuntimeMember::DynamicGet, b.plan.method2(6, js, 0, -5, -5, -4, "Get"));

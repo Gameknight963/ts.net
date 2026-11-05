@@ -46,11 +46,13 @@ void il_loop_code(NodeId entry, TypeId result, SymbolId counter, int bound, cons
     int start=b.label();int next=b.label();int done=b.label();
     b.breaks.at_mut(entry)=done;b.continues.at_mut(entry)=n.kind==NodeKind::While ? start : next;
     if (n.kind==NodeKind::For && n.left!=0) { il_statement(n.left,result,c,b); }
+    int stop=-1;
+    if (counter!=0) { stop=b.local(-6);b.emit(0xfe0c,bound);b.call(RuntimeMember::LoopLimit);b.emit(0xfe0e,stop); }
     b.mark(start);
     if (n.kind!=NodeKind::Do) {
         NodeId condition=n.kind==NodeKind::While ? n.left : n.right;
         if (counter!=0) {
-            b.load_storage(counter);b.op(0x6c);b.emit(0xfe0c,bound);b.op(0xfe04);b.emit(0x39,done);
+            b.load_storage(counter);b.emit(0xfe0c,stop);b.op(0xfe04);b.emit(0x39,done);
         } else if (condition!=0) { il_condition(condition,c,b);b.emit(0x39,done); }
     }
     il_statement(n.kind==NodeKind::For ? n.fourth : n.right,result,c,b);b.mark(next);

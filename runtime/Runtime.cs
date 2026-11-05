@@ -36,6 +36,8 @@ public static class Js
     {
         if (IsNullish(value)) throw new InvalidOperationException("Cannot destructure null or undefined");
     }
+    // Called only after the compiler guards the upper bound and excludes NaN.
+    public static int LoopLimit(double bound) => bound > 0 ? (int)Math.Ceiling(bound) : 0;
     public static string TypeOf(object value) => value switch
     {
         null => "object",

@@ -68,3 +68,11 @@ function nestedDynamic(count: number, inner: number) {
     return total;
 }
 console.log(nestedDynamic(9, 9), nestedDynamic(2147483648, 9), nestedDynamic(9, 2147483648));
+function roundedBound(bound: number) {
+    let visits = 0;
+    for (let i = 0; i < bound; i++) { visits++; if (visits === 4) break; }
+    return visits;
+}
+console.log(roundedBound(0), roundedBound(-0), roundedBound(-1), roundedBound(-1 / 0));
+console.log(roundedBound(0.1), roundedBound(1.1), roundedBound(2.9), roundedBound(0 / 0));
+console.log(roundedBound(2147483646.5), roundedBound(2147483647), roundedBound(2147483648), roundedBound(1 / 0));
