@@ -92,15 +92,18 @@ void il_prove_scalars(const Compiler& c, IlBackend& b) {
             Node container=get_node((NodeId)parents.at(parent_id),c);
             TypeId actual=get_node(get_node(definition,c).left,c).type;
             FieldId original=field(actual,parent.name,c);FieldId view=0;
-            if (get_type(n.type,c).kind==TypeKind::Any) {
-                if (original!=0 && get_type(get_field(original,c).type,c).kind==TypeKind::Number) {
-                    // Keep dynamic setters for writes that might violate the
-                    // field's contract, including their existing failure path.
-                    if (container.kind==NodeKind::Assign && container.left==parent_id && (is_text(get_token(container.token,c).text,&text_assign,c) || is_text(get_token(container.token,c).text,&text_and_assign,c) || is_text(get_token(container.token,c).text,&text_or_assign,c) || is_text(get_token(container.token,c).text,&text_nullish_assign,c)) && !scalar_numeric_value(container.right,&definitions,b,c)) { invalid.at_mut(root)=1;continue; }
-                    if (container.kind==NodeKind::Assign && is_text(get_token(container.token,c).text,&text_add_assign,c) && get_type(get_node(container.right,c).type,c).kind!=TypeKind::Number) { invalid.at_mut(root)=1;continue; }
-                    view=original;
-                }
-            } else { view=field(n.type,parent.name,c); }
+            TypeKind owner_kind=get_type(n.type,c).kind;
+            if (owner_kind!=TypeKind::Any) { view=field(n.type,parent.name,c); }
+            bool wide=owner_kind==TypeKind::Any;
+            if (view!=0) {
+                TypeKind view_kind=get_type(get_field(view,c).type,c).kind;
+                wide=view_kind==TypeKind::Any || view_kind==TypeKind::Unknown;
+            }
+            if (wide && original!=0 && get_type(get_field(original,c).type,c).kind==TypeKind::Number) {
+                // Unknown writes keep the checked setter's existing failure path.
+                if (container.kind==NodeKind::Assign && container.left==parent_id && (is_text(get_token(container.token,c).text,&text_assign,c) || is_text(get_token(container.token,c).text,&text_and_assign,c) || is_text(get_token(container.token,c).text,&text_or_assign,c) || is_text(get_token(container.token,c).text,&text_nullish_assign,c) || is_text(get_token(container.token,c).text,&text_add_assign,c)) && !scalar_numeric_value(container.right,&definitions,b,c)) { invalid.at_mut(root)=1;continue; }
+                view=original;
+            }
             if (container.kind!=NodeKind::Object && original!=0 && view!=0) {
                 TypeId original_type=get_field(original,c).type;TypeId view_type=get_field(view,c).type;
                 if (original_type==view_type || (get_type(original_type,c).kind==TypeKind::Array && get_type(view_type,c).kind==TypeKind::Array)) { continue; }
