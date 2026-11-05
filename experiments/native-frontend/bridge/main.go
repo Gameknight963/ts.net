@@ -228,3 +228,31 @@ func tsnet_close_file(handle C.uint64_t) C.int {
 func tsnet_free_buffer(buffer *C.char) { C.free(unsafe.Pointer(buffer)) }
 
 func main() {}
+
+//export tsnet_export_ir
+func tsnet_export_ir(handle C.uint64_t, output **C.char, length *C.int) (status C.int) {
+	if output != nil {
+		*output = nil
+	}
+	if length != nil {
+		*length = 0
+	}
+	if output == nil || length == nil {
+		return invalidArgument
+	}
+	defer recoverExport(output, &status)
+	registry.Lock()
+	defer registry.Unlock()
+	s, found := registry.sessions[uint64(handle)]
+	if !found {
+		return invalidHandle
+	}
+	data, err := exportIR(s)
+	if err != nil {
+		data = []byte(err.Error())
+		status = compilerFailure
+	}
+	*output = (*C.char)(C.CBytes(data))
+	*length = C.int(len(data))
+	return status
+}

@@ -1,0 +1,476 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/binary"
+	"fmt"
+	"math/big"
+	"strconv"
+	"strings"
+	"unicode"
+
+	"github.com/microsoft/typescript-go/internal/ast"
+	"github.com/microsoft/typescript-go/internal/checker"
+)
+
+// Versioned, pointer-free typed IR. Display strings are never used as types.
+type irType struct{ kind, name, fields int }
+type irField struct{ name, typ, next int }
+type irToken struct{ text, line, column int }
+type irNode struct{ kind, token, name, typ, left, right, third, fourth, children, next, symbol, constant int }
+type irSymbol struct{ name, typ, function int }
+type irBuilder struct {
+	c                     *checker.Checker
+	file                  *ast.SourceFile
+	texts                 []string
+	textIDs               map[string]int
+	types                 []irType
+	typeIDs               map[*checker.Type]int
+	primitives            map[int]int
+	fields                []irField
+	tokens                []irToken
+	nodes                 []irNode
+	symbols               []irSymbol
+	symbolIDs             map[*ast.Symbol]int
+	functions, statements int
+}
+
+func (b *irBuilder) text(s string) int {
+	if id := b.textIDs[s]; id != 0 {
+		return id
+	}
+	b.texts = append(b.texts, s)
+	id := len(b.texts)
+	b.textIDs[s] = id
+	return id
+}
+func (b *irBuilder) typ(t *checker.Type) int {
+	if t == nil {
+		t = b.c.GetAnyType()
+	}
+	t = b.c.GetBaseTypeOfLiteralType(t)
+	if id := b.typeIDs[t]; id != 0 {
+		return id
+	}
+	flags := t.Flags()
+	kind := 4
+	switch {
+	case flags&checker.TypeFlagsNumberLike != 0:
+		kind = 0
+	case flags&checker.TypeFlagsStringLike != 0:
+		kind = 1
+	case flags&checker.TypeFlagsBooleanLike != 0:
+		kind = 2
+	case flags&checker.TypeFlagsVoid != 0:
+		kind = 3
+	case flags&checker.TypeFlagsUnknown != 0:
+		kind = 5
+	case flags&checker.TypeFlagsObject != 0:
+		kind = 6
+	}
+	if kind != 6 {
+		if id := b.primitives[kind]; id != 0 {
+			b.typeIDs[t] = id
+			return id
+		}
+	}
+	b.types = append(b.types, irType{kind: kind})
+	id := len(b.types)
+	b.typeIDs[t] = id
+	if kind != 6 {
+		b.primitives[kind] = id
+		return id
+	}
+	last := 0
+	for _, property := range b.c.GetPropertiesOfType(t) {
+		name := b.text(ast.SymbolName(property))
+		typ := b.typ(b.c.GetTypeOfSymbol(property))
+		b.fields = append(b.fields, irField{name: name, typ: typ})
+		fid := len(b.fields)
+		if last == 0 {
+			b.types[id-1].fields = fid
+		} else {
+			b.fields[last-1].next = fid
+		}
+		last = fid
+	}
+	return id
+}
+func (b *irBuilder) symbol(n *ast.Node) int {
+	s := b.c.GetSymbolAtLocation(n)
+	if n.Parent != nil && n.Parent.Kind == ast.KindShorthandPropertyAssignment {
+		s = b.c.GetShorthandAssignmentValueSymbol(n.Parent)
+	}
+	if s == nil {
+		return 0
+	}
+	if id := b.symbolIDs[s]; id != 0 {
+		return id
+	}
+	b.symbols = append(b.symbols, irSymbol{name: b.text(n.Text()), typ: b.typ(b.c.GetTypeOfSymbol(s))})
+	id := len(b.symbols)
+	b.symbolIDs[s] = id
+	return id
+}
+func (b *irBuilder) token(n *ast.Node, text string) int {
+	pos := n.Pos()
+	source := b.file.Text()
+	if pos < 0 {
+		pos = 0
+	}
+	if pos > len(source) {
+		pos = len(source)
+	}
+	pos += len(source[pos:]) - len(strings.TrimLeftFunc(source[pos:], unicode.IsSpace))
+	prefix := source[:pos]
+	line := strings.Count(prefix, "\n") + 1
+	column := pos - strings.LastIndex(prefix, "\n")
+	b.tokens = append(b.tokens, irToken{b.text(text), line, column})
+	return len(b.tokens)
+}
+func (b *irBuilder) node(kind int, n *ast.Node, text string) int {
+	b.nodes = append(b.nodes, irNode{kind: kind, token: b.token(n, text)})
+	return len(b.nodes)
+}
+func (b *irBuilder) unsupported(n *ast.Node) {
+	id := b.token(n, n.Kind.String())
+	location := b.tokens[id-1]
+	panic(fmt.Sprintf("%s(%d,%d): unsupported lowering for %s", b.file.FileName(), location.line, location.column, n.Kind.String()))
+}
+func (b *irBuilder) list(nodes []*ast.Node) int {
+	first, last := 0, 0
+	for _, n := range nodes {
+		id := b.lower(n)
+		if id == 0 {
+			continue
+		}
+		if first == 0 {
+			first = id
+		} else {
+			b.nodes[last-1].next = id
+		}
+		last = id
+	}
+	return first
+}
+
+var operators = map[ast.Kind]string{
+	ast.KindPlusToken: "+", ast.KindMinusToken: "-", ast.KindAsteriskToken: "*", ast.KindSlashToken: "/", ast.KindPercentToken: "%",
+	ast.KindEqualsToken: "=", ast.KindPlusEqualsToken: "+=", ast.KindMinusEqualsToken: "-=", ast.KindAsteriskEqualsToken: "*=", ast.KindSlashEqualsToken: "/=",
+	ast.KindEqualsEqualsEqualsToken: "===", ast.KindExclamationEqualsEqualsToken: "!==", ast.KindLessThanToken: "<", ast.KindGreaterThanToken: ">",
+	ast.KindLessThanEqualsToken: "<=", ast.KindGreaterThanEqualsToken: ">=", ast.KindAmpersandAmpersandToken: "&&", ast.KindBarBarToken: "||",
+	ast.KindExclamationToken: "!", ast.KindPlusPlusToken: "++", ast.KindMinusMinusToken: "--",
+}
+
+func (b *irBuilder) lower(n *ast.Node) int {
+	if n == nil {
+		return 0
+	}
+	var row irNode
+	id := 0
+	switch n.Kind {
+	case ast.KindInterfaceDeclaration, ast.KindTypeAliasDeclaration:
+		return 0
+	case ast.KindEmptyStatement:
+		id = b.node(12, n, ";")
+	case ast.KindParenthesizedExpression:
+		return b.lower(n.Expression())
+	case ast.KindNumericLiteral:
+		text := strings.ReplaceAll(n.Text(), "_", "")
+		if len(text) > 2 && text[0] == '0' && strings.ContainsAny(text[1:2], "xXbBoO") {
+			integer, ok := new(big.Int).SetString(text, 0)
+			if !ok {
+				b.unsupported(n)
+			}
+			value, _ := new(big.Float).SetInt(integer).Float64()
+			text = strconv.FormatFloat(value, 'g', -1, 64)
+		}
+		id = b.node(0, n, text)
+	case ast.KindStringLiteral, ast.KindNoSubstitutionTemplateLiteral:
+		id = b.node(1, n, n.Text())
+	case ast.KindTrueKeyword, ast.KindFalseKeyword:
+		id = b.node(2, n, map[bool]string{true: "true", false: "false"}[n.Kind == ast.KindTrueKeyword])
+	case ast.KindIdentifier:
+		if b.c.GetSymbolAtLocation(n) == b.c.GetUndefinedSymbol() {
+			id = b.node(20, n, "undefined")
+			break
+		}
+		id = b.node(3, n, n.Text())
+		row = b.nodes[id-1]
+		row.name = b.text(n.Text())
+		row.symbol = b.symbol(n)
+	case ast.KindNullKeyword:
+		id = b.node(21, n, "null")
+	case ast.KindConditionalExpression:
+		expr := n.AsConditionalExpression()
+		id = b.node(22, n, "?")
+		row = b.nodes[id-1]
+		row.left = b.lower(expr.Condition)
+		row.right = b.lower(expr.WhenTrue)
+		row.third = b.lower(expr.WhenFalse)
+	case ast.KindTypeOfExpression:
+		id = b.node(23, n, "typeof")
+		row = b.nodes[id-1]
+		row.left = b.lower(n.Expression())
+	case ast.KindVoidExpression:
+		id = b.node(20, n, "void")
+		row = b.nodes[id-1]
+		row.left = b.lower(n.Expression())
+	case ast.KindObjectLiteralExpression:
+		id = b.node(4, n, "{")
+		row = b.nodes[id-1]
+		row.children = b.list(n.AsObjectLiteralExpression().Properties.Nodes)
+	case ast.KindPropertyAssignment, ast.KindShorthandPropertyAssignment:
+		id = b.node(5, n, n.Name().Text())
+		row = b.nodes[id-1]
+		row.name = b.text(n.Name().Text())
+		if n.Kind == ast.KindPropertyAssignment {
+			row.left = b.lower(n.Initializer())
+		} else {
+			row.left = b.lower(n.Name())
+		}
+	case ast.KindPropertyAccessExpression:
+		if n.AsPropertyAccessExpression().QuestionDotToken != nil {
+			b.unsupported(n)
+		}
+		id = b.node(5, n, n.Name().Text())
+		row = b.nodes[id-1]
+		row.name = b.text(n.Name().Text())
+		row.left = b.lower(n.Expression())
+	case ast.KindCallExpression:
+		call := n.AsCallExpression()
+		id = b.node(6, n, "(")
+		row = b.nodes[id-1]
+		if call.Expression.Kind == ast.KindPropertyAccessExpression && call.Expression.Expression().Kind == ast.KindIdentifier &&
+			(call.Expression.Expression().Text() == "console" || call.Expression.Expression().Text() == "performance") {
+			owner := b.node(3, call.Expression.Expression(), call.Expression.Expression().Text())
+			b.nodes[owner-1].name = b.text(call.Expression.Expression().Text())
+			property := b.node(5, call.Expression, call.Expression.Name().Text())
+			b.nodes[property-1].name = b.text(call.Expression.Name().Text())
+			b.nodes[property-1].left = owner
+			row.left = property
+		} else {
+			row.left = b.lower(call.Expression)
+		}
+		row.children = b.list(call.Arguments.Nodes)
+	case ast.KindBinaryExpression:
+		expr := n.AsBinaryExpression()
+		op := operators[expr.OperatorToken.Kind]
+		if op == "" {
+			b.unsupported(n)
+		}
+		kind := 7
+		if expr.OperatorToken.Kind >= ast.KindFirstAssignment && expr.OperatorToken.Kind <= ast.KindLastAssignment {
+			kind = 10
+			if op != "=" && (b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Left)).Flags()&checker.TypeFlagsNumberLike == 0 || b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Right)).Flags()&checker.TypeFlagsNumberLike == 0) {
+				b.unsupported(n)
+			}
+		}
+		id = b.node(kind, n, op)
+		row = b.nodes[id-1]
+		row.left = b.lower(expr.Left)
+		row.right = b.lower(expr.Right)
+	case ast.KindPrefixUnaryExpression:
+		expr := n.AsPrefixUnaryExpression()
+		op := operators[expr.Operator]
+		if op == "" || op == "++" || op == "--" {
+			b.unsupported(n)
+		}
+		id = b.node(8, n, op)
+		row = b.nodes[id-1]
+		row.left = b.lower(expr.Operand)
+	case ast.KindPostfixUnaryExpression:
+		expr := n.AsPostfixUnaryExpression()
+		if b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Operand)).Flags()&checker.TypeFlagsNumberLike == 0 {
+			b.unsupported(n)
+		}
+		id = b.node(11, n, operators[expr.Operator])
+		row = b.nodes[id-1]
+		row.left = b.lower(expr.Operand)
+	case ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+		id = b.node(9, n, "as")
+		row = b.nodes[id-1]
+		row.left = b.lower(n.Expression())
+	case ast.KindBlock:
+		id = b.node(12, n, "{")
+		row = b.nodes[id-1]
+		row.children = b.list(n.AsBlock().Statements.Nodes)
+	case ast.KindVariableStatement:
+		return b.lower(n.AsVariableStatement().DeclarationList)
+	case ast.KindVariableDeclarationList:
+		declarations := n.AsVariableDeclarationList().Declarations.Nodes
+		if len(declarations) == 1 {
+			return b.lower(declarations[0])
+		}
+		id = b.node(12, n, "{")
+		row = b.nodes[id-1]
+		row.children = b.list(declarations)
+	case ast.KindVariableDeclaration, ast.KindParameter:
+		if n.Kind == ast.KindParameter && (n.Initializer() != nil || n.AsParameterDeclaration().DotDotDotToken != nil) {
+			b.unsupported(n)
+		}
+		if n.Name().Kind != ast.KindIdentifier {
+			b.unsupported(n)
+		}
+		id = b.node(13, n, n.Name().Text())
+		row = b.nodes[id-1]
+		row.name = b.text(n.Name().Text())
+		row.symbol = b.symbol(n.Name())
+		row.left = b.lower(n.Initializer())
+		row.typ = b.typ(b.c.GetTypeAtLocation(n.Name()))
+		b.symbols[row.symbol-1].typ = row.typ
+		if n.Initializer() == nil && n.Kind == ast.KindVariableDeclaration {
+			if b.types[row.typ-1].kind != 4 {
+				b.unsupported(n)
+			}
+			row.left = b.node(20, n, "undefined")
+			b.nodes[row.left-1].typ = b.typ(b.c.GetUndefinedType())
+		}
+		if ast.GetCombinedNodeFlags(n)&ast.NodeFlagsConst != 0 {
+			row.constant = 1
+		}
+	case ast.KindReturnStatement:
+		id = b.node(14, n, "return")
+		row = b.nodes[id-1]
+		row.left = b.lower(n.Expression())
+	case ast.KindIfStatement:
+		s := n.AsIfStatement()
+		id = b.node(15, n, "if")
+		row = b.nodes[id-1]
+		row.left = b.lower(s.Expression)
+		row.right = b.lower(s.ThenStatement)
+		row.third = b.lower(s.ElseStatement)
+	case ast.KindWhileStatement:
+		s := n.AsWhileStatement()
+		id = b.node(16, n, "while")
+		row = b.nodes[id-1]
+		row.left = b.lower(s.Expression)
+		row.right = b.lower(s.Statement)
+	case ast.KindForStatement:
+		s := n.AsForStatement()
+		if s.Initializer == nil || s.Condition == nil || s.Incrementor == nil {
+			b.unsupported(n)
+		}
+		id = b.node(17, n, "for")
+		row = b.nodes[id-1]
+		row.left = b.lower(s.Initializer)
+		row.right = b.lower(s.Condition)
+		row.third = b.lower(s.Incrementor)
+		row.fourth = b.lower(s.Statement)
+	case ast.KindExpressionStatement:
+		id = b.node(18, n, ";")
+		row = b.nodes[id-1]
+		row.left = b.lower(n.Expression())
+	default:
+		b.unsupported(n)
+	}
+	if row.token == 0 {
+		row = b.nodes[id-1]
+	}
+	if row.typ == 0 && (row.kind <= 11 || row.kind >= 20) {
+		row.typ = b.typ(b.c.GetTypeAtLocation(n))
+	}
+	if row.kind == 20 {
+		row.typ = b.typ(b.c.GetUndefinedType())
+	}
+	b.nodes[id-1] = row
+	return id
+}
+func exportIR(s *session) (result []byte, err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			err = fmt.Errorf("%v", failure)
+		}
+	}()
+	c, release := s.program.GetTypeCheckerForFileExclusive(context.Background(), s.file)
+	defer release()
+	b := &irBuilder{c: c, file: s.file, textIDs: map[string]int{}, typeIDs: map[*checker.Type]int{}, primitives: map[int]int{}, symbolIDs: map[*ast.Symbol]int{}}
+	functions := map[*ast.Node]int{}
+	last := 0
+	for _, n := range s.file.Statements.Nodes {
+		if n.Kind != ast.KindFunctionDeclaration || n.Body() == nil {
+			continue
+		}
+		id := b.node(19, n, n.Name().Text())
+		symbol := b.symbol(n.Name())
+		typ := b.typ(c.GetReturnTypeOfSignature(c.GetSignatureFromDeclaration(n)))
+		b.nodes[id-1].name = b.text(n.Name().Text())
+		b.nodes[id-1].symbol = symbol
+		b.nodes[id-1].typ = typ
+		b.symbols[symbol-1].typ = typ
+		b.symbols[symbol-1].function = id
+		functions[n] = id
+		if last == 0 {
+			b.functions = id
+		} else {
+			b.nodes[last-1].next = id
+		}
+		last = id
+	}
+	for _, n := range s.file.Statements.Nodes {
+		if id := functions[n]; id != 0 {
+			children := b.list(n.Parameters())
+			body := b.lower(n.Body())
+			b.nodes[id-1].children = children
+			b.nodes[id-1].left = body
+		}
+	}
+	last = 0
+	for _, n := range s.file.Statements.Nodes {
+		if n.Kind == ast.KindFunctionDeclaration {
+			continue
+		}
+		id := b.lower(n)
+		if id == 0 {
+			continue
+		}
+		if last == 0 {
+			b.statements = id
+		} else {
+			b.nodes[last-1].next = id
+		}
+		last = id
+	}
+	var data bytes.Buffer
+	put := func(v int) { _ = binary.Write(&data, binary.LittleEndian, int32(v)) }
+	put(0x31524954)
+	put(len(b.texts))
+	for _, text := range b.texts {
+		put(len(text))
+		data.WriteString(text)
+	}
+	put(len(b.types))
+	for _, t := range b.types {
+		put(t.kind)
+		put(t.name)
+		put(t.fields)
+	}
+	put(len(b.fields))
+	for _, f := range b.fields {
+		put(f.name)
+		put(f.typ)
+		put(f.next)
+	}
+	put(len(b.tokens))
+	for _, t := range b.tokens {
+		put(t.text)
+		put(t.line)
+		put(t.column)
+	}
+	put(len(b.nodes))
+	for _, n := range b.nodes {
+		for _, v := range []int{n.kind, n.token, n.name, n.typ, n.left, n.right, n.third, n.fourth, n.children, n.next, n.symbol, n.constant} {
+			put(v)
+		}
+	}
+	put(len(b.symbols))
+	for _, symbol := range b.symbols {
+		put(symbol.name)
+		put(symbol.typ)
+		put(symbol.function)
+	}
+	put(b.functions)
+	put(b.statements)
+	return data.Bytes(), nil
+}

@@ -10,6 +10,20 @@ unsafe extern int tsnet_open_file(char* path, uint64_t* handle, char** output);
 unsafe extern int tsnet_inspect_binding(uint64_t handle, char* name, char** output);
 unsafe extern int tsnet_close_file(uint64_t handle);
 unsafe extern void tsnet_free_buffer(char* buffer);
+unsafe extern int tsnet_export_ir(uint64_t handle, char** output, int* length);
+
+struct FrontendIr {
+    private char* data;
+    private int length;
+    private int status;
+    static unsafe Self take_native(char* data, int length, int status) {
+        if (length < 0 || (length != 0 && data == 0)) { abort(); }
+        return (Self){.data=data,.length=length,.status=status};
+    }
+    int code() const { return this.status; }
+    const char[]& view() const { unsafe { return slice(this.data,(size_t)this.length); } }
+    ~FrontendIr() { unsafe { tsnet_free_buffer(this.data); } }
+};
 
 static size_t text_length(const char[]& text) {
     size_t length = text.length;
@@ -132,6 +146,14 @@ struct FrontendSession {
         this.handle = 0;
         if (handle == 0) { return 0; }
         unsafe { return tsnet_close_file(handle); }
+    }
+
+    FrontendIr export_ir() const {
+        unsafe {
+            char* data=0; int length=0;
+            int status=tsnet_export_ir(this.handle,&data,&length);
+            return FrontendIr::take_native(data,length,status);
+        }
     }
 
     ~FrontendSession() { this.close(); }

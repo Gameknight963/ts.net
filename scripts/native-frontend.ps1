@@ -49,6 +49,7 @@ tsnet_open_file
 tsnet_inspect_binding
 tsnet_close_file
 tsnet_free_buffer
+tsnet_export_ir
 '@ | Set-Content -LiteralPath "$output/tsbridge.def" -Encoding ascii
         & llvm-dlltool -m i386:x86-64 -d "$output/tsbridge.def" -l "$output/tsbridge.lib"
         if ($LASTEXITCODE) { throw 'Import library generation failed' }
