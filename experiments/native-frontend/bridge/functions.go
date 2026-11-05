@@ -66,6 +66,9 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 	b.nodes[value-1].symbol = symbol
 	b.nodes[value-1].left = function
 	b.nodes[value-1].typ = b.typ(b.c.GetAnyType())
+	if n.Kind == ast.KindFunctionExpression && n.Name() != nil {
+		return b.functionIdentity(n, value, function, symbol)
+	}
 	return value
 }
 
@@ -111,4 +114,66 @@ func nonFunctionStatements(statements []*ast.Node) []*ast.Node {
 		}
 	}
 	return result
+}
+
+// Keep direct self calls on their existing path. A self value instead needs an
+// instance-local binding shared by the function and any nested closures.
+func (b *irBuilder) functionIdentity(n *ast.Node, value, function, self int) int {
+	direct := map[int]bool{}
+	for i := function; i <= len(b.nodes); i++ {
+		if b.nodes[i-1].kind == 6 {
+			direct[b.nodes[i-1].left] = true
+		}
+	}
+	needed := false
+	for i := function; i <= len(b.nodes); i++ {
+		node := b.nodes[i-1]
+		if node.kind == 3 && node.symbol == self && !direct[i] {
+			needed = true
+			break
+		}
+	}
+	if !needed {
+		return value
+	}
+	typ := b.typ(b.c.GetAnyType())
+	original := b.symbols[self-1]
+	b.symbols = append(b.symbols, irSymbol{name: original.name, typ: original.typ, function: function})
+	implementation := len(b.symbols)
+	b.nodes[function-1].symbol = implementation
+	b.nodes[function-1].constant = 0
+	b.nodes[value-1].symbol = implementation
+	b.symbols[self-1].function = 0
+	b.symbols[self-1].typ = typ
+	binding := b.node(13, n, n.Name().Text())
+	b.nodes[binding-1].name = original.name
+	b.nodes[binding-1].typ = typ
+	b.nodes[binding-1].symbol = self
+	b.nodes[binding-1].left = value
+	reference := b.node(3, n, n.Name().Text())
+	b.nodes[reference-1].name = original.name
+	b.nodes[reference-1].typ = typ
+	b.nodes[reference-1].symbol = self
+	result := b.node(14, n, "return")
+	b.nodes[result-1].left = reference
+	b.nodes[binding-1].next = result
+	block := b.node(12, n, "{")
+	b.nodes[block-1].name = b.text("scope")
+	b.nodes[block-1].children = binding
+	factory := b.node(19, n, "function")
+	b.symbols = append(b.symbols, irSymbol{name: b.text(""), typ: typ, function: factory})
+	factorySymbol := len(b.symbols)
+	b.nodes[factory-1].symbol = factorySymbol
+	b.nodes[factory-1].typ = typ
+	b.nodes[factory-1].left = block
+	b.nodes[factory-1].next = b.functions
+	b.functions = factory
+	factoryValue := b.node(38, n, "function")
+	b.nodes[factoryValue-1].symbol = factorySymbol
+	b.nodes[factoryValue-1].typ = typ
+	b.nodes[factoryValue-1].left = factory
+	call := b.node(6, n, "call")
+	b.nodes[call-1].left = factoryValue
+	b.nodes[call-1].typ = typ
+	return call
 }

@@ -2,7 +2,7 @@ import "il-closures.cr";
 
 SymbolId il_direct_function(NodeId entry, const Compiler& c, const IlBackend& b) {
     Node n=get_node(entry,c);
-    if (n.kind==NodeKind::FunctionValue) { return b.function_contexts.at(n.symbol)==0 ? n.symbol : 0; }
+    if (n.kind==NodeKind::FunctionValue) { return n.symbol; }
     if (n.kind!=NodeKind::Name || n.symbol==0) { return 0; }
     if (get_symbol(n.symbol,c).function!=0) {
         Node function=get_node(get_symbol(n.symbol,c).function,c);
@@ -211,6 +211,7 @@ void il_value_call(NodeId entry, const Compiler& c, IlBackend& b) {
         while (argument!=0) { il_as(argument,number,c,b);argument=get_node(argument,c).next; }
         b.call(count==0 ? RuntimeMember::CallFunctionNumber0 : count==1 ? RuntimeMember::CallFunctionNumber1 : RuntimeMember::CallFunctionNumber2);return;
     }
+    if (count==0) { b.call(RuntimeMember::CallFunction0);il_function_result(n.type,c,b);return; }
     b.emit(0x20,count);b.emit(0x8d,b.ref(RuntimeMember::ObjectType));argument=n.children;int index=0;
     while (argument!=0) { b.op(0x25);b.emit(0x20,index++);il_boxed(argument,c,b);b.op(0xa2);argument=get_node(argument,c).next; }
     b.call(RuntimeMember::CallFunction);il_function_result(n.type,c,b);

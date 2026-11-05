@@ -83,6 +83,8 @@ public static partial class Js
         for (; index < arguments.Length; index++) result.Append(arguments[index]);
         return result;
     }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object CallFunction0(object target) => target is JsFunction function ? function.Invoke(Array.Empty<object>()) : throw new InvalidOperationException("Value is not callable");
     public static object CallFunction(object target, object[] arguments) => target is JsFunction function ? function.Invoke(arguments) : throw new InvalidOperationException("Value is not callable");
     public static object CallFunctionArguments(object target, object arguments)
     {
