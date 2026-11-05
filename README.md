@@ -13,14 +13,30 @@ Building on linux is not supported atm.
 
 ## Current performance
 
-As of [d1b01d1](https://github.com/Gameknight963/ts.net/commit/d1b01d1c03cecefd0dd11fea48cd756a2a6f3399):
+As of [5a0ebda](https://github.com/Gameknight963/ts.net/commit/5a0ebda3061c267298b5b715f63e874fea70ce84) (plus some uncommitted work):
+
+Runtime performance:
 
 | Workload | ts.net | Node | Result |
-|---|---|---|---|
-| Numeric loop, 20M iterations | 24.71 ms | 77.41 ms | 3.1× faster |
-| Typed-object loop, 500K iterations | 15.42 ms | 0.68 ms | 22.6× slower |
-| any property loop, 350K iterations | 22.79 ms | 0.45 ms | 50.9× slower |
+|---|---:|---:|---|
+| Numeric loop, 20M iterations | 14.55 ms | 75.29 ms | 5.2x faster |
+| Typed-object loop, 500K iterations | 0.43 ms | 0.66 ms | 1.5x faster |
+| `any` property loop, 350K iterations | 0.30 ms | 0.83 ms | 2.7x faster |
+| Mixed array, 100K elements and 5 traversals | 1.66 ms | 1.13 ms | 1.5x slower |
+| Numeric `any[]`, 1M iterations | 0.76 ms | 1.67 ms | 2.2x faster |
+| Numeric array, 100K elements and 100 reversals | 2.18 ms | 7.89 ms | 3.6x faster |
+| Mixed array, 100K elements and 100 reversals | 1.30 ms | 7.92 ms | 6.1x faster |
+| Numeric callback, 2M calls (experimental) | 5.97 ms | 0.83 ms | 7.2x slower |
 
-Arithmetic seems quite fast, which gives me hope that the rest of the rest can see performance improvments. But object and `any` operations currently need substantial optimization.
+Compilation times:
 
-Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
+| Source | tsnetc | tsc |
+|---|---|---|
+| Small numeric benchmark | 338.66 ms | 343.57 ms |
+| 5,000 variables | 446.63 ms | 392.42 ms |
+
+The numeric and small-object loops are encouraging, but mixed-array traversal and especially callbacks are still slower than Node.
+
+The similar compilation times make sense since this is using much of Microsoft's Go compiler components, and IL emission isn't really a bottleneck.
+
+Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11 (SDK 10.0.400), TypeScript 7.0.2
