@@ -12,6 +12,7 @@ import (
 
 	"github.com/microsoft/typescript-go/internal/ast"
 	"github.com/microsoft/typescript-go/internal/checker"
+	"github.com/microsoft/typescript-go/internal/evaluator"
 )
 
 // Versioned, pointer-free typed IR. Display strings are never used as types.
@@ -46,6 +47,8 @@ type irBuilder struct {
 	controls              []irControl
 	controlIDs            map[*ast.Node]int
 	labels                map[string]irLabel
+	enumValues            map[*ast.Node]evaluator.Result
+	enumDeclared          map[*ast.Symbol]bool
 }
 
 func (b *irBuilder) beginControl(n *ast.Node, id int, loop bool) {
@@ -66,6 +69,24 @@ func (b *irBuilder) text(s string) int {
 func (b *irBuilder) typ(t *checker.Type) int {
 	if t == nil {
 		t = b.c.GetAnyType()
+	}
+	// Enum literals retain their nominal identity in the checker, but their
+	// representation is still a number or string. Mixed enum variables stay boxed.
+	if t.Flags()&checker.TypeFlagsEnumLike != 0 {
+		parts := []*checker.Type{t}
+		if t.Flags()&checker.TypeFlagsUnion != 0 {
+			parts = t.Types()
+		}
+		number, text := true, true
+		for _, part := range parts {
+			number = number && part.Flags()&checker.TypeFlagsNumberLike != 0
+			text = text && part.Flags()&checker.TypeFlagsStringLike != 0
+		}
+		if number {
+			t = b.c.GetNumberType()
+		} else if text {
+			t = b.c.GetStringType()
+		}
 	}
 	if symbol := t.Symbol(); symbol != nil && errorKind(symbol.Name) {
 		for _, declaration := range symbol.Declarations {
@@ -157,6 +178,14 @@ func (b *irBuilder) typ(t *checker.Type) int {
 	for _, property := range b.c.GetPropertiesOfType(t) {
 		name := b.text(ast.SymbolName(property))
 		typ := b.typ(b.c.GetTypeOfSymbol(property))
+		// Non-finite numeric reverse keys can overwrite these named members.
+		// Keep their storage boxed even when the checker calls them numbers.
+		if symbol := t.Symbol(); symbol != nil && symbol.Flags&ast.SymbolFlagsEnum != 0 {
+			switch ast.SymbolName(property) {
+			case "Infinity", "-Infinity", "NaN":
+				typ = b.typ(b.c.GetAnyType())
+			}
+		}
 		optional := 0
 		if property.Flags&ast.SymbolFlagsOptional != 0 {
 			optional = 1
@@ -264,11 +293,20 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	if n == nil {
 		return 0
 	}
+	if n.Kind == ast.KindPropertyAccessExpression || n.Kind == ast.KindElementAccessExpression {
+		if value := b.c.GetConstantValue(n); value != nil {
+			if id := b.enumLiteral(n, value); id != 0 {
+				return id
+			}
+		}
+	}
 	var row irNode
 	id := 0
 	switch n.Kind {
 	case ast.KindInterfaceDeclaration, ast.KindTypeAliasDeclaration, ast.KindImportDeclaration, ast.KindExportDeclaration:
 		return 0
+	case ast.KindEnumDeclaration:
+		return b.enumDeclaration(n)
 	case ast.KindExportAssignment:
 		if n.AsExportAssignment().IsExportEquals {
 			b.unsupported(n)
@@ -327,6 +365,11 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			id = b.node(53, n, n.Text())
 			b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
 			return id
+		}
+		if symbol := b.c.GetSymbolAtLocation(n); symbol != nil && symbol.Flags&ast.SymbolFlagsEnumMember != 0 {
+			if id := b.enumMemberReference(n, symbol); id != 0 {
+				return id
+			}
 		}
 		if (n.Text() == "NaN" || n.Text() == "Infinity") && b.isBuiltinIdentifier(n) {
 			// These globals are numbers, not uninitialized program bindings.
@@ -912,6 +955,7 @@ func exportIR(s *session) (result []byte, err error) {
 	b.controlIDs = map[*ast.Node]int{}
 	b.labels = map[string]irLabel{}
 	files := b.moduleFiles(s)
+	b.prepareEnums(files)
 	c, release = s.program.GetTypeCheckerForFileExclusive(context.Background(), s.file)
 	defer release()
 	b.c = c

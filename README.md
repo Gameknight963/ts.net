@@ -13,7 +13,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current feature completion
 
-50%.
+54%.
 
 <details>
 
@@ -25,7 +25,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Objects and arrays | 7 / 10 | Structural objects, computed properties, spreads, destructuring and sparse arrays. Accessors and general prototype behavior are missing. |
 | Types and generics | 5 / 10 | Microsoft's type checking, interfaces, aliases, basic generics and union/nullable storage. Runtime representations still have gaps. |
 | Modules | 4 / 5 | Imports, exports, default exports and multiple files. Dynamic import is missing. |
-| Enums | 0 / 5 | Not implemented |
+| Enums | 4 / 5 | Numeric, string, mixed, computed and const enums; reverse mappings, merged enums, and imports. Namespace merging and __proto__ members are missing. |
 | Classes and inheritance | 0 / 15 | Not implemented |
 | Exceptions | 8 / 10 | throw, try/catch/finally, standard error objects, cause, and instanceof. Error prototypes and TypeScript source locations in stack traces are missing. |
 | Async | 0 / 10 | Not implemented |
