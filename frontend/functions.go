@@ -63,6 +63,9 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 		// A named expression's self value belongs to each created instance.
 		b.nodes[function-1].constant = 1
 	}
+	if n.Kind == ast.KindFunctionDeclaration || n.Kind == ast.KindFunctionExpression {
+		b.markFunctionPrototype(function, n)
+	}
 	b.nodes[function-1].name = b.text(name)
 	b.nodes[function-1].symbol = symbol
 	b.nodes[function-1].typ = typ
@@ -226,4 +229,10 @@ func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 		b.superSymbol, b.superStatic = previousSuper, previousStatic
 	}
 	return parameters, body
+}
+
+func (b *irBuilder) markFunctionPrototype(function int, n *ast.Node) {
+	marker := b.node(20, n, "function prototype")
+	b.nodes[marker-1].typ = b.typ(b.c.GetUndefinedType())
+	b.nodes[function-1].third = marker
 }
