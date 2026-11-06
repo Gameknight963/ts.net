@@ -30,8 +30,9 @@ public static partial class Js
 {
     public static int Run(Action entry)
     {
-        try { entry(); return 0; }
+        try { entry(); DrainPromiseJobs(); return 0; }
         catch (Exception error) { Console.Error.WriteLine(error); return 1; }
+        finally { promiseJobs?.Clear(); unhandledPromises?.Clear(); }
     }
     private sealed class UndefinedValue { }
     public static readonly object Undefined = new UndefinedValue();

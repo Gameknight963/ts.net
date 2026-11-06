@@ -13,7 +13,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current feature completion
 
-75%.
+77%.
 
 <details>
 
@@ -26,9 +26,9 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Types and generics | 5 / 10 | Microsoft's type checking, interfaces, aliases, basic generics and union/nullable storage. Runtime representations still have gaps. |
 | Modules | 4 / 5 | Imports, exports, default exports, namespace values, live bindings and multiple files. Dynamic import is missing. |
 | Enums | 5 / 5 | Numeric, string, mixed, computed and const enums; reverse mappings, merged enums, and imports. Namespace merging supports nested/dotted namespaces, exported destructuring, functions, classes and enums; __proto__ members follow object prototype assignment. Import aliases (`import Alias = E.Nested`) retain their original namespace object. |
-| Classes and inheritance | 14 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, computed member names, generics, structural interfaces, inheritance (including ordinary and bound constructor functions), super, getters/setters, auto-accessors and #private fields/methods/accessors with brand checks. Object, String, Boolean, Array, Error, native error and AggregateError base classes are supported; other built-in base classes and decorators are missing. Some generated auto-accessor initializer names differ from tsc; base constructors returning replacement objects still have gaps. |
+| Classes and inheritance | 14 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, computed member names, generics, structural interfaces, inheritance (including ordinary and bound constructor functions), super, getters/setters, auto-accessors and #private fields/methods/accessors with brand checks. Object, String, Boolean, Array, Promise, Error, native error and AggregateError base classes are supported; other built-in base classes and decorators are missing. Some generated auto-accessor initializer names differ from tsc; base constructors returning replacement objects still have gaps. |
 | Exceptions | 9 / 10 | throw, try/catch/finally, standard error objects, cause, and instanceof. Error prototypes, prototype mutation and custom error subclasses are supported. TypeScript source locations in stack traces are missing. |
-| Async | 0 / 10 | Not implemented |
+| Async | 2 / 10 | Promise construction, resolve/reject, then/catch/finally, thenable assimilation, subclasses and queueMicrotask. Async/await, combinators and custom promise species are missing. |
 | Standard library | 2 / 5 | Object/String/Boolean/Array construction, Array.isArray/of, prototype get/set, Math constants and common numeric/trigonometric functions, selected Number/Object helpers, string formatting, prefix/suffix checks, concatenation and array/string methods, including generic join, map, filter, forEach, every, some, reduce, reduceRight, find, findIndex, findLast, findLastIndex, flat, flatMap, lastIndexOf, toReversed, toSorted, toSpliced and with. Custom array species and many built-ins are missing. |
 
 </details>
