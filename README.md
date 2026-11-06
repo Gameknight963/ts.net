@@ -83,6 +83,16 @@ Runtime performance:
 
 </details>
 
+Array methods, measured on 2026-11-06:
+
+| Workload | ts.net | Node |
+|---|---|---|
+| join, 20 joins of 10K numbers | 26.07 ms | 2.36 ms |
+| map, filter and sum, 10 passes over 10K numbers | 22.71 ms | 2.12 ms |
+| reduce and reduceRight, 10 pairs over 10K numbers | 6.75 ms | 1.25 ms |
+
+Execution time only; input creation, startup and compilation are excluded. Release builds, five warmup passes, and five timed samples in each of three fresh processes; the table reports the median of 15 samples. Results matched Node, and .NET used `DOTNET_TieredCompilation=0`.
+
 Compilation times:
 
 | Source | tsnetc | tsc |
@@ -90,7 +100,7 @@ Compilation times:
 | Small numeric benchmark | 497.09 ms | 338.65 ms |
 | 5,000 variables | 678.81 ms | 375.20 ms |
 
-All three search benchmarks beat Node without allocating during the loop. String slicing and numeric character reads still need work; they remain slower than Node here.
+String search looks encouraging, but the new array-method workloads are still substantially slower than Node here. Slicing and numeric character reads also need work. These microbenchmarks do not establish overall application performance.
 
 The compiler used to be written in [crust](https://github.com/Gameknight963/crust), my C-like memory safe language. It was ported to C# for various reasons. The point is, compilation is slower after the C# port. The larger source takes 1.8x as long as Microsoft’s Go-based TypeScript compiler. It used to be more or less on par.
 
