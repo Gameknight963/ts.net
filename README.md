@@ -13,7 +13,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current feature completion
 
-42%.
+50%.
 
 <details>
 
@@ -27,7 +27,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Modules | 4 / 5 | Imports, exports, default exports and multiple files. Dynamic import is missing. |
 | Enums | 0 / 5 | Not implemented |
 | Classes and inheritance | 0 / 15 | Not implemented |
-| Exceptions | 0 / 10 | Not implemented |
+| Exceptions | 8 / 10 | throw, try/catch/finally, standard error objects, cause, and instanceof. Error prototypes and TypeScript source locations in stack traces are missing. |
 | Async | 0 / 10 | Not implemented |
 | Standard library | 2 / 5 | Selected Number/Object helpers and array/string methods. Many built-ins are missing. |
 

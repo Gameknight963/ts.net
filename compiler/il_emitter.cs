@@ -426,6 +426,22 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Number) { b.plan.number(b.method, number(get_token(n.token, c).text, c)); b.call(RuntimeMember.WrapNumber); }
         else if (n.kind == NodeKind.Boolean) { b.emit(0x20, is_text(get_token(n.token, c).text, text_true, c) ? 1 : 0); b.call(RuntimeMember.WrapBoolean); }
+        else if(n.kind==NodeKind.BuiltinError){il_text(get_token(n.token,c).text,c,b);b.call(RuntimeMember.GetErrorConstructor);}
+        else if(n.kind==NodeKind.Construct){
+            il_boxed(n.left,c,b);
+            if(il_call_has_spread(entry,c)){
+                b.emit(0x20,0);b.emit(0x73,b.RuntimeToken(RuntimeMember.ArrayConstructor));int args=b.local(-5);b.emit(0xfe0e,args);
+                int child=n.children;while(child!=0){il_append_call_argument(child,args,0,c,b);child=get_node(child,c).next;}
+                b.emit(0xfe0c,args);b.call(RuntimeMember.ConstructArguments);b.from_object(n.type,c);return;
+            }
+            int argument=n.children,count=0;while(argument!=0){count++;argument=get_node(argument,c).next;}
+            b.emit(0x20,count);b.emit(0x8d,b.RuntimeToken(RuntimeMember.ObjectType));argument=n.children;int index=0;
+            while(argument!=0){b.op(0x25);b.emit(0x20,index++);il_boxed(argument,c,b);b.op(0xa2);argument=get_node(argument,c).next;}
+            b.call(RuntimeMember.Construct);b.from_object(n.type,c);
+        }
+        else if(n.kind==NodeKind.CatchValue){
+            b.emit(0xfe0c,b.caught_exception);b.call(RuntimeMember.CaughtValue);
+        }
         else if (n.kind == NodeKind.String)
         {
             il_text(get_token(n.token, c).text, c, b);
@@ -602,6 +618,8 @@ internal static partial class CompilerFunctions
         {
             if (il_number_type_test(entry, true, c, b) || il_loose_equality(n, c, b)) { return; }
             int op = get_token(n.token, c).text;
+            if(is_text(op,"instanceof",c)){il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.InstanceOf);b.call(RuntimeMember.WrapBoolean);return;}
+
             if (is_text(op, text_and, c) || is_text(op, text_or, c))
             {
                 int done = b.label(); il_as(n.left, n.type, c, b); b.op(0x25); b.truth(n.type, c);
@@ -712,8 +730,10 @@ internal static partial class CompilerFunctions
         {
             int target = n.kind == NodeKind.Break ? b.break_target(n.left) : b.continue_target(n.left);
             if (target == 0) { fail(n.token, "missing control-flow target", c); }
-            b.emit(0x38, target);
+            il_exception_jump(n.left,target,c,b);
         }
+        else if(n.kind==NodeKind.Throw){il_boxed(n.left,c,b);b.call(RuntimeMember.MakeThrown);b.op(0x7a);}
+        else if(n.kind==NodeKind.Try){il_try(entry,return_type,c,b);}
         else if (n.kind == NodeKind.Label)
         {
             int done = b.label(); b.breaks.at_mut(entry) = done; il_statement(n.left, return_type, c, b); b.mark(done);
@@ -794,7 +814,7 @@ internal static partial class CompilerFunctions
         {
             if (n.left != 0) { if (b.raw_function_return) { il_number(n.left, c, b); } else { il_as(n.left, return_type, c, b); } }
             else if (b.type(return_type, c) != -1) { b.empty(return_type, c); }
-            b.op(0x2a);
+            il_exception_return(return_type,c,b);
         }
         else if (n.kind == NodeKind.Expression)
         {

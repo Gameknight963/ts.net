@@ -67,6 +67,14 @@ func (b *irBuilder) typ(t *checker.Type) int {
 	if t == nil {
 		t = b.c.GetAnyType()
 	}
+	if symbol := t.Symbol(); symbol != nil && errorKind(symbol.Name) {
+		for _, declaration := range symbol.Declarations {
+			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
+				t = b.c.GetAnyType()
+				break
+			}
+		}
+	}
 	t = b.c.GetBaseTypeOfLiteralType(t)
 	if id := b.typeIDs[t]; id != 0 {
 		return id
@@ -237,6 +245,7 @@ func (b *irBuilder) list(nodes []*ast.Node) int {
 }
 
 var operators = map[ast.Kind]string{
+	ast.KindInstanceOfKeyword: "instanceof",
 	ast.KindEqualsEqualsToken: "==", ast.KindExclamationEqualsToken: "!=",
 	ast.KindAsteriskAsteriskToken: "**", ast.KindAsteriskAsteriskEqualsToken: "**=",
 	ast.KindPlusToken: "+", ast.KindMinusToken: "-", ast.KindAsteriskToken: "*", ast.KindSlashToken: "/", ast.KindPercentToken: "%",
@@ -314,6 +323,11 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindTrueKeyword, ast.KindFalseKeyword:
 		id = b.node(2, n, map[bool]string{true: "true", false: "false"}[n.Kind == ast.KindTrueKeyword])
 	case ast.KindIdentifier:
+		if errorKind(n.Text()) && b.isBuiltinIdentifier(n) {
+			id = b.node(53, n, n.Text())
+			b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
+			return id
+		}
 		if (n.Text() == "NaN" || n.Text() == "Infinity") && b.isBuiltinIdentifier(n) {
 			// These globals are numbers, not uninitialized program bindings.
 			// The numeric ABI accepts C's NaN/Infinity spellings unchanged.
@@ -451,6 +465,15 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.name = b.text(n.Name().Text())
 		row.left = b.lower(n.Expression())
+	case ast.KindNewExpression:
+		expression := n.AsNewExpression()
+		id = b.node(54, n, "new")
+		row = b.nodes[id-1]
+		row.typ = b.typ(b.c.GetTypeAtLocation(n))
+		row.left = b.lower(expression.Expression)
+		if expression.Arguments != nil {
+			row.children = b.list(expression.Arguments.Nodes)
+		}
 	case ast.KindCallExpression:
 		call := n.AsCallExpression()
 		if mode := b.numberPredicate(call.Expression); mode >= 0 {
@@ -678,6 +701,35 @@ func (b *irBuilder) lower(n *ast.Node) int {
 				row.third = b.node(1, key, key.Text())
 				b.nodes[row.third-1].typ = b.typ(b.c.GetStringType())
 			}
+		}
+	case ast.KindThrowStatement:
+		id = b.node(50, n, "throw")
+		row = b.nodes[id-1]
+		row.left = b.lower(n.Expression())
+	case ast.KindTryStatement:
+		statement := n.AsTryStatement()
+		id = b.node(51, n, "try")
+		row = b.nodes[id-1]
+		row.left = b.lower(statement.TryBlock)
+		row.third = b.lower(statement.FinallyBlock)
+		if statement.CatchClause != nil {
+			clause := statement.CatchClause.AsCatchClause()
+			wrapper := b.node(12, statement.CatchClause, "{")
+			b.nodes[wrapper-1].name = b.text("scope")
+			body := b.lower(clause.Block)
+			if clause.VariableDeclaration != nil {
+				binding := b.lower(clause.VariableDeclaration)
+				value := b.node(52, clause.VariableDeclaration, "caught")
+				b.nodes[value-1].typ = b.typ(b.c.GetAnyType())
+				b.nodes[binding-1].left = value
+				b.nodes[binding-1].name = b.text("let")
+				b.catchBinding(binding)
+				b.nodes[binding-1].next = body
+				b.nodes[wrapper-1].children = binding
+			} else {
+				b.nodes[wrapper-1].children = body
+			}
+			row.right = wrapper
 		}
 	case ast.KindReturnStatement:
 		id = b.node(14, n, "return")

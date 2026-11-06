@@ -31,6 +31,12 @@ public class JsFunction : TsObject
         raw2 = numeric as RawNumberFunction2;
         this.name = name;this.length = length;
     }
+    public virtual object InvokeWithReceiver(object receiver,object[] arguments)=>Invoke(arguments);
+    public virtual double? InvokeMethodNumber0(object receiver)=>InvokeNumber0();
+    public virtual double? InvokeMethodNumber1(object receiver,double? first)=>InvokeNumber1(first);
+    public virtual double? InvokeMethodNumber2(object receiver,double? first,double? second)=>InvokeNumber2(first,second);
+    public virtual object Construct(object[] arguments) => throw new InvalidOperationException("Value is not a constructor");
+    public virtual bool HasInstance(object value) => throw new InvalidOperationException("Function has no object prototype");
     internal void InferPropertyName(string value) { name = value; }
     public override bool HasOwn(string key) => key == "name" || key == "length" || base.HasOwn(key);
     public override object Get(string key) => key == "name" ? name : key == "length" ? (double)length : base.Get(key);

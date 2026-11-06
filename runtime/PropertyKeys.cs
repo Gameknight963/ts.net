@@ -33,6 +33,8 @@ public static partial class Js
                         object join = array.Get("join");
                         primitive = join is JsFunction ? CallMethod0(join, array) : "[object Array]";
                     } else primitive = ArrayKeyString(array, active);
+                } else if (obj is JsCaughtError error) {
+                    primitive = ErrorText(error);
                 } else if (obj is JsFunction) {
                     string functionName = obj.Get("name") as string ?? "";
                     bool identifier = functionName.Length != 0;

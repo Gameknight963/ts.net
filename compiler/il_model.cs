@@ -4,7 +4,7 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 internal enum RuntimeMember
 {
-    CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, NumberAtIsNullish, LooseEqual, LooseEqualNumber, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
@@ -20,7 +20,7 @@ internal struct ScalarField
     public int slot;
 }
 
-internal sealed class IlBackend
+internal sealed partial class IlBackend
 {
     public AssemblyPlan plan;
     public Vector<int> runtime;
@@ -209,7 +209,7 @@ internal sealed class IlBackend
     public int label() { return ++this.label_count; }
     public void mark(int label) { this.emit(-1, label); }
     public int local(int type) { this.plan.local(this.method, type); return this.local_count++; }
-    public void begin(int method) { this.method = method; this.local_count = 0; this.label_count = 0; this.loop_versions = 0; this.push_bound = -1; this.context_scope = 0; this.context_slot = -1; }
+    public void begin(int method) { this.exception_frames.Clear(); this.caught_exception=-1; this.method = method; this.local_count = 0; this.label_count = 0; this.loop_versions = 0; this.push_bound = -1; this.context_scope = 0; this.context_slot = -1; }
     public void load_context(int scope)
     {
         if (this.context_scope == 0) { print("tsnetc: closure environment missing"); exit(1); }
@@ -531,6 +531,14 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.FunctionArgument, b.plan.method2(6, js, 0, -5, -7, -6, "FunctionArgument"));
         Vector<int> function_rest = new Vector<int>(); function_rest.push(-7); function_rest.push(-6); function_rest.push(-2);
         b.ref_set(RuntimeMember.FunctionRest, b.plan.method(6, js, 0, -5, function_rest.view(), "FunctionRest"));
+        b.ref_set(RuntimeMember.GetErrorConstructor,b.plan.method1(6,js,0,-5,-4,"GetErrorConstructor"));
+        b.ref_set(RuntimeMember.Construct,b.plan.method2(6,js,0,-5,-5,-7,"Construct"));
+        b.ref_set(RuntimeMember.ConstructArguments,b.plan.method2(6,js,0,-5,-5,-5,"ConstructArguments"));
+        b.ref_set(RuntimeMember.InstanceOf,b.plan.method2(6,js,0,-2,-5,-5,"InstanceOf"));
+        int exception=b.plan.reference("System.Runtime","System","Exception");
+        b.ref_set(RuntimeMember.ExceptionType,exception);
+        b.ref_set(RuntimeMember.MakeThrown,b.plan.method1(6,js,0,exception,-5,"MakeThrown"));
+        b.ref_set(RuntimeMember.CaughtValue,b.plan.method1(6,js,0,-5,exception,"CaughtValue"));
         int[] string_search_parameters={-5,-5,-5,-10,-6};
         b.ref_set(RuntimeMember.CallStringSearch,b.plan.method(6,js,0,-5,string_search_parameters,"CallStringSearch"));
         b.ref_set(RuntimeMember.CallStringSearchNumber,b.plan.method(6,js,0,-10,string_search_parameters,"CallStringSearchNumber"));

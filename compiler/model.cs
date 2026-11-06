@@ -63,7 +63,8 @@ internal enum NodeKind
     NumberIsSafeIntegerFunction,
     ObjectKeysFunction,
     ObjectValuesFunction,
-    ObjectEntriesFunction
+    ObjectEntriesFunction,
+    Throw, Try, CatchValue, BuiltinError, Construct
 }
 
 internal struct Token
