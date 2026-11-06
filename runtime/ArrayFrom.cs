@@ -1,0 +1,70 @@
+using System;
+using System.Globalization;
+
+public static partial class Js
+{
+    sealed class ArrayFromFunction() : JsFunction((FunctionBody)(static args => ArrayFrom(Undefined, args)), null, "from", 1)
+    {
+        public override object InvokeWithReceiver(object receiver, object[] arguments) => ArrayFrom(receiver, arguments);
+    }
+    static object ArrayFrom(object receiver, object[] arguments)
+    {
+        object input = FunctionArgument(arguments, 0), mapper = FunctionArgument(arguments, 1), thisArg = FunctionArgument(arguments, 2);
+        bool mapping = !IsUndefined(mapper);
+        if (mapping && mapper is not JsFunction) throw new InvalidOperationException("Array.from mapper is not callable");
+        object iterable = input is JsBoxedPrimitive { Value: string text } ? text : input;
+        bool iterating = iterable is JsArray or JsArguments or string;
+        TsObject source = iterating ? null : ToObject(input);
+        long length = iterating ? 0 : IndexedLength(source);
+        TsObject result;
+        if (receiver is JsFunction constructor && constructor.CanInitializeDerived)
+            result = (TsObject)constructor.Construct(iterating ? Array.Empty<object>() : new object[] { (double)length });
+        else
+        {
+            var array = new JsArray(0);
+            if (!iterating) array.SetLength(length);
+            result = array;
+        }
+        // Packed numeric arrays have no holes or getters. With the intrinsic
+        // constructor (or its non-constructor fallback), no user code can run
+        // during the copy. Keep the result general so later writes can hold any value.
+        bool intrinsic = receiver is not JsFunction function || !function.CanInitializeDerived || ReferenceEquals(receiver, RuntimeNamespaces.Array);
+        if (!mapping && intrinsic && iterable is NumberArray numbers && numbers.Length() <= Array.MaxLength)
+        {
+            int packedCount = (int)numbers.Length();
+            double[] packed = numbers.TryPacked(packedCount);
+            if (packed != null)
+            {
+                var buffer = new object[packedCount];
+                for (int index = 0; index < packedCount; index++) buffer[index] = packed[index];
+                return new JsArray(buffer);
+            }
+        }
+        object Map(object value, long index) => mapping ? CallMethod(mapper, thisArg, new object[] { value, (double)index }) : value;
+        void Define(long index, object value)
+        {
+            if (result is JsArray array && index <= int.MaxValue) { array.SetAt((int)index, value); return; }
+            string key = index.ToString(CultureInfo.InvariantCulture);
+            if (result.IsModuleNamespace || result.IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Cannot define array item");
+            if (result is JsArray wideArray) wideArray.Set(key, value);
+            else result.DefineOwn(key, value);
+        }
+        long count = 0;
+        if (iterating)
+        {
+            // Array and arguments iterators observe length changes between steps.
+            // String iteration advances by code point, not by UTF-16 code unit.
+            for (int position = 0; position < Iteration.Length(iterable); position += Iteration.Step(iterable, position))
+            {
+                object value = iterable is JsArray array ? IndexedValue(array, position) : Iteration.Value(iterable, position);
+                Define(count, Map(value, count)); count++;
+            }
+        }
+        else
+        {
+            for (; count < length; count++) Define(count, Map(IndexedValue(source, count), count));
+        }
+        result.Set("length", (double)count);
+        return result;
+    }
+}

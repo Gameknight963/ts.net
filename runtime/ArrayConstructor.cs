@@ -35,7 +35,7 @@ public static partial class Js
             foreach (string name in new[] { "at", "push", "pop", "slice", "reverse", "indexOf", "includes", "join", "map", "filter", "forEach", "every", "some", "reduce", "reduceRight", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "lastIndexOf", "toReversed", "toSorted", "toSpliced", "with" })
                 prototype.Member(name, ArrayMethodValue(name));
             Member("isArray", new JsFunction((FunctionBody)(static args => BoxBoolean(FunctionArgument(args, 0) is JsArray)), null, "isArray", 1));
-            Member("of", new ArrayOfFunction());
+            Member("of", new ArrayOfFunction()); Member("from", new ArrayFromFunction());
         }
         public override object Construct(object[] arguments) => CreateArray(arguments);
         internal override bool CanInitializeDerived => true;
