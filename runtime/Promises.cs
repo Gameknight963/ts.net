@@ -187,6 +187,7 @@ public static partial class Js
             Member("allSettled", new PromiseCombinatorFunction("allSettled", PromiseCombination.AllSettled));
             Member("race", new PromiseCombinatorFunction("race", PromiseCombination.Race));
             Member("any", new PromiseCombinatorFunction("any", PromiseCombination.Any));
+            Member("withResolvers", new PromiseWithResolversFunction()); Member("try", new PromiseTryFunction());
         }
         public override object Construct(object[] arguments) => CreatePromise(arguments);
         internal override bool CanInitializeDerived => true;
