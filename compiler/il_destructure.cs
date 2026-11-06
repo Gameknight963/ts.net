@@ -170,7 +170,7 @@ internal static partial class CompilerFunctions
             Node binding = get_node(child, c); Node key = get_node(binding.third, c); int member = 0;
             if (get_type(pattern.type, c).kind == TypeKind.Shape && key.kind == NodeKind.String) { member = field(pattern.type, get_token(key.token, c).text, c); }
             b.emit(0xfe0c, source);
-            if (member != 0 && b.getter(member) != 0)
+            if (member != 0 && b.getter(member) != 0 && get_type(pattern.type, c).name == 0)
             {
                 b.emit(0x74, b.interface_type(pattern.type)); b.emit(0x6f, b.getter(member)); b.convert(get_field(member, c).type, binding.type, c);
             }

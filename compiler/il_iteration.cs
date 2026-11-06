@@ -58,7 +58,7 @@ internal static partial class CompilerFunctions
         }
         if (target.kind != NodeKind.Property) { fail(target.token, "unsupported iteration binding", c); }
         il_expression(target.left, c, b); int owner = get_node(target.left, c).type;
-        if (get_type(owner, c).kind == TypeKind.Any || (get_type(owner, c).kind == TypeKind.Shape && field(owner, target.name, c) == 0 && get_type(owner, c).element != 0))
+        if (get_type(owner, c).kind == TypeKind.Any || get_type(owner, c).name != 0 || (get_type(owner, c).kind == TypeKind.Shape && field(owner, target.name, c) == 0 && get_type(owner, c).element != 0))
         {
             il_text(target.name, c, b); b.emit(0xfe0c, value); b.box(type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26);
         }

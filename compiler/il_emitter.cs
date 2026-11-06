@@ -139,7 +139,7 @@ internal static partial class CompilerFunctions
             {
                 b.call(RuntimeMember.ArrayLength); b.call(RuntimeMember.WrapNumber);
             }
-            else if (get_type(owner, c).kind == TypeKind.Any)
+            else if (get_type(owner, c).kind == TypeKind.Any || get_type(owner, c).name != 0)
             {
                 il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet);
                 b.from_object(n.type, c);
@@ -310,7 +310,7 @@ internal static partial class CompilerFunctions
             {
                 b.emit(0xfe0c, value); b.call(RuntimeMember.NumberValue); b.call(RuntimeMember.ArraySetLength);
             }
-            else if (get_type(owner, c).kind == TypeKind.Any || (get_type(owner, c).kind == TypeKind.Shape && field(owner, target.name, c) == 0 && get_type(owner, c).element != 0))
+            else if (get_type(owner, c).kind == TypeKind.Any || get_type(owner, c).name != 0 || (get_type(owner, c).kind == TypeKind.Shape && field(owner, target.name, c) == 0 && get_type(owner, c).element != 0))
             {
                 il_text(target.name, c, b); b.emit(0xfe0c, value); b.box(value_type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26);
             }
@@ -547,7 +547,7 @@ internal static partial class CompilerFunctions
             {
                 b.call(RuntimeMember.ArrayLength); b.call(RuntimeMember.WrapNumber);
             }
-            else if (get_type(owner, c).kind == TypeKind.Any)
+            else if (get_type(owner, c).kind == TypeKind.Any || get_type(owner, c).name != 0)
             {
                 il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet);
                 b.from_object(n.type, c);

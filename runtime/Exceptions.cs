@@ -8,28 +8,21 @@ public sealed class JsThrownException(object value) : Exception("JavaScript exce
 }
 public sealed class JsCaughtError : TsObject
 {
-    public readonly string Family;
+    readonly TsObject prototype;
+    internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : prototype;
     readonly string stack = Environment.StackTrace;
     readonly HashSet<string> hidden = ["stack"];
     internal override object ForInOwnKeys() => Js.ForInNames(base.OwnKeys(), "stack");
     internal override bool ForInEnumerable(string key) => !hidden.Contains(key);
     public JsCaughtError(string name, string message, bool hasMessage = true, object cause = null, bool hasCause = false)
     {
-        Family = name;
-        if (hasMessage) { base.Set("message", message); hidden.Add("message"); }
-        if (hasCause) { base.Set("cause", cause); hidden.Add("cause"); }
+        prototype = (TsObject)((JsFunction)Js.GetErrorConstructor(name)).Get("prototype");
+        if (hasMessage) DefineHidden("message", message);
+        if (hasCause) DefineHidden("cause", cause);
     }
-    public void DefineHidden(string key, object value) { base.Set(key, value); hidden.Add(key); }
+    public void DefineHidden(string key, object value) { DefineOwn(key, value); hidden.Add(key); }
     public override bool HasOwn(string key) => key == "stack" || base.HasOwn(key);
-    public override bool HasProperty(string key) => key is "name" or "message" or "toString" || base.HasProperty(key);
-    public override object Get(string key) => base.HasOwn(key) ? base.Get(key) : key switch
-    {
-        "name" => Family,
-        "message" => "",
-        "toString" => Js.GetErrorToString(),
-        "stack" => Js.ErrorText(this) + "\n" + stack,
-        _ => base.Get(key)
-    };
+    public override object Get(string key) => key == "stack" && !base.HasOwn(key) ? Js.ErrorText(this) + "\n" + stack : base.Get(key);
     public override object OwnKeys()
     {
         var keys = (JsArray)base.OwnKeys(); var result = new JsArray(0);
@@ -52,25 +45,38 @@ public static partial class Js
     sealed class ErrorConstructor : JsFunction
     {
         readonly string family;
-        internal ErrorConstructor(string name) : base((FunctionBody)(arguments => NewError(name, arguments)), null, name, name == "AggregateError" ? 2 : 1) { family = name; MarkOrdinaryPrototype(); }
+        internal ErrorConstructor(string name, ErrorConstructor parent) : base((FunctionBody)(arguments => NewError(name, arguments)), null, name, name == "AggregateError" ? 2 : 1)
+        {
+            family = name;
+            var prototype = new JsClassInstance { ParentPrototype = parent is null ? DefaultClassObjectPrototype : (TsObject)parent.Get("prototype") };
+            prototype.DefineMethod("constructor", this);
+            prototype.DefineMethod("name", name);
+            prototype.DefineMethod("message", "");
+            if (parent is null) prototype.DefineMethod("toString", GetErrorToString());
+            else SetPrototype(parent);
+            UseObjectPrototype(prototype);
+        }
         internal override bool IsReadOnlyOwnProperty(string key) => key == "prototype" || base.IsReadOnlyOwnProperty(key);
         public override object Set(string key, object value) => key == "prototype" ? throw new InvalidOperationException("Function prototype is read-only") : base.Set(key, value);
         public override object Construct(object[] arguments) => NewError(family, arguments);
-        public override bool HasInstance(object value) => value is JsCaughtError error && (family == "Error" || error.Family == family);
+        internal override bool CanInitializeDerived => true;
+        internal override object InitializeDerived(object instance, object[] arguments)
+        {
+            var result = (TsObject)NewError(family, arguments);
+            result.SetPrototype(((TsObject)instance).PropertyPrototype);
+            return result;
+        }
     }
     static class ErrorConstructors
     {
-        internal static readonly Dictionary<string, JsFunction> Values = new()
+        internal static readonly Dictionary<string, JsFunction> Values = Create();
+        static Dictionary<string, JsFunction> Create()
         {
-            ["Error"] = new ErrorConstructor("Error"),
-            ["TypeError"] = new ErrorConstructor("TypeError"),
-            ["RangeError"] = new ErrorConstructor("RangeError"),
-            ["ReferenceError"] = new ErrorConstructor("ReferenceError"),
-            ["SyntaxError"] = new ErrorConstructor("SyntaxError"),
-            ["URIError"] = new ErrorConstructor("URIError"),
-            ["EvalError"] = new ErrorConstructor("EvalError"),
-            ["AggregateError"] = new ErrorConstructor("AggregateError")
-        };
+            var root = new ErrorConstructor("Error", null);
+            var values = new Dictionary<string, JsFunction> { ["Error"] = root };
+            foreach (string name in new[] { "TypeError", "RangeError", "ReferenceError", "SyntaxError", "URIError", "EvalError", "AggregateError" }) values[name] = new ErrorConstructor(name, root);
+            return values;
+        }
     }
     public static object GetErrorConstructor(string name) => ErrorConstructors.Values[name];
     static object NewError(string name, object[] arguments)
@@ -78,7 +84,7 @@ public static partial class Js
         int offset = name == "AggregateError" ? 1 : 0;
         object message = FunctionArgument(arguments, offset), options = FunctionArgument(arguments, offset + 1);
         bool hasMessage = !IsUndefined(message); string text = hasMessage ? StringValue(message) : "";
-        bool hasCause = options is TsObject obj && obj.HasOwn("cause");
+        bool hasCause = options is TsObject obj && obj.HasProperty("cause");
         var result = new JsCaughtError(name, text, hasMessage, hasCause ? Get(options, "cause") : null, hasCause);
         if (name == "AggregateError")
         {

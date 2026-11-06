@@ -819,7 +819,9 @@ bool il_logical_assignment(int op, Compiler c)
                 if (kind == TypeKind.String || kind == TypeKind.Shape || kind == TypeKind.Array)
                 {
                     cast = b.RuntimeToken(RuntimeMember.Check);
-                    signature_type = kind == TypeKind.String ? b.RuntimeToken(RuntimeMember.StringType) : kind == TypeKind.Shape ? b.interfaces.at(type) : b.RuntimeToken(RuntimeMember.ArrayType);
+                    // A class constructor can return a different JavaScript object.
+                    // Its fields must not require the allocated CLR class layout.
+                    signature_type = kind == TypeKind.String ? b.RuntimeToken(RuntimeMember.StringType) : kind == TypeKind.Shape ? get_type(type, c).name != 0 ? b.RuntimeToken(RuntimeMember.TsObjectType) : b.interfaces.at(type) : b.RuntimeToken(RuntimeMember.ArrayType);
                 }
                 b.casts.at_mut(type) = b.plan.specialize(cast, signature_type);
             }

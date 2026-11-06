@@ -10,6 +10,7 @@ internal static partial class CompilerFunctions
         int owner = get_node(step.fourth, c).type; var kind = get_type(owner, c).kind;
         if (kind == TypeKind.Shape)
         {
+            if (get_type(owner, c).name != 0) return false;
             int member = field(owner, step.name, c);
             if (member == 0 || get_type(get_field(member, c).type, c).kind != TypeKind.Number) return false;
             b.emit(0xfe0c, receiver); b.emit(0x74, b.interface_type(owner)); b.emit(0x6f, b.getter(member)); b.convert(get_field(member, c).type, step.type, c); return true;
