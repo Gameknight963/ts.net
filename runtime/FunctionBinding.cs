@@ -37,7 +37,7 @@ internal sealed class JsBoundFunction : JsFunction
     readonly object[] prefix;
     readonly object boundReceiver;
     readonly double boundLength;
-    JsClassFunction InheritedStatics => target is JsClassFunction cls ? cls.Parent : target is JsBoundFunction bound ? bound.InheritedStatics : null;
+    JsFunction InheritedStatics => target is JsClassFunction cls ? cls.Parent : target is JsBoundFunction bound ? bound.InheritedStatics : null;
     JsBoundFunction(JsFunction target, object receiver, object[] prefix, string name, double length)
         : base((FunctionBody)(arguments => Js.CallMethod(target, receiver, Combine(prefix, arguments))), null, name, 0)
     {
@@ -79,6 +79,8 @@ internal sealed class JsBoundFunction : JsFunction
     public override double? InvokeNumber2(double? first, double? second) => prefix.Length == 0 ? Js.CallMethodNumber2(target, boundReceiver, first, second) : base.InvokeNumber2(first, second);
     public override object InvokeWithReceiver(object receiver, object[] arguments) => Invoke(arguments);
     public override object Construct(object[] arguments) => target.Construct(Combine(prefix, arguments));
+    internal override bool CanInitializeDerived => target.CanInitializeDerived;
+    internal override object InitializeDerived(object instance, object[] arguments) => target.InitializeDerived(instance, Combine(prefix, arguments));
     public override bool HasInstance(object value) => target.HasInstance(value);
 }
 public static partial class Js

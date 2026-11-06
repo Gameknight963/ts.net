@@ -35,7 +35,7 @@ public static partial class Js
         int length = checked((int)Iteration.Length(arguments)); var values = new object[length];
         for (int i = 0; i < length; i++) values[i] = Iteration.Value(arguments, i);
         object allocated = frame.Calls++ == 0 ? frame.Allocated : ((JsClassInstance)frame.Allocated).Owner.Allocate();
-        object result = frame.Home.Parent.Initialize(allocated, values);
+        object result = frame.Home.Parent.InitializeDerived(allocated, values);
         if (frame.Initialized) throw MakeThrown(new JsCaughtError("ReferenceError", "Super constructor may only be called once"));
         frame.Value = result; frame.Initialized = true;
         frame.Home.InitializeFields(result);

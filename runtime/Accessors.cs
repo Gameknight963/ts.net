@@ -30,7 +30,15 @@ public abstract partial class TsObject
         if (mode == 1) accessor.Getter = callable; else accessor.Setter = callable;
     }
     public virtual object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? Get(key) : InheritedValue(key, receiver);
-    public virtual object SetWithReceiver(string key, object value, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Write(receiver, value) : ((TsObject)receiver).SetOwnValue(key, value);
+    public virtual object SetWithReceiver(string key, object value, object receiver)
+    {
+        if (IsModuleNamespace) throw new InvalidOperationException("Module namespace is read-only");
+        if (TryOwnAccessor(key, out var accessor)) return accessor.Write(receiver, value);
+        bool own = HasOwn(key);
+        if (!own && PropertyPrototype is TsObject prototype) return prototype.SetWithReceiver(key, value, receiver);
+        if (own && IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Inherited property is read-only");
+        return ((TsObject)receiver).SetOwnValue(key, value);
+    }
     public virtual object SetOwnValue(string key, object value)
     {
         if (TryOwnAccessor(key, out _)) throw new InvalidOperationException("Cannot replace accessor through assignment");

@@ -6,6 +6,14 @@ public partial class JsFunction
     private static readonly object NullPrototypeValue = new();
     private object ordinaryPrototype;
     internal FunctionBody constructFactory;
+    internal bool sourceConstructor;
+    internal virtual bool CanInitializeDerived => sourceConstructor;
+    internal virtual object InitializeDerived(object instance, object[] arguments)
+    {
+        if (!CanInitializeDerived) throw new InvalidOperationException("Base constructor is unsupported");
+        object returned = InvokeWithReceiver(instance, arguments);
+        return returned is TsObject ? returned : instance;
+    }
     internal void MarkOrdinaryPrototype() => ordinaryPrototype = UncreatedPrototype;
     internal void UseObjectPrototype(TsObject prototype) => ordinaryPrototype = prototype;
     private object ConstructOrdinary(object[] arguments)
@@ -42,6 +50,6 @@ public partial class JsFunction
 
 public static partial class Js
 {
-    public static object MarkFunctionPrototype(object value) { ((JsFunction)value).MarkOrdinaryPrototype(); return value; }
-    public static object MarkFunctionPrototype(object value, object factory) { var fn = (JsFunction)value; fn.MarkOrdinaryPrototype(); fn.constructFactory = (FunctionBody)factory; return value; }
+    public static object MarkFunctionPrototype(object value) { var fn = (JsFunction)value; fn.MarkOrdinaryPrototype(); fn.sourceConstructor = true; return value; }
+    public static object MarkFunctionPrototype(object value, object factory) { var fn = (JsFunction)value; fn.MarkOrdinaryPrototype(); fn.sourceConstructor = true; fn.constructFactory = (FunctionBody)factory; return value; }
 }

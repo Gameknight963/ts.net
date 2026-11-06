@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class JsClassInstance : TsObject
 {
     internal JsClassFunction Owner;
-    internal JsClassInstance ParentPrototype;
+    internal TsObject ParentPrototype;
     internal TsObject InheritedPrototype => TryExplicitPrototype(out var value) ? value : Owner is null ? ParentPrototype : Owner.Prototype;
     internal override TsObject PropertyPrototype => InheritedPrototype;
     HashSet<string> hidden;
@@ -14,7 +14,7 @@ public class JsClassInstance : TsObject
     public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? base.Get(key) : InheritedPrototype is null ? Js.Undefined : InheritedPrototype.GetWithReceiver(key, receiver);
     public override object Set(string key, object value) => SetWithReceiver(key, value, this);
     public override object SetWithReceiver(string key, object value, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Write(receiver, value) : HasOwn(key) || InheritedPrototype is null ? ((TsObject)receiver).SetOwnValue(key, value) : InheritedPrototype.SetWithReceiver(key, value, receiver);
-    public override object SetOwnValue(string key, object value) { if (TryOwnAccessor(key, out _)) throw new InvalidOperationException("Cannot replace accessor through assignment"); return base.Set(key, value); }
+    public override object SetOwnValue(string key, object value) { if (TryOwnAccessor(key, out _)) throw Js.MakeThrown(new JsCaughtError("TypeError", "Cannot replace accessor through assignment")); DefineOwn(key, value); return value; }
     internal void DefineClassAccessor(string key, object function, int mode) { DefineAccessor(key, function, mode); (hidden ??= new()).Add(key); }
     internal void DefineMethod(string name, object value) { DefineOwn(name, value); (hidden ??= new()).Add(name); }
     internal void DefineField(string name, object value) { DefineOwn(name, value); hidden?.Remove(name); }
@@ -33,17 +33,19 @@ public sealed class JsClassFunction : JsFunction
     readonly JsFunction constructor;
     readonly HashSet<string> hidden = new();
     public readonly JsClassInstance Prototype;
-    internal readonly JsClassFunction Parent;
+    internal readonly JsFunction Parent;
     readonly bool derived;
     public JsClassFunction(string name, object factory, object fields, object constructor, object parent, bool derived)
         : base((FunctionBody)(static _ => throw new InvalidOperationException("Class constructor requires new")), null, name, constructor is JsFunction fn ? Convert.ToInt32(fn.Get("length")) : 0)
     {
         this.derived = derived;
-        Parent = parent as JsClassFunction;
-        if (derived && parent is not null && Parent is null) throw new InvalidOperationException("Base class must be a compiled class");
+        Parent = parent as JsFunction;
+        if (derived && parent is not null && (Parent is null || !Parent.CanInitializeDerived)) throw Js.MakeThrown(new JsCaughtError("TypeError", "Base class must be a supported constructor"));
+        object parentPrototype = Parent?.Get("prototype");
+        if (Parent is not null && parentPrototype is not null && parentPrototype is not TsObject) throw Js.MakeThrown(new JsCaughtError("TypeError", "Base constructor prototype must be an object or null"));
         this.factory = (FunctionBody)factory; this.fields = (JsFunction)fields; this.constructor = constructor as JsFunction;
         Prototype = (JsClassInstance)this.factory(Array.Empty<object>());
-        Prototype.ParentPrototype = Parent?.Prototype ?? (derived ? null : Js.DefaultClassObjectPrototype);
+        Prototype.ParentPrototype = Parent is not null ? (TsObject)parentPrototype : derived ? null : Js.DefaultClassObjectPrototype;
         Prototype.DefineMethod("constructor", this);
     }
     internal override bool IsReadOnlyOwnProperty(string key) => key == "prototype" || base.IsReadOnlyOwnProperty(key);
@@ -52,11 +54,13 @@ public sealed class JsClassFunction : JsFunction
     public override object Get(string key) => GetWithReceiver(key, this);
     public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : key == "prototype" ? Prototype : HasOwn(key) ? base.Get(key) : Parent is null ? base.Get(key) : Parent.GetWithReceiver(key, receiver);
     public override object Set(string key, object value) => SetWithReceiver(key, value, this);
-    public override object SetWithReceiver(string key, object value, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Write(receiver, value) : HasOwn(key) || Parent is null ? ((TsObject)receiver).SetOwnValue(key, value) : Parent.SetWithReceiver(key, value, receiver);
+    public override object SetWithReceiver(string key, object value, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Write(receiver, value) : HasOwn(key) ? ((TsObject)receiver).SetOwnValue(key, value) : Parent is null ? base.SetWithReceiver(key, value, receiver) : Parent.SetWithReceiver(key, value, receiver);
     public override object SetOwnValue(string key, object value)
     {
         if (key == "prototype") throw new InvalidOperationException("Class prototype is read-only");
-        if (TryOwnAccessor(key, out _)) throw new InvalidOperationException("Cannot replace accessor through assignment"); return base.Set(key, value);
+        if (TryOwnAccessor(key, out _)) throw Js.MakeThrown(new JsCaughtError("TypeError", "Cannot replace accessor through assignment"));
+        if (HasOwn(key) && IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Property is read-only");
+        DefineOwn(key, value); return value;
     }
     internal void DefineClassAccessor(string key, object function, int mode) { if (key == "prototype") throw new InvalidOperationException("Cannot redefine class prototype"); DefineAccessor(key, function, mode); hidden.Add(key); }
     internal void DefineMethod(string name, object value, bool isStatic)
@@ -82,7 +86,7 @@ public sealed class JsClassFunction : JsFunction
         if (constructor is null)
         {
             if (Parent is null) throw new InvalidOperationException("Super constructor is not callable");
-            object result = Parent.Initialize(instance, arguments); InitializeFields(result); return result;
+            object result = Parent.InitializeDerived(instance, arguments); InitializeFields(result); return result;
         }
         var frame = new JsConstructorFrame(this, instance);
         object returned = constructor.InvokeWithReceiver(frame, arguments);
@@ -95,6 +99,8 @@ public sealed class JsClassFunction : JsFunction
         var instance = (JsClassInstance)factory(Array.Empty<object>()); instance.Owner = this; return instance;
     }
     public override object Construct(object[] arguments) => Initialize(Allocate(), arguments);
+    internal override bool CanInitializeDerived => true;
+    internal override object InitializeDerived(object instance, object[] arguments) => Initialize(instance, arguments);
     public override bool HasInstance(object value) => value is TsObject instance && Js.PrototypeContains(instance, Prototype);
 
 
