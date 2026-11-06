@@ -113,12 +113,14 @@ internal static partial class CompilerFunctions
     }
     internal static void il_binding_read(int type, int source, int position, int finished, Compiler c, IlBackend b)
     {
+        if (b.destructure_close >= 0) { b.emit(0x20, 0); b.emit(0xfe0e, b.destructure_close); }
         int missing = b.label(); int done = b.label();
         b.emit(0xfe0c, finished); b.emit(0x3a, missing);
         b.emit(0xfe0c, position); b.op(0x76); b.emit(0xfe0c, source); b.call(RuntimeMember.ForOfLength); b.op(0xfe04); b.emit(0x39, missing);
         b.emit(0xfe0c, source); b.emit(0xfe0c, position);
         if (get_type(type, c).kind == TypeKind.Number) { b.call(RuntimeMember.ForOfNumber); }
         else { b.call(RuntimeMember.ForOfValue); b.from_object(type, c); }
+        if (b.destructure_close >= 0) { b.emit(0x20, 1); b.emit(0xfe0e, b.destructure_close); }
         b.emit(0xfe0c, position); b.emit(0xfe0c, source); b.emit(0xfe0c, position); b.call(RuntimeMember.ForOfStep); b.op(0x58); b.emit(0xfe0e, position);
         b.emit(0x38, done); b.mark(missing);
         b.emit(0x20, 1); b.emit(0xfe0e, finished); b.empty(type, c); b.mark(done);
@@ -140,7 +142,10 @@ internal static partial class CompilerFunctions
         Node n = get_node(entry, c);
         if (n.constant) { il_object_bindings(entry, source, c, b); return; }
         // Even an empty pattern must require an iterable value.
-        b.emit(0xfe0c, source); b.call(RuntimeMember.ForOfLength); b.op(0x26);
+        b.emit(0xfe0c, source); b.call(RuntimeMember.IterationStart); b.emit(0xfe0e, source);
+        int previousClose = b.destructure_close, closeable = b.local(-2); b.destructure_close = closeable;
+        b.emit(0x20, 1); b.emit(0xfe0e, closeable);
+        int start = b.label(), end = b.label(), handler = b.label(), handlerEnd = b.label(), normal = b.label(); b.mark(start);
         int position = b.local(-6); int finished = b.local(-2);
         b.emit(0x20, 0); b.emit(0xfe0e, position); b.emit(0x20, 0); b.emit(0xfe0e, finished);
         int child = n.children;
@@ -159,6 +164,11 @@ internal static partial class CompilerFunctions
             }
             child = binding.next;
         }
+        b.emit(0xdd, normal); b.mark(end); b.mark(handler);
+        int exception = b.RuntimeToken(RuntimeMember.ExceptionType), error = b.local(exception); b.emit(0xfe0e, error);
+        il_close_iteration(source, closeable, true, b); b.emit(0xfe0c, error); b.op(0x7a); b.mark(handlerEnd);
+        b.plan.catch_region(b.method, start, end, handler, handlerEnd, exception);
+        b.mark(normal); il_close_iteration(source, closeable, false, b); b.destructure_close = previousClose;
     }
     internal static void il_object_bindings(int entry, int source, Compiler c, IlBackend b)
     {
@@ -181,4 +191,9 @@ internal static partial class CompilerFunctions
             il_finish_binding(child, c, b); child = binding.next;
         }
     }
+}
+
+internal sealed partial class IlBackend
+{
+    internal int destructure_close = -1;
 }

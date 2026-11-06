@@ -1,0 +1,58 @@
+using System;
+
+internal sealed class JsProtocolIterator(TsObject source, JsFunction next)
+{
+    internal readonly TsObject Source = source;
+    internal bool Done;
+    bool cached;
+    object result;
+    internal bool Ensure()
+    {
+        if (cached) return true;
+        if (Done) return false;
+        try
+        {
+            result = Js.RequireIteratorResult(next.InvokeWithReceiver(Source, Array.Empty<object>()));
+            if (Js.Truthy(Js.Get(result, "done"))) { Done = true; result = null; return false; }
+            cached = true; return true;
+        }
+        catch { Done = true; result = null; throw; }
+    }
+    internal object TakeValue()
+    {
+        if (!Ensure()) return Js.Undefined;
+        object current = result; result = null; cached = false;
+        try { return Js.Get(current, "value"); }
+        catch { Done = true; throw; }
+    }
+}
+
+public static partial class Js
+{
+    internal static object StartCollectionIterator(JsCollectionIterator iterator)
+    {
+        object next = iterator.Get("next");
+        if (ReferenceEquals(next, KeyedIteratorIntrinsicNext(iterator.IsSetIterator))) return iterator;
+        if (next is not JsFunction function) throw new InvalidOperationException("Iterator next is not callable");
+        return new JsProtocolIterator(iterator, function);
+    }
+    public static void CloseIteration(object source, bool suppressError)
+    {
+        TsObject iterator = IterationObject(source);
+        if (iterator == null) return;
+        try
+        {
+            object method = iterator.Get("return");
+            if (IsNullish(method)) return;
+            if (method is not JsFunction function) throw new InvalidOperationException("Iterator return is not callable");
+            RequireIteratorResult(function.InvokeWithReceiver(iterator, Array.Empty<object>()));
+        }
+        catch when (suppressError) { }
+    }
+    internal static TsObject IterationObject(object source) => source switch
+        {
+            JsCollectionIterator { Owner: not null } native => native,
+            JsProtocolIterator { Done: false } custom => custom.Source,
+            _ => null
+        };
+}

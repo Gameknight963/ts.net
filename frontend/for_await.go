@@ -2,12 +2,22 @@ package main
 
 import "strconv"
 
-func (a *asyncExpressionLowering) forAwaitRegion(id, cursor, done int, build func() int) int {
+func (a *asyncExpressionLowering) forAwaitRegion(id, cursor, done int, awaiting bool, build func() int) int {
 	after := a.function(false, func(_ int) int { return a.resume(done) })
 	previous := a.region
 	a.region = id
 	body := a.function(false, func(_ int) int { return build() })
 	finalizer := a.function(false, func(_ int) int {
+		if !awaiting {
+			close := a.node(89, "iterator close")
+			a.b.nodes[close-1].left = a.reference(cursor)
+			statement := a.node(18, "iterator close")
+			a.b.nodes[statement-1].left = close
+			condition := a.node(85, "iterator needs close")
+			a.b.nodes[condition-1].typ = a.b.typ(a.b.c.GetBooleanType())
+			a.b.nodes[condition-1].left = a.reference(cursor)
+			return a.branch(condition, a.sequence(statement, a.tryEnd(id)), a.tryEnd(id))
+		}
 		condition := a.node(85, "for await needs close")
 		a.b.nodes[condition-1].typ = a.b.typ(a.b.c.GetBooleanType())
 		a.b.nodes[condition-1].left = a.reference(cursor)

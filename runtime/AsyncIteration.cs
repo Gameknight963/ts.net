@@ -13,13 +13,14 @@ public static partial class Js
     public static object BeginAsyncIteration(object source, bool keys)
     {
         if (keys) source = ForInStart(source);
-        else _ = Iteration.Length(source);
+        else source = Iteration.Start(source);
         return new AsyncIterationState { Source = source, Keys = keys };
     }
 
     public static bool NextAsyncIteration(object state)
     {
         var cursor = (AsyncIterationState)state;
+        cursor.NeedsClose = false;
         if (cursor.Keys)
         {
             cursor.Current = ForInNext(cursor.Source);
@@ -29,8 +30,14 @@ public static partial class Js
         int position = unchecked((int)cursor.Position);
         cursor.Current = Iteration.Value(cursor.Source, position);
         cursor.Position += (uint)Iteration.Step(cursor.Source, position);
+        cursor.NeedsClose = true;
         return true;
     }
 
     public static object AsyncIterationValue(object state) => ((AsyncIterationState)state).Current;
+    public static object CloseAsyncIteration(object state)
+    {
+        var cursor = (AsyncIterationState)state; cursor.NeedsClose = false;
+        CloseIteration(cursor.Source, false); return Undefined;
+    }
 }

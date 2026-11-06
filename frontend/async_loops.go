@@ -221,12 +221,15 @@ func (a *asyncExpressionLowering) forEachStatement(id int, n irNode, next func()
 						condition := a.node(79, "async iteration next")
 						a.b.nodes[condition-1].left = a.reference(cursor)
 						a.b.nodes[condition-1].typ = a.b.typ(a.b.c.GetBooleanType())
+						if n.kind == 34 {
+							return a.branch(condition, a.resume(body), a.tryEnd(id))
+						}
 						return a.branch(condition, a.resume(body), a.resume(done))
 					})
 					return a.sequence(a.declaration(step, stepFunction), a.sequence(a.declaration(body, bodyFunction), a.resume(step)))
 				}
-				if n.third != 0 {
-					return a.forAwaitRegion(id, cursor, done, build)
+				if n.kind == 34 {
+					return a.forAwaitRegion(id, cursor, done, n.third != 0, build)
 				}
 				return build()
 			})

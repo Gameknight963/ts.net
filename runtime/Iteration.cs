@@ -3,6 +3,14 @@ using System.Runtime.CompilerServices;
 
 public static class Iteration
 {
+    public static object Start(object value) => value switch
+    {
+        JsKeyedCollection collection => Js.StartCollectionIterator(new JsCollectionIterator(collection, collection.IsSet ? 1 : 2)),
+        JsCollectionIterator iterator => Js.StartCollectionIterator(iterator),
+        JsProtocolIterator or JsArray or JsArguments or string => value,
+        JsBoxedPrimitive { Value: string text } => text,
+        _ => throw new InvalidOperationException("Value is not iterable")
+    };
     static class Characters
     {
         public static readonly string[] Latin = Build();
@@ -21,6 +29,8 @@ public static class Iteration
         JsArray array => array.Length(),
         JsArguments arguments => arguments.IterationLength(),
         string text => text.Length,
+        JsCollectionIterator iterator => iterator.Ensure() ? double.PositiveInfinity : 0,
+        JsProtocolIterator iterator => iterator.Ensure() ? double.PositiveInfinity : 0,
         _ => throw new InvalidOperationException("Value is not iterable")
     };
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -31,6 +41,8 @@ public static class Iteration
     }
     public static object Value(object value, int position)
     {
+        if (value is JsCollectionIterator iterator) return iterator.TakeValue();
+        if (value is JsProtocolIterator custom) return custom.TakeValue();
         if (value is JsArray array) return array.ElementAt((uint)position);
         if (value is JsArguments arguments) return arguments.Get(position.ToString(System.Globalization.CultureInfo.InvariantCulture));
         if (value is string text)

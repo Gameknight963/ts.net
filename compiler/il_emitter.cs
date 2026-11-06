@@ -472,6 +472,8 @@ internal static partial class CompilerFunctions
             il_boxed(n.left, c, b); il_boxed(n.right, c, b); il_boxed(n.third, c, b);
             b.emit(0x20, (int)number(n.name, c)); b.call(RuntimeMember.AsyncIteratorTry);
         }
+        else if (n.kind == NodeKind.CloseAsyncIteration) { il_boxed(n.left, c, b); b.call(RuntimeMember.CloseAsyncIteration); }
+        else if (n.kind == NodeKind.CloseDestructuring) { il_boxed(n.left, c, b); b.call(RuntimeMember.CloseDestructuring); }
         else if (n.kind == NodeKind.ForAwaitNext || n.kind == NodeKind.ForAwaitClose || n.kind == NodeKind.RequireIteratorResult)
         {
             il_boxed(n.left, c, b);

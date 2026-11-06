@@ -88,8 +88,8 @@ public static partial class Js
         var result = new JsCaughtError(name, text, hasMessage, hasCause ? Get(options, "cause") : null, hasCause);
         if (name == "AggregateError")
         {
-            object input = FunctionArgument(arguments, 0); int length = checked((int)Iteration.Length(input)); var errors = new JsArray(0);
-            for (int i = 0; i < length; i += Iteration.Step(input, i)) errors.Append(Iteration.Value(input, i));
+            object input = Iteration.Start(FunctionArgument(arguments, 0)); var errors = new JsArray(0);
+            for (int i = 0; i < Iteration.Length(input); i += Iteration.Step(input, i)) errors.Append(Iteration.Value(input, i));
             result.DefineHidden("errors", errors);
         }
         return result;

@@ -1,5 +1,7 @@
 package main
 
+import "strconv"
+
 // Keep the iterator position and excluded object keys across suspensions. Reads
 // happen one at a time, so a default may change values read by later bindings.
 func (a *asyncExpressionLowering) pattern(n irNode, source int, next func() int) int {
@@ -7,10 +9,11 @@ func (a *asyncExpressionLowering) pattern(n irNode, source int, next func() int)
 	a.b.nodes[state-1].left = source
 	a.b.nodes[state-1].constant = n.constant
 	return a.bind(state, func(cursor int) int {
+		finish := next
 		var walk func(int) int
 		walk = func(child int) int {
 			if child == 0 {
-				return next()
+				return finish()
 			}
 			binding := a.b.nodes[child-1]
 			a.discard(child)
@@ -38,7 +41,29 @@ func (a *asyncExpressionLowering) pattern(n irNode, source int, next func() int)
 			}
 			return read(a.node(20, "undefined"))
 		}
-		return walk(n.children)
+		if n.constant != 0 {
+			return walk(n.children)
+		}
+		region := a.node(20, "destructuring protected region")
+		after := a.function(false, func(_ int) int { return next() })
+		previous := a.region
+		a.region = region
+		finish = func() int { return a.tryEnd(region) }
+		body := a.function(false, func(_ int) int { return walk(n.children) })
+		finalizer := a.function(false, func(_ int) int {
+			close := a.node(90, "close destructuring")
+			a.b.nodes[close-1].left = a.reference(cursor)
+			statement := a.node(18, "close destructuring")
+			a.b.nodes[statement-1].left = close
+			return a.sequence(statement, a.tryEnd(region))
+		})
+		a.region = previous
+		enter := a.node(88, "destructuring protected region")
+		a.b.nodes[enter-1].name = a.b.text(strconv.Itoa(region))
+		a.b.nodes[enter-1].left = body
+		a.b.nodes[enter-1].right = finalizer
+		a.b.nodes[enter-1].third = after
+		return a.returned(enter)
 	})
 }
 

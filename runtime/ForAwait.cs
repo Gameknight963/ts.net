@@ -16,19 +16,21 @@ public static partial class Js
         cursor.NeedsClose = false;
         var result = new JsPromise();
         var pair = new PromiseResolvingFunctions(result);
+        bool more = false;
         try
         {
-            bool more = NextAsyncIteration(state);
+            more = NextAsyncIteration(state);
+            cursor.NeedsClose = false;
             var value = (JsPromise)PromiseResolve(RuntimeNamespaces.Promise, more ? cursor.Current : Undefined);
             // Unwrap the sync iterator's value in an intrinsic reaction. The
             // loop then awaits the resulting iterator-result promise separately.
             value.Then(new PromiseReaction(null, null, null, (resolved, rejected) =>
             {
-                if (rejected) pair.Reject.InvokeWithReceiver(Undefined, new[] { resolved });
+                if (rejected) { if (more) CloseIteration(cursor.Source, true); pair.Reject.InvokeWithReceiver(Undefined, new[] { resolved }); }
                 else pair.Resolve.InvokeWithReceiver(Undefined, new[] { IteratorResult(resolved, !more) });
             }));
         }
-        catch (Exception error) { pair.RejectError(error); }
+        catch (Exception error) { if (more) CloseIteration(cursor.Source, true); pair.RejectError(error); }
         return result;
     }
 
@@ -47,12 +49,29 @@ public static partial class Js
     {
         var cursor = (AsyncIterationState)state;
         cursor.NeedsClose = false;
-        cursor.Finished = true;
-        // The supported native iterators have no return method. The async-from-
-        // sync adapter still returns a promise of an iterator result, and await
-        // must observe its resolution (including inherited then properties).
+        // A missing return method still produces a promise of an iterator
+        // result. Its resolution must observe inherited then properties.
         var result = new JsPromise();
-        new PromiseResolvingFunctions(result).Resolve.InvokeWithReceiver(Undefined, new[] { IteratorResult(Undefined, true) });
+        var pair = new PromiseResolvingFunctions(result);
+        try
+        {
+            TsObject iterator = IterationObject(cursor.Source);
+            object method = iterator == null ? Undefined : iterator.Get("return");
+            if (IsNullish(method)) pair.Resolve.InvokeWithReceiver(Undefined, new[] { IteratorResult(Undefined, true) });
+            else
+            {
+                if (method is not JsFunction function) throw new InvalidOperationException("Iterator return is not callable");
+                object returned = RequireIteratorResult(function.InvokeWithReceiver(iterator, Array.Empty<object>()));
+                bool done = Truthy(Get(returned, "done"));
+                var value = (JsPromise)PromiseResolve(RuntimeNamespaces.Promise, Get(returned, "value"));
+                value.Then(new PromiseReaction(null, null, null, (resolved, rejected) =>
+                {
+                    if (rejected) pair.Reject.InvokeWithReceiver(Undefined, new[] { resolved });
+                    else pair.Resolve.InvokeWithReceiver(Undefined, new[] { IteratorResult(resolved, done) });
+                }));
+            }
+        }
+        catch (Exception error) { pair.RejectError(error); }
         return result;
     }
 }

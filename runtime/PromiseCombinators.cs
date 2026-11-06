@@ -11,11 +11,12 @@ public static partial class Js
             // Creating the capability can throw synchronously. Everything after
             // that rejects the result, including a throwing resolve getter.
             var capability = NewPromiseCapability(receiver);
+            object input = null;
             try
             {
                 object resolve = Js.Get(receiver, "resolve");
                 if (resolve is not JsFunction) throw new InvalidOperationException("Promise resolve is not callable");
-                object input = FunctionArgument(arguments, 0);
+                input = Iteration.Start(FunctionArgument(arguments, 0));
                 var state = new PromiseCombinationState(mode, capability);
                 for (int position = 0; position < Iteration.Length(input); position += Iteration.Step(input, position))
                 {
@@ -27,7 +28,7 @@ public static partial class Js
                 }
                 state.Finish();
             }
-            catch (Exception error) { capability.Complete(CaughtValue(error), true); }
+            catch (Exception error) { CloseIteration(input, true); capability.Complete(CaughtValue(error), true); }
             return capability.Promise;
         }
     }

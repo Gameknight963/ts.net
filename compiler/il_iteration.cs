@@ -6,6 +6,11 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 internal static partial class CompilerFunctions
 {
+    internal static void il_close_iteration(int source, int enabled, bool suppress, IlBackend b)
+    {
+        int skip = b.label(); b.emit(0xfe0c, enabled); b.emit(0x39, skip);
+        b.emit(0xfe0c, source); b.emit(0x20, suppress ? 1 : 0); b.call(RuntimeMember.CloseIteration); b.mark(skip);
+    }
     internal static void il_prepare_iteration_vars(int owner, Compiler c, IlBackend b)
     {
         // Forward reads of hoisted vars need an undefined slot at entry.
@@ -86,11 +91,19 @@ internal static partial class CompilerFunctions
         {
             int slot = b.local(b.type(type, c)); b.slots.at_mut(target.symbol) = slot; b.empty(type, c); b.store(target.symbol);
         }
-        il_boxed(n.right, c, b); if (n.kind == NodeKind.ForIn) { b.call(RuntimeMember.ForInStart); } int iterable = b.local(-5); b.emit(0xfe0e, iterable);
+        il_boxed(n.right, c, b); b.call(n.kind == NodeKind.ForIn ? RuntimeMember.ForInStart : RuntimeMember.IterationStart); int iterable = b.local(-5); b.emit(0xfe0e, iterable);
         int position = b.local(-6); b.emit(0x20, 0); b.emit(0xfe0e, position);
         int value = b.local(b.type(type, c)); int start = b.label(); int done = b.label();
         b.breaks.at_mut(entry) = done; b.continues.at_mut(entry) = start;
+        ExceptionFrame frame = null; int protectedStart = 0, protectedEnd = 0, handler = 0, handlerEnd = 0, normal = 0, completed = 0, closeable = -1;
+        if (n.kind == NodeKind.ForOf)
+        {
+            frame = new ExceptionFrame(entry); b.exception_frames.Add(frame);
+            protectedStart = b.label(); protectedEnd = b.label(); handler = b.label(); handlerEnd = b.label(); normal = b.label(); completed = b.label();
+            closeable = b.local(-2); b.emit(0x20, 0); b.emit(0xfe0e, closeable); b.mark(protectedStart);
+        }
         b.mark(start);
+        if (frame != null) { b.emit(0x20, 0); b.emit(0xfe0e, closeable); }
         if (n.kind == NodeKind.ForIn)
         {
             b.emit(0xfe0c, iterable); b.call(RuntimeMember.ForInNext);
@@ -106,6 +119,7 @@ internal static partial class CompilerFunctions
             if (get_type(type, c).kind == TypeKind.Number) { b.call(RuntimeMember.ForOfNumber); }
             else { b.call(RuntimeMember.ForOfValue); b.from_object(type, c); }
             b.emit(0xfe0e, value);
+            b.emit(0x20, 1); b.emit(0xfe0e, closeable);
             b.emit(0xfe0c, position);
             if (get_type(get_node(n.right, c).type, c).kind == TypeKind.Array) { b.emit(0x20, 1); }
             else { b.emit(0xfe0c, iterable); b.emit(0xfe0c, position); b.call(RuntimeMember.ForOfStep); }
@@ -115,6 +129,23 @@ internal static partial class CompilerFunctions
         if (target.kind == NodeKind.Destructure) { il_binding_pattern(binding, value, c, b); }
         else { il_iteration_store(binding, type, value, c, b); }
         il_statement(n.fourth, result, c, b);
-        b.emit(0x38, start); b.mark(done); b.context_scope = scope; b.context_slot = context_slot;
+        b.emit(0x38, start); b.mark(done);
+        if (frame != null)
+        {
+            b.emit(0xdd, normal); b.mark(protectedEnd); b.mark(handler);
+            int exception = b.RuntimeToken(RuntimeMember.ExceptionType), error = b.local(exception); b.emit(0xfe0e, error);
+            il_close_iteration(iterable, closeable, true, b); b.emit(0xfe0c, error); b.op(0x7a); b.mark(handlerEnd);
+            b.plan.catch_region(b.method, protectedStart, protectedEnd, handler, handlerEnd, exception);
+            b.exception_frames.RemoveAt(b.exception_frames.Count - 1);
+            b.mark(normal); il_close_iteration(iterable, closeable, false, b); b.emit(0x38, completed);
+            foreach (var exit in frame.Exits)
+            {
+                b.mark(exit.Label); il_close_iteration(iterable, closeable, false, b);
+                if (exit.Return) { if (exit.Value >= 0) b.emit(0xfe0c, exit.Value); il_exception_return(result, c, b); }
+                else il_exception_jump(exit.TargetNode, exit.TargetLabel, c, b);
+            }
+            b.mark(completed);
+        }
+        b.context_scope = scope; b.context_slot = context_slot;
     }
 }

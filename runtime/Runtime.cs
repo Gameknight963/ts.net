@@ -347,6 +347,7 @@ public static partial class Js
     public static double CanonicalNumber(double value) => double.IsNaN(value) ? double.NaN : value;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double ForOfLength(object value) => Iteration.Length(value);
+    public static object IterationStart(object value) => Iteration.Start(value);
     public static object ForOfValue(object value, int position) => Iteration.Value(value, position);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double? ForOfNumber(object value, int position) => Iteration.Number(value, position);

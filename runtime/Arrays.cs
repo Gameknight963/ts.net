@@ -201,18 +201,23 @@ public partial class JsArray : TsObject
     }
     public void Spread(object source, int extra)
     {
+        source = Iteration.Start(source);
         if (this is NumberArray destination && source is NumberArray numbers)
         {
             if (destination.AppendPacked(numbers, extra)) return;
             for (uint i = 0; i < numbers.Length(); i++) destination.PushNumber(numbers.GetNumberAt(unchecked((int)i)));
             return;
         }
-        for (uint i = 0; i < Iteration.Length(source);)
+        try
         {
-            int position = unchecked((int)i);
-            Append(Iteration.Value(source, position));
-            i += (uint)Iteration.Step(source, position);
+            for (uint i = 0; i < Iteration.Length(source);)
+            {
+                int position = unchecked((int)i);
+                Append(Iteration.Value(source, position));
+                i += (uint)Iteration.Step(source, position);
+            }
         }
+        catch { Js.CloseIteration(source, true); throw; }
     }
     public double PushMany(object[] items)
     {

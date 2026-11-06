@@ -13,7 +13,7 @@ public static partial class Js
         bool mapping = !IsUndefined(mapper);
         if (mapping && mapper is not JsFunction) throw new InvalidOperationException("Array.from mapper is not callable");
         object iterable = input is JsBoxedPrimitive { Value: string text } ? text : input;
-        bool iterating = iterable is JsArray or JsArguments or string;
+        bool iterating = iterable is JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator;
         TsObject source = iterating ? null : ToObject(input);
         long length = iterating ? 0 : IndexedLength(source);
         TsObject result;
@@ -52,13 +52,18 @@ public static partial class Js
         long count = 0;
         if (iterating)
         {
-            // Array and arguments iterators observe length changes between steps.
-            // String iteration advances by code point, not by UTF-16 code unit.
-            for (int position = 0; position < Iteration.Length(iterable); position += Iteration.Step(iterable, position))
+            iterable = Iteration.Start(iterable);
+            try
             {
-                object value = iterable is JsArray array ? IndexedValue(array, position) : Iteration.Value(iterable, position);
-                Define(count, Map(value, count)); count++;
+                // Array and arguments iterators observe length changes between steps.
+                // String iteration advances by code point, not by UTF-16 code unit.
+                for (int position = 0; position < Iteration.Length(iterable); position += Iteration.Step(iterable, position))
+                {
+                    object value = iterable is JsArray array ? IndexedValue(array, position) : Iteration.Value(iterable, position);
+                    Define(count, Map(value, count)); count++;
+                }
             }
+            catch { CloseIteration(iterable, true); throw; }
         }
         else
         {

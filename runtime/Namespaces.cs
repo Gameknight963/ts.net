@@ -93,10 +93,12 @@ public static partial class Js
         internal static readonly JsFunction Boolean = new PrimitiveConstructorFunction("Boolean", false);
         internal static readonly JsFunction Array = new ArrayConstructorFunction();
         internal static readonly JsFunction Promise = new PromiseConstructorFunction();
+        internal static readonly JsFunction Map = new CollectionConstructor(false);
+        internal static readonly JsFunction Set = new CollectionConstructor(true);
         internal static readonly JsFunction QueueMicrotask = CreateQueueMicrotask();
     }
     internal static JsFunction GetObjectConstructor() => RuntimeNamespaces.Object;
     public static void ConsoleLog(object[] args) => CallMethod(RuntimeNamespaces.Console.Get("log"), RuntimeNamespaces.Console, args);
     public static double PerformanceNow() => CallMethodNumber0(RuntimeNamespaces.Performance.Get("now"), RuntimeNamespaces.Performance).GetValueOrDefault(double.NaN);
-    public static object BuiltinNamespace(string name) => name == "Promise" ? RuntimeNamespaces.Promise : name == "queueMicrotask" ? RuntimeNamespaces.QueueMicrotask : name == "Array" ? RuntimeNamespaces.Array : name == "Math" ? RuntimeNamespaces.Math : name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : name == "String" ? RuntimeNamespaces.String : name == "Boolean" ? RuntimeNamespaces.Boolean : Undefined;
+    public static object BuiltinNamespace(string name) => name == "Map" ? RuntimeNamespaces.Map : name == "Set" ? RuntimeNamespaces.Set : name == "Promise" ? RuntimeNamespaces.Promise : name == "queueMicrotask" ? RuntimeNamespaces.QueueMicrotask : name == "Array" ? RuntimeNamespaces.Array : name == "Math" ? RuntimeNamespaces.Math : name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : name == "String" ? RuntimeNamespaces.String : name == "Boolean" ? RuntimeNamespaces.Boolean : Undefined;
 }

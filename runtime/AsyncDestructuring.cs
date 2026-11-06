@@ -14,7 +14,7 @@ public static partial class Js
     public static object BeginDestructuring(object source, bool objectPattern)
     {
         if (objectPattern) RequireObject(source);
-        else _ = Iteration.Length(source);
+        else source = Iteration.Start(source);
         return new DestructuringState { Source = source, ObjectPattern = objectPattern };
     }
 
@@ -54,5 +54,11 @@ public static partial class Js
             cursor.Finished = true;
         }
         return destination;
+    }
+    public static object CloseDestructuring(object state)
+    {
+        var cursor = (DestructuringState)state;
+        if (!cursor.ObjectPattern && !cursor.Finished) CloseIteration(cursor.Source, false);
+        return Undefined;
     }
 }
