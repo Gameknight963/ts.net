@@ -5,11 +5,11 @@ Work-in-progress TypesScript to IL compiler.
 
 ## Building
 
-The compiler has significant portions written in [crust](https://github.com/Gameknight963/crust), my C-like memory-safe programming lanuage. To build it, you'll need to install `crust` and `crustc`.
+Build with the .NET 10 SDK, Go 1.27 or newer, and Git: `dotnet build tsnet.sln -c Release`. The first build downloads the pinned Microsoft TypeScript frontend source.
 
-Then run `.\scripts\build.ps1 -Run`. You might figure out what dependencies you're missing if you run it.
+Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
-Building on linux is not supported atm.
+Cross-publish for Linux with `dotnet publish compiler/Tsnet.Compiler.csproj -c Release -r linux-x64 --self-contained false`. The output includes the managed compiler and a Go frontend executable; NativeAOT and a C toolchain are not required.
 
 ## Current performance
 
