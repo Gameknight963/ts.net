@@ -32,7 +32,7 @@ public static partial class Js
         {
             var prototype = new ArrayPrototypeObject();
             UseObjectPrototype(prototype); prototype.Member("constructor", this);
-            foreach (string name in new[] { "at", "push", "pop", "slice", "reverse", "indexOf", "includes", "join", "map", "filter", "forEach", "every", "some", "reduce", "reduceRight", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "lastIndexOf", "toReversed", "toSorted", "toSpliced", "with" })
+            foreach (string name in new[] { "at", "push", "pop", "slice", "reverse", "indexOf", "includes", "join", "map", "filter", "forEach", "every", "some", "reduce", "reduceRight", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "lastIndexOf", "toReversed", "toSorted", "toSpliced", "with", "fill" })
                 prototype.Member(name, ArrayMethodValue(name));
             Member("isArray", new JsFunction((FunctionBody)(static args => BoxBoolean(FunctionArgument(args, 0) is JsArray)), null, "isArray", 1));
             Member("of", new ArrayOfFunction()); Member("from", new ArrayFromFunction());
