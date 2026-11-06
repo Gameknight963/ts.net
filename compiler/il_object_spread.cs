@@ -26,6 +26,8 @@ internal static partial class CompilerFunctions
     internal static bool il_same_spread_fields(int source, int target, Compiler c)
     {
         if (get_type(source, c).kind != TypeKind.Shape || get_type(target, c).kind != TypeKind.Shape) { return false; }
+        // Class instances store properties dynamically, not in fixed CLR fields.
+        if (get_type(source,c).name!=0 || get_type(target,c).name!=0) { return false; }
         int count = 0; int member = get_type(source, c).fields;
         while (member != 0)
         {
