@@ -85,10 +85,10 @@ func (a *asyncExpressionLowering) statement(id int, next func() int) int {
 			}
 			return a.sequence(statement, next())
 		})
-	case 36: // destructuring initializer; defaults and computed keys follow later
+	case 36:
 		for child := n.children; child != 0; child = a.b.nodes[child-1].next {
 			if a.hasAwait(child) {
-				a.b.unsupported(a.source)
+				return a.expression(n.left, func(value int) int { return a.pattern(n, value, next) })
 			}
 		}
 		return a.expression(n.left, func(value int) int { n.left = value; return a.sequence(a.operation(n), next()) })

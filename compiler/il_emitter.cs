@@ -457,6 +457,25 @@ internal static partial class CompilerFunctions
         else if(n.kind==NodeKind.AsyncAwait){il_boxed(n.left,c,b);if(n.right!=0){il_boxed(n.right,c,b);b.call(RuntimeMember.AsyncAwaitContinue);}else b.call(RuntimeMember.AsyncAwait);}
         else if(n.kind==NodeKind.SavedCall){il_saved_call(entry,c,b);}
         else if(n.kind==NodeKind.AsyncPropertyKey){il_boxed(n.left,c,b);b.call(RuntimeMember.PropertyKey);}
+        else if (n.kind == NodeKind.DestructuringState)
+        {
+            il_boxed(n.left, c, b); b.emit(0x20, n.constant ? 1 : 0); b.call(RuntimeMember.BeginDestructuring);
+        }
+        else if (n.kind == NodeKind.DestructuringRead)
+        {
+            il_boxed(n.left, c, b); il_boxed(n.right, c, b); b.call(RuntimeMember.ReadDestructuring);
+        }
+        else if (n.kind == NodeKind.DestructuringRest)
+        {
+            il_boxed(n.left, c, b);
+            if (n.constant) b.emit(0x73, b.spread_any_constructor);
+            else
+            {
+                b.emit(0x20, 0);
+                b.emit(0x73, b.RuntimeToken(il_number_array(n.type, c) ? RuntimeMember.NumberArrayConstructor : RuntimeMember.ArrayConstructor));
+            }
+            b.call(RuntimeMember.RestDestructuring); b.from_object(n.type, c);
+        }
         else if(n.kind==NodeKind.Arguments){il_boxed(n.left,c,b);b.call(RuntimeMember.Arguments);}
         else if(n.kind==NodeKind.SuperBase){il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.emit(0x20,n.constant?1:0);b.call(RuntimeMember.SuperBase);}
         else if(n.kind==NodeKind.SuperCall){

@@ -22,6 +22,7 @@ internal static partial class CompilerFunctions
             Node node=get_node(i,c);
             if(constructs && node.kind==NodeKind.Function && node.third!=0)b.spread_any_constructor=-1;
             if(node.kind==NodeKind.Destructure && node.constant && il_has_object_rest(i,c))b.spread_any_constructor=-1;
+            if (node.kind == NodeKind.DestructuringRest && node.constant) b.spread_any_constructor = -1;
         }
         for (int i = 1; i <= c.node_store.count(); i++)
         {
