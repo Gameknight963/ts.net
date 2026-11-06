@@ -102,8 +102,6 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double? CallMethodNumber1(object target, object receiver, double? first)
     {
-        if (target is StringRangeFunction range)
-            return Cast<double?>(StringRangePrimitive(range, receiver, first, null), "Function result violates number type");
         if (target is CharacterFunction character)
             return CharacterNumericResult(character, receiver, first.GetValueOrDefault());
         if (target is RelativeAtFunction method) {
@@ -113,6 +111,8 @@ public static partial class Js
             }
             return Cast<double?>(AtPrimitive(receiver, first.GetValueOrDefault(), method.Text), "Function result violates number type");
         }
+        if (target is StringRangeFunction range)
+            return Cast<double?>(StringRangePrimitive(range, receiver, first, null), "Function result violates number type");
         return CallFunctionNumber1(target, first);
     }
     public static double? CallMethodNumber2(object target, object receiver, double? first, double? second) => target is StringRangeFunction range

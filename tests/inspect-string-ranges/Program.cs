@@ -12,3 +12,15 @@ for(int index=0;index<methods.Length;index++){
     if(result!=expected || bytes>(index==2?count*40+1024:0))throw new Exception($"Range {index}: result {result}, allocation {bytes}");
     Console.WriteLine($"PASS string range kernel {index}: {bytes} bytes for {count} calls");
 }
+foreach(string name in new[]{"slice","substring"}) {
+    int conversions=0;
+    var receiver=new RangeReceiver();
+    receiver.Set("toString",new JsFunction((FunctionBody)(_=>{conversions++;return "abc";}),null,"toString",0));
+    bool failed=false;
+    try {Js.CallMethodNumber1(Js.Get("",name),receiver,0);}
+    catch(InvalidCastException error) when(error.Message=="Function result violates number type") {failed=true;}
+    if(!failed || conversions!=1)throw new Exception("Numeric range result bypassed receiver conversion or return checking");
+}
+Console.WriteLine("PASS checked numeric range results preserve receiver conversion");
+
+sealed class RangeReceiver : TsObject { }
