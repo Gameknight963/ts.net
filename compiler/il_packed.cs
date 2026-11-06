@@ -65,6 +65,11 @@ internal static partial class CompilerFunctions
         int op = get_token(n.token, c).text;
         if (is_text(op, text_assign, c) || is_text(op, text_strict_equal, c) || is_text(op, text_strict_not_equal, c) ||
             is_text(op, text_and, c) || is_text(op, text_or, c) || il_logical_assignment(op, c)) { return false; }
+        if (il_is_loose_equality(op, c))
+        {
+            Node left = get_node(n.left, c), right = get_node(n.right, c);
+            if (left.kind is NodeKind.Null or NodeKind.Undefined || right.kind is NodeKind.Null or NodeKind.Undefined) return false;
+        }
         return il_numeric_coercion_calls(n.left, c) || il_numeric_coercion_calls(n.right, c);
     }
     internal static int il_buffer_loop(int entry, int counter, bool numeric, Compiler c, IlBackend b)
@@ -164,7 +169,7 @@ int il_loop_accumulator(int entry, Compiler c, IlBackend b)
             if (il_coercion_may_invoke(n, c)) { return 0; }
             if (n.kind != NodeKind.Block && n.kind != NodeKind.Expression && n.kind != NodeKind.If &&
                 n.kind != NodeKind.Name && n.kind != NodeKind.Number && n.kind != NodeKind.Boolean && n.kind != NodeKind.String &&
-                n.kind != NodeKind.Undefined && n.kind != NodeKind.TypeOf && n.kind != NodeKind.Index &&
+                n.kind != NodeKind.Undefined && n.kind != NodeKind.Null && n.kind != NodeKind.TypeOf && n.kind != NodeKind.Index &&
                 n.kind != NodeKind.Binary && n.kind != NodeKind.Unary && n.kind != NodeKind.Conditional &&
                 n.kind != NodeKind.Sequence && n.kind != NodeKind.Assign && n.kind != NodeKind.Update) { return 0; }
             if (n.kind == NodeKind.Name && (b.global_fields.at(n.symbol) != 0 ||

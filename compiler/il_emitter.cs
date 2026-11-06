@@ -335,7 +335,7 @@ internal static partial class CompilerFunctions
             else { il_expression(index.left, c, b); il_integer(index.right, c, b); b.call(RuntimeMember.ArrayIsNumberAt); }
         }
         else { il_boxed(value, c, b); b.call(RuntimeMember.IsNumber); }
-        if (is_text(op, text_strict_not_equal, c)) { il_invert(b); }
+        if (is_text(op, text_strict_not_equal, c) || is_text(op, text_loose_not_equal, c)) { il_invert(b); }
         if (wrap) { b.call(RuntimeMember.WrapBoolean); }
         return true;
     }
@@ -584,14 +584,14 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Binary)
         {
-            if (il_number_type_test(entry, true, c, b)) { return; }
+            if (il_number_type_test(entry, true, c, b) || il_loose_equality(n, c, b)) { return; }
             int op = get_token(n.token, c).text;
             if (is_text(op, text_and, c) || is_text(op, text_or, c))
             {
                 int done = b.label(); il_as(n.left, n.type, c, b); b.op(0x25); b.truth(n.type, c);
                 b.emit(is_text(op, text_and, c) ? 0x39 : 0x3a, done); b.op(0x26); il_as(n.right, n.type, c, b); b.mark(done);
             }
-            else if (is_text(op, text_strict_equal, c) || is_text(op, text_strict_not_equal, c))
+            else if (is_text(op, text_strict_equal, c) || is_text(op, text_strict_not_equal, c) || il_is_loose_equality(op, c))
             {
                 TypeKind left_kind = get_type(get_node(n.left, c).type, c).kind;
                 TypeKind right_kind = get_type(get_node(n.right, c).type, c).kind;
@@ -615,7 +615,7 @@ internal static partial class CompilerFunctions
                 {
                     il_boxed(n.left, c, b); il_boxed(n.right, c, b); b.call(RuntimeMember.Equal);
                 }
-                if (is_text(op, text_strict_not_equal, c)) { il_invert(b); }
+                if (is_text(op, text_strict_not_equal, c) || is_text(op, text_loose_not_equal, c)) { il_invert(b); }
                 b.call(RuntimeMember.WrapBoolean);
             }
             else if (il_relational_mode(op, c) >= 0 && (get_type(get_node(n.left, c).type, c).kind != TypeKind.Number || get_type(get_node(n.right, c).type, c).kind != TypeKind.Number))

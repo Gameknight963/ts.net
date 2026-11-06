@@ -34,6 +34,8 @@ internal static partial class CompilerFunctions
     internal static readonly TextBytes text_modulo_assign = "%=";
     internal static readonly TextBytes text_or = "||";
     internal static readonly TextBytes text_and = "&&";
+    internal static readonly TextBytes text_loose_equal = "==";
+    internal static readonly TextBytes text_loose_not_equal = "!=";
     internal static readonly TextBytes text_strict_equal = "===";
     internal static readonly TextBytes text_strict_not_equal = "!==";
     internal static readonly TextBytes text_less = "<";

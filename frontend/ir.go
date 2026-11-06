@@ -237,6 +237,7 @@ func (b *irBuilder) list(nodes []*ast.Node) int {
 }
 
 var operators = map[ast.Kind]string{
+	ast.KindEqualsEqualsToken: "==", ast.KindExclamationEqualsToken: "!=",
 	ast.KindAsteriskAsteriskToken: "**", ast.KindAsteriskAsteriskEqualsToken: "**=",
 	ast.KindPlusToken: "+", ast.KindMinusToken: "-", ast.KindAsteriskToken: "*", ast.KindSlashToken: "/", ast.KindPercentToken: "%",
 	ast.KindEqualsToken: "=", ast.KindPlusEqualsToken: "+=", ast.KindMinusEqualsToken: "-=", ast.KindAsteriskEqualsToken: "*=", ast.KindSlashEqualsToken: "/=", ast.KindPercentEqualsToken: "%=",

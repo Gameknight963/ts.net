@@ -5,7 +5,7 @@ using static Tsnet.Compiler.CompilerFunctions;
 internal enum RuntimeMember
 {
     OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
-    Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
+    Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, NumberAtIsNullish, LooseEqual, LooseEqualNumber, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
@@ -560,6 +560,9 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.Cast, b.plan.method2(6, js, 2, -8, -5, -4, "Cast"));
         b.ref_set(RuntimeMember.Check, b.plan.method2(6, js, 2, -5, -5, -4, "Check"));
         b.ref_set(RuntimeMember.Add, b.plan.method2(6, js, 0, -5, -5, -5, "Add"));
+        b.ref_set(RuntimeMember.NumberAtIsNullish, b.plan.method2(6, js, 0, -2, -5, -6, "NumberAtIsNullish"));
+        b.ref_set(RuntimeMember.LooseEqual, b.plan.method2(6, js, 0, -2, -5, -5, "LooseEqual"));
+        b.ref_set(RuntimeMember.LooseEqualNumber, b.plan.method2(6, js, 0, -2, -10, -5, "LooseEqualNumber"));
         b.ref_set(RuntimeMember.Equal, b.plan.method2(6, js, 0, -2, -5, -5, "Equal"));
         b.ref_set(RuntimeMember.EqualNumbers, b.plan.method2(6, js, 0, -2, -10, -10, "EqualNumbers"));
         b.ref_set(RuntimeMember.Remainder, b.plan.method2(6, js, 0, -3, -3, -3, "Remainder"));
