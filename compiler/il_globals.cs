@@ -38,8 +38,8 @@ internal static partial class CompilerFunctions
             int type = get_symbol(n.symbol, c).type;
             if (get_type(type, c).kind == TypeKind.Void) { fail(n.token, "void-valued globals need lowering", c); }
             Vector<byte> name = numbered_name('v', (int)n.symbol); Vector<byte> flag = numbered_name('i', (int)n.symbol);
-            int storage = b.type(type, c); b.global_fields.at_mut(n.symbol) = b.plan.field(program, 0x11, storage, name.view());
-            if (b.global_vars.at(n.symbol) == 0) { b.global_flags.at_mut(n.symbol) = b.plan.field(program, 0x11, -2, flag.view()); }
+            int storage = b.type(type, c); b.global_fields.at_mut(n.symbol) = b.plan.field(program, 0x13, storage, name.view());
+            if (b.global_vars.at(n.symbol) == 0) { b.global_flags.at_mut(n.symbol) = b.plan.field(program, 0x13, -2, flag.view()); }
             b.raw_slots.at_mut(n.symbol) = 0;
             if (b.global_vars.at(n.symbol) != 0 && get_type(type, c).kind == TypeKind.Number) { b.numeric_globals = true; }
             int root = (int)b.scalar_roots.at(n.symbol);

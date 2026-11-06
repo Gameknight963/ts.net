@@ -79,7 +79,7 @@ internal static partial class CompilerFunctions
                 if (!direct && b.function_caches.at(n.symbol) == 0)
                 {
                     Vector<byte> name = numbered_name('c', get_symbol(n.symbol, c).id);
-                    b.function_caches.at_mut(n.symbol) = b.plan.field(program, 0x11, -5, name.view());
+                    b.function_caches.at_mut(n.symbol) = b.plan.field(program, 0x13, -5, name.view());
                 }
             }
         }
