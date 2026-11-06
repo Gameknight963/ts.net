@@ -9,7 +9,7 @@ internal enum RuntimeMember
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionType, FunctionConstructor, ReceiverFunctionConstructor, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction0, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, Count
+    ForInStart, ForInNext, ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionType, FunctionConstructor, ReceiverFunctionConstructor, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction0, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, Count
 }
 
 internal struct ScalarField
@@ -430,7 +430,7 @@ bool il_logical_assignment(int op, Compiler c)
                 b.iteration_vars.at_mut(n.symbol) = 1;
             }
             if (n.kind == NodeKind.Binding && n.symbol != 0) { b.raw_slots.at_mut(n.symbol) = 0; b.written_symbols.at_mut(n.symbol) = 1; }
-            if (n.kind == NodeKind.ForOf)
+            if (n.kind == NodeKind.ForOf || n.kind == NodeKind.ForIn)
             {
                 Node target = get_node(n.left, c);
                 if (target.kind == NodeKind.Block) { target = get_node(target.children, c); }
@@ -684,6 +684,8 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.ArrayTryPacked, b.plan.method2(6, js, 0, -12, -5, -3, "ArrayTryPacked"));
         b.ref_set(RuntimeMember.ArrayReservePushes, b.plan.method2(6, js, 0, -1, -5, -3, "ArrayReservePushes"));
         b.ref_set(RuntimeMember.CanonicalNumber, b.plan.method1(6, js, 0, -3, -3, "CanonicalNumber"));
+        b.ref_set(RuntimeMember.ForInStart, b.plan.method1(6, js, 0, -5, -5, "ForInStart"));
+        b.ref_set(RuntimeMember.ForInNext, b.plan.method1(6, js, 0, -5, -5, "ForInNext"));
         b.ref_set(RuntimeMember.ForOfLength, b.plan.method1(6, js, 0, -3, -5, "ForOfLength"));
         b.ref_set(RuntimeMember.ForOfValue, b.plan.method2(6, js, 0, -5, -5, -6, "ForOfValue"));
         b.ref_set(RuntimeMember.ForOfNumber, b.plan.method2(6, js, 0, -10, -5, -6, "ForOfNumber"));

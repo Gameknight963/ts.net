@@ -858,7 +858,7 @@ internal static partial class CompilerFunctions
             b.mark(alternate); if (n.third != 0) { il_statement(n.third, return_type, c, b); }
             b.mark(done);
         }
-        else if (n.kind == NodeKind.ForOf)
+        else if (n.kind == NodeKind.ForOf || n.kind == NodeKind.ForIn)
         {
             il_for_of(entry, return_type, c, b);
         }

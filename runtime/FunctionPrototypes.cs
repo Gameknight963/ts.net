@@ -39,6 +39,8 @@ public partial class JsFunction
     private sealed class FunctionPrototypeObject : JsDynamicObject
     {
         internal FunctionPrototypeObject(JsFunction owner) => DefineOwn("constructor", owner);
+        internal override object ForInOwnKeys() => base.OwnKeys();
+        internal override bool ForInEnumerable(string key) => key != "constructor";
         public override object OwnKeys()
         {
             var keys = (JsArray)base.OwnKeys(); var result = new JsArray(0);

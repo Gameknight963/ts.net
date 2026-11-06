@@ -37,11 +37,14 @@ internal sealed class JsBoundFunction : JsFunction
     readonly object[] prefix;
     readonly object boundReceiver;
     readonly double boundLength;
+    readonly TsObject inheritedPrototype;
+    internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : inheritedPrototype;
     JsFunction InheritedStatics => target is JsClassFunction cls ? cls.Parent : target is JsBoundFunction bound ? bound.InheritedStatics : null;
     JsBoundFunction(JsFunction target, object receiver, object[] prefix, string name, double length)
         : base((FunctionBody)(arguments => Js.CallMethod(target, receiver, Combine(prefix, arguments))), null, name, 0)
     {
         this.target = target; this.prefix = prefix; boundReceiver = receiver; boundLength = length;
+        inheritedPrototype = target.PropertyPrototype;
     }
     internal static JsBoundFunction Create(JsFunction target, object receiver, object[] prefix)
     {

@@ -11,6 +11,8 @@ public sealed class JsCaughtError : TsObject
     public readonly string Family;
     readonly string stack = Environment.StackTrace;
     readonly HashSet<string> hidden = ["stack"];
+    internal override object ForInOwnKeys() => Js.ForInNames(base.OwnKeys(), "stack");
+    internal override bool ForInEnumerable(string key) => !hidden.Contains(key);
     public JsCaughtError(string name, string message, bool hasMessage = true, object cause = null, bool hasCause = false)
     {
         Family = name;

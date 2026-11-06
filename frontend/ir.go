@@ -98,7 +98,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
-	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || symbol.Name == "Object" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance") {
+	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance") {
 		for _, declaration := range symbol.Declarations {
 			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
 				t = b.c.GetAnyType()
@@ -1035,12 +1035,15 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		b.beginControl(n, id, true)
 		row.fourth = b.lower(s.Statement)
 		b.endControl()
-	case ast.KindForOfStatement:
+	case ast.KindForOfStatement, ast.KindForInStatement:
 		s := n.AsForInOrOfStatement()
 		if s.AwaitModifier != nil {
 			b.unsupported(n)
 		}
 		id = b.node(34, n, "of")
+		if n.Kind == ast.KindForInStatement {
+			b.nodes[id-1].kind = 68
+		}
 		row = b.nodes[id-1]
 		if s.Initializer.Kind == ast.KindVariableDeclarationList {
 			flags := ast.GetCombinedNodeFlags(s.Initializer)

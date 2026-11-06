@@ -17,7 +17,7 @@ bool il_push_capacity_hint(int entry, Compiler c, IlBackend b)
         while (loop != 0 && get_node(loop, c).kind != NodeKind.For)
         {
             NodeKind kind = get_node(loop, c).kind;
-            if (kind == NodeKind.ForOf || kind == NodeKind.While || kind == NodeKind.Do || kind == NodeKind.Function) { return false; }
+            if ((kind == NodeKind.ForOf || kind == NodeKind.ForIn) || kind == NodeKind.While || kind == NodeKind.Do || kind == NodeKind.Function) { return false; }
             loop = (int)b.node_parents.at(loop);
         }
         if (loop == 0) { return false; }

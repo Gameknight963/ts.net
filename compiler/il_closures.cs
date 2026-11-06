@@ -24,7 +24,7 @@ internal static partial class CompilerFunctions
         while (current != 0)
         {
             Node scope = get_node(current, c);
-            if (scope.kind == NodeKind.Function || scope.kind == NodeKind.For || scope.kind == NodeKind.ForOf || (scope.kind == NodeKind.Switch && !scope.constant) || (scope.kind == NodeKind.Block && scope.name != 0)) { return current; }
+            if (scope.kind == NodeKind.Function || scope.kind == NodeKind.For || (scope.kind == NodeKind.ForOf || scope.kind == NodeKind.ForIn) || (scope.kind == NodeKind.Switch && !scope.constant) || (scope.kind == NodeKind.Block && scope.name != 0)) { return current; }
             current = (int)b.node_parents.at(current);
         }
         return owner;

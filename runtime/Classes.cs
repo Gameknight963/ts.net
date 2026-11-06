@@ -8,6 +8,8 @@ public class JsClassInstance : TsObject
     internal TsObject InheritedPrototype => TryExplicitPrototype(out var value) ? value : Owner is null ? ParentPrototype : Owner.Prototype;
     internal override TsObject PropertyPrototype => InheritedPrototype;
     HashSet<string> hidden;
+    internal override object ForInOwnKeys() => base.OwnKeys();
+    internal override bool ForInEnumerable(string key) => hidden == null || !hidden.Contains(key);
     internal override bool HasInProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasInProperty(key);
     public override bool HasProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasProperty(key);
     public override object Get(string key) => GetWithReceiver(key, this);
@@ -32,8 +34,11 @@ public sealed class JsClassFunction : JsFunction
     readonly JsFunction fields;
     readonly JsFunction constructor;
     readonly HashSet<string> hidden = new();
+    internal override object ForInOwnKeys() => base.ForInOwnKeys();
+    internal override bool ForInEnumerable(string key) => key != "prototype" && !hidden.Contains(key) && base.ForInEnumerable(key);
     public readonly JsClassInstance Prototype;
     internal readonly JsFunction Parent;
+    internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : Parent ?? base.PropertyPrototype;
     readonly bool derived;
     public JsClassFunction(string name, object factory, object fields, object constructor, object parent, bool derived)
         : base((FunctionBody)(static _ => throw new InvalidOperationException("Class constructor requires new")), null, name, constructor is JsFunction fn ? Convert.ToInt32(fn.Get("length")) : 0)

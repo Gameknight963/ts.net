@@ -82,7 +82,7 @@ internal static partial class CompilerFunctions
             Node n = get_node(i, c);
             if (!il_inside(i, body, b)) { continue; }
             // Explicit or implicit calls and nested loops can invalidate the buffer.
-            if (il_key_may_invoke(n, c) || il_coercion_may_invoke(n, c) || n.kind is NodeKind.Call or NodeKind.OptionalChain || n.kind == NodeKind.Function || n.kind == NodeKind.For || n.kind == NodeKind.ForOf || n.kind == NodeKind.While || n.kind == NodeKind.Do) { return 0; }
+            if (il_key_may_invoke(n, c) || il_coercion_may_invoke(n, c) || n.kind is NodeKind.Call or NodeKind.OptionalChain || n.kind == NodeKind.Function || n.kind == NodeKind.For || (n.kind == NodeKind.ForOf || n.kind == NodeKind.ForIn) || n.kind == NodeKind.While || n.kind == NodeKind.Do) { return 0; }
             if (n.kind == NodeKind.Index)
             {
                 Node receiver = get_node(n.left, c); Node index = get_node(n.right, c);

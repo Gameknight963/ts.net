@@ -104,7 +104,7 @@ void il_choose_tagged_arrays(Compiler c, IlBackend b)
     internal static bool il_local_array_write(int target, int root, Compiler c, IlBackend b)
     {
         int parent = (int)b.node_parents.at(target); Node n = get_node(parent, c);
-        if (n.kind == NodeKind.ForOf || n.kind == NodeKind.Binding || n.kind == NodeKind.Destructure) { return false; }
+        if ((n.kind == NodeKind.ForOf || n.kind == NodeKind.ForIn) || n.kind == NodeKind.Binding || n.kind == NodeKind.Destructure) { return false; }
         if (n.kind != NodeKind.Assign || n.left != target) { return true; }
         int op = get_token(n.token, c).text;
         return (!is_text(op, text_assign, c) && !is_text(op, text_add_assign, c) && !il_logical_assignment(op, c)) || il_local_array_number(n.right, root, c);

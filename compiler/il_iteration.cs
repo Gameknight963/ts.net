@@ -19,7 +19,7 @@ internal static partial class CompilerFunctions
             if (n.kind == NodeKind.Variable && n.fourth != 0 && reads.Contains(n.symbol)) { b.iteration_vars.at_mut(n.symbol) = 1; }
             if (n.kind == NodeKind.Binding && n.symbol != 0 && n.name != 0 && is_text(n.name, text_var, c)) { b.iteration_vars.at_mut(n.symbol) = 1; }
             Node target = n;
-            if (n.kind == NodeKind.ForOf && !n.constant)
+            if ((n.kind == NodeKind.ForOf || n.kind == NodeKind.ForIn) && !n.constant)
             {
                 target = get_node(n.left, c);
                 if (target.kind == NodeKind.Block) { target = get_node(target.children, c); }
@@ -86,22 +86,31 @@ internal static partial class CompilerFunctions
         {
             int slot = b.local(b.type(type, c)); b.slots.at_mut(target.symbol) = slot; b.empty(type, c); b.store(target.symbol);
         }
-        il_expression(n.right, c, b); int iterable = b.local(-5); b.emit(0xfe0e, iterable);
+        il_boxed(n.right, c, b); if (n.kind == NodeKind.ForIn) { b.call(RuntimeMember.ForInStart); } int iterable = b.local(-5); b.emit(0xfe0e, iterable);
         int position = b.local(-6); b.emit(0x20, 0); b.emit(0xfe0e, position);
         int value = b.local(b.type(type, c)); int start = b.label(); int done = b.label();
         b.breaks.at_mut(entry) = done; b.continues.at_mut(entry) = start;
         b.mark(start);
-        // The unsigned position covers every legal array index, including sparse
-        // indices above int.MaxValue. Array iteration observes the live length.
-        b.emit(0xfe0c, position); b.op(0x76); b.emit(0xfe0c, iterable); b.call(RuntimeMember.ForOfLength); b.op(0xfe04); b.emit(0x39, done);
-        b.emit(0xfe0c, iterable); b.emit(0xfe0c, position);
-        if (get_type(type, c).kind == TypeKind.Number) { b.call(RuntimeMember.ForOfNumber); }
-        else { b.call(RuntimeMember.ForOfValue); b.from_object(type, c); }
-        b.emit(0xfe0e, value);
-        b.emit(0xfe0c, position);
-        if (get_type(get_node(n.right, c).type, c).kind == TypeKind.Array) { b.emit(0x20, 1); }
-        else { b.emit(0xfe0c, iterable); b.emit(0xfe0c, position); b.call(RuntimeMember.ForOfStep); }
-        b.op(0x58); b.emit(0xfe0e, position);
+        if (n.kind == NodeKind.ForIn)
+        {
+            b.emit(0xfe0c, iterable); b.call(RuntimeMember.ForInNext);
+            int key = b.local(-5); b.emit(0xfe0e, key); b.emit(0xfe0c, key); b.call(RuntimeMember.IsUndefined); b.emit(0x3a, done);
+            b.emit(0xfe0c, key); b.from_object(type, c); b.emit(0xfe0e, value);
+        }
+        else
+        {
+            // The unsigned position covers every legal array index, including sparse
+            // indices above int.MaxValue. Array iteration observes the live length.
+            b.emit(0xfe0c, position); b.op(0x76); b.emit(0xfe0c, iterable); b.call(RuntimeMember.ForOfLength); b.op(0xfe04); b.emit(0x39, done);
+            b.emit(0xfe0c, iterable); b.emit(0xfe0c, position);
+            if (get_type(type, c).kind == TypeKind.Number) { b.call(RuntimeMember.ForOfNumber); }
+            else { b.call(RuntimeMember.ForOfValue); b.from_object(type, c); }
+            b.emit(0xfe0e, value);
+            b.emit(0xfe0c, position);
+            if (get_type(get_node(n.right, c).type, c).kind == TypeKind.Array) { b.emit(0x20, 1); }
+            else { b.emit(0xfe0c, iterable); b.emit(0xfe0c, position); b.call(RuntimeMember.ForOfStep); }
+            b.op(0x58); b.emit(0xfe0e, position);
+        }
         il_context_enter(entry, c, b);
         if (target.kind == NodeKind.Destructure) { il_binding_pattern(binding, value, c, b); }
         else { il_iteration_store(binding, type, value, c, b); }
