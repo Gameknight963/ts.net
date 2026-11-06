@@ -183,6 +183,10 @@ public static partial class Js
             prototype.Member("constructor", this); prototype.Member("then", new PromiseThenFunction());
             prototype.Member("catch", new PromiseCatchFunction()); prototype.Member("finally", new PromiseFinallyFunction());
             Member("resolve", new PromiseStaticFunction(false)); Member("reject", new PromiseStaticFunction(true));
+            Member("all", new PromiseCombinatorFunction("all", PromiseCombination.All));
+            Member("allSettled", new PromiseCombinatorFunction("allSettled", PromiseCombination.AllSettled));
+            Member("race", new PromiseCombinatorFunction("race", PromiseCombination.Race));
+            Member("any", new PromiseCombinatorFunction("any", PromiseCombination.Any));
         }
         public override object Construct(object[] arguments) => CreatePromise(arguments);
         internal override bool CanInitializeDerived => true;
