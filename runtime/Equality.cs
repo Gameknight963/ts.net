@@ -17,10 +17,10 @@ public static partial class Js
         if (IsNullish(right)) return false;
         if (left is string text) {
             if (right is string other) return text == other;
-            return right is TsObject obj && LooseEqual(left, OrdinaryPrimitive(obj, false, null));
+            return right is TsObject obj && LooseEqual(left, OrdinaryPrimitive(obj, false));
         }
         if (right is string && left is TsObject value)
-            return LooseEqual(OrdinaryPrimitive(value, false, null), right);
+            return LooseEqual(OrdinaryPrimitive(value, false), right);
         return ReferenceEquals(left, right);
     }
 
@@ -32,7 +32,7 @@ public static partial class Js
         double other => number == other,
         string text => number == StringNumber(text),
         bool boolean => number == (boolean ? 1 : 0),
-        TsObject obj => LooseEqualNumberValue(number, OrdinaryPrimitive(obj, false, null)),
+        TsObject obj => LooseEqualNumberValue(number, OrdinaryPrimitive(obj, false)),
         _ => false
     };
 }

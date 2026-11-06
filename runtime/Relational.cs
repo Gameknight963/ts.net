@@ -16,8 +16,8 @@ public static partial class Js
 
     public static bool Relational(object left, object right, int mode)
     {
-        if (left is TsObject first) left = OrdinaryPrimitive(first, false, null);
-        if (right is TsObject second) right = OrdinaryPrimitive(second, false, null);
+        if (left is TsObject first) left = OrdinaryPrimitive(first, false);
+        if (right is TsObject second) right = OrdinaryPrimitive(second, false);
         if (left is string a && right is string b) {
             int order = string.CompareOrdinal(a, b);
             return mode switch { 0 => order < 0, 1 => order > 0, 2 => order <= 0, 3 => order >= 0,

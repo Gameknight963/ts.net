@@ -1,22 +1,18 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 
 public static partial class Js
 {
-    public static string PropertyKey(object value) => value is string text ? text : PropertyKey(value, null);
-
     static bool KeyPrimitive(object value) => value == null || ReferenceEquals(value, Undefined) ||
         value is string || value is double || value is bool;
 
-    static string PropertyKey(object value, HashSet<JsArray> active)
+    public static string PropertyKey(object value)
     {
-        if (value is TsObject obj) value = OrdinaryPrimitive(obj, true, active);
+        if (value is TsObject obj) value = OrdinaryPrimitive(obj, true);
         return value is double number ? NumberKeyString(number) : Text(value);
     }
 
-    static object OrdinaryPrimitive(TsObject obj, bool stringHint, HashSet<JsArray> active)
+    static object OrdinaryPrimitive(TsObject obj, bool stringHint)
     {
         object primitive = obj;
         for (int step = 0; step < 2; step++) {
@@ -32,7 +28,7 @@ public static partial class Js
                     if (array.HasOwn("join")) {
                         object join = array.Get("join");
                         primitive = join is JsFunction ? CallMethod0(join, array) : "[object Array]";
-                    } else primitive = ArrayKeyString(array, active);
+                    } else primitive = ArrayJoin(array, Undefined);
                 } else if (obj is JsCaughtError error) {
                     primitive = ErrorText(error);
                 } else if (obj is JsFunction) {
@@ -50,23 +46,6 @@ public static partial class Js
         }
         if (!KeyPrimitive(primitive)) throw new InvalidOperationException("Cannot convert object to primitive value");
         return primitive;
-    }
-
-    static string ArrayKeyString(JsArray array, HashSet<JsArray> active)
-    {
-        uint length = (uint)array.Length();
-        if (length == 0) return "";
-        active ??= new HashSet<JsArray>();
-        if (!active.Add(array)) return "";
-        try {
-            var result = new StringBuilder();
-            for (uint i = 0; i < length; i++) {
-                if (i != 0) result.Append(',');
-                object item = array.ElementAt(i);
-                if (!IsNullish(item)) result.Append(PropertyKey(item, active));
-            }
-            return result.ToString();
-        } finally { active.Remove(array); }
     }
 
     static string NumberKeyString(double value)

@@ -24,8 +24,8 @@ public static partial class Js
     }
     static class ArrayMethods
     {
-        internal static readonly JsFunction Push = new ArrayMethod("push", 0, 1), Pop = new ArrayMethod("pop", 1, 0), Slice = new ArrayMethod("slice", 2, 2), Reverse = new ArrayMethod("reverse", 3, 0), IndexOf = new ArrayMethod("indexOf", 4, 1), Includes = new ArrayMethod("includes", 5, 1);
+        internal static readonly JsFunction Join = new ArrayJoinFunction(), Push = new ArrayMethod("push", 0, 1), Pop = new ArrayMethod("pop", 1, 0), Slice = new ArrayMethod("slice", 2, 2), Reverse = new ArrayMethod("reverse", 3, 0), IndexOf = new ArrayMethod("indexOf", 4, 1), Includes = new ArrayMethod("includes", 5, 1);
     }
-    internal static bool IsArrayMethod(string key) => key is "at" or "push" or "pop" or "slice" or "reverse" or "indexOf" or "includes";
-    internal static object ArrayMethodValue(string key) => key switch { "at" => ArrayAtFunction(), "push" => ArrayMethods.Push, "pop" => ArrayMethods.Pop, "slice" => ArrayMethods.Slice, "reverse" => ArrayMethods.Reverse, "indexOf" => ArrayMethods.IndexOf, "includes" => ArrayMethods.Includes, _ => Undefined };
+    internal static bool IsArrayMethod(string key) => key is "join" or "at" or "push" or "pop" or "slice" or "reverse" or "indexOf" or "includes";
+    internal static object ArrayMethodValue(string key) => key switch { "join" => ArrayMethods.Join, "at" => ArrayAtFunction(), "push" => ArrayMethods.Push, "pop" => ArrayMethods.Pop, "slice" => ArrayMethods.Slice, "reverse" => ArrayMethods.Reverse, "indexOf" => ArrayMethods.IndexOf, "includes" => ArrayMethods.Includes, _ => Undefined };
 }
