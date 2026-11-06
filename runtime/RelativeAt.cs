@@ -38,8 +38,7 @@ public static partial class Js
     static string AtStringConverted(object receiver)
     {
         RequireAtReceiver(receiver);
-        object primitive = receiver is TsObject obj ? OrdinaryPrimitive(obj, true, null) : receiver;
-        return primitive is double number ? NumberKeyString(number) : Text(primitive);
+        return StringValue(receiver);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static double AtIndex(double index, double length)
@@ -74,31 +73,36 @@ public static partial class Js
         : target is CharacterFunction character
         ? CharacterValue(AtString(receiver), index.GetValueOrDefault(), character.Kind)
         : target is RelativeAtFunction method
-        ? AtPrimitive(receiver, index.GetValueOrDefault(), method.Text) : CallFunction(target, new[] { BoxNumber(index) });
+        ? AtPrimitive(receiver, index.GetValueOrDefault(), method.Text) : target is StringSearchFunction search
+        ? StringSearchResult(search.Kind, StringSearchPrimitive(search, receiver, BoxNumber(index), null)) : CallFunction(target, new[] { BoxNumber(index) });
     public static object CallMethod0(object target, object receiver) => target is StringRangeFunction range
         ? StringRangePrimitive(range, receiver, null, null)
         : target is CharacterFunction character
         ? CharacterValue(AtString(receiver), 0, character.Kind)
         : target is RelativeAtFunction method
-        ? AtPrimitive(receiver, 0, method.Text) : CallFunction0(target);
+        ? AtPrimitive(receiver, 0, method.Text) : target is StringSearchFunction search
+        ? StringSearchResult(search.Kind, StringSearchPrimitive(search, receiver, Undefined, null)) : CallFunction0(target);
     public static object CallMethod(object target, object receiver, object[] arguments) => target is StringRangeFunction range
         ? StringRangeConverted(range, receiver, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1))
         : target is CharacterFunction character
         ? CharacterConverted(character, receiver, FunctionArgument(arguments, 0))
         : target is RelativeAtFunction method
-        ? AtConverted(receiver, FunctionArgument(arguments, 0), method.Text) : CallFunction(target, arguments);
+        ? AtConverted(receiver, FunctionArgument(arguments, 0), method.Text) : target is StringSearchFunction search
+        ? StringSearchArguments(search, receiver, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1)) : CallFunction(target, arguments);
     public static object CallMethodArguments(object target, object receiver, object arguments) => target is StringRangeFunction range
         ? StringRangeConverted(range, receiver, Iteration.Value(arguments, 0), Iteration.Value(arguments, 1))
         : target is CharacterFunction character
         ? CharacterConverted(character, receiver, Iteration.Value(arguments, 0))
         : target is RelativeAtFunction method
-        ? AtConverted(receiver, Iteration.Value(arguments, 0), method.Text) : CallFunctionArguments(target, arguments);
+        ? AtConverted(receiver, Iteration.Value(arguments, 0), method.Text) : target is StringSearchFunction search
+        ? StringSearchArguments(search, receiver, Iteration.Value(arguments, 0), Iteration.Value(arguments, 1)) : CallFunctionArguments(target, arguments);
     public static double? CallMethodNumber0(object target, object receiver) => target is StringRangeFunction range
         ? Cast<double?>(StringRangePrimitive(range, receiver, null, null), "Function result violates number type")
         : target is CharacterFunction character
         ? CharacterNumericResult(character, receiver, 0)
         : target is RelativeAtFunction method
-        ? Cast<double?>(AtPrimitive(receiver, 0, method.Text), "Function result violates number type") : CallFunctionNumber0(target);
+        ? Cast<double?>(AtPrimitive(receiver, 0, method.Text), "Function result violates number type") : target is StringSearchFunction
+        ? CallStringSearchNumber(target, receiver, Undefined, null, 0) : CallFunctionNumber0(target);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double? CallMethodNumber1(object target, object receiver, double? first)
     {
@@ -113,10 +117,12 @@ public static partial class Js
         }
         if (target is StringRangeFunction range)
             return Cast<double?>(StringRangePrimitive(range, receiver, first, null), "Function result violates number type");
+        if (target is StringSearchFunction) return CallStringSearchNumber(target, receiver, BoxNumber(first), null, 1);
         return CallFunctionNumber1(target, first);
     }
     public static double? CallMethodNumber2(object target, object receiver, double? first, double? second) => target is StringRangeFunction range
         ? Cast<double?>(StringRangePrimitive(range, receiver, first, second), "Function result violates number type")
         : target is RelativeAtFunction or CharacterFunction
-        ? CallMethodNumber1(target, receiver, first) : CallFunctionNumber2(target, first, second);
+        ? CallMethodNumber1(target, receiver, first) : target is StringSearchFunction
+        ? CallStringSearchNumber(target, receiver, BoxNumber(first), second, 2) : CallFunctionNumber2(target, first, second);
 }

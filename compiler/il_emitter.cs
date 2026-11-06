@@ -478,7 +478,7 @@ internal static partial class CompilerFunctions
                 il_expression(n.left,c,b);b.call(RuntimeMember.RelativeAtTarget);return;
             }
 
-            if (atOwner==TypeKind.String && il_index_method_name(n.name,c)) {
+            if (atOwner==TypeKind.String && (il_index_method_name(n.name,c) || il_string_search_name(n.name,c))) {
                 il_expression(n.left,c,b);il_text(n.name,c,b);b.call(RuntimeMember.DynamicGet);return;
             }
 
@@ -526,6 +526,7 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.Call)
         {
             if (il_number_predicate(entry, true, c, b)) { return; }
+            if (il_string_search_call(entry,c)) {il_emit_string_search(entry,c,b);return;}
             if (il_index_method_call(entry,c)) {il_emit_index_method(entry,c,b);return;}
             if (il_call_has_spread(entry, c)) { il_spread_call(entry, c, b); return; }
             if (get_node(n.left, c).kind == NodeKind.ObjectKeysFunction) { il_object_keys_call(entry, false, c, b); return; }

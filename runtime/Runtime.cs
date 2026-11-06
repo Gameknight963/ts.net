@@ -144,6 +144,7 @@ public static partial class Js
         TsObject obj => obj.Get(key),
         string text when key == "length" => (double)text.Length,
         string when key == "at" => StringAtFunction(),
+        string when key is "indexOf" or "includes" or "lastIndexOf" => StringSearchTarget(key),
         string when key is "slice" or "substring" => StringRangeTarget(key),
         string when key is "charAt" or "charCodeAt" or "codePointAt" => CharacterTarget(key),
         string or double or bool => Undefined,
@@ -233,9 +234,9 @@ public static partial class Js
     }
 
     public static double ArraySearch(object receiver, object value, object fromIndex, bool includes) =>
-        receiver is JsArray array ? array.Search(value, fromIndex, includes) : throw new InvalidOperationException("Array search requires an array");
+        receiver is JsArray array ? array.Search(value, fromIndex, includes) : receiver is string ? StringSearchConverted(includes ? StringSearchKind.Includes : StringSearchKind.IndexOf, receiver, value, fromIndex) : throw new InvalidOperationException("Array search requires an array");
     public static double ArraySearchNumber(object receiver, double? value, object fromIndex, bool includes) =>
-        receiver is JsArray array ? array.SearchNumber(value, fromIndex, includes) : throw new InvalidOperationException("Array search requires an array");
+        receiver is JsArray array ? array.SearchNumber(value, fromIndex, includes) : receiver is string ? StringSearchConverted(includes ? StringSearchKind.Includes : StringSearchKind.IndexOf, receiver, BoxNumber(value), fromIndex) : throw new InvalidOperationException("Array search requires an array");
 
     public static object Slice(object receiver, object start, object end)
     {

@@ -100,6 +100,7 @@ internal static partial class CompilerFunctions
     internal static readonly TextBytes text_push = "push";
     internal static readonly TextBytes text_pop = "pop";
     internal static readonly TextBytes text_includes = "includes";
+    internal static readonly TextBytes text_last_index_of = "lastIndexOf";
     internal static readonly TextBytes text_index_of = "indexOf";
     internal static readonly TextBytes text_reverse = "reverse";
     internal static readonly TextBytes text_substring = "substring";
