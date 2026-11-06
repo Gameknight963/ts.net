@@ -29,7 +29,9 @@ func (b *irBuilder) asyncReturnExpression(expression *ast.Node) int {
 	}
 	for parent := expression.Parent; parent != owner; parent = parent.Parent {
 		if parent.Kind == ast.KindTryStatement {
-			b.unsupported(expression)
+			// The surrounding statement pass must keep this await inside the
+			// protected region, including rejection and finally handling.
+			return b.lower(expression)
 		}
 	}
 	await := expression

@@ -22,29 +22,43 @@ public static partial class Js
                 result = resume.Continuation.InvokeWithReceiver(Undefined, Array.Empty<object>());
         }
         catch (Exception error) { pair.RejectError(error); return; }
-        if (result is AsyncAwaitRecord awaiting) awaiting.Attach(promise, pair);
+        if (result is AsyncTryRecord) new AsyncExecution(promise, pair).Run(result);
+        else if (result is AsyncAwaitRecord awaiting) awaiting.Attach(promise, pair);
         else pair.Resolve.InvokeWithReceiver(Undefined, new[] { result });
     }
-    sealed class AsyncResumeRecord(JsFunction continuation)
+    sealed class AsyncResumeRecord(JsFunction continuation, int region = 0)
     {
         internal readonly JsFunction Continuation = continuation;
+        internal readonly int Region = region;
     }
     public static object AsyncResume(object continuation) => new AsyncResumeRecord((JsFunction)continuation);
+    public static object AsyncResumeRegion(object continuation, int region) => new AsyncResumeRecord((JsFunction)continuation, region);
     sealed class AsyncAwaitRecord(JsPromise awaited, JsFunction continuation = null)
     {
-        internal void Attach(JsPromise target, PromiseResolvingFunctions pair)
+        internal void Attach(JsPromise target, PromiseResolvingFunctions pair, AsyncExecution execution = null)
         {
             var capability = new PromiseCapability { Promise = target, Resolve = pair.Resolve, Reject = pair.Reject };
             // Await uses intrinsic reactions, bypassing public then and species.
             // Even an already fulfilled value resumes through a queued job.
-            if (continuation == null) { awaited.Then(new PromiseReaction(capability, null, null)); return; }
+            if (continuation == null && execution == null) { awaited.Then(new PromiseReaction(capability, null, null)); return; }
             awaited.Then(new PromiseReaction(null, null, null, (value, rejected) =>
             {
-                if (rejected) { pair.Reject.InvokeWithReceiver(Undefined, new[] { value }); return; }
+                if (rejected)
+                {
+                    if (execution != null) execution.Run(new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)));
+                    else pair.Reject.InvokeWithReceiver(Undefined, new[] { value });
+                    return;
+                }
                 object result;
-                try { result = continuation.InvokeWithReceiver(Undefined, new[] { value }); }
-                catch (Exception error) { pair.RejectError(error); return; }
-                CompleteAsyncResult(result, target, pair);
+                try { result = continuation == null ? value : continuation.InvokeWithReceiver(Undefined, new[] { value }); }
+                catch (Exception error)
+                {
+                    if (execution != null) execution.Run(new AsyncCompletion(CompletionKind.Throw, error));
+                    else pair.RejectError(error);
+                    return;
+                }
+                if (execution != null) execution.Run(result);
+                else CompleteAsyncResult(result, target, pair);
             }));
         }
     }

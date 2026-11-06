@@ -457,7 +457,16 @@ internal static partial class CompilerFunctions
         else if(n.kind==NodeKind.AsyncAwait){il_boxed(n.left,c,b);if(n.right!=0){il_boxed(n.right,c,b);b.call(RuntimeMember.AsyncAwaitContinue);}else b.call(RuntimeMember.AsyncAwait);}
         else if(n.kind==NodeKind.SavedCall){il_saved_call(entry,c,b);}
         else if(n.kind==NodeKind.AsyncPropertyKey){il_boxed(n.left,c,b);b.call(RuntimeMember.PropertyKey);}
-        else if (n.kind == NodeKind.AsyncResume) { il_boxed(n.left, c, b); b.call(RuntimeMember.AsyncResume); }
+        else if (n.kind == NodeKind.AsyncResume)
+        {
+            il_boxed(n.left, c, b); b.emit(0x20, n.right == 0 ? 0 : (int)number(get_token(get_node(n.right, c).token, c).text, c)); b.call(RuntimeMember.AsyncResume);
+        }
+        else if (n.kind == NodeKind.AsyncTry)
+        {
+            il_boxed(n.left, c, b); il_boxed(n.right, c, b); il_boxed(n.third, c, b); il_boxed(n.fourth, c, b);
+            b.emit(0x20, (int)number(n.name, c)); b.call(RuntimeMember.AsyncTry);
+        }
+        else if (n.kind == NodeKind.AsyncTryEnd) { b.emit(0x20, (int)number(n.name, c)); b.call(RuntimeMember.AsyncTryEnd); }
         else if (n.kind == NodeKind.AsyncIterationStart)
         {
             il_boxed(n.left, c, b); b.emit(0x20, n.constant ? 1 : 0); b.call(RuntimeMember.BeginAsyncIteration);

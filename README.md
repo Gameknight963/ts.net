@@ -13,7 +13,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current feature completion
 
-81%.
+82%.
 
 <details>
 
@@ -28,7 +28,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Enums | 5 / 5 | Numeric, string, mixed, computed and const enums; reverse mappings, merged enums, and imports. Namespace merging supports nested/dotted namespaces, exported destructuring, functions, classes and enums; __proto__ members follow object prototype assignment. Import aliases (`import Alias = E.Nested`) retain their original namespace object. |
 | Classes and inheritance | 14 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, numeric and computed member names, generics, structural interfaces, inheritance (including ordinary and bound constructor functions), super, getters/setters, auto-accessors and #private fields/methods/accessors with brand checks. Object, String, Boolean, Array, Promise, Error, native error and AggregateError base classes are supported; other built-in base classes and decorators are missing. Some generated auto-accessor initializer names differ from tsc; base constructors returning replacement objects still have gaps. |
 | Exceptions | 9 / 10 | throw, try/catch/finally, standard error objects, cause, and instanceof. Error prototypes, prototype mutation and custom error subclasses are supported. TypeScript source locations in stack traces are missing. |
-| Async | 6 / 10 | Promise construction, resolve/reject/withResolvers/try, all/allSettled/race/any over supported iterables (arrays, strings and arguments), then/catch/finally, thenable assimilation, subclasses, queueMicrotask and async declarations/expressions/arrows/methods, and await in return expressions (operators, assignments, optional chains, calls, literals and constructors) outside try regions. Await statements, local initializers, destructuring defaults/computed keys (including nested patterns and rest), blocks, if branches, switch statements (including case expressions and fallthrough), labeled blocks, and while/do/for/for-of/for-in loops are supported. Await in try regions and for-await-of remain incomplete; custom iterators and custom promise species are missing. |
+| Async | 7 / 10 | Promise construction, resolve/reject/withResolvers/try, all/allSettled/race/any over supported iterables (arrays, strings and arguments), then/catch/finally, thenable assimilation, subclasses, queueMicrotask and async declarations/expressions/arrows/methods, and await in return expressions (operators, assignments, optional chains, calls, literals and constructors). Await statements, local initializers, destructuring defaults/computed keys (including nested patterns and rest), blocks, if branches, switch statements (including case expressions and fallthrough), labeled blocks, while/do/for/for-of/for-in loops, and try/catch/finally are supported. For-await-of remains incomplete; custom iterators and custom promise species are missing. |
 | Standard library | 2 / 5 | Object/String/Boolean/Array construction, Array.isArray/of/from (supported iterables and array-like objects), prototype get/set, Math constants and common numeric/trigonometric functions, selected Number/Object helpers, Object.is, Object.assign, string formatting, prefix/suffix checks, concatenation and array/string methods, including generic join, map, filter, forEach, every, some, reduce, reduceRight, find, findIndex, findLast, findLastIndex, flat, flatMap, lastIndexOf, fill, copyWithin, toReversed, toSorted, toSpliced and with. Calling fill or copyWithin on a non-array currently requires casting the function to `any`; some Object.assign calls involving primitives or arrays also need this. Custom array species and many built-ins are missing. |
 
 </details>
@@ -104,9 +104,10 @@ Promises, measured on 2026-11-06:
 | Create 10K resolved promises, collect with all, and sum results | 39.11 ms | 1.22 ms |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3.30 ms | 0.37 ms |
 | Sum 1K values in a loop, awaiting each value | 0.384 ms | 0.047 ms |
+| Sum 1K values with an await in try and an increment in finally each iteration | 0.860 ms | 0.092 ms |
 | Sum 100K values in a loop, awaiting only on the final iteration | 7.88 ms | 0.53 ms |
 
-These include promise/chain construction and all queued handlers, excluding startup and compilation. Warmup, fresh-process counts and .NET settings match the array-method measurements above; every chain returned 10,000, the 10K-promise result summed to 49,995,000, and the async-call result summed to 500,500. The loop checksums were 499,500 and 4,999,950,000 respectively.
+These include promise/chain construction and all queued handlers, excluding startup and compilation. Warmup, fresh-process counts and .NET settings match the array-method measurements above; every chain returned 10,000, the 10K-promise result summed to 49,995,000, and the async-call result summed to 500,500. The plain, try/finally and rare-await loop checksums were 499,500, 500,500 and 4,999,950,000 respectively.
 
 Compilation times:
 

@@ -35,10 +35,25 @@ func enclosingAsyncFunction(n *ast.Node) *ast.Node {
 }
 
 type asyncExpressionLowering struct {
-	b      *irBuilder
-	source *ast.Node
-	any    int
+	b                   *irBuilder
+	source              *ast.Node
+	any                 int
+	region              int
+	functionRegions     map[int]int
+	continuationRegions map[int]int
+	transfers           []asyncTransfer
 }
+type asyncTransfer struct{ node, symbol int }
+
+func (a *asyncExpressionLowering) recordContinuation(symbol, value int) {
+	if value != 0 && a.b.nodes[value-1].kind == 38 {
+		if a.continuationRegions == nil {
+			a.continuationRegions = map[int]int{}
+		}
+		a.continuationRegions[symbol] = a.functionRegions[a.b.nodes[value-1].left]
+	}
+}
+
 type asyncExpressionContinuation func(int) int
 
 func (a *asyncExpressionLowering) node(kind int, text string) int {
@@ -75,6 +90,7 @@ func (a *asyncExpressionLowering) bind(value int, next func(int) int) int {
 		typ = a.any
 	}
 	symbol := a.symbol(typ)
+	a.recordContinuation(symbol, value)
 	binding := a.node(13, "await temporary")
 	a.b.nodes[binding-1].typ = typ
 	a.b.nodes[binding-1].symbol = symbol
@@ -84,6 +100,10 @@ func (a *asyncExpressionLowering) bind(value int, next func(int) int) int {
 }
 func (a *asyncExpressionLowering) functionParameters(count int, body func([]int) int) int {
 	function := a.node(19, "await continuation")
+	if a.functionRegions == nil {
+		a.functionRegions = map[int]int{}
+	}
+	a.functionRegions[function] = a.region
 	symbol := a.symbol(a.any)
 	a.b.symbols[symbol-1].function = function
 	a.b.nodes[function-1].symbol = symbol

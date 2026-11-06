@@ -1,9 +1,13 @@
 package main
 
 func (a *asyncExpressionLowering) resume(symbol int) int {
+	return a.returned(a.transfer(symbol))
+}
+func (a *asyncExpressionLowering) transfer(symbol int) int {
 	resume := a.node(77, "async synchronous transfer")
 	a.b.nodes[resume-1].left = a.reference(symbol)
-	return a.returned(resume)
+	a.transfers = append(a.transfers, asyncTransfer{resume, symbol})
+	return resume
 }
 
 // Switch breaks may cross a synchronous try/finally. Return a transfer record
@@ -22,8 +26,7 @@ func (a *asyncExpressionLowering) rewriteJumps(id, target, continuation, kind in
 	}
 	if n.kind == 25 || n.kind == 26 {
 		if n.kind == kind && n.left == target {
-			resume := a.node(77, "async switch break")
-			a.b.nodes[resume-1].left = a.reference(continuation)
+			resume := a.transfer(continuation)
 			a.b.nodes[id-1] = irNode{kind: 14, token: n.token, left: resume, next: n.next}
 		}
 		return
@@ -63,6 +66,7 @@ func (a *asyncExpressionLowering) switchStatement(id int, n irNode, next func() 
 				return a.statements(statements, func() int { return a.resume(following) })
 			})
 			declaration := a.node(13, "async switch case")
+			a.recordContinuation(bodies[i], function)
 			a.b.nodes[declaration-1].symbol = bodies[i]
 			a.b.nodes[declaration-1].left = function
 			declarations[i] = declaration

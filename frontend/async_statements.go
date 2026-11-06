@@ -49,6 +49,9 @@ func (a *asyncExpressionLowering) body(root, function int) int {
 	block := a.b.nodes[result-1]
 	children := a.list(block.children)
 	a.b.nodes[result-1].children = a.link(append(markers, children...))
+	for _, transfer := range a.transfers {
+		a.b.nodes[transfer.node-1].right = a.node(0, strconv.Itoa(a.continuationRegions[transfer.symbol]))
+	}
 	return result
 }
 func (a *asyncExpressionLowering) statements(values []int, next func() int) int {
@@ -85,6 +88,10 @@ func (a *asyncExpressionLowering) statement(id int, next func() int) int {
 	}
 	a.discard(id)
 	switch n.kind {
+	case 14:
+		return a.expression(n.left, a.returned)
+	case 51:
+		return a.tryStatement(id, n, next)
 	case 16, 24:
 		return a.whileStatement(id, n, next)
 	case 29: // labeled statement; transfers unwind synchronous finally blocks

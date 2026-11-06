@@ -3,6 +3,7 @@ package main
 import "strconv"
 
 func (a *asyncExpressionLowering) declaration(symbol, value int) int {
+	a.recordContinuation(symbol, value)
 	id := a.node(13, "async loop binding")
 	a.b.nodes[id-1].symbol = symbol
 	a.b.nodes[id-1].typ = a.b.symbols[symbol-1].typ
