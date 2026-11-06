@@ -50,6 +50,8 @@ type irBuilder struct {
 	enumValues            map[*ast.Node]evaluator.Result
 	enumDeclared          map[*ast.Symbol]bool
 	namespaceExports      map[*ast.Symbol]*ast.Node
+	moduleNamespaces      map[*ast.Node]int
+	moduleNamespaceOrder  []*ast.Symbol
 	thisSymbol            int
 	thisScope             bool
 	superSymbol           int
@@ -94,7 +96,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
-	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || symbol.Name == "Function") {
+	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance") {
 		for _, declaration := range symbol.Declarations {
 			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
 				t = b.c.GetAnyType()
@@ -317,6 +319,22 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	if n == nil {
 		return 0
 	}
+	if chainNode(n) {
+		if n.Kind == ast.KindPropertyAccessExpression || n.Kind == ast.KindElementAccessExpression {
+			symbol := b.c.GetSymbolAtLocation(n.Expression())
+			if symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
+				symbol = b.c.GetAliasedSymbol(symbol)
+			}
+			if symbol != nil && symbol.Flags&ast.SymbolFlagsConstEnum != 0 {
+				if value := b.c.GetConstantValue(n); value != nil {
+					if id := b.enumLiteral(n, value); id != 0 {
+						return id
+					}
+				}
+			}
+		}
+		return b.optionalChain(n)
+	}
 	if n.Kind == ast.KindPropertyAccessExpression || n.Kind == ast.KindElementAccessExpression {
 		if value := b.c.GetConstantValue(n); value != nil {
 			if id := b.enumLiteral(n, value); id != 0 {
@@ -409,8 +427,18 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindTrueKeyword, ast.KindFalseKeyword:
 		id = b.node(2, n, map[bool]string{true: "true", false: "false"}[n.Kind == ast.KindTrueKeyword])
 	case ast.KindIdentifier:
+		if symbol := b.c.GetSymbolAtLocation(n); symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
+			if target := b.c.GetAliasedSymbol(symbol); target.IsExternalModule() {
+				return b.moduleNamespaceReference(n, target)
+			}
+		}
 		if owner := b.namespaceExports[b.c.GetSymbolAtLocation(n)]; owner != nil {
 			return b.namespaceReference(n, owner)
+		}
+		if (n.Text() == "console" || n.Text() == "performance" || n.Text() == "Object" || n.Text() == "Number") && b.isBuiltinIdentifier(n) {
+			id = b.node(66, n, n.Text())
+			b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
+			return id
 		}
 		if errorKind(n.Text()) && b.isBuiltinIdentifier(n) {
 			id = b.node(53, n, n.Text())
@@ -575,8 +603,22 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		if n.AsPropertyAccessExpression().QuestionDotToken != nil {
 			b.unsupported(n)
 		}
+
 		if symbol := b.c.GetSymbolAtLocation(n.Expression()); symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 && b.c.GetAliasedSymbol(symbol).IsExternalModule() {
-			return b.lower(n.Name())
+			member := b.symbol(n.Name())
+			function := b.symbols[member-1].function
+			// Primitive exports and functions that never read this need no
+			// namespace receiver. Retain their direct binding access.
+			if function != 0 {
+				if b.nodes[function-1].left != 0 && b.nodes[function-1].fourth == 0 {
+					return b.lower(n.Name())
+				}
+			} else {
+				kind := b.types[b.typ(b.c.GetTypeAtLocation(n))-1].kind
+				if kind == 0 || kind == 1 || kind == 2 {
+					return b.lower(n.Name())
+				}
+			}
 		}
 		id = b.node(5, n, n.Name().Text())
 		row = b.nodes[id-1]
@@ -1113,6 +1155,8 @@ func exportIR(s *session) (result []byte, err error) {
 			child = id
 		}
 	}
+	b.initializeModuleNamespaces()
+	b.dynamicNamespaces()
 	var data bytes.Buffer
 	put := func(v int) { _ = binary.Write(&data, binary.LittleEndian, int32(v)) }
 	put(0x34524954)

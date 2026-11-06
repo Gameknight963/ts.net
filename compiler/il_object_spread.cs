@@ -176,6 +176,7 @@ void il_spread_shapes(Compiler c, IlBackend b)
             int klass = b.spread_classes.at(n.type); int finish = b.spread_finishes.at(n.type);
             b.emit(0xfe0c, destination); b.emit(0x74, klass); b.emit(0x28, finish);
         }
+        if (n.fourth != 0) { b.emit(0xfe0c, destination); b.call(RuntimeMember.SealModuleNamespace); }
         b.emit(0xfe0c, destination); b.mark(done);
     }
     internal static // A generated field copy gives the JIT ordinary allocation and stores instead

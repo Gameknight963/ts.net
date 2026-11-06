@@ -4,7 +4,7 @@ using System.Globalization;
 
 public abstract partial class TsObject
 {
-    public virtual object OwnKeys() => KeysFromFixed(Array.Empty<object>());
+    public virtual object OwnKeys() => IsModuleNamespace ? ModuleNamespaceKeys() : KeysFromFixed(Array.Empty<object>());
     protected double ExtraKeyCount => extra?.Count ?? 0;
     // Unknown subclasses retain their enumeration behavior; generated shapes
     // and array representations override this with allocation-free counts.

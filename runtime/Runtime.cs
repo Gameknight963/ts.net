@@ -18,6 +18,7 @@ public abstract partial class TsObject
 
     public virtual object Set(string key, object value)
     {
+        if (IsModuleNamespace) throw new InvalidOperationException("Module namespace is read-only");
         if(TryOwnAccessor(key,out var accessor))return accessor.Write(this,value);
         if (SetEnumPrototype(key, value)) return value;
         (extra ??= new OwnProperties())[key] = value;
@@ -301,7 +302,7 @@ public static partial class Js
     {
         var source = (JsArray)arguments;var values = new object[checked((int)source.Length())];
         for (int i = 0; i < values.Length; i++) values[i] = source.ElementAt((uint)i);
-        Log(values);
+        ConsoleLog(values);
     }
     public static object ArrayPop(object receiver) =>
         receiver is JsArray array ? array.Pop() : throw new InvalidOperationException("pop requires an array");

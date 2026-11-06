@@ -4,7 +4,7 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 internal enum RuntimeMember
 {
-    InitializeEnum, CopyObjectRest, DefineAccessor, ResolveThis, SuperBase, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    SealModuleNamespace, InitializeEnum, BuiltinNamespace, CopyObjectRest, DefineAccessor, ResolveThis, SuperBase, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, NumberAtIsNullish, LooseEqual, LooseEqualNumber, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
@@ -470,6 +470,7 @@ bool il_logical_assignment(int op, Compiler c)
         int object_type = b.RuntimeToken(RuntimeMember.ObjectType);
         b.ref_set(RuntimeMember.ObjectConstructor, b.plan.method0(6, object_type, 1, -1, ".ctor"));
         int js = b.RuntimeToken(RuntimeMember.JsType); int obj = b.RuntimeToken(RuntimeMember.TsObjectType);
+        b.ref_set(RuntimeMember.BuiltinNamespace,b.plan.method1(6,js,0,-5,-4,"BuiltinNamespace"));
         Vector<int> restParameters=new Vector<int>();restParameters.push(-5);restParameters.push(-5);restParameters.push(-7);
         b.ref_set(RuntimeMember.CopyObjectRest,b.plan.method(6,js,0,-1,restParameters.view(),"CopyObjectRest"));
         b.ref_set(RuntimeMember.ResolveThis,b.plan.method1(6,js,0,-5,-5,"ResolveThis"));
@@ -497,6 +498,7 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.DecodeNumberField, b.plan.method1(6, js, 0, -10, -3, "DecodeNumberField"));
         b.ref_set(RuntimeMember.IsExactSpread, b.plan.method1(6, js, 2, -2, -5, "IsExactSpread"));
         b.ref_set(RuntimeMember.CopySpreadExtras, b.plan.method1(6, obj, 1, -1, -5, "CopySpreadExtras"));
+        b.ref_set(RuntimeMember.SealModuleNamespace, b.plan.method1(6, js, 0, -1, -5, "SealModuleNamespace"));
         b.ref_set(RuntimeMember.InitializeEnum, b.plan.method1(6, js, 0, -1, -5, "InitializeEnum"));
         b.ref_set(RuntimeMember.ObjectSpread, b.plan.method2(6, js, 0, -1, -5, -5, "ObjectSpread"));
         b.ref_set(RuntimeMember.DefineOwn, b.plan.method2(6, obj, 1, -1, -4, -5, "DefineOwn"));
@@ -695,8 +697,8 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.DynamicGet, b.plan.method2(6, js, 0, -5, -5, -4, "Get"));
         Vector<int> set_parameters = new Vector<int>(); set_parameters.push(-5); set_parameters.push(-4); set_parameters.push(-5);
         b.ref_set(RuntimeMember.DynamicSet, b.plan.method(6, js, 0, -5, set_parameters.view(), "Set"));
-        b.ref_set(RuntimeMember.Log, b.plan.method1(6, js, 0, -1, -7, "Log"));
-        b.ref_set(RuntimeMember.Now, b.plan.method0(6, js, 0, -3, "Now"));
+        b.ref_set(RuntimeMember.Log, b.plan.method1(6, js, 0, -1, -7, "ConsoleLog"));
+        b.ref_set(RuntimeMember.Now, b.plan.method0(6, js, 0, -3, "PerformanceNow"));
         int string_type = b.RuntimeToken(RuntimeMember.StringType);
         b.ref_set(RuntimeMember.Length, b.plan.method1(6, js, 0, -6, -5, "StringLength"));
         b.ref_set(RuntimeMember.StringEqual, b.plan.method2(6, string_type, 0, -2, -4, -4, "op_Equality"));

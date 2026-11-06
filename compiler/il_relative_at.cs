@@ -8,7 +8,8 @@ internal static partial class CompilerFunctions
     internal static int il_method_target(int calleeId, Compiler c, IlBackend b)
     {
         Node callee = get_node(calleeId, c);
-        while (callee.kind==NodeKind.Assert) {callee=get_node(callee.left,c);}
+        while (callee.kind==NodeKind.Assert) {calleeId=callee.left;callee=get_node(calleeId,c);}
+        if(callee.kind==NodeKind.OptionalChain)return il_optional_chain(calleeId,true,c,b);
         if (callee.kind is not (NodeKind.Property or NodeKind.Index)) { il_boxed(calleeId,c,b); return -1; }
         il_boxed(callee.left,c,b); b.op(0x25); int receiver=b.local(-5); b.emit(0xfe0e,receiver);
         if (callee.kind==NodeKind.Property) { il_text(callee.name,c,b); b.call(RuntimeMember.DynamicGet); }

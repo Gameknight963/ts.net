@@ -138,7 +138,7 @@ internal static partial class CompilerFunctions
                 // Assertions preserve a method reference, including its receiver.
                 int reference=parent_id;Node use=container;
                 while(use.kind==NodeKind.Assert){reference=(int)parents.at(reference);use=get_node((int)parents.at(reference),c);}
-                if(use.kind==NodeKind.Call && use.left==reference){invalid.at_mut(root)=1;continue;}
+                if((use.kind==NodeKind.Call || use.kind==NodeKind.OptionalChain && use.children!=0 && get_node(use.children,c).kind==NodeKind.ChainCall) && use.left==reference){invalid.at_mut(root)=1;continue;}
                 int actual = get_node(get_node(definition, c).left, c).type;
                 int original = field(actual, parent.name, c); int view = 0;
                 TypeKind owner_kind = get_type(n.type, c).kind;
