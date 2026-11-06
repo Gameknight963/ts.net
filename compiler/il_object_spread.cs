@@ -155,6 +155,7 @@ void il_spread_shapes(Compiler c, IlBackend b)
             }
         }
         b.emit(0x73, constructor); int destination = b.local(-5); b.emit(0xfe0e, destination);
+        if (n.constant) { b.emit(0xfe0c, destination); b.call(RuntimeMember.InitializeEnum); }
         int property = n.children;
         while (property != 0)
         {

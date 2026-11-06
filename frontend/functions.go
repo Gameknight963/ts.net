@@ -104,7 +104,7 @@ func (b *irBuilder) localFunction(n *ast.Node) int {
 	if n.Body() == nil {
 		return 0
 	}
-	if n.Parent == nil || (n.Parent.Kind != ast.KindBlock && n.Parent.Kind != ast.KindCaseClause && n.Parent.Kind != ast.KindDefaultClause) || n.Name() == nil || n.AsFunctionDeclaration().AsteriskToken != nil {
+	if n.Parent == nil || (n.Parent.Kind != ast.KindModuleBlock && n.Parent.Kind != ast.KindBlock && n.Parent.Kind != ast.KindCaseClause && n.Parent.Kind != ast.KindDefaultClause) || n.Name() == nil || n.AsFunctionDeclaration().AsteriskToken != nil {
 		b.unsupported(n)
 	}
 	value := b.functionValue(n)

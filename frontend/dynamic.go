@@ -15,6 +15,10 @@ func (b *irBuilder) preserveDynamicType(n *ast.Node, row *irNode) {
 		}
 		symbol := b.c.GetSymbolAtLocation(location)
 		if symbol != nil {
+			if symbol.Flags&ast.SymbolFlagsEnumMember != 0 && ast.SymbolName(symbol) == "__proto__" {
+				row.typ = any
+				return
+			}
 			kind := b.types[b.typ(b.c.GetTypeOfSymbol(symbol))-1].kind
 			if kind == 4 || kind == 5 {
 				row.typ = any

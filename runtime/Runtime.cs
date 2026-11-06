@@ -11,14 +11,15 @@ public abstract partial class TsObject
     private OwnProperties extra;
 
     public virtual bool HasOwn(string key) => extra != null && extra.ContainsKey(key);
-    public virtual bool HasProperty(string key) => HasOwn(key);
+    public virtual bool HasProperty(string key) => HasOwn(key) || EnumHasInherited(key);
 
     public virtual object Get(string key) =>
-        TryOwnAccessor(key,out var accessor)?accessor.Read(this):extra != null && extra.TryGetValue(key, out var value) ? value : Js.Undefined;
+        TryOwnAccessor(key,out var accessor)?accessor.Read(this):extra != null && extra.TryGetValue(key, out var value) ? value : EnumInherited(key);
 
     public virtual object Set(string key, object value)
     {
         if(TryOwnAccessor(key,out var accessor))return accessor.Write(this,value);
+        if (SetEnumPrototype(key, value)) return value;
         (extra ??= new OwnProperties())[key] = value;
         return value;
     }

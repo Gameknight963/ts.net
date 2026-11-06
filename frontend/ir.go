@@ -49,6 +49,7 @@ type irBuilder struct {
 	labels                map[string]irLabel
 	enumValues            map[*ast.Node]evaluator.Result
 	enumDeclared          map[*ast.Symbol]bool
+	namespaceExports      map[*ast.Symbol]*ast.Node
 	thisSymbol            int
 	thisScope             bool
 	superSymbol           int
@@ -205,7 +206,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 		// Keep their storage boxed even when the checker calls them numbers.
 		if symbol := t.Symbol(); symbol != nil && symbol.Flags&ast.SymbolFlagsEnum != 0 {
 			switch ast.SymbolName(property) {
-			case "Infinity", "-Infinity", "NaN":
+			case "Infinity", "-Infinity", "NaN", "__proto__":
 				typ = b.typ(b.c.GetAnyType())
 			}
 		}
@@ -328,6 +329,8 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	switch n.Kind {
 	case ast.KindInterfaceDeclaration, ast.KindTypeAliasDeclaration, ast.KindImportDeclaration, ast.KindExportDeclaration:
 		return 0
+	case ast.KindModuleDeclaration:
+		return b.enumNamespace(n)
 	case ast.KindEnumDeclaration:
 		return b.enumDeclaration(n)
 	case ast.KindExportAssignment:
@@ -406,6 +409,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindTrueKeyword, ast.KindFalseKeyword:
 		id = b.node(2, n, map[bool]string{true: "true", false: "false"}[n.Kind == ast.KindTrueKeyword])
 	case ast.KindIdentifier:
+		if owner := b.namespaceExports[b.c.GetSymbolAtLocation(n)]; owner != nil {
+			return b.namespaceReference(n, owner)
+		}
 		if errorKind(n.Text()) && b.isBuiltinIdentifier(n) {
 			id = b.node(53, n, n.Text())
 			b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
@@ -1036,6 +1042,7 @@ func exportIR(s *session) (result []byte, err error) {
 	c, release = s.program.GetTypeCheckerForFileExclusive(context.Background(), s.file)
 	defer release()
 	b.c = c
+	b.prepareEnumNamespaces(files)
 	functions := map[*ast.Node]int{}
 	last := 0
 	for _, file := range files {

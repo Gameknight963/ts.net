@@ -81,13 +81,15 @@ func (b *irBuilder) enumMemberReference(n *ast.Node, symbol *ast.Symbol) int {
 	owner := b.enumOwner(n, member.Parent)
 	b.nodes[id-1].left = owner
 	b.nodes[id-1].typ = b.typ(b.c.GetTypeOfSymbol(symbol))
+	if ast.SymbolName(symbol) == "__proto__" {
+		b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
+	}
 	return id
 }
-func (b *irBuilder) enumDeclaration(n *ast.Node) int {
+func (b *irBuilder) enumInitialization(n *ast.Node) int {
 	if ast.IsEnumConst(n) || ast.HasAmbientModifier(n) {
 		return 0
 	}
-	declaration := n.AsEnumDeclaration()
 	symbol := b.c.GetSymbolAtLocation(n.Name())
 	binding := b.symbol(n.Name())
 	typ := b.symbols[binding-1].typ
@@ -120,8 +122,8 @@ func (b *irBuilder) enumDeclaration(n *ast.Node) int {
 		}
 		appendStatement(variable)
 	}
-	// E || (E = {...undefined}) creates an initially empty object while retaining
-	// the checked field layout. Spread storage records presence and insertion order.
+	// E || (E = {...undefined}) preserves identity across merged declarations.
+	// Dynamic storage also preserves missing members and prototype assignments.
 	empty := b.node(20, n, "undefined")
 	b.nodes[empty-1].typ = b.typ(b.c.GetUndefinedType())
 	spread := b.node(35, n, "...")
@@ -129,6 +131,15 @@ func (b *irBuilder) enumDeclaration(n *ast.Node) int {
 	b.nodes[spread-1].typ = b.typ(b.c.GetAnyType())
 	object := b.node(4, n, "{")
 	b.nodes[object-1].typ = typ
+	// __proto__ reads can return a prototype instead of the declared scalar.
+	// Other enums retain their ordinary typed field accessors.
+	for field := b.types[typ-1].fields; field != 0; field = b.fields[field-1].next {
+		if b.texts[b.fields[field-1].name-1] == "__proto__" {
+			b.nodes[object-1].typ = b.typ(b.c.GetAnyType())
+			break
+		}
+	}
+	b.nodes[object-1].constant = 1
 	b.nodes[object-1].children = spread
 	assignment := b.node(10, n, "=")
 	owner := b.enumOwner(n, n)
@@ -143,9 +154,22 @@ func (b *irBuilder) enumDeclaration(n *ast.Node) int {
 	statement := b.node(18, n, ";")
 	b.nodes[statement-1].left = reuse
 	appendStatement(statement)
-	for _, member := range declaration.Members.Nodes {
+	return block
+}
+
+func (b *irBuilder) enumDeclaration(n *ast.Node) int {
+	if ast.IsEnumConst(n) || ast.HasAmbientModifier(n) {
+		return 0
+	}
+	block := b.enumInitialization(n)
+	last := b.nodes[block-1].children
+	for b.nodes[last-1].next != 0 {
+		last = b.nodes[last-1].next
+	}
+	appendStatement := func(statement int) { b.nodes[last-1].next = statement; last = statement }
+	for _, member := range n.AsEnumDeclaration().Members.Nodes {
 		name, known := b.literalPropertyName(member.Name())
-		if !known || name == "__proto__" {
+		if !known {
 			b.unsupported(member)
 		}
 		result := b.enumValues[member]
@@ -159,10 +183,13 @@ func (b *irBuilder) enumDeclaration(n *ast.Node) int {
 		}
 		target := b.node(5, member, name)
 		b.nodes[target-1].name = b.text(name)
-		owner = b.enumOwner(member, n)
+		owner := b.enumOwner(member, n)
 		b.nodes[target-1].left = owner
 		memberSymbol := b.c.GetSymbolAtLocation(member.Name())
 		b.nodes[target-1].typ = b.typ(b.c.GetTypeOfSymbol(memberSymbol))
+		if name == "__proto__" {
+			b.nodes[target-1].typ = b.typ(b.c.GetAnyType())
+		}
 		assign := b.node(10, member, "=")
 		b.nodes[assign-1].left = target
 		b.nodes[assign-1].right = value
@@ -170,7 +197,7 @@ func (b *irBuilder) enumDeclaration(n *ast.Node) int {
 		_, text := result.Value.(string)
 		if !text && !result.IsSyntacticallyString {
 			index := b.node(33, member, "[]")
-			owner = b.enumOwner(member, n)
+			owner := b.enumOwner(member, n)
 			b.nodes[index-1].left = owner
 			b.nodes[index-1].right = assign
 			b.nodes[index-1].typ = b.typ(b.c.GetStringType())
