@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <UseAppHost>false</UseAppHost>
+    <!-- This CLI exits before profile-guided recompilation usually pays off. -->
+    <TieredPGO>false</TieredPGO>
     <AssemblyName>tsnetc</AssemblyName>
   </PropertyGroup>
   <ItemGroup>

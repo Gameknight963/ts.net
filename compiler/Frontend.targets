@@ -18,6 +18,7 @@
     <FrontendSource Include="$(FrontendDirectory)/*.go;$(FrontendDirectory)/go.mod;$(FrontendDirectory)/go.sum" />
   </ItemGroup>
   <Target Name="PrepareFrontendSource">
+    <Error Condition="'$(RuntimeIdentifier)' != '' and ('$(FrontendOS)' == '' or '$(FrontendArch)' == '')" Text="Frontend cross-publishing supports win, linux, and osx with x64 or arm64." />
     <MakeDir Directories="$(FrontendCheckout)" Condition="!Exists('$(FrontendCheckout)')" />
     <Exec Command="git clone --depth 1 --branch v7.0.2 --filter=blob:none --sparse https://github.com/microsoft/TypeScript.git &quot;$(FrontendCheckout)&quot;" Condition="!Exists('$(FrontendCheckout)/.git')" />
     <Exec Command="git -C &quot;$(FrontendCheckout)&quot; sparse-checkout set tsc" Condition="!Exists('$(FrontendCheckout)/tsc/internal/compiler/program.go')" />
