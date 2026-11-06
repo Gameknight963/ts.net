@@ -55,7 +55,9 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 	function, value := b.newFunction(n, "")
 	previous, scope := b.thisSymbol, b.thisScope
 	previousNewTarget := b.newTargetUsed
+	previousArguments := b.argumentsUsed
 	b.newTargetUsed = false
+	b.argumentsUsed = false
 	previousStatic := b.superStatic
 	b.superStatic = static
 	b.symbols = append(b.symbols, irSymbol{name: b.text("this"), typ: b.typ(b.c.GetAnyType())})
@@ -169,6 +171,7 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 	}
 	b.thisSymbol, b.thisScope = previous, scope
 	b.newTargetUsed = previousNewTarget
+	b.argumentsUsed = previousArguments
 	b.superStatic = previousStatic
 	return value
 }

@@ -19,6 +19,7 @@ public static class Iteration
     public static double Length(object value) => value switch
     {
         JsArray array => array.Length(),
+        JsArguments arguments => arguments.IterationLength(),
         string text => text.Length,
         _ => throw new InvalidOperationException("Value is not iterable")
     };
@@ -31,6 +32,7 @@ public static class Iteration
     public static object Value(object value, int position)
     {
         if (value is JsArray array) return array.ElementAt((uint)position);
+        if (value is JsArguments arguments) return arguments.Get(position.ToString(System.Globalization.CultureInfo.InvariantCulture));
         if (value is string text)
         {
             char first = text[position];

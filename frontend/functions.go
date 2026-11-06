@@ -143,7 +143,7 @@ func (b *irBuilder) functionIdentity(n *ast.Node, value, function, self int) int
 	needed := false
 	for i := function; i <= len(b.nodes); i++ {
 		node := b.nodes[i-1]
-		if node.kind == 3 && node.symbol == self && !direct[i] {
+		if node.kind == 3 && node.symbol == self && (!direct[i] || b.nodes[function-1].fourth != 0 && b.nodes[b.nodes[function-1].fourth-1].name != 0) {
 			needed = true
 			break
 		}
@@ -199,6 +199,7 @@ func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 	arrow := n.Kind == ast.KindArrowFunction
 	previous, scope := b.thisSymbol, b.thisScope
 	previousNewTarget := b.newTargetUsed
+	previousArguments := b.argumentsUsed
 	previousSuper, previousStatic := b.superSymbol, b.superStatic
 	if !arrow && (n.Parent == nil || !ast.IsClassLike(n.Parent)) {
 		b.superSymbol = 0
@@ -207,6 +208,7 @@ func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 		b.thisSymbol = 0
 		b.thisScope = true
 		b.newTargetUsed = false
+		b.argumentsUsed = false
 	}
 	parameters := b.list(n.Parameters())
 	body := 0
@@ -225,6 +227,9 @@ func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 			if b.newTargetUsed {
 				b.nodes[parameter-1].constant = 1
 			}
+			if b.argumentsUsed {
+				b.nodes[parameter-1].name = b.text("arguments receiver")
+			}
 			b.nodes[parameter-1].next = parameters
 			parameters = parameter
 			b.nodes[function-1].fourth = parameter
@@ -232,6 +237,7 @@ func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 		b.thisSymbol = previous
 		b.thisScope = scope
 		b.newTargetUsed = previousNewTarget
+		b.argumentsUsed = previousArguments
 		b.superSymbol, b.superStatic = previousSuper, previousStatic
 	}
 	return parameters, body

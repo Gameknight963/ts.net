@@ -28,18 +28,23 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object ResolveThis(object receiver)
     {
+        receiver = ArgumentsReceiver(receiver);
         if (receiver is JsConstructionReceiver construction) return ResolveThis(construction.Receiver);
         if (receiver is not JsConstructorFrame frame) return receiver;
         return frame.Initialized ? frame.Value : throw MakeThrown(new JsCaughtError("ReferenceError", "Must call super constructor before accessing this"));
     }
-    public static object NewTarget(object receiver) => receiver is JsConstructionReceiver construction ? construction.Target : receiver is JsConstructorFrame frame ? ((JsClassInstance)frame.Allocated).Owner : Undefined;
+    public static object NewTarget(object receiver)
+    {
+        receiver = ArgumentsReceiver(receiver);
+        return receiver is JsConstructionReceiver construction ? construction.Target : receiver is JsConstructorFrame frame ? ((JsClassInstance)frame.Allocated).Owner : Undefined;
+    }
     public static object EnableNewTarget(object value) { ((JsFunction)value).UsesNewTarget = true; return value; }
     internal static object SuperReceiver(object receiver) => receiver is JsSuperReference reference ? reference.Receiver : receiver;
     public static object SuperBase(object home, object receiver, bool isStatic) => new JsSuperReference((JsClassFunction)home, receiver, isStatic);
-    public static void SuperInitializer(object receiver, object callback) => ((JsConstructorFrame)receiver).AfterSuper = (JsFunction)callback;
+    public static void SuperInitializer(object receiver, object callback) => ((JsConstructorFrame)ArgumentsReceiver(receiver)).AfterSuper = (JsFunction)callback;
     public static object SuperCall(object receiver, object arguments)
     {
-        var frame = (JsConstructorFrame)receiver;
+        var frame = (JsConstructorFrame)ArgumentsReceiver(receiver);
         if (frame.Home.Parent is null) throw new InvalidOperationException("Super constructor is not callable");
         int length = checked((int)Iteration.Length(arguments)); var values = new object[length];
         for (int i = 0; i < length; i++) values[i] = Iteration.Value(arguments, i);

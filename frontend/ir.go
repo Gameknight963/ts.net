@@ -57,6 +57,7 @@ type irBuilder struct {
 	thisSymbol            int
 	thisScope             bool
 	newTargetUsed         bool
+	argumentsUsed         bool
 	superSymbol           int
 	superStatic           bool
 	classIDs              map[*ast.Symbol]int
@@ -104,7 +105,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
-	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance") {
+	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || symbol.Name == "IArguments" || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance") {
 		for _, declaration := range symbol.Declarations {
 			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
 				t = b.c.GetAnyType()
@@ -237,6 +238,13 @@ func (b *irBuilder) typ(t *checker.Type) int {
 }
 func (b *irBuilder) symbol(n *ast.Node) int {
 	s := b.c.GetSymbolAtLocation(n)
+	// A parameter property has a class property symbol and a constructor-local
+	// parameter symbol. Its declaration and bare reads must use the local binding.
+	if s != nil && s.ValueDeclaration != nil && ast.IsParameterPropertyDeclaration(s.ValueDeclaration, s.ValueDeclaration.Parent) {
+		if local := s.ValueDeclaration.Parent.Locals()[s.Name]; local != nil {
+			s = local
+		}
+	}
 	if n.Parent != nil && n.Parent.Kind == ast.KindShorthandPropertyAssignment {
 		s = b.c.GetShorthandAssignmentValueSymbol(n.Parent)
 	}
@@ -447,6 +455,14 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindTrueKeyword, ast.KindFalseKeyword:
 		id = b.node(2, n, map[bool]string{true: "true", false: "false"}[n.Kind == ast.KindTrueKeyword])
 	case ast.KindIdentifier:
+		if b.c.GetSymbolAtLocation(n) == b.c.GetArgumentsSymbol() {
+			b.argumentsUsed = true
+			id = b.node(69, n, "arguments")
+			row = b.nodes[id-1]
+			row.left = b.rawThis(n)
+			row.typ = b.typ(b.c.GetAnyType())
+			break
+		}
 		if symbol := b.c.GetSymbolAtLocation(n); symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
 			if target := b.c.GetAliasedSymbol(symbol); target.IsExternalModule() {
 				return b.moduleNamespaceReference(n, target)

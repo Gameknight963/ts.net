@@ -6,18 +6,25 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 internal static partial class CompilerFunctions
 {
+    internal static bool il_uses_arguments(int symbol, Compiler c)
+    {
+        int function = get_symbol(symbol, c).function;
+        int receiver = function == 0 ? 0 : get_node(function, c).fourth;
+        return receiver != 0 && get_node(receiver, c).name != 0;
+    }
     internal static int il_direct_function(int entry, Compiler c, IlBackend b)
     {
         Node n = get_node(entry, c);
-        if (n.kind == NodeKind.FunctionValue) { return n.symbol; }
+        if (n.kind == NodeKind.FunctionValue) { return il_uses_arguments(n.symbol, c) ? 0 : n.symbol; }
         if (n.kind != NodeKind.Name || n.symbol == 0) { return 0; }
         if (get_symbol(n.symbol, c).function != 0)
         {
+            if (il_uses_arguments(n.symbol, c)) return 0;
             Node function = get_node(get_symbol(n.symbol, c).function, c);
             return b.function_contexts.at(n.symbol) == 0 || function.constant ? n.symbol : 0;
         }
         int target = (int)b.function_targets.at(n.symbol);
-        return target != 0 && b.function_contexts.at(target) != 0 ? 0 : target;
+        return target != 0 && (b.function_contexts.at(target) != 0 || il_uses_arguments(target, c)) ? 0 : target;
     }
     internal static int il_predicate_reference(int entry, Compiler c, IlBackend b)
     {
@@ -70,7 +77,7 @@ internal static partial class CompilerFunctions
             Node n = get_node(i, c);
             if (n.kind != NodeKind.Name || n.symbol == 0) { continue; }
             Node parent = get_node((int)b.node_parents.at(i), c);
-            bool direct = parent.kind == NodeKind.Call && parent.left == i;
+            bool direct = parent.kind == NodeKind.Call && parent.left == i && il_direct_function(i, c, b) != 0;
             if (!direct) { b.function_values_needed.at_mut(n.symbol) = 1; }
             if (get_symbol(n.symbol, c).function != 0)
             {
@@ -196,6 +203,7 @@ void il_function_class(int symbol, Compiler c, IlBackend b)
         b.emit(0x73, constructor != 0 ? constructor : b.RuntimeToken(get_node(get_symbol(symbol,c).function,c).fourth != 0 ? RuntimeMember.ReceiverFunctionConstructor : RuntimeMember.FunctionConstructor));
         int receiver = get_node(get_symbol(symbol, c).function, c).fourth;
         if (receiver != 0 && get_node(receiver, c).constant) b.call(RuntimeMember.EnableNewTarget);
+        if (receiver != 0 && get_node(receiver, c).name != 0) b.call(RuntimeMember.EnableArguments);
         if (get_node(get_symbol(symbol,c).function,c).third != 0)
         {
             if(b.function_allocator==0)b.op(0x14);

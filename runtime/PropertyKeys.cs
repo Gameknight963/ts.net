@@ -44,7 +44,7 @@ public static partial class Js
                     }
                     primitive = "function " + (identifier ? functionName : "") + "() { [native code] }";
                 }
-                else primitive = "[object Object]";
+                else primitive = obj is JsArguments ? "[object Arguments]" : "[object Object]";
                 if (KeyPrimitive(primitive)) break;
             }
         }

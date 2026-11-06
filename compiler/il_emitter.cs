@@ -454,6 +454,7 @@ internal static partial class CompilerFunctions
         else if(n.kind==NodeKind.OptionalChain){il_optional_chain(entry,false,c,b);}
         else if(n.kind==NodeKind.BuiltinNamespace){il_text(get_token(n.token,c).text,c,b);b.call(RuntimeMember.BuiltinNamespace);}
         else if(n.kind==NodeKind.ResolveThis){il_boxed(n.left,c,b);b.call(n.constant ? RuntimeMember.NewTarget : RuntimeMember.ResolveThis);}
+        else if(n.kind==NodeKind.Arguments){il_boxed(n.left,c,b);b.call(RuntimeMember.Arguments);}
         else if(n.kind==NodeKind.SuperBase){il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.emit(0x20,n.constant?1:0);b.call(RuntimeMember.SuperBase);}
         else if(n.kind==NodeKind.SuperCall){
             il_boxed(n.left,c,b);b.emit(0x20,0);b.emit(0x73,b.RuntimeToken(RuntimeMember.ArrayConstructor));int args=b.local(-5);b.emit(0xfe0e,args);
