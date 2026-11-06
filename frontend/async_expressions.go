@@ -2,6 +2,7 @@ package main
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/microsoft/typescript-go/internal/ast"
 )
@@ -262,6 +263,10 @@ func (a *asyncExpressionLowering) expression(id int, next asyncExpressionContinu
 				return a.expression(n.right, func(right int) int { n.left = a.reference(symbol); n.right = right; return next(a.operation(n)) })
 			})
 		})
+	case 10: // assignment
+		return a.assignment(n, next)
+	case 11: // prefix/postfix update with an awaited reference
+		return a.target(n.left, func(target func() int) int { n.left = target(); return next(a.operation(n)) })
 	case 30: // nullish coalescing
 		return a.joined(next, func(join func(int) int) int {
 			return a.expression(n.left, func(value int) int {
@@ -413,4 +418,81 @@ func (a *asyncExpressionLowering) nullish(value int) int {
 	a.b.nodes[test-1].right = equal(20)
 	a.b.nodes[test-1].typ = a.b.typ(a.b.c.GetBooleanType())
 	return test
+}
+
+// Capture the reference, not its current value. Each use gets fresh IR nodes so
+// closure and ownership walks see an ordinary tree.
+func (a *asyncExpressionLowering) target(id int, next func(func() int) int) int {
+	n := a.b.nodes[id-1]
+	a.discard(id)
+	switch n.kind {
+	case 3:
+		return next(func() int { return a.operation(n) })
+	case 5, 33:
+		return a.expression(n.left, func(value int) int {
+			return a.bind(value, func(receiver int) int {
+				finish := func(key int) int {
+					return next(func() int {
+						target := n
+						target.left = a.reference(receiver)
+						if key != 0 {
+							target.right = a.reference(key)
+						}
+						return a.operation(target)
+					})
+				}
+				if n.kind == 5 {
+					return finish(0)
+				}
+				// A reference keeps the raw key. GetValue and PutValue each
+				// perform their own conversion, potentially on opposite sides of await.
+				return a.expression(n.right, func(value int) int { return a.bind(value, finish) })
+			})
+		})
+	}
+	a.b.unsupported(a.source)
+	return 0
+}
+func (a *asyncExpressionLowering) assignment(n irNode, next asyncExpressionContinuation) int {
+	op := a.b.texts[a.b.tokens[n.token-1].text-1]
+	return a.target(n.left, func(target func() int) int {
+		store := func(value int) int {
+			assignment := a.node(10, "=")
+			a.b.nodes[assignment-1].typ = n.typ
+			a.b.nodes[assignment-1].left = target()
+			a.b.nodes[assignment-1].right = value
+			return next(assignment)
+		}
+		if op == "=" {
+			return a.expression(n.right, store)
+		}
+		return a.bind(target(), func(previous int) int {
+			if op == "&&=" || op == "||=" || op == "??=" {
+				return a.joined(next, func(join func(int) int) int {
+					assign := a.expression(n.right, func(value int) int {
+						assignment := a.node(10, "=")
+						a.b.nodes[assignment-1].typ = n.typ
+						a.b.nodes[assignment-1].left = target()
+						a.b.nodes[assignment-1].right = value
+						return join(assignment)
+					})
+					unchanged := join(a.reference(previous))
+					if op == "&&=" {
+						return a.branch(a.reference(previous), assign, unchanged)
+					}
+					if op == "||=" {
+						return a.branch(a.reference(previous), unchanged, assign)
+					}
+					return a.branch(a.nullish(previous), assign, unchanged)
+				})
+			}
+			return a.expression(n.right, func(value int) int {
+				binary := a.node(7, strings.TrimSuffix(op, "="))
+				a.b.nodes[binary-1].typ = n.typ
+				a.b.nodes[binary-1].left = a.reference(previous)
+				a.b.nodes[binary-1].right = value
+				return store(binary)
+			})
+		})
+	})
 }
