@@ -413,7 +413,7 @@ public static partial class Js
         double n when double.IsPositiveInfinity(n) => "Infinity",
         double n when double.IsNegativeInfinity(n) => "-Infinity",
         double n when n == 0 => "0",
-        double n => n.ToString("G", CultureInfo.InvariantCulture),
+        double n => NumberKeyString(n),
         bool b => b ? "true" : "false",
         string s => s,
         TsObject => "[object Object]",
