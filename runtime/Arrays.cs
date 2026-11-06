@@ -105,6 +105,7 @@ partial struct ArrayStorage<T>
 
 public partial class JsArray : TsObject
 {
+    internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.ArrayPrototype;
     static readonly object Hole = new object();
     private protected ArrayStorage<object> values;
     public JsArray(int length) { values = new ArrayStorage<object>(length, Hole); }
@@ -153,10 +154,8 @@ public partial class JsArray : TsObject
         return value < uint.MaxValue;
     }
     public override bool HasOwn(string key) => key == "length" || (Index(key, out uint index) ? HasElement(index) : base.HasOwn(key));
-    public override object GetWithReceiver(string key, object receiver) => !HasOwn(key) && Js.IsArrayMethod(key) ? Js.ArrayMethodValue(key) : base.GetWithReceiver(key, receiver);
-    public override bool HasProperty(string key) => HasOwn(key) || Js.IsArrayMethod(key) || base.HasProperty(key);
     public override object Get(string key) => key == "length" ? (double)Count : Index(key, out uint index) ? Read(index) :
-        base.HasOwn(key) ? base.Get(key) : Js.ArrayMethodValue(key);
+        base.Get(key);
     public override object Set(string key, object value)
     {
         if (key == "length") SetLength(Js.Number(value));

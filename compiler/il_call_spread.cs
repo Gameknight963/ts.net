@@ -77,19 +77,13 @@ internal static partial class CompilerFunctions
     }
     internal static void il_spread_call(int entry, Compiler c, IlBackend b)
     {
-        Node call = get_node(entry, c); Node callee = get_node(call.left, c); int receiver = -1; int reverse_builtin = -1;
+        Node call = get_node(entry, c); Node callee = get_node(call.left, c);
         if (callee.symbol != 0 && get_symbol(callee.symbol, c).function != 0 && il_flat_parameter_call(entry, c, b)) { return; }
         if (il_direct_function(call.left, c, b) != 0 && callee.kind == NodeKind.Name && b.global_flags.at(callee.symbol) != 0) { b.check_global(callee.symbol); }
         if (il_static_spread_call(entry, c, b)) { return; }
-        bool array_call = il_array_call(entry, c);
-        bool value_call = !array_call && il_direct_function(call.left, c, b) == 0 && !builtin(call.left, text_console, text_log, c) && !builtin(call.left, text_performance, text_now, c) && !builtin_has_own(call.left, c);
+        bool value_call = il_direct_function(call.left, c, b) == 0 && !builtin(call.left, text_console, text_log, c) && !builtin(call.left, text_performance, text_now, c) && !builtin_has_own(call.left, c);
         int target = -1; int methodReceiver=-1;
         if (value_call) { methodReceiver=il_method_target(call.left,c,b); target = b.local(-5); b.emit(0xfe0e, target); }
-        if (array_call) { il_expression(callee.left, c, b); receiver = b.local(-5); b.emit(0xfe0e, receiver); }
-        if (array_call && is_text(callee.name, text_reverse, c))
-        {
-            b.emit(0xfe0c, receiver); b.call(RuntimeMember.ArrayReverseBuiltin); reverse_builtin = b.local(-2); b.emit(0xfe0e, reverse_builtin);
-        }
         int numeric = il_call_number_type(entry, c, b);
         b.emit(0x20, 0); b.emit(0x73, b.RuntimeToken(numeric != 0 ? RuntimeMember.NumberArrayConstructor : RuntimeMember.ArrayConstructor));
         int array = b.local(-5); b.emit(0xfe0e, array); int argument = call.children;
@@ -103,31 +97,6 @@ internal static partial class CompilerFunctions
             b.call(RuntimeMember.HasOwn); b.call(RuntimeMember.WrapBoolean); return;
         }
         if (builtin(call.left, text_performance, text_now, c)) { b.call(RuntimeMember.Now); b.call(RuntimeMember.WrapNumber); return; }
-        if (array_call)
-        {
-            b.emit(0xfe0c, receiver);
-            if (is_text(callee.name, text_reverse, c)) { b.emit(0xfe0c, reverse_builtin); b.call(RuntimeMember.ArrayReverse); return; }
-            if (il_array_search(entry, c))
-            {
-                b.emit(0xfe0c, array); b.emit(0x20, 0); b.call(RuntimeMember.ForOfValue);
-                b.emit(0xfe0c, array); b.emit(0x20, 1); b.call(RuntimeMember.ForOfValue);
-                b.emit(0x20, is_text(callee.name, text_includes, c) ? 1 : 0); b.call(RuntimeMember.ArraySearch);
-                il_array_search_result(entry, c, b); return;
-            }
-            if (is_text(callee.name, text_slice, c))
-            {
-                b.emit(0xfe0c, array); b.emit(0x20, 0); b.call(RuntimeMember.ForOfValue);
-                b.emit(0xfe0c, array); b.emit(0x20, 1); b.call(RuntimeMember.ForOfValue); b.call(RuntimeMember.Slice); return;
-            }
-            if (is_text(callee.name, text_push, c))
-            {
-                b.emit(0xfe0c, array); b.call(RuntimeMember.PushArguments); b.call(RuntimeMember.WrapNumber);
-                if (get_type(call.type, c).kind != TypeKind.Number) { b.call(RuntimeMember.BoxNumber); }
-            }
-            else if (il_number_array(get_node(callee.left, c).type, c)) { b.call(RuntimeMember.NumberPop); }
-            else { b.call(RuntimeMember.ArrayPop); b.from_object(call.type, c); }
-            return;
-        }
         int symbol = il_direct_function(call.left, c, b);
         int context = b.function_contexts.at(symbol); if (context != 0) { b.load_context(context); }
         int parameter = get_node(get_symbol(symbol, c).function, c).children; int index = 0;

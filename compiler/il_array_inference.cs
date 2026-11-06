@@ -132,8 +132,27 @@ void il_choose_tagged_arrays(Compiler c, IlBackend b)
             if (n.kind == NodeKind.Sequence && get_type(get_node(n.right, c).type, c).kind == TypeKind.Number) { set_node_type(i, get_node(n.right, c).type, c); }
         }
     }
+    internal static bool il_array_method_name(int name, Compiler c) => is_text(name, text_push, c) || is_text(name, text_pop, c) || is_text(name, text_reverse, c) || is_text(name, text_slice, c) || is_text(name, text_index_of, c) || is_text(name, text_includes, c);
+    internal static bool il_array_methods_may_change(Compiler c)
+    {
+        for (int i = 1; i <= c.node_store.count(); i++)
+        {
+            Node n = get_node(i, c);
+            if (n.kind == NodeKind.Destructure) return true;
+            if (n.kind is not (NodeKind.Assign or NodeKind.Update)) continue;
+            Node target = get_node(n.left, c);
+            if (target.kind == NodeKind.Property && il_array_method_name(target.name, c)) return true;
+            if (target.kind == NodeKind.Index && get_type(get_node(target.right, c).type, c).kind != TypeKind.Number)
+            {
+                Node key = get_node(target.right, c);
+                if (key.kind != NodeKind.String || il_array_method_name(get_token(key.token, c).text, c)) return true;
+            }
+        }
+        return false;
+    }
     internal static void il_infer_array_values(int numeric, Compiler c, IlBackend b)
     {
+        bool methods_may_change = il_array_methods_may_change(c);
         Vector<int> definitions = zero_ids(c.symbol_store.count() + 1); Vector<int> counts = zero_ids(c.symbol_store.count() + 1);
         Vector<int> invalid = zero_ids(c.symbol_store.count() + 1);
         for (int i = 1; i <= c.node_store.count(); i++)
@@ -181,6 +200,9 @@ void il_choose_tagged_arrays(Compiler c, IlBackend b)
                 int call_id = (int)b.node_parents.at(parent); Node call = get_node(call_id, c);
                 if (call.kind == NodeKind.Call && call.left == parent)
                 {
+                    // A replacement method receives this array and can store
+                    // other element types. Method guards cannot justify numeric storage.
+                    if (methods_may_change) { invalid.at_mut(root) = 1; continue; }
                     // reverse returns the same array. Its ignored result cannot
                     // introduce an alias that could later write other types.
                     if (is_text(p.name, text_reverse, c) && get_node((int)b.node_parents.at(call_id), c).kind == NodeKind.Expression) { continue; }

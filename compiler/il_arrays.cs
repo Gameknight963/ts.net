@@ -136,11 +136,27 @@ bool il_push_capacity_hint(int entry, Compiler c, IlBackend b)
     }
     internal static void il_emit_array_call(int entry, Compiler c, IlBackend b)
     {
+        Node call = get_node(entry, c), callee = get_node(call.left, c);
+        il_expression(callee.left, c, b); int receiver = b.local(-5); b.emit(0xfe0e, receiver);
+        b.emit(0xfe0c, receiver); il_text(callee.name, c, b); b.call(RuntimeMember.DynamicGet);
+        int target = b.local(-5); b.emit(0xfe0e, target);
+        b.emit(0xfe0c, receiver); b.emit(0xfe0c, target); il_text(callee.name, c, b); b.call(RuntimeMember.IsArrayBuiltin);
+        int fallback = b.label(), done = b.label(); b.emit(0x39, fallback);
+        il_emit_array_builtin(entry, receiver, c, b); b.emit(0x38, done);
+        b.mark(fallback); b.emit(0xfe0c, target); b.emit(0xfe0c, receiver);
+        int count = 0, argument = call.children;
+        while (argument != 0) { count++; argument = get_node(argument, c).next; }
+        b.emit(0x20, count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType)); argument = call.children; int index = 0;
+        while (argument != 0) { b.op(0x25); b.emit(0x20, index++); il_boxed(argument, c, b); b.op(0xa2); argument = get_node(argument, c).next; }
+        b.call(RuntimeMember.CallMethod); il_function_result(call.type, c, b); b.mark(done);
+    }
+    internal static void il_emit_array_builtin(int entry, int receiver, Compiler c, IlBackend b)
+    {
         Node n = get_node(entry, c); Node callee = get_node(n.left, c); int owner = get_node(callee.left, c).type;
-        il_expression(callee.left, c, b);
+        b.emit(0xfe0c, receiver);
         if (is_text(callee.name, text_reverse, c))
         {
-            b.op(0x25); b.call(RuntimeMember.ArrayReverseBuiltin); int builtin = b.local(-2); b.emit(0xfe0e, builtin);
+            b.emit(0x20, 1); int builtin = b.local(-2); b.emit(0xfe0e, builtin);
             int argument = n.children;
             while (argument != 0) { il_expression(argument, c, b); if (get_type(get_node(argument, c).type, c).kind != TypeKind.Void) { b.op(0x26); } argument = get_node(argument, c).next; }
             b.emit(0xfe0c, builtin); b.call(RuntimeMember.ArrayReverse); return;
@@ -169,6 +185,8 @@ bool il_push_capacity_hint(int entry, Compiler c, IlBackend b)
         }
         if (is_text(callee.name, text_pop, c))
         {
+            int argument = n.children;
+            while (argument != 0) { il_expression(argument, c, b); if (get_type(get_node(argument, c).type, c).kind != TypeKind.Void) { b.op(0x26); } argument = get_node(argument, c).next; }
             if (il_number_array(owner, c)) { b.call(RuntimeMember.NumberPop); }
             else { b.call(RuntimeMember.ArrayPop); b.from_object(n.type, c); }
             return;
