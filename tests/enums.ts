@@ -64,3 +64,11 @@ console.log(merged(),merged());
 const captures:(()=>number)[]=[];
 for(let i=0;i<3;i++){enum Local{A=i} captures.push(()=>Local.A);}
 console.log(captures[0](),captures[1](),captures[2]());
+function localEnumInitialization():void {
+    function read():string {return typeof Local;}
+    try {console.log('local-enum-before',read());}
+    catch(error) {console.log('local-enum-before',(error as Error).name);}
+    enum Local {A=1}
+    console.log('local-enum-after',read(),Local.A);
+}
+localEnumInitialization();
