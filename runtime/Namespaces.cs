@@ -83,6 +83,7 @@ public static partial class Js
     static class RuntimeNamespaces
     {
         internal static readonly TsObject Console = new ConsoleNamespace();
+        internal static readonly TsObject Math = new MathNamespace();
         internal static readonly TsObject Performance = new PerformanceNamespace();
         internal static readonly JsFunction Object = ObjectNamespace();
         internal static readonly JsFunction Number = new NumberNamespace();
@@ -92,5 +93,5 @@ public static partial class Js
     internal static JsFunction GetObjectConstructor() => RuntimeNamespaces.Object;
     public static void ConsoleLog(object[] args) => CallMethod(RuntimeNamespaces.Console.Get("log"), RuntimeNamespaces.Console, args);
     public static double PerformanceNow() => CallMethodNumber0(RuntimeNamespaces.Performance.Get("now"), RuntimeNamespaces.Performance).GetValueOrDefault(double.NaN);
-    public static object BuiltinNamespace(string name) => name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : name == "String" ? RuntimeNamespaces.String : name == "Boolean" ? RuntimeNamespaces.Boolean : Undefined;
+    public static object BuiltinNamespace(string name) => name == "Math" ? RuntimeNamespaces.Math : name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : name == "String" ? RuntimeNamespaces.String : name == "Boolean" ? RuntimeNamespaces.Boolean : Undefined;
 }
