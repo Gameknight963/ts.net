@@ -39,7 +39,8 @@ public class JsFunction : TsObject
     public virtual bool HasInstance(object value) => throw new InvalidOperationException("Function has no object prototype");
     internal void InferPropertyName(string value) { name = value; }
     public override bool HasOwn(string key) => key == "name" || key == "length" || base.HasOwn(key);
-    public override object Get(string key) => key == "name" ? name : key == "length" ? (double)length : base.Get(key);
+    public override bool HasProperty(string key)=>HasOwn(key) || key is "call" or "apply" or "bind" || base.HasProperty(key);
+    public override object Get(string key) => base.HasOwn(key)?base.Get(key):key == "name" ? name : key == "length" ? (double)length : key is "call" or "apply" or "bind"?Js.FunctionMethod(key):base.Get(key);
     public override object Set(string key, object value)
     {
         if (key == "name" || key == "length") throw new InvalidOperationException("Function property is read-only");

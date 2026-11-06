@@ -101,7 +101,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			}
 		}
 	}
-	if symbol := t.Symbol(); symbol != nil && symbol.Flags&ast.SymbolFlagsClass != 0 && len(b.c.GetConstructSignatures(t)) != 0 {
+	if len(b.c.GetConstructSignatures(t)) != 0 {
 		t = b.c.GetAnyType()
 	}
 	t = b.c.GetBaseTypeOfLiteralType(t)

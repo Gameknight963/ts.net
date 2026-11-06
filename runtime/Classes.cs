@@ -45,9 +45,9 @@ public sealed class JsClassFunction : JsFunction
         Prototype.DefineMethod("constructor", this);
     }
     public override bool HasOwn(string key) => key == "prototype" || base.HasOwn(key);
-    public override bool HasProperty(string key) => HasOwn(key) || Parent is not null && Parent.HasProperty(key);
+    public override bool HasProperty(string key) => HasOwn(key) || (Parent is not null ? Parent.HasProperty(key):base.HasProperty(key));
     public override object Get(string key) => GetWithReceiver(key, this);
-    public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : key == "prototype" ? Prototype : HasOwn(key) ? base.Get(key) : Parent is null ? Js.Undefined : Parent.GetWithReceiver(key, receiver);
+    public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : key == "prototype" ? Prototype : HasOwn(key) ? base.Get(key) : Parent is null ? base.Get(key) : Parent.GetWithReceiver(key, receiver);
     public override object Set(string key, object value) => SetWithReceiver(key, value, this);
     public override object SetWithReceiver(string key, object value, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Write(receiver, value) : HasOwn(key) || Parent is null ? ((TsObject)receiver).SetOwnValue(key, value) : Parent.SetWithReceiver(key, value, receiver);
     public override object SetOwnValue(string key, object value)
