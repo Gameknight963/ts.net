@@ -30,10 +30,11 @@ public static partial class Js
         }
         internal void RejectError(Exception error) => Reject.InvokeWithReceiver(Undefined, new[] { CaughtValue(error) });
     }
-    sealed class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected)
+    sealed class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected, Action<object, bool> continuation = null)
     {
         internal void Enqueue(object value, bool isRejected) => EnqueuePromiseJob(() =>
         {
+            if (continuation != null) { continuation(value, isRejected); return; }
             var handler = isRejected ? rejected : fulfilled;
             if (handler == null) { capability.Complete(value, isRejected); return; }
             object result;

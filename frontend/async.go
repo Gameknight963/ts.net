@@ -17,37 +17,39 @@ func (b *irBuilder) markAsyncFunction(function int, n *ast.Node) bool {
 	return true
 }
 
-// A terminal await has no live CLR evaluation stack to retain. Other await
-// positions still need continuation lowering and must not execute synchronously.
+// Await expressions lower to synchronous continuation functions. The runtime
+// schedules them through intrinsic Promise reactions, retaining one outer Promise.
 func (b *irBuilder) asyncReturnExpression(expression *ast.Node) int {
-	if expression == nil {
+	if expression == nil || !expressionHasAwait(expression) {
 		return b.lower(expression)
+	}
+	owner := enclosingAsyncFunction(expression)
+	if owner == nil || ast.GetCombinedModifierFlags(owner)&ast.ModifierFlagsAsync == 0 {
+		b.unsupported(expression)
+	}
+	for parent := expression.Parent; parent != owner; parent = parent.Parent {
+		if parent.Kind == ast.KindTryStatement {
+			b.unsupported(expression)
+		}
 	}
 	await := expression
 	for await.Kind == ast.KindParenthesizedExpression {
 		await = await.Expression()
 	}
-	if await.Kind != ast.KindAwaitExpression {
-		return b.lower(expression)
+	// Keep the direct return-await path free of a redundant continuation frame.
+	if await.Kind == ast.KindAwaitExpression && !expressionHasAwait(await.Expression()) {
+		result := b.node(70, await, "return await")
+		b.nodes[result-1].typ = b.typ(b.c.GetAnyType())
+		b.nodes[result-1].left = b.lower(await.Expression())
+		return result
 	}
-	foundFunction := false
-	for parent := await.Parent; parent != nil; parent = parent.Parent {
-		if ast.IsFunctionLike(parent) {
-			if ast.GetCombinedModifierFlags(parent)&ast.ModifierFlagsAsync == 0 {
-				b.unsupported(await)
-			}
-			foundFunction = true
-			break
-		}
-		if parent.Kind == ast.KindTryStatement {
-			b.unsupported(await)
-		}
-	}
-	if !foundFunction {
-		b.unsupported(await)
-	}
-	result := b.node(70, await, "return await")
-	b.nodes[result-1].typ = b.typ(b.c.GetAnyType())
-	b.nodes[result-1].left = b.lower(await.Expression())
-	return result
+	previous := b.awaitReturnOwner
+	b.awaitReturnOwner = owner
+	value := b.lower(expression)
+	b.awaitReturnOwner = previous
+	lowering := asyncExpressionLowering{b: b, source: expression, any: b.typ(b.c.GetAnyType())}
+	function := lowering.function(false, func(_ int) int { return lowering.expression(value, lowering.returned) })
+	call := lowering.node(6, "await expression")
+	b.nodes[call-1].left = function
+	return call
 }

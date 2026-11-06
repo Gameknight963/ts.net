@@ -9,21 +9,34 @@ public static partial class Js
         object result;
         try { result = function.InvokeWithReceiver(receiver, arguments); }
         catch (Exception error) { pair.RejectError(error); return promise; }
-        if (result is AsyncAwaitRecord awaiting) awaiting.Attach(promise, pair);
-        else pair.Resolve.InvokeWithReceiver(Undefined, new[] { result });
+        CompleteAsyncResult(result, promise, pair);
         return promise;
     }
-    sealed class AsyncAwaitRecord(JsPromise awaited)
+    static void CompleteAsyncResult(object result, JsPromise promise, PromiseResolvingFunctions pair)
+    {
+        if (result is AsyncAwaitRecord awaiting) awaiting.Attach(promise, pair);
+        else pair.Resolve.InvokeWithReceiver(Undefined, new[] { result });
+    }
+    sealed class AsyncAwaitRecord(JsPromise awaited, JsFunction continuation = null)
     {
         internal void Attach(JsPromise target, PromiseResolvingFunctions pair)
         {
             var capability = new PromiseCapability { Promise = target, Resolve = pair.Resolve, Reject = pair.Reject };
             // Await uses intrinsic reactions, bypassing public then and species.
             // Even an already fulfilled value resumes through a queued job.
-            awaited.Then(new PromiseReaction(capability, null, null));
+            if (continuation == null) { awaited.Then(new PromiseReaction(capability, null, null)); return; }
+            awaited.Then(new PromiseReaction(null, null, null, (value, rejected) =>
+            {
+                if (rejected) { pair.Reject.InvokeWithReceiver(Undefined, new[] { value }); return; }
+                object result;
+                try { result = continuation.InvokeWithReceiver(Undefined, new[] { value }); }
+                catch (Exception error) { pair.RejectError(error); return; }
+                CompleteAsyncResult(result, target, pair);
+            }));
         }
     }
     public static object AsyncAwait(object value) => new AsyncAwaitRecord((JsPromise)PromiseResolve(RuntimeNamespaces.Promise, value));
+    public static object AsyncAwaitContinue(object value, object continuation) => new AsyncAwaitRecord((JsPromise)PromiseResolve(RuntimeNamespaces.Promise, value), (JsFunction)continuation);
     sealed class AsyncFunctionObject : JsFunction
     {
         readonly JsFunction function;

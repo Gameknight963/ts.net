@@ -30,6 +30,7 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
+	awaitReturnOwner      *ast.Node
 	c                     *checker.Checker
 	file                  *ast.SourceFile
 	texts                 []string
@@ -956,6 +957,14 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			}
 			row.right = wrapper
 		}
+	case ast.KindAwaitExpression:
+		if b.awaitReturnOwner == nil || enclosingAsyncFunction(n) != b.awaitReturnOwner {
+			b.unsupported(n)
+		}
+		id = b.node(rawAsyncAwait, n, "await")
+		row = b.nodes[id-1]
+		row.left = b.lower(n.Expression())
+		row.typ = b.typ(b.c.GetTypeAtLocation(n))
 	case ast.KindReturnStatement:
 		id = b.node(14, n, "return")
 		row = b.nodes[id-1]

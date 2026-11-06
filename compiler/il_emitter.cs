@@ -454,7 +454,9 @@ internal static partial class CompilerFunctions
         else if(n.kind==NodeKind.OptionalChain){il_optional_chain(entry,false,c,b);}
         else if(n.kind==NodeKind.BuiltinNamespace){il_text(get_token(n.token,c).text,c,b);b.call(RuntimeMember.BuiltinNamespace);}
         else if(n.kind==NodeKind.ResolveThis){il_boxed(n.left,c,b);b.call(n.constant ? RuntimeMember.NewTarget : RuntimeMember.ResolveThis);}
-        else if(n.kind==NodeKind.AsyncAwait){il_boxed(n.left,c,b);b.call(RuntimeMember.AsyncAwait);}
+        else if(n.kind==NodeKind.AsyncAwait){il_boxed(n.left,c,b);if(n.right!=0){il_boxed(n.right,c,b);b.call(RuntimeMember.AsyncAwaitContinue);}else b.call(RuntimeMember.AsyncAwait);}
+        else if(n.kind==NodeKind.SavedCall){il_saved_call(entry,c,b);}
+        else if(n.kind==NodeKind.AsyncPropertyKey){il_boxed(n.left,c,b);b.call(RuntimeMember.PropertyKey);}
         else if(n.kind==NodeKind.Arguments){il_boxed(n.left,c,b);b.call(RuntimeMember.Arguments);}
         else if(n.kind==NodeKind.SuperBase){il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.emit(0x20,n.constant?1:0);b.call(RuntimeMember.SuperBase);}
         else if(n.kind==NodeKind.SuperCall){

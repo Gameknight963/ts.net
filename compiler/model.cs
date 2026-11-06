@@ -64,7 +64,7 @@ internal enum NodeKind
     ObjectKeysFunction,
     ObjectValuesFunction,
     ObjectEntriesFunction,
-    Throw, Try, CatchValue, BuiltinError, Construct, ClassValue, ClassStatic, ClassField, ResolveThis, SuperBase, SuperCall, SuperInitializer, OptionalChain, ChainProperty, ChainIndex, ChainCall, BuiltinNamespace, HasProperty, ForIn, Arguments, AsyncAwait
+    Throw, Try, CatchValue, BuiltinError, Construct, ClassValue, ClassStatic, ClassField, ResolveThis, SuperBase, SuperCall, SuperInitializer, OptionalChain, ChainProperty, ChainIndex, ChainCall, BuiltinNamespace, HasProperty, ForIn, Arguments, AsyncAwait, SavedCall, AsyncPropertyKey
 }
 
 internal struct Token
