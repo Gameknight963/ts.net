@@ -8,11 +8,15 @@ internal static partial class CompilerFunctions
 {
     internal static void il_prepare_iteration_vars(int owner, Compiler c, IlBackend b)
     {
+        // Forward reads of hoisted vars need an undefined slot at entry.
+        HashSet<int> reads = new();
         for (int i = 1; i <= c.node_store.count(); i++)
         {
             Node n = get_node(i, c);
             if (scalar_owner(i, b.node_parents, c) != owner || (n.symbol != 0 && b.capture_fields.at(n.symbol) != 0)) { continue; }
             if ((n.kind == NodeKind.Variable || n.kind == NodeKind.Binding) && n.symbol != 0 && b.global_fields.at(n.symbol) != 0) { continue; }
+            if (n.kind == NodeKind.Name && n.symbol != 0) { reads.Add(n.symbol); }
+            if (n.kind == NodeKind.Variable && n.fourth != 0 && reads.Contains(n.symbol)) { b.iteration_vars.at_mut(n.symbol) = 1; }
             if (n.kind == NodeKind.Binding && n.symbol != 0 && n.name != 0 && is_text(n.name, text_var, c)) { b.iteration_vars.at_mut(n.symbol) = 1; }
             Node target = n;
             if (n.kind == NodeKind.ForOf && !n.constant)

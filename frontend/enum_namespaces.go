@@ -49,7 +49,21 @@ func (b *irBuilder) isEnumNamespace(n *ast.Node) bool {
 // declared in a later body.
 func (b *irBuilder) prepareEnumNamespaces(files []*ast.SourceFile) {
 	b.namespaceExports = map[*ast.Symbol]*ast.Node{}
+	b.namespaceOwners = map[*ast.Symbol]int{}
 	var visit func(*ast.Node)
+	// Import-equals creates a snapshot binding, rather than sharing the target's
+	// symbol as ordinary ES imports do. Allocate these before any references.
+	visit = func(n *ast.Node) {
+		if n.Kind == ast.KindImportEqualsDeclaration && b.importAliases[n] && n.AsImportEqualsDeclaration().ModuleReference.Kind != ast.KindExternalModuleReference {
+			symbol := b.c.GetSymbolAtLocation(n.Name())
+			b.symbols = append(b.symbols, irSymbol{name: b.text(n.Name().Text()), typ: b.typ(b.c.GetTypeOfSymbol(b.c.GetAliasedSymbol(symbol)))})
+			b.symbolIDs[symbol] = len(b.symbols)
+		}
+		n.ForEachChild(func(child *ast.Node) bool { visit(child); return false })
+	}
+	for _, file := range files {
+		visit(file.AsNode())
+	}
 	visit = func(n *ast.Node) {
 		if n.Kind == ast.KindModuleDeclaration {
 			if b.isEnumNamespace(n) {
@@ -82,7 +96,8 @@ func (b *irBuilder) prepareEnumNamespaces(files []*ast.SourceFile) {
 func (b *irBuilder) namespaceReference(n, owner *ast.Node) int {
 	id := b.node(5, n, n.Text())
 	b.nodes[id-1].name = b.text(n.Text())
-	b.nodes[id-1].left = b.enumOwner(n, owner)
+	value := b.enumOwner(n, owner)
+	b.nodes[id-1].left = value
 	b.nodes[id-1].typ = b.typ(b.c.GetTypeAtLocation(n))
 	return id
 }
@@ -176,7 +191,7 @@ func (b *irBuilder) enumNamespace(n *ast.Node) int {
 			for _, d := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
 				register(d)
 			}
-		} else if statement.Kind == ast.KindFunctionDeclaration || statement.Kind == ast.KindClassDeclaration || statement.Kind == ast.KindModuleDeclaration || statement.Kind == ast.KindEnumDeclaration {
+		} else if statement.Kind == ast.KindFunctionDeclaration || statement.Kind == ast.KindClassDeclaration || statement.Kind == ast.KindModuleDeclaration || statement.Kind == ast.KindEnumDeclaration || statement.Kind == ast.KindImportEqualsDeclaration {
 			register(statement)
 		} else if statement.Kind != ast.KindInterfaceDeclaration && statement.Kind != ast.KindTypeAliasDeclaration {
 			b.unsupported(statement)
@@ -189,9 +204,24 @@ func (b *irBuilder) enumNamespace(n *ast.Node) int {
 	}
 	function, value := b.newFunction(n, "")
 	first := len(b.nodes)
+	// Each body captures the object it initialized. Replacing a namespace's
+	// property later must not redirect closures created in its previous body.
+	owner := b.enumOwner(n, n)
+	ownerType := b.nodes[owner-1].typ
+	b.symbols = append(b.symbols, irSymbol{name: b.text("$namespace"), typ: ownerType})
+	ownerBinding := len(b.symbols)
+	local := b.node(13, n, "$namespace")
+	b.nodes[local-1].symbol = ownerBinding
+	b.nodes[local-1].typ = ownerType
+	b.nodes[local-1].left = owner
+	ownerSymbol := b.c.GetSymbolAtLocation(n.Name())
+	previousOwner := b.namespaceOwners[ownerSymbol]
+	b.namespaceOwners[ownerSymbol] = ownerBinding
 	body := b.node(12, n, "namespace scope")
 	b.nodes[body-1].name = b.text("scope")
-	b.nodes[body-1].children = b.enumNamespaceStatements(statements, n)
+	b.nodes[body-1].children = local
+	statementsBody := b.enumNamespaceStatements(statements, n)
+	b.nodes[local-1].next = statementsBody
 	b.nodes[function-1].left = body
 	end := len(b.nodes)
 	for i := first; i < end; i++ {
@@ -216,6 +246,7 @@ func (b *irBuilder) enumNamespace(n *ast.Node) int {
 		b.nodes[assignment-1].typ = node.typ
 		b.nodes[i] = irNode{kind: 18, token: node.token, left: assignment, next: node.next}
 	}
+	b.namespaceOwners[ownerSymbol] = previousOwner
 	call := b.node(6, n, "namespace")
 	b.nodes[call-1].left = value
 	b.nodes[call-1].typ = b.typ(b.c.GetAnyType())

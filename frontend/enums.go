@@ -14,8 +14,13 @@ import (
 func (b *irBuilder) prepareEnums(files []*ast.SourceFile) {
 	b.enumValues = map[*ast.Node]evaluator.Result{}
 	b.enumDeclared = map[*ast.Symbol]bool{}
+	b.importAliases = map[*ast.Node]bool{}
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
+		if n.Kind == ast.KindImportEqualsDeclaration {
+			resolver := b.c.GetEmitResolver()
+			b.importAliases[n] = !n.AsImportEqualsDeclaration().IsTypeOnly && (resolver.IsReferencedAliasDeclaration(n) || namespaceExported(n) && resolver.IsValueAliasDeclaration(n))
+		}
 		if n.Kind == ast.KindEnumDeclaration {
 			for _, member := range n.AsEnumDeclaration().Members.Nodes {
 				b.enumValues[member] = b.c.GetEmitResolver().GetEnumMemberValue(member)
@@ -61,6 +66,12 @@ func (b *irBuilder) enumLiteral(n *ast.Node, value any) int {
 }
 func (b *irBuilder) enumOwner(n *ast.Node, declaration *ast.Node) int {
 	name := declaration.Name()
+	if binding := b.namespaceOwners[b.c.GetSymbolAtLocation(name)]; binding != 0 {
+		id := b.node(3, n, "$namespace")
+		b.nodes[id-1].symbol = binding
+		b.nodes[id-1].typ = b.symbols[binding-1].typ
+		return id
+	}
 	if owner := b.namespaceExports[b.c.GetSymbolAtLocation(name)]; owner != nil {
 		id := b.namespaceReference(name, owner)
 		b.nodes[id-1].typ = b.typ(b.c.GetTypeOfSymbol(b.c.GetSymbolAtLocation(name)))

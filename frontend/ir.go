@@ -50,6 +50,8 @@ type irBuilder struct {
 	enumValues            map[*ast.Node]evaluator.Result
 	enumDeclared          map[*ast.Symbol]bool
 	namespaceExports      map[*ast.Symbol]*ast.Node
+	importAliases         map[*ast.Node]bool
+	namespaceOwners       map[*ast.Symbol]int
 	moduleNamespaces      map[*ast.Node]int
 	moduleNamespaceOrder  []*ast.Symbol
 	thisSymbol            int
@@ -349,6 +351,8 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		return 0
 	case ast.KindModuleDeclaration:
 		return b.enumNamespace(n)
+	case ast.KindImportEqualsDeclaration:
+		return b.importEquals(n)
 	case ast.KindEnumDeclaration:
 		return b.enumDeclaration(n)
 	case ast.KindExportAssignment:
