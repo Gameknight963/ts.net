@@ -20,7 +20,8 @@ public sealed partial class ReversibleArray : JsArray
         if (Count > 1) reversed = !reversed;
         return this;
     }
-    protected override object Read(uint index) => base.Read(PhysicalIndex(index));
+    protected override object Read(uint index) {object value=values.Get(PhysicalIndex(index));return ReferenceEquals(value,HoleValue())?InheritedElement(index):value;}
+    protected override void DeleteElement(uint index) => base.DeleteElement(PhysicalIndex(index));
     public override bool HasElement(uint index) => base.HasElement(PhysicalIndex(index));
     protected override void Write(uint index, object value)
     {

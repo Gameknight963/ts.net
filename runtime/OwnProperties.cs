@@ -11,6 +11,7 @@ sealed class OwnProperties
     object value0, value1, value2, value3;
     int inlineCount, version;
     Dictionary<string, object> tail;
+    List<string> tailOrder;
     public OwnProperties() { }
     public OwnProperties(OwnProperties source)
     {
@@ -18,6 +19,7 @@ sealed class OwnProperties
         value0=source.value0;value1=source.value1;value2=source.value2;value3=source.value3;
         inlineCount=source.inlineCount;version=source.version;
         if (source.tail != null) tail = new Dictionary<string, object>(source.tail);
+        if (source.tailOrder != null) tailOrder = new List<string>(source.tailOrder);
     }
     public int Count => inlineCount + (tail?.Count ?? 0);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -52,9 +54,39 @@ sealed class OwnProperties
                 tail ??= new Dictionary<string, object>();
                 ref object slot = ref CollectionsMarshal.GetValueRefOrAddDefault(tail, key, out bool present);
                 slot=value;
-                if (!present) version++;
+                if (!present) { tailOrder?.Add(key); version++; }
             }
         }
+    }
+    void InlineSet(int index, string key, object value)
+    {
+        switch (index) {
+            case 0: key0=key;value0=value;break;
+            case 1: key1=key;value1=value;break;
+            case 2: key2=key;value2=value;break;
+            default: key3=key;value3=value;break;
+        }
+    }
+    object InlineValue(int index) => index switch {0=>value0,1=>value1,2=>value2,_=>value3};
+    public bool Remove(string key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        for (int i=0;i<inlineCount;i++) {
+            if (InlineKey(i)!=key) continue;
+            for(int j=i;j+1<inlineCount;j++) InlineSet(j,InlineKey(j+1),InlineValue(j+1));
+            InlineSet(--inlineCount,null,null);
+            if(tail is not null && tail.Count!=0) {
+                tailOrder ??= new List<string>(tail.Keys);
+                string first=tailOrder[0];InlineSet(inlineCount++,first,tail[first]);
+                tail.Remove(first);tailOrder.RemoveAt(0);
+            }
+            version++;return true;
+        }
+        if(tail is null || !tail.ContainsKey(key))return false;
+        // Dictionary slots can be reused after removal. Keep explicit order only
+        // once deletion makes its enumeration order unsuitable.
+        tailOrder ??= new List<string>(tail.Keys);
+        tail.Remove(key);tailOrder.Remove(key);version++;return true;
     }
     string InlineKey(int index) => index switch {0=>key0,1=>key1,2=>key2,_=>key3};
     public KeyCollection Keys => new KeyCollection(this);
@@ -71,20 +103,22 @@ sealed class OwnProperties
         int index;
         bool tailStarted;
         Dictionary<string, object>.KeyCollection.Enumerator tail;
+        List<string>.Enumerator orderedTail;
         public string Current { get; private set; }
         public Enumerator(OwnProperties source)
         {
             this.source=source;version=source.version;index=-1;
-            tailStarted=false;tail=default;Current=null;
+            tailStarted=false;tail=default;orderedTail=default;Current=null;
         }
         public bool MoveNext()
         {
             if (version != source.version) throw new InvalidOperationException("Properties changed during enumeration");
             if (index+1 < source.inlineCount) { Current=source.InlineKey(++index);return true; }
-            if (!tailStarted) { tailStarted=true;if (source.tail != null) tail=source.tail.Keys.GetEnumerator(); }
-            if (source.tail != null && tail.MoveNext()) { Current=tail.Current;return true; }
+            if (!tailStarted) { tailStarted=true;if(source.tailOrder!=null)orderedTail=source.tailOrder.GetEnumerator();else if (source.tail != null) tail=source.tail.Keys.GetEnumerator(); }
+            if(source.tailOrder!=null) {if(orderedTail.MoveNext()){Current=orderedTail.Current;return true;}}
+            else if (source.tail != null && tail.MoveNext()) { Current=tail.Current;return true; }
             return false;
         }
-        public void Dispose() => tail.Dispose();
+        public void Dispose() {tail.Dispose();orderedTail.Dispose();}
     }
 }

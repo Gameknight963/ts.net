@@ -87,6 +87,12 @@ partial struct ArrayStorage<T>
         else (sparse ??= new Dictionary<uint, T>())[index] = value;
         if (index >= Length) Length = index + 1;
     }
+    public void Remove(uint index)
+    {
+        if(index>=Length)return;
+        if(index<(uint)dense.Length)dense[index]=missing;
+        else sparse?.Remove(index);
+    }
     public void Resize(uint length)
     {
         if (length < Length)
@@ -115,7 +121,15 @@ public partial class JsArray : TsObject
     public static object HoleValue() => Hole;
     protected JsArray() { }
     protected virtual uint Count => values.Length;
-    protected virtual object Read(uint index) { object value = values.Get(index); return ReferenceEquals(value, Hole) ? Js.Undefined : value; }
+    protected virtual object Read(uint index) { object value = values.Get(index); return ReferenceEquals(value, Hole) ? InheritedElement(index) : value; }
+    protected object InheritedElement(uint index) => PropertyPrototype is TsObject prototype ? prototype.GetWithReceiver(index.ToString(CultureInfo.InvariantCulture),this) : Js.Undefined;
+    protected virtual void DeleteElement(uint index) => values.Remove(index);
+    public override bool DeleteOwn(string key)
+    {
+        if(key=="length")return false;
+        if(Index(key,out uint index)){DeleteElement(index);return true;}
+        return base.DeleteOwn(key);
+    }
     public virtual bool HasElement(uint index) => index < Count && !ReferenceEquals(values.Get(index), Hole);
     protected virtual void Write(uint index, object value) => values.Set(index, value);
     protected virtual void Resize(uint length) => values.Resize(length);
@@ -238,7 +252,8 @@ public sealed partial class NumberArray : JsArray
     public override bool HasElement(uint index) => index < Count && BitConverter.DoubleToInt64Bits(numbers.Get(index)) != MissingBits;
     internal override void ReserveCapacity(int capacity) => numbers.Reserve(capacity);
     protected override uint Count => numbers.Length;
-    protected override object Read(uint index) => Js.BoxNumber(Decode(numbers.Get(index)));
+    protected override object Read(uint index) {double value=numbers.Get(index);return BitConverter.DoubleToInt64Bits(value)==MissingBits ? InheritedElement(index) : Js.BoxNumber(Decode(value));}
+    protected override void DeleteElement(uint index) {numbers.Remove(index);packedPrefix=Math.Min(packedPrefix,index);}
     protected override void Write(uint index, object value) => Store(index, Js.Cast<double?>(value, "Array write violates number element type"));
     protected override void Resize(uint length)
     {

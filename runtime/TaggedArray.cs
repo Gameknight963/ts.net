@@ -21,7 +21,13 @@ public sealed partial class TaggedArray : JsArray
     }
     protected override uint Count => materialized != null ? (uint)materialized.Length() : length;
     public override bool HasElement(uint index) => materialized != null ? materialized.HasElement(index) : index < length && index < (uint)tags.Length && tags[index] != 0;
-    protected override object Read(uint index) => Materialize().ElementAt(index);
+    protected override object Read(uint index) => HasElement(index) ? Materialize().ElementAt(index) : InheritedElement(index);
+    protected override void DeleteElement(uint index)
+    {
+        if(materialized!=null){materialized.DeleteOwn(index.ToString(System.Globalization.CultureInfo.InvariantCulture));return;}
+        if(index>=length || index>=(uint)tags.Length)return;
+        tags[index]=0;numbers[index]=0;references[index]=null;
+    }
     object BoxAt(uint index)
     {
         if (materialized != null) return materialized.ElementAt(index);
