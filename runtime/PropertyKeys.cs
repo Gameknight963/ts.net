@@ -24,14 +24,14 @@ public static partial class Js
             if (obj.HasOwn(name)) {
                 object method = obj.Get(name);
                 if (method is JsFunction) {
-                    primitive = CallFunction0(method);
+                    primitive = CallMethod0(method, obj);
                     if (KeyPrimitive(primitive)) break;
                 }
             } else if (name == "toString") {
                 if (obj is JsArray array) {
                     if (array.HasOwn("join")) {
                         object join = array.Get("join");
-                        primitive = join is JsFunction ? CallFunction0(join) : "[object Array]";
+                        primitive = join is JsFunction ? CallMethod0(join, array) : "[object Array]";
                     } else primitive = ArrayKeyString(array, active);
                 } else if (obj is JsFunction) {
                     string functionName = obj.Get("name") as string ?? "";
