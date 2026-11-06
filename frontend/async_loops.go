@@ -169,47 +169,66 @@ func (a *asyncExpressionLowering) forEachStatement(id int, n irNode, next func()
 				a.b.nodes[start-1].constant = 1
 			}
 			return a.bind(start, func(cursor int) int {
-				step := a.symbol(a.any)
-				body := a.symbol(a.any)
-				a.rewriteBreaks(n.fourth, id, done)
-				a.rewriteJumps(n.fourth, id, step, 26)
-				iteration := a.node(12, "for-each iteration scope")
-				a.b.nodes[iteration-1].name = a.b.text("scope")
-				bodyFunction := a.function(false, func(_ int) int {
-					var statements []int
-					for _, symbol := range originals {
-						statements = append(statements, a.loopScopeMarker(bindings[symbol], iteration))
-					}
-					value := a.node(80, "async iteration value")
-					a.b.nodes[value-1].left = a.reference(cursor)
-					binding := n.left
-					if a.b.nodes[binding-1].kind == 12 {
-						binding = a.b.nodes[binding-1].children
-					}
-					target := a.b.nodes[binding-1]
-					if target.kind == 13 || target.kind == 36 {
-						a.b.nodes[binding-1].left = value
-					} else {
-						assignment := a.node(10, "=")
-						a.b.nodes[assignment-1].left = binding
-						a.b.nodes[assignment-1].right = value
-						a.b.nodes[assignment-1].typ = target.typ
-						binding = a.node(18, "async iteration assignment")
-						a.b.nodes[binding-1].left = assignment
-					}
-					statements = append(statements, a.statement(binding, func() int {
-						return a.statement(n.fourth, func() int { return a.resume(step) })
-					}))
-					a.b.nodes[iteration-1].children = a.link(statements)
-					return iteration
-				})
-				stepFunction := a.function(false, func(_ int) int {
-					condition := a.node(79, "async iteration next")
-					a.b.nodes[condition-1].left = a.reference(cursor)
-					a.b.nodes[condition-1].typ = a.b.typ(a.b.c.GetBooleanType())
-					return a.branch(condition, a.resume(body), a.resume(done))
-				})
-				return a.sequence(a.declaration(step, stepFunction), a.sequence(a.declaration(body, bodyFunction), a.resume(step)))
+				build := func() int {
+					step := a.symbol(a.any)
+					body := a.symbol(a.any)
+					a.rewriteBreaks(n.fourth, id, done)
+					a.rewriteJumps(n.fourth, id, step, 26)
+					iteration := a.node(12, "for-each iteration scope")
+					a.b.nodes[iteration-1].name = a.b.text("scope")
+					bodyFunction := a.function(false, func(_ int) int {
+						var statements []int
+						for _, symbol := range originals {
+							statements = append(statements, a.loopScopeMarker(bindings[symbol], iteration))
+						}
+						value := a.node(80, "async iteration value")
+						a.b.nodes[value-1].left = a.reference(cursor)
+						binding := n.left
+						if a.b.nodes[binding-1].kind == 12 {
+							binding = a.b.nodes[binding-1].children
+						}
+						target := a.b.nodes[binding-1]
+						if target.kind == 13 || target.kind == 36 {
+							a.b.nodes[binding-1].left = value
+						} else {
+							assignment := a.node(10, "=")
+							a.b.nodes[assignment-1].left = binding
+							a.b.nodes[assignment-1].right = value
+							a.b.nodes[assignment-1].typ = target.typ
+							binding = a.node(18, "async iteration assignment")
+							a.b.nodes[binding-1].left = assignment
+						}
+						statements = append(statements, a.statement(binding, func() int {
+							return a.statement(n.fourth, func() int { return a.resume(step) })
+						}))
+						a.b.nodes[iteration-1].children = a.link(statements)
+						return iteration
+					})
+					stepFunction := a.function(false, func(_ int) int {
+						if n.third != 0 {
+							request := a.node(83, "for await next")
+							a.b.nodes[request-1].left = a.reference(cursor)
+							await := a.node(rawAsyncAwait, "for await next")
+							a.b.nodes[await-1].left = request
+							return a.expression(await, func(result int) int {
+								condition := a.node(84, "for await result")
+								a.b.nodes[condition-1].typ = a.b.typ(a.b.c.GetBooleanType())
+								a.b.nodes[condition-1].left = a.reference(cursor)
+								a.b.nodes[condition-1].right = result
+								return a.branch(condition, a.resume(body), a.tryEnd(id))
+							})
+						}
+						condition := a.node(79, "async iteration next")
+						a.b.nodes[condition-1].left = a.reference(cursor)
+						a.b.nodes[condition-1].typ = a.b.typ(a.b.c.GetBooleanType())
+						return a.branch(condition, a.resume(body), a.resume(done))
+					})
+					return a.sequence(a.declaration(step, stepFunction), a.sequence(a.declaration(body, bodyFunction), a.resume(step)))
+				}
+				if n.third != 0 {
+					return a.forAwaitRegion(id, cursor, done, build)
+				}
+				return build()
 			})
 		})
 	})

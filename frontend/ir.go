@@ -1092,13 +1092,19 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindForOfStatement, ast.KindForInStatement:
 		s := n.AsForInOrOfStatement()
 		if s.AwaitModifier != nil {
-			b.unsupported(n)
+			if b.awaitReturnOwner == nil || enclosingAsyncFunction(n) != b.awaitReturnOwner {
+				b.unsupported(n)
+			}
 		}
 		id = b.node(34, n, "of")
 		if n.Kind == ast.KindForInStatement {
 			b.nodes[id-1].kind = 68
 		}
 		row = b.nodes[id-1]
+		if s.AwaitModifier != nil {
+			row.third = b.node(20, n, "for await")
+			b.nodes[row.third-1].typ = b.typ(b.c.GetAnyType())
+		}
 		if s.Initializer.Kind == ast.KindVariableDeclarationList {
 			flags := ast.GetCombinedNodeFlags(s.Initializer)
 			if flags&ast.NodeFlagsUsing != 0 {

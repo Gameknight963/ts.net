@@ -5,7 +5,7 @@ public static partial class Js
 {
     enum CompletionKind { Normal, Return, Throw, Transfer }
     sealed record AsyncCompletion(CompletionKind Kind, object Value);
-    sealed record AsyncTryRecord(JsFunction Body, JsFunction Catch, JsFunction Finally, JsFunction Next, int Region);
+    sealed record AsyncTryRecord(JsFunction Body, JsFunction Catch, JsFunction Finally, JsFunction Next, int Region, bool IteratorClose = false);
     sealed record AsyncTryEndRecord(int Region);
     sealed class AsyncTryFrame(AsyncTryRecord region)
     {
@@ -91,6 +91,8 @@ public static partial class Js
                         result = Invoke(frame.Region.Finally);
                         continue;
                     }
+                    if (frame.Phase == 2 && frame.Region.IteratorClose && frame.Pending.Kind == CompletionKind.Throw && completion.Kind == CompletionKind.Throw)
+                        completion = frame.Pending;
                     frames.Pop();
                     result = completion.Kind == CompletionKind.Normal ? Invoke(frame.Region.Next) : completion;
                 }
@@ -102,4 +104,6 @@ public static partial class Js
     public static object AsyncTry(object body, object handler, object finalizer, object next, int region) =>
         new AsyncTryRecord((JsFunction)body, handler as JsFunction, finalizer as JsFunction, (JsFunction)next, region);
     public static object AsyncTryEnd(int region) => new AsyncTryEndRecord(region);
+    public static object AsyncIteratorTry(object body, object finalizer, object next, int region) =>
+        new AsyncTryRecord((JsFunction)body, null, (JsFunction)finalizer, (JsFunction)next, region, true);
 }

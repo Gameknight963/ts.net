@@ -6,6 +6,8 @@ public static partial class Js
         internal bool Keys;
         internal uint Position;
         internal object Current;
+        internal bool Finished;
+        internal bool NeedsClose;
     }
 
     public static object BeginAsyncIteration(object source, bool keys)
@@ -23,7 +25,7 @@ public static partial class Js
             cursor.Current = ForInNext(cursor.Source);
             return !IsUndefined(cursor.Current);
         }
-        if (cursor.Position >= Iteration.Length(cursor.Source)) return false;
+        if (cursor.Finished || cursor.Position >= Iteration.Length(cursor.Source)) { cursor.Finished = true; return false; }
         int position = unchecked((int)cursor.Position);
         cursor.Current = Iteration.Value(cursor.Source, position);
         cursor.Position += (uint)Iteration.Step(cursor.Source, position);

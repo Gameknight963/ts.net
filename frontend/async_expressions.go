@@ -146,6 +146,9 @@ func (a *asyncExpressionLowering) hasAwait(id int) bool {
 	if n.kind == rawAsyncAwait {
 		return true
 	}
+	if n.kind == 34 && n.third != 0 {
+		return true
+	}
 	// Jump targets point back into statements, rather than to child expressions.
 	if n.kind == 38 || n.kind == 19 || n.kind == 25 || n.kind == 26 {
 		return false

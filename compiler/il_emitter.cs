@@ -467,6 +467,21 @@ internal static partial class CompilerFunctions
             b.emit(0x20, (int)number(n.name, c)); b.call(RuntimeMember.AsyncTry);
         }
         else if (n.kind == NodeKind.AsyncTryEnd) { b.emit(0x20, (int)number(n.name, c)); b.call(RuntimeMember.AsyncTryEnd); }
+        else if (n.kind == NodeKind.AsyncIteratorTry)
+        {
+            il_boxed(n.left, c, b); il_boxed(n.right, c, b); il_boxed(n.third, c, b);
+            b.emit(0x20, (int)number(n.name, c)); b.call(RuntimeMember.AsyncIteratorTry);
+        }
+        else if (n.kind == NodeKind.ForAwaitNext || n.kind == NodeKind.ForAwaitClose || n.kind == NodeKind.RequireIteratorResult)
+        {
+            il_boxed(n.left, c, b);
+            b.call(n.kind == NodeKind.ForAwaitNext ? RuntimeMember.ForAwaitNext : n.kind == NodeKind.ForAwaitClose ? RuntimeMember.ForAwaitClose : RuntimeMember.RequireIteratorResult);
+        }
+        else if (n.kind == NodeKind.ForAwaitAccept || n.kind == NodeKind.ForAwaitNeedsClose)
+        {
+            il_boxed(n.left, c, b); if (n.kind == NodeKind.ForAwaitAccept) il_boxed(n.right, c, b);
+            b.call(n.kind == NodeKind.ForAwaitAccept ? RuntimeMember.ForAwaitAccept : RuntimeMember.ForAwaitNeedsClose); b.call(RuntimeMember.WrapBoolean);
+        }
         else if (n.kind == NodeKind.AsyncIterationStart)
         {
             il_boxed(n.left, c, b); b.emit(0x20, n.constant ? 1 : 0); b.call(RuntimeMember.BeginAsyncIteration);
