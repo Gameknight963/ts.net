@@ -10,14 +10,23 @@ internal sealed partial class IlBackend
 internal static partial class CompilerFunctions
 {
     internal static readonly TextBytes text_object_assign = "assign";
+    internal static bool il_is_object_namespace(int entry,Compiler c,IlBackend b,System.Collections.Generic.HashSet<int> visited=null)
+    {
+        visited ??= new();if(!visited.Add(entry))return false;
+        Node owner=get_node(entry,c);
+        if(owner.kind==NodeKind.BuiltinNamespace)return is_text(get_token(owner.token,c).text,text_object_constructor,c);
+        if(owner.kind==NodeKind.Assert)return il_is_object_namespace(owner.left,c,b,visited);
+        if(owner.kind==NodeKind.Name && owner.symbol!=0 && b.assignment_initializers.count()>owner.symbol)
+        {int initializer=b.assignment_initializers.at(owner.symbol);if(initializer!=0)return il_is_object_namespace(initializer,c,b,visited);}
+        return false;
+    }
     internal static bool il_is_object_assign(int entry, Compiler c, IlBackend b, System.Collections.Generic.HashSet<int> visited = null)
     {
         visited ??= new();if(!visited.Add(entry))return false;
         Node callee=get_node(entry,c);
         if(callee.kind==NodeKind.Property && is_text(callee.name,text_object_assign,c))
         {
-            Node owner=get_node(callee.left,c);
-            return owner.kind==NodeKind.BuiltinNamespace && is_text(get_token(owner.token,c).text,text_object_constructor,c);
+            return il_is_object_namespace(callee.left,c,b);
         }
         if(callee.kind==NodeKind.Name && callee.symbol!=0 && b.assignment_initializers.count()>callee.symbol)
         {
@@ -62,7 +71,7 @@ internal static partial class CompilerFunctions
                 if(get_node(parameter,c).symbol!=target.symbol)continue;
                 for(int callId=1;callId<=c.node_store.count();callId++)
                 {
-                    Node call=get_node(callId,c);if(call.kind!=NodeKind.Call)continue;
+                    Node call=get_node(callId,c);if(call.kind!=NodeKind.Call && call.kind!=NodeKind.SavedCall)continue;
                     if(il_assignment_function(call.left,c,b)!=i)continue;
                     int argument=call.children;for(int skip=0;skip<position && argument!=0;skip++)argument=get_node(argument,c).next;
                     if(argument!=0)il_assignment_target(argument,source,c,b,visited);
@@ -73,13 +82,13 @@ internal static partial class CompilerFunctions
     internal static void il_prepare_assignments(Compiler c, IlBackend b)
     {
         bool used=false;
-        for(int i=1;i<=c.node_store.count();i++)if(get_node(i,c).kind==NodeKind.Property && il_is_object_assign(i,c,b)){used=true;break;}
+        for(int i=1;i<=c.node_store.count();i++)if(get_node(i,c).kind==NodeKind.Property && is_text(get_node(i,c).name,text_object_assign,c)){used=true;break;}
         if(!used)return;
         b.assignment_initializers=zero_ids(c.symbol_store.count()+1);
         for(int i=1;i<=c.node_store.count();i++){Node definition=get_node(i,c);if(definition.kind==NodeKind.Variable && definition.symbol!=0 && definition.left!=0 && b.assignment_initializers.at(definition.symbol)==0)b.assignment_initializers.at_mut(definition.symbol)=definition.left;}
         for(int i=1;i<=c.node_store.count();i++)
         {
-            Node call=get_node(i,c);if(call.kind!=NodeKind.Call || call.children==0 || !il_is_object_assign(call.left,c,b))continue;
+            Node call=get_node(i,c);if((call.kind!=NodeKind.Call && call.kind!=NodeKind.SavedCall) || call.children==0 || !il_is_object_assign(call.left,c,b))continue;
             for(int source=get_node(call.children,c).next;source!=0;source=get_node(source,c).next)
                 il_assignment_target(call.children,get_node(source,c).type,c,b);
         }

@@ -211,7 +211,19 @@ func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 	parameters := b.list(n.Parameters())
 	body := 0
 	if n.Body().Kind == ast.KindBlock {
+		previousAwait := b.awaitReturnOwner
+		async := ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync != 0
+		if async {
+			b.awaitReturnOwner = n
+		}
 		body = b.lower(n.Body())
+		b.awaitReturnOwner = previousAwait
+		if async {
+			lowering := asyncExpressionLowering{b: b, source: n.Body(), any: b.typ(b.c.GetAnyType())}
+			if lowering.hasAwait(body) {
+				body = lowering.body(body, function)
+			}
+		}
 	} else {
 		body = b.node(14, n.Body(), "return")
 		expression := b.asyncReturnExpression(n.Body())

@@ -19,6 +19,7 @@ internal static partial class CompilerFunctions
     internal static int il_binding_scope(int entry, Compiler c, IlBackend b)
     {
         Node n = get_node(entry, c); int owner = scalar_owner(entry, b.node_parents, c);
+        if (n.kind == NodeKind.AsyncBindingScope) { return (int)number(get_token(get_node(n.left, c).token, c).text, c); }
         if ((n.kind == NodeKind.Variable && n.fourth != 0) || (n.kind == NodeKind.Binding && n.name != 0 && is_text(n.name, text_var, c))) { return owner; }
         int current = (int)b.node_parents.at(entry);
         while (current != 0)
@@ -47,10 +48,10 @@ internal static partial class CompilerFunctions
         for (int i = 1; i <= c.node_store.count(); i++)
         {
             Node n = get_node(i, c);
-            if ((n.kind == NodeKind.Variable || n.kind == NodeKind.Binding) && n.symbol != 0)
+            if ((n.kind == NodeKind.Variable || n.kind == NodeKind.Binding || n.kind == NodeKind.AsyncBindingScope) && n.symbol != 0)
             {
                 int previous = (int)declarations.at(n.symbol);
-                if (previous == 0 || !il_parameter_binding(previous, c, b)) { declarations.at_mut(n.symbol) = (int)i; }
+                if (previous == 0 || n.kind == NodeKind.AsyncBindingScope || get_node(previous, c).kind != NodeKind.AsyncBindingScope && !il_parameter_binding(previous, c, b)) { declarations.at_mut(n.symbol) = (int)i; }
             }
         }
         for (int i = 1; i <= c.node_store.count(); i++)
@@ -62,7 +63,7 @@ internal static partial class CompilerFunctions
             int scope = il_binding_scope(declaration, c, b); if (scope == 0) { continue; }
             b.capture_scopes.at_mut(n.symbol) = (int)scope; b.context_types.at_mut(scope) = -1;
             Node binding = get_node(declaration, c);
-            if ((binding.kind == NodeKind.Variable && binding.fourth != 0) || (binding.kind == NodeKind.Binding && binding.name != 0 && is_text(binding.name, text_var, c))) { b.capture_vars.at_mut(n.symbol) = 1; }
+            if ((binding.kind == NodeKind.Variable && binding.fourth != 0) || ((binding.kind == NodeKind.Binding || binding.kind == NodeKind.AsyncBindingScope) && binding.name != 0 && is_text(binding.name, text_var, c))) { b.capture_vars.at_mut(n.symbol) = 1; }
             b.raw_slots.at_mut(n.symbol) = 0; b.written_symbols.at_mut(n.symbol) = 1; b.scalar_roots.at_mut(n.symbol) = 0;
         }
         // Only scopes with captured bindings receive a heap frame. Parent fields

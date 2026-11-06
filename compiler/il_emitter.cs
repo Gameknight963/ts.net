@@ -766,6 +766,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_statement(int entry, int return_type, Compiler c, IlBackend b)
     {
+        if (get_node(entry, c).kind == NodeKind.AsyncBindingScope) { return; }
         Node n = get_node(entry, c);
         if (n.kind == NodeKind.Break || n.kind == NodeKind.Continue)
         {
