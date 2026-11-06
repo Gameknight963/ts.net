@@ -57,7 +57,7 @@ internal sealed class JsForIn
     }
     sealed class Primitive(object value) : TsObject
     {
-        internal override TsObject PropertyPrototype => value is double ? ((JsFunction)Js.BuiltinNamespace("Number")).Get("prototype") as TsObject : base.PropertyPrototype;
+        internal override TsObject PropertyPrototype => Js.PrimitivePrototype(value);
         public override bool HasOwn(string key) => value is string text && (key == "length" || JsArray.Index(key, out uint index) && index < text.Length);
         internal override bool ForInEnumerable(string key) => key != "length";
         internal override object ForInOwnKeys()

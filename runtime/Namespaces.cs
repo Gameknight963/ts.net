@@ -32,13 +32,52 @@ public static partial class Js
         }
         public override double? InvokeNumber0() => 0d;
     }
+    static object ObjectValue(object value) => IsNullish(value) ? new JsDynamicObject() : ToObject(value);
+    sealed class ObjectConstructorFunction() : NativeNamespaceFunction("Object", static args => ObjectValue(FunctionArgument(args, 0)), 1)
+    {
+        public override object Construct(object[] arguments) => ObjectValue(FunctionArgument(arguments, 0));
+        internal override bool CanInitializeDerived => true;
+        // Object used as a base constructor initializes the subclass allocation;
+        // unlike a direct Object(value) call, it does not return the argument.
+        internal override object InitializeDerived(object instance, object[] arguments) => instance;
+    }
+    static object PrimitiveConstructorValue(object[] arguments, bool text) => text ? arguments.Length == 0 ? "" : StringValue(arguments[0]) : BoxBoolean(Truthy(FunctionArgument(arguments, 0)));
+    sealed class PrimitiveConstructorFunction : NativeNamespaceFunction
+    {
+        readonly bool text;
+        internal PrimitiveConstructorFunction(string name, bool text) : base(name, args => PrimitiveConstructorValue(args, text), 1)
+        {
+            this.text = text;
+            var prototype = new JsBoxedPrimitive(text ? "" : BoxBoolean(false), true);
+            prototype.DefineHidden("constructor", this);
+            prototype.DefineHidden("valueOf", PrimitiveMethod(prototype.Value, false));
+            prototype.DefineHidden("toString", PrimitiveMethod(prototype.Value, true));
+            UseObjectPrototype(prototype);
+        }
+        public override object Construct(object[] arguments) => new JsBoxedPrimitive(PrimitiveConstructorValue(arguments, text));
+        internal override bool CanInitializeDerived => true;
+        internal override object InitializeDerived(object instance, object[] arguments)
+        {
+            var result = (TsObject)Construct(arguments);
+            result.SetPrototype(((TsObject)instance).PropertyPrototype); return result;
+        }
+    }
+    static object SetObjectPrototype(object target, object prototype)
+    {
+        RequireObject(target);
+        if (prototype is not null && prototype is not TsObject) throw new InvalidOperationException("Prototype must be an object or null");
+        if (target is TsObject obj) obj.SetPrototype(prototype as TsObject);
+        return target;
+    }
     static NativeNamespaceFunction ObjectNamespace()
     {
-        var result = new NativeNamespaceFunction("Object", static _ => throw new InvalidOperationException("Object construction is not implemented"), 1);
+        var result = new ObjectConstructorFunction();
         result.UseObjectPrototype(DefaultClassObjectPrototype);
         DefaultClassObjectPrototype.DefineMethod("constructor",result);
         result.Member("keys", GetObjectKeysFunction()); result.Member("values", GetObjectValuesFunction()); result.Member("entries", GetObjectEntriesFunction());
-        result.Member("hasOwn", new JsFunction((FunctionBody)(static args => BoxBoolean(HasOwn(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "hasOwn", 2)); return result;
+        result.Member("hasOwn", new JsFunction((FunctionBody)(static args => BoxBoolean(HasOwn(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "hasOwn", 2));
+        result.Member("getPrototypeOf", new JsFunction((FunctionBody)(static args => ToObject(FunctionArgument(args, 0)).PropertyPrototype), null, "getPrototypeOf", 1));
+        result.Member("setPrototypeOf", new JsFunction((FunctionBody)(static args => SetObjectPrototype(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "setPrototypeOf", 2)); return result;
     }
     static class RuntimeNamespaces
     {
@@ -46,9 +85,11 @@ public static partial class Js
         internal static readonly TsObject Performance = new PerformanceNamespace();
         internal static readonly JsFunction Object = ObjectNamespace();
         internal static readonly JsFunction Number = new NumberNamespace();
+        internal static readonly JsFunction String = new PrimitiveConstructorFunction("String", true);
+        internal static readonly JsFunction Boolean = new PrimitiveConstructorFunction("Boolean", false);
     }
     internal static JsFunction GetObjectConstructor() => RuntimeNamespaces.Object;
     public static void ConsoleLog(object[] args) => CallMethod(RuntimeNamespaces.Console.Get("log"), RuntimeNamespaces.Console, args);
     public static double PerformanceNow() => CallMethodNumber0(RuntimeNamespaces.Performance.Get("now"), RuntimeNamespaces.Performance).GetValueOrDefault(double.NaN);
-    public static object BuiltinNamespace(string name) => name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : Undefined;
+    public static object BuiltinNamespace(string name) => name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : name == "String" ? RuntimeNamespaces.String : name == "Boolean" ? RuntimeNamespaces.Boolean : Undefined;
 }

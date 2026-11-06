@@ -553,7 +553,7 @@ internal static partial class CompilerFunctions
                 il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet);
                 b.from_object(n.type, c);
             }
-            else if (get_type(owner, c).kind == TypeKind.String) { b.call(RuntimeMember.Length); b.op(0x6c); b.call(RuntimeMember.WrapNumber); }
+            else if (get_type(owner, c).kind == TypeKind.String) { if (is_text(n.name, text_length, c)) { b.call(RuntimeMember.Length); b.op(0x6c); b.call(RuntimeMember.WrapNumber); } else { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); } }
             else
             {
                 int member = field(owner, n.name, c);

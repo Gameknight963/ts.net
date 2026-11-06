@@ -1,14 +1,18 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 
-internal sealed class JsBoxedPrimitive(object value) : TsObject
+internal sealed class JsBoxedPrimitive(object value, bool intrinsicPrototype = false) : TsObject
 {
     internal readonly object Value = value;
-    internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Value is double ? (TsObject)((JsFunction)Js.BuiltinNamespace("Number")).Get("prototype") : Js.DefaultClassObjectPrototype;
+    HashSet<string> hidden;
+    internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : intrinsicPrototype ? Js.DefaultClassObjectPrototype : Js.PrimitivePrototype(Value);
+    internal void DefineHidden(string key, object value) { DefineOwn(key, value); (hidden ??= new()).Add(key); }
     bool StringIndex(string key, out uint index) => JsArray.Index(key, out index) && Value is string text && index < text.Length;
     internal override bool IsReadOnlyOwnProperty(string key) => Value is string && (key == "length" || StringIndex(key, out _));
     public override bool HasOwn(string key) => Value is string && (key == "length" || StringIndex(key, out _)) || base.HasOwn(key);
-    public override bool HasProperty(string key) => key is "valueOf" or "toString" || base.HasProperty(key);
+    bool NumberMethodFallback(string key) => Value is double && PropertyPrototype is not null && key is "valueOf" or "toString";
+    public override bool HasProperty(string key) => NumberMethodFallback(key) || base.HasProperty(key);
     public override object Get(string key)
     {
         if (Value is string text)
@@ -17,22 +21,31 @@ internal sealed class JsBoxedPrimitive(object value) : TsObject
             if (StringIndex(key, out uint index)) return Iteration.CodeUnit(text[(int)index]);
         }
         if (base.HasProperty(key)) return base.Get(key);
-        return key is "valueOf" or "toString" ? Js.PrimitiveMethod(Value, key == "toString") : base.Get(key);
+        return NumberMethodFallback(key) ? Js.PrimitiveMethod(Value, key == "toString") : base.Get(key);
     }
-    public override object GetWithReceiver(string key, object receiver) => !base.HasProperty(key) && key is "valueOf" or "toString" ? Get(key) : base.GetWithReceiver(key, receiver);
+    public override object GetWithReceiver(string key, object receiver) => !base.HasProperty(key) && NumberMethodFallback(key) ? Get(key) : base.GetWithReceiver(key, receiver);
     public override object Set(string key, object value) => IsReadOnlyOwnProperty(key) ? throw new InvalidOperationException("String property is read-only") : base.Set(key, value);
-    public override object OwnKeys()
+    object AllKeys()
     {
         var keys = new object[Value is string text ? text.Length : 0];
         for (int i = 0; i < keys.Length; i++) keys[i] = i.ToString(CultureInfo.InvariantCulture);
         return KeysFromFixed(keys);
     }
-    internal override object ForInOwnKeys() => Value is string ? Js.ForInNames(OwnKeys(), "length") : OwnKeys();
-    internal override bool ForInEnumerable(string key) => Value is not string || key != "length";
+    public override object OwnKeys()
+    {
+        var keys = (JsArray)AllKeys();
+        if (hidden is null) return keys;
+        var result = new JsArray(0);
+        for (uint i = 0; i < keys.Length(); i++) { var key = keys.ElementAt(i); if (!hidden.Contains((string)key)) result.Append(key); }
+        return result;
+    }
+    internal override object ForInOwnKeys() => Value is string ? Js.ForInNames(AllKeys(), "length") : AllKeys();
+    internal override bool ForInEnumerable(string key) => (Value is not string || key != "length") && hidden?.Contains(key) != true;
 }
 
 public static partial class Js
 {
+    internal static TsObject PrimitivePrototype(object value) => (TsObject)((JsFunction)BuiltinNamespace(value is string ? "String" : value is double ? "Number" : "Boolean")).Get("prototype");
     sealed class PrimitiveValueFunction(Type type, bool text) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Primitive method requires a receiver")), null, text ? "toString" : "valueOf", 0)
     {
         object Execute(object receiver)

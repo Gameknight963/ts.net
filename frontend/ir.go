@@ -105,7 +105,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
-	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || symbol.Name == "IArguments" || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance") {
+	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || symbol.Name == "IArguments" || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "String" || symbol.Name == "Boolean" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance") {
 		for _, declaration := range symbol.Declarations {
 			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
 				t = b.c.GetAnyType()
@@ -471,7 +471,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		if owner := b.namespaceExports[b.c.GetSymbolAtLocation(n)]; owner != nil && !namespaceLocalFunction(n, owner, b.c.GetSymbolAtLocation(n)) {
 			return b.namespaceReference(n, owner)
 		}
-		if (n.Text() == "console" || n.Text() == "performance" || n.Text() == "Object" || n.Text() == "Number") && b.isBuiltinIdentifier(n) {
+		if (n.Text() == "console" || n.Text() == "performance" || n.Text() == "Object" || n.Text() == "Number" || n.Text() == "String" || n.Text() == "Boolean") && b.isBuiltinIdentifier(n) {
 			id = b.node(66, n, n.Text())
 			b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
 			return id

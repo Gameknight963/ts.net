@@ -54,8 +54,9 @@ public static partial class Js
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
-            if (receiver is not TsObject target) throw new InvalidOperationException("Prototype accessor requires an object");
-            if (mode == 0) return target.PropertyPrototype;
+            if (mode == 0) return ToObject(receiver).PropertyPrototype;
+            RequireObject(receiver);
+            if (receiver is not TsObject target) return Undefined;
             if (mode == 2) return GetObjectConstructor();
             object value = FunctionArgument(arguments, 0);
             if (mode == 1) { if (value == null || value is TsObject) target.SetPrototype(value as TsObject); }

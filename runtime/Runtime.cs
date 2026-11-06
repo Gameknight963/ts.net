@@ -152,7 +152,7 @@ public static partial class Js
         string when key is "indexOf" or "includes" or "lastIndexOf" => StringSearchTarget(key),
         string when key is "slice" or "substring" => StringRangeTarget(key),
         string when key is "charAt" or "charCodeAt" or "codePointAt" => CharacterTarget(key),
-        string or double or bool => Undefined,
+        string or double or bool => PrimitivePrototype(receiver).GetWithReceiver(key, receiver),
         _ => throw new InvalidOperationException("Cannot read property of undefined")
     };
 
