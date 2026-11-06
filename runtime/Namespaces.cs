@@ -49,7 +49,7 @@ public static partial class Js
         {
             this.text = text;
             var prototype = new JsBoxedPrimitive(text ? "" : BoxBoolean(false), true);
-            if (text) DefineStringFormatting(prototype);
+            if (text) { DefineStringFormatting(prototype); DefineStringBoundaries(prototype); }
             prototype.DefineHidden("constructor", this);
             prototype.DefineHidden("valueOf", PrimitiveMethod(prototype.Value, false));
             prototype.DefineHidden("toString", PrimitiveMethod(prototype.Value, true));
