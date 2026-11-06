@@ -198,6 +198,7 @@ func (b *irBuilder) functionIdentity(n *ast.Node, value, function, self int) int
 func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 	arrow := n.Kind == ast.KindArrowFunction
 	previous, scope := b.thisSymbol, b.thisScope
+	previousNewTarget := b.newTargetUsed
 	previousSuper, previousStatic := b.superSymbol, b.superStatic
 	if !arrow && (n.Parent == nil || !ast.IsClassLike(n.Parent)) {
 		b.superSymbol = 0
@@ -205,6 +206,7 @@ func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 	if !arrow {
 		b.thisSymbol = 0
 		b.thisScope = true
+		b.newTargetUsed = false
 	}
 	parameters := b.list(n.Parameters())
 	body := 0
@@ -220,12 +222,16 @@ func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 			parameter := b.node(13, n, "this")
 			b.nodes[parameter-1].symbol = b.thisSymbol
 			b.nodes[parameter-1].typ = b.typ(b.c.GetAnyType())
+			if b.newTargetUsed {
+				b.nodes[parameter-1].constant = 1
+			}
 			b.nodes[parameter-1].next = parameters
 			parameters = parameter
 			b.nodes[function-1].fourth = parameter
 		}
 		b.thisSymbol = previous
 		b.thisScope = scope
+		b.newTargetUsed = previousNewTarget
 		b.superSymbol, b.superStatic = previousSuper, previousStatic
 	}
 	return parameters, body

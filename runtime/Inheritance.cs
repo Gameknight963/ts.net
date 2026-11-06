@@ -1,6 +1,12 @@
 using System;
 using System.Runtime.CompilerServices;
 
+internal sealed class JsConstructionReceiver(object receiver, object target)
+{
+    internal readonly object Receiver = receiver;
+    internal readonly object Target = target;
+}
+
 internal sealed class JsConstructorFrame(JsClassFunction home, object allocated)
 {
     internal readonly JsClassFunction Home = home;
@@ -22,9 +28,12 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object ResolveThis(object receiver)
     {
+        if (receiver is JsConstructionReceiver construction) return ResolveThis(construction.Receiver);
         if (receiver is not JsConstructorFrame frame) return receiver;
         return frame.Initialized ? frame.Value : throw MakeThrown(new JsCaughtError("ReferenceError", "Must call super constructor before accessing this"));
     }
+    public static object NewTarget(object receiver) => receiver is JsConstructionReceiver construction ? construction.Target : receiver is JsConstructorFrame frame ? ((JsClassInstance)frame.Allocated).Owner : Undefined;
+    public static object EnableNewTarget(object value) { ((JsFunction)value).UsesNewTarget = true; return value; }
     internal static object SuperReceiver(object receiver) => receiver is JsSuperReference reference ? reference.Receiver : receiver;
     public static object SuperBase(object home, object receiver, bool isStatic) => new JsSuperReference((JsClassFunction)home, receiver, isStatic);
     public static void SuperInitializer(object receiver, object callback) => ((JsConstructorFrame)receiver).AfterSuper = (JsFunction)callback;

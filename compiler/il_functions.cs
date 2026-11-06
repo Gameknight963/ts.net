@@ -194,6 +194,8 @@ void il_function_class(int symbol, Compiler c, IlBackend b)
         b.emit(0x20, length); int constructor = b.function_constructors.at(symbol);
         if (context != 0 && constructor != 0) { b.load_context(context); }
         b.emit(0x73, constructor != 0 ? constructor : b.RuntimeToken(get_node(get_symbol(symbol,c).function,c).fourth != 0 ? RuntimeMember.ReceiverFunctionConstructor : RuntimeMember.FunctionConstructor));
+        int receiver = get_node(get_symbol(symbol, c).function, c).fourth;
+        if (receiver != 0 && get_node(receiver, c).constant) b.call(RuntimeMember.EnableNewTarget);
         if (get_node(get_symbol(symbol,c).function,c).third != 0)
         {
             if(b.function_allocator==0)b.op(0x14);

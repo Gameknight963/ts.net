@@ -21,7 +21,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 |---|---|---|
 | Values and operators | 8 / 10 | Numbers, strings, booleans, null, undefined, arithmetic, comparisons, bitwise operators, optional chaining and in. <br> BigInt, symbols and some operators are missing. |
 | Control flow | 10 / 10 | Conditions, loops, for-of, for-in (including inherited enumerable keys), switch, labels, break and continue. |
-| Functions | 9 / 10 | Closures, callbacks, overloads, default/optional/rest parameters, destructuring, function/method receivers, arrow this capture, ordinary function constructors, instanceof and call/apply/bind. Top-level this, new.target and generators are missing. |
+| Functions | 9 / 10 | Closures, callbacks, overloads, default/optional/rest parameters, destructuring, function/method receivers, arrow this capture, ordinary function constructors, new.target (including arrow captures), instanceof and call/apply/bind. Top-level this and generators are missing. |
 | Objects and arrays | 9 / 10 | Structural objects, methods, getters/setters, computed properties, spreads, destructuring, object rest bindings and sparse arrays. General prototype behavior is incomplete. |
 | Types and generics | 5 / 10 | Microsoft's type checking, interfaces, aliases, basic generics and union/nullable storage. Runtime representations still have gaps. |
 | Modules | 4 / 5 | Imports, exports, default exports, namespace values, live bindings and multiple files. Dynamic import is missing. |

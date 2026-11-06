@@ -56,6 +56,7 @@ type irBuilder struct {
 	moduleNamespaceOrder  []*ast.Symbol
 	thisSymbol            int
 	thisScope             bool
+	newTargetUsed         bool
 	superSymbol           int
 	superStatic           bool
 	classIDs              map[*ast.Symbol]int
@@ -375,6 +376,16 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		return b.classValue(n)
 	case ast.KindArrowFunction, ast.KindFunctionExpression:
 		return b.functionValue(n)
+	case ast.KindMetaProperty:
+		if n.AsMetaProperty().KeywordToken != ast.KindNewKeyword || n.Name().Text() != "target" || !b.thisScope {
+			b.unsupported(n)
+		}
+		b.newTargetUsed = true
+		id = b.node(58, n, "new.target")
+		row = b.nodes[id-1]
+		row.left = b.rawThis(n)
+		row.constant = 1
+		row.typ = b.typ(b.c.GetAnyType())
 	case ast.KindThisKeyword:
 		if !b.thisScope {
 			b.unsupported(n)

@@ -85,7 +85,7 @@ public sealed class JsClassFunction : JsFunction
         if (!derived)
         {
             InitializeFields(instance);
-            object result = constructor?.InvokeWithReceiver(instance, arguments);
+            object result = constructor?.InvokeWithReceiver(constructor.ConstructionReceiver(instance, ((JsClassInstance)instance).Owner), arguments);
             return result is TsObject ? result : instance;
         }
         if (constructor is null)

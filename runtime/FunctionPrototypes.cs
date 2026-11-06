@@ -7,11 +7,13 @@ public partial class JsFunction
     private object ordinaryPrototype;
     internal FunctionBody constructFactory;
     internal bool sourceConstructor;
+    internal bool UsesNewTarget;
+    internal object ConstructionReceiver(object receiver, object target) => UsesNewTarget ? new JsConstructionReceiver(receiver, target) : receiver;
     internal virtual bool CanInitializeDerived => sourceConstructor;
     internal virtual object InitializeDerived(object instance, object[] arguments)
     {
         if (!CanInitializeDerived) throw new InvalidOperationException("Base constructor is unsupported");
-        object returned = InvokeWithReceiver(instance, arguments);
+        object returned = InvokeWithReceiver(ConstructionReceiver(instance, ((JsClassInstance)instance).Owner), arguments);
         return returned is TsObject ? returned : instance;
     }
     internal void MarkOrdinaryPrototype() => ordinaryPrototype = UncreatedPrototype;
@@ -21,7 +23,7 @@ public partial class JsFunction
         if (constructFactory == null) throw new InvalidOperationException("Value is not a constructor");
         var instance = (TsObject)constructFactory(Array.Empty<object>());
         instance.SetPrototype(ReadOrdinaryPrototype() as TsObject ?? Js.DefaultClassObjectPrototype);
-        object returned = InvokeWithReceiver(instance, arguments);
+        object returned = InvokeWithReceiver(ConstructionReceiver(instance, this), arguments);
         return returned is TsObject ? returned : instance;
     }
     private bool OrdinaryHasInstance(object value)
