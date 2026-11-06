@@ -451,6 +451,11 @@ internal static partial class CompilerFunctions
             int packed = il_packed_slot(entry, c, b);
             if (packed >= 0) { b.emit(0xfe0c, packed); il_integer(n.right, c, b); b.op(0x99); b.call(RuntimeMember.WrapNumber); return; }
             il_expression(n.left, c, b);
+            if (get_type(get_node(n.left,c).type,c).kind==TypeKind.String && get_type(get_node(n.right,c).type,c).kind==TypeKind.Number) {
+                if (il_integer_value(n.right,c,b)) {il_integer(n.right,c,b);b.call(RuntimeMember.StringIndexAt);}
+                else {il_expression(n.right,c,b);b.call(RuntimeMember.StringIndexNumber);}
+                b.from_object(n.type,c);return;
+            }
             if (il_direct_array_index(entry, c, b)) { il_integer(n.right, c, b); b.call(RuntimeMember.NumberIndexGetAt); }
             else if (il_number_index(entry, c)) { il_number(n.right, c, b); b.call(RuntimeMember.NumberIndexGet); }
             else { if (il_direct_index(entry, c, b)) { il_integer(n.right, c, b); b.call(RuntimeMember.ArrayIndexGetAt); } else { il_boxed(n.right, c, b); b.call(RuntimeMember.IndexGet); } b.from_object(n.type, c); }

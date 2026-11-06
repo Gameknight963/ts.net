@@ -195,7 +195,7 @@ public static partial class Js
         if (receiver is JsArray array) return array.GetIndex(key);
         string text = PropertyKey(key);
         if (receiver is string value && JsArray.Index(text, out uint index) && index < value.Length)
-            return value.Substring((int)index, 1);
+            return Iteration.CodeUnit(value[(int)index]);
         return Get(receiver, text);
     }
     public static void IndexSet(object receiver, object key, object value)
