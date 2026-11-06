@@ -14,10 +14,11 @@ public abstract partial class TsObject
     public virtual bool HasProperty(string key) => HasOwn(key);
 
     public virtual object Get(string key) =>
-        extra != null && extra.TryGetValue(key, out var value) ? value : Js.Undefined;
+        TryOwnAccessor(key,out var accessor)?accessor.Read(this):extra != null && extra.TryGetValue(key, out var value) ? value : Js.Undefined;
 
     public virtual object Set(string key, object value)
     {
+        if(TryOwnAccessor(key,out var accessor))return accessor.Write(this,value);
         (extra ??= new OwnProperties())[key] = value;
         return value;
     }

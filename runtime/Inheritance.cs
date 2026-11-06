@@ -14,8 +14,8 @@ internal sealed class JsSuperReference(JsClassFunction home, object receiver, bo
 {
     internal readonly object Receiver = Js.ResolveThis(receiver);
     TsObject Target => isStatic ? home.Parent : home.Prototype.ParentPrototype;
-    public override object Get(string key) => Target is null ? throw new InvalidOperationException("Cannot read super property of null") : Target.Get(key);
-    public override object Set(string key, object value) => Target is null ? throw new InvalidOperationException("Cannot set super property of null") : Js.Set(Receiver, key, value);
+    public override object Get(string key) => Target is null ? throw new InvalidOperationException("Cannot read super property of null") : Target.GetWithReceiver(key,Receiver);
+    public override object Set(string key, object value) => Target is null ? throw new InvalidOperationException("Cannot set super property of null") : Target.SetWithReceiver(key,value,Receiver);
 }
 public static partial class Js
 {

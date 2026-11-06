@@ -10,7 +10,7 @@ internal static partial class CompilerFunctions
     {
         Node n = get_node(entry, c); if (n.kind != NodeKind.Object) { return false; }
         int property = n.children;
-        while (property != 0) { Node p = get_node(property, c); if (p.kind == NodeKind.Spread || (p.kind == NodeKind.Property && p.right != 0)) { return true; } property = p.next; }
+        while (property != 0) { Node p = get_node(property, c); if (p.kind == NodeKind.Spread || (p.kind == NodeKind.Property && (p.right != 0 || p.third != 0))) { return true; } property = p.next; }
         return false;
     }
     internal static void il_prepare_spreads(Compiler c, IlBackend b)
@@ -162,7 +162,7 @@ void il_spread_shapes(Compiler c, IlBackend b)
                 int key = -1; if (p.constant) { key = b.local(-4); b.op(0x25); b.emit(0xfe0e, key); }
                 il_boxed(p.left, c, b);
                 if (p.constant) { b.emit(0xfe0c, key); b.call(RuntimeMember.NamePropertyFunction); }
-                b.call(RuntimeMember.DefineOwn);
+                if(p.third!=0){b.emit(0x20,get_node(p.third,c).constant?1:2);b.call(RuntimeMember.DefineAccessor);}else b.call(RuntimeMember.DefineOwn);
             }
             property = p.next;
         }

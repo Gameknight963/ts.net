@@ -31,7 +31,7 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 		}
 	}
 	if n.Name() != nil {
-		if n.Kind == ast.KindMethodDeclaration {
+		if n.Kind == ast.KindMethodDeclaration || n.Kind == ast.KindGetAccessor || n.Kind == ast.KindSetAccessor {
 			name, _ = b.literalPropertyName(n.Name())
 		} else {
 			name = n.Name().Text()
@@ -50,7 +50,7 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 		}
 	}
 	symbol := 0
-	if n.Name() != nil && n.Kind != ast.KindFunctionDeclaration && n.Kind != ast.KindMethodDeclaration {
+	if n.Name() != nil && n.Kind != ast.KindFunctionDeclaration && n.Kind != ast.KindMethodDeclaration && n.Kind != ast.KindGetAccessor && n.Kind != ast.KindSetAccessor {
 		symbol = b.symbol(n.Name())
 	} else {
 		b.symbols = append(b.symbols, irSymbol{name: b.text(name), typ: typ})

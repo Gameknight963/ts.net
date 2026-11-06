@@ -450,6 +450,12 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		id = b.node(4, n, "{")
 		row = b.nodes[id-1]
 		row.children = b.list(n.AsObjectLiteralExpression().Properties.Nodes)
+		for _, property := range n.AsObjectLiteralExpression().Properties.Nodes {
+			if property.Kind == ast.KindGetAccessor || property.Kind == ast.KindSetAccessor {
+				row.typ = b.typ(b.c.GetAnyType())
+				break
+			}
+		}
 	case ast.KindArrayLiteralExpression:
 		id = b.node(32, n, "[")
 		row = b.nodes[id-1]
@@ -490,8 +496,8 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.left = b.lower(expr.Expression)
 		row.right = b.lower(expr.ArgumentExpression)
-	case ast.KindPropertyAssignment, ast.KindShorthandPropertyAssignment, ast.KindMethodDeclaration:
-		if n.Kind == ast.KindMethodDeclaration && n.Body() == nil {
+	case ast.KindPropertyAssignment, ast.KindShorthandPropertyAssignment, ast.KindMethodDeclaration, ast.KindGetAccessor, ast.KindSetAccessor:
+		if (n.Kind == ast.KindMethodDeclaration || n.Kind == ast.KindGetAccessor || n.Kind == ast.KindSetAccessor) && n.Body() == nil {
 			return 0
 		}
 		if n.Kind == ast.KindPropertyAssignment && n.Name().Kind != ast.KindComputedPropertyName && n.Name().Text() == "__proto__" {
@@ -515,8 +521,16 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		} else {
 			row.name = b.text(staticName)
 		}
-		if n.Kind == ast.KindMethodDeclaration {
+		if n.Kind == ast.KindMethodDeclaration || n.Kind == ast.KindGetAccessor || n.Kind == ast.KindSetAccessor {
 			row.left = b.functionValue(n)
+			if n.Kind == ast.KindGetAccessor || n.Kind == ast.KindSetAccessor {
+				marker := b.node(20, n, "accessor")
+				b.nodes[marker-1].typ = b.typ(b.c.GetUndefinedType())
+				if n.Kind == ast.KindGetAccessor {
+					b.nodes[marker-1].constant = 1
+				}
+				row.third = marker
+			}
 			row.typ = b.typ(b.c.GetAnyType())
 			if dynamic {
 				row.constant = 1

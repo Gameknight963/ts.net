@@ -216,7 +216,7 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 					}
 				}
 			}
-		case ast.KindMethodDeclaration:
+		case ast.KindMethodDeclaration, ast.KindGetAccessor, ast.KindSetAccessor:
 			if member.Body() == nil {
 				continue
 			}

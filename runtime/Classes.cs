@@ -8,7 +8,12 @@ public class JsClassInstance : TsObject
     internal JsClassInstance InheritedPrototype => Owner is null ? ParentPrototype : Owner.Prototype;
     HashSet<string> hidden;
     public override bool HasProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasProperty(key);
-    public override object Get(string key) => HasOwn(key) ? base.Get(key) : InheritedPrototype is null ? Js.Undefined : InheritedPrototype.Get(key);
+    public override object Get(string key) => GetWithReceiver(key, this);
+    public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? base.Get(key) : InheritedPrototype is null ? Js.Undefined : InheritedPrototype.GetWithReceiver(key, receiver);
+    public override object Set(string key, object value) => SetWithReceiver(key, value, this);
+    public override object SetWithReceiver(string key, object value, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Write(receiver, value) : HasOwn(key) || InheritedPrototype is null ? ((TsObject)receiver).SetOwnValue(key, value) : InheritedPrototype.SetWithReceiver(key, value, receiver);
+    public override object SetOwnValue(string key, object value) { if (TryOwnAccessor(key, out _)) throw new InvalidOperationException("Cannot replace accessor through assignment"); return base.Set(key, value); }
+    internal void DefineClassAccessor(string key, object function, int mode) { DefineAccessor(key, function, mode); (hidden ??= new()).Add(key); }
     internal void DefineMethod(string name, object value) { DefineOwn(name, value); (hidden ??= new()).Add(name); }
     internal void DefineField(string name, object value) { DefineOwn(name, value); hidden?.Remove(name); }
     public override object OwnKeys()
@@ -41,11 +46,19 @@ public sealed class JsClassFunction : JsFunction
     }
     public override bool HasOwn(string key) => key == "prototype" || base.HasOwn(key);
     public override bool HasProperty(string key) => HasOwn(key) || Parent is not null && Parent.HasProperty(key);
-    public override object Get(string key) => key == "prototype" ? Prototype : HasOwn(key) ? base.Get(key) : Parent is null ? Js.Undefined : Parent.Get(key);
-    public override object Set(string key, object value) => key == "prototype" ? throw new InvalidOperationException("Class prototype is read-only") : base.Set(key, value);
+    public override object Get(string key) => GetWithReceiver(key, this);
+    public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : key == "prototype" ? Prototype : HasOwn(key) ? base.Get(key) : Parent is null ? Js.Undefined : Parent.GetWithReceiver(key, receiver);
+    public override object Set(string key, object value) => SetWithReceiver(key, value, this);
+    public override object SetWithReceiver(string key, object value, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Write(receiver, value) : HasOwn(key) || Parent is null ? ((TsObject)receiver).SetOwnValue(key, value) : Parent.SetWithReceiver(key, value, receiver);
+    public override object SetOwnValue(string key, object value)
+    {
+        if (key == "prototype") throw new InvalidOperationException("Class prototype is read-only");
+        if (TryOwnAccessor(key, out _)) throw new InvalidOperationException("Cannot replace accessor through assignment"); return base.Set(key, value);
+    }
+    internal void DefineClassAccessor(string key, object function, int mode) { if (key == "prototype") throw new InvalidOperationException("Cannot redefine class prototype"); DefineAccessor(key, function, mode); hidden.Add(key); }
     internal void DefineMethod(string name, object value, bool isStatic)
     {
-        if (isStatic) { DefineOwn(name, value); hidden.Add(name); } else Prototype.DefineMethod(name, value);
+        if (isStatic) { if (name == "prototype") throw new InvalidOperationException("Cannot redefine class prototype"); DefineOwn(name, value); hidden.Add(name); } else Prototype.DefineMethod(name, value);
     }
     public override object OwnKeys()
     {
@@ -91,10 +104,11 @@ public sealed class JsClassFunction : JsFunction
 public static partial class Js
 {
     public static object CreateClass(string name, object factory, object fields, object constructor, object parent, bool derived) => new JsClassFunction(name, factory, fields, constructor, parent, derived);
-    public static void DefineClassMethod(object target, string key, object method, bool isStatic)
+    public static void DefineClassMethod(object target, string key, object method, bool isStatic, int mode)
     {
-        if (method is JsFunction fn) fn.InferPropertyName(key);
-        ((JsClassFunction)target).DefineMethod(key, method, isStatic);
+        var home = (JsClassFunction)target;
+        if (mode != 0) { if (isStatic) home.DefineClassAccessor(key, method, mode); else home.Prototype.DefineClassAccessor(key, method, mode); }
+        else { if (method is JsFunction fn) fn.InferPropertyName(key); home.DefineMethod(key, method, isStatic); }
     }
     public static void InitializeClass(object target, object fields) => ((JsFunction)fields).InvokeWithReceiver(target, Array.Empty<object>());
     public static void DefineClassField(object target, string key, object value) { target = ResolveThis(target); if (target is JsClassFunction fn) fn.DefineField(key, value); else if (target is JsClassInstance instance) instance.DefineField(key, value); else ((TsObject)target).DefineOwn(key, value); }

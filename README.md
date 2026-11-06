@@ -13,7 +13,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current feature completion
 
-66%.
+68%.
 
 <details>
 
@@ -22,11 +22,11 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Values and operators | 7 / 10 | Numbers, strings, booleans, null, undefined, arithmetic, comparisons and bitwise operators. <br> BigInt, symbols and some operators are missing. |
 | Control flow | 9 / 10 | Conditions, loops, for-of, switch, labels, break and continue. For-in is missing. |
 | Functions | 9 / 10 | Closures, callbacks, overloads, default/optional/rest parameters, destructuring, function/method receivers and arrow this capture. call/apply/bind, top-level this and generators are missing. |
-| Objects and arrays | 7 / 10 | Structural objects, object methods, computed properties, spreads, destructuring and sparse arrays. Accessors and general prototype behavior are missing. |
+| Objects and arrays | 8 / 10 | Structural objects, methods, getters/setters, computed properties, spreads, destructuring and sparse arrays. Object rest bindings and general prototype behavior are incomplete. |
 | Types and generics | 5 / 10 | Microsoft's type checking, interfaces, aliases, basic generics and union/nullable storage. Runtime representations still have gaps. |
 | Modules | 4 / 5 | Imports, exports, default exports and multiple files. Dynamic import is missing. |
 | Enums | 4 / 5 | Numeric, string, mixed, computed and const enums; reverse mappings, merged enums, and imports. Namespace merging and __proto__ members are missing. |
-| Classes and inheritance | 11 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, generics, structural interfaces, inheritance and super. Built-in base classes, accessors, #private fields, dynamic field keys and decorators are missing. Base constructors returning replacement objects still have gaps. |
+| Classes and inheritance | 12 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, generics, structural interfaces, inheritance, super and getters/setters. Built-in base classes, auto-accessors, #private fields, dynamic field keys and decorators are missing. Base constructors returning replacement objects still have gaps. |
 | Exceptions | 8 / 10 | throw, try/catch/finally, standard error objects, cause, and instanceof. Error prototypes and TypeScript source locations in stack traces are missing. |
 | Async | 0 / 10 | Not implemented |
 | Standard library | 2 / 5 | Selected Number/Object helpers and array/string methods. Many built-ins are missing. |
