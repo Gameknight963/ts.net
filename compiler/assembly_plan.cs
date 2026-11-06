@@ -96,6 +96,10 @@ internal sealed class AssemblyPlan
     }
     public void StringLiteral(int method, TextBytes value) { this.integer(10); this.integer(method); this.text(value); }
     public void raw_string(int method, TextBytes value) { this.integer(10); this.integer(method); this.raw_text(value); }
+    public void catch_region(int method, int start, int end, int handler, int handlerEnd, int type)
+    {
+        this.integer(13);this.integer(method);this.integer(start);this.integer(end);this.integer(handler);this.integer(handlerEnd);this.integer(type);
+    }
     public void finish(int entry, TextBytes path)
     {
         this.integer(11); this.integer(entry);

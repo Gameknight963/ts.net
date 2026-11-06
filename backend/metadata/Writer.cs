@@ -18,11 +18,13 @@ sealed class AssemblyPlan
     }
     sealed record FieldRow(int Id, int Attributes, int Type, string Name);
     sealed record Instruction(int Code, int Operand, double Number = 0, string? Text = null);
+    sealed record CatchRegion(int Start, int End, int Handler, int HandlerEnd, int Type);
     sealed class MethodRow(int id, int owner, int attributes, int result, int[] parameters, string name)
     {
         public int Id = id, Owner = owner, Attributes = attributes, Result = result;
         public int[] Parameters = parameters;
         public string Name = name;
+        public List<CatchRegion> Catches = [];
         public List<int> Locals = [];
         public List<Instruction> Instructions = [];
     }
@@ -100,6 +102,7 @@ sealed class AssemblyPlan
                     entry = id;
                     if (reader.BaseStream.Position != reader.BaseStream.Length) throw new InvalidDataException("Trailing IL plan data");
                     return;
+                case 13: methodRows[id].Catches.Add(new(reader.ReadInt32(),reader.ReadInt32(),reader.ReadInt32(),reader.ReadInt32(),reader.ReadInt32())); break;
                 case 12: specifications.Add((id, reader.ReadInt32(), reader.ReadInt32())); break;
                 default: throw new InvalidDataException("Unknown IL plan command");
             }
@@ -157,13 +160,14 @@ sealed class AssemblyPlan
             maximum = Math.Max(maximum, depth);
         }
         Visit(0, 0);
+        foreach(var region in method.Catches) Visit(labels[region.Handler],1);
         while (pending.TryDequeue(out int index))
         {
             var instruction = instructions[index];
             int pop = 0, push = 0;
             switch (instruction.Code)
             {
-                case -1: case 0x00: case 0x38: break;
+                case -1: case 0x00: case 0x38: case 0xdd: break;
                 case 0x14:
                 case 0x16:
                 case 0x20:
@@ -174,7 +178,7 @@ sealed class AssemblyPlan
                 case 0xfe09:
                 case 0xfe0c: push = 1; break;
                 case 0x25: pop = 1; push = 2; break;
-                case 0x26: case 0x39: case 0x3a: case 0x80: case 0xfe0b: case 0xfe0e: pop = 1; break;
+                case 0x7a: case 0x26: case 0x39: case 0x3a: case 0x80: case 0xfe0b: case 0xfe0e: pop = 1; break;
                 case 0x58:
                 case 0x59:
                 case 0x5a:
@@ -230,8 +234,9 @@ sealed class AssemblyPlan
                 if (depth != 0) throw new InvalidDataException($"Nonempty return stack in {method.Name}");
                 continue;
             }
-            if (instruction.Code is 0x38 or 0x39 or 0x3a) Visit(labels[instruction.Operand], depth);
-            if (instruction.Code != 0x38) Visit(index + 1, depth);
+            if(instruction.Code==0x7a) continue;
+            if (instruction.Code is 0x38 or 0x39 or 0x3a or 0xdd) Visit(labels[instruction.Operand], instruction.Code==0xdd?0:depth);
+            if (instruction.Code is not (0x38 or 0xdd)) Visit(index + 1, depth);
         }
         return maximum;
     }
@@ -256,7 +261,7 @@ sealed class AssemblyPlan
                 case 0xfe0b: il.StoreArgument(operand); break;
                 case 0xfe0c: il.LoadLocal(operand); break;
                 case 0xfe0e: il.StoreLocal(operand); break;
-                case 0x38: case 0x39: case 0x3a: il.Branch((ILOpCode)instruction.Code, Label(operand)); break;
+                case 0x38: case 0x39: case 0x3a: case 0xdd: il.Branch((ILOpCode)instruction.Code, Label(operand)); break;
                 case 0x28:
                 case 0x6f:
                 case 0x73:
@@ -275,6 +280,7 @@ sealed class AssemblyPlan
                 default: il.OpCode((ILOpCode)instruction.Code); break;
             }
         }
+        foreach(var region in method.Catches) flow.AddCatchRegion(Label(region.Start),Label(region.End),Label(region.Handler),Label(region.HandlerEnd),Handle(region.Type));
         StandaloneSignatureHandle locals = default;
         if (method.Locals.Count != 0)
         {
