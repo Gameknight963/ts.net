@@ -756,7 +756,8 @@ bool il_logical_assignment(int op, Compiler c)
         Vector<int> emitted = new Vector<int>(); int target = c.types;
         while (target != 0)
         {
-            if (fits(type, target, c))
+            bool assigned = il_assignment_fits(type,target,c,b);
+            if (fits(type, target, c) || assigned)
             {
                 int member = get_type(target, c).fields;
                 while (member != 0)
@@ -768,7 +769,7 @@ bool il_logical_assignment(int op, Compiler c)
                         if (b.type(previous.type, c) == b.type(record.type, c) && same(previous.name, record.name, c)) { seen = true; }
                     }
                     int actual = field(type, record.name, c);
-                    bool missing = actual == 0 && record.optional;
+                    bool missing = actual == 0 && (record.optional || assigned);
                     bool adapted = actual != 0 && b.type(get_field(actual, c).type, c) != b.type(record.type, c);
                     if ((missing || adapted) && !seen)
                     {
@@ -787,7 +788,7 @@ bool il_logical_assignment(int op, Compiler c)
                         }
                         else
                         {
-                            b.emit(0xfe09, 0); il_text(record.name, c, b); b.call(RuntimeMember.Get); b.from_object(record.type, c); b.op(0x2a);
+                            b.emit(0xfe09, 0); il_text(record.name, c, b); b.call(RuntimeMember.Get); if(!assigned || value_type!=-5)b.from_object(record.type, c); b.op(0x2a);
                             b.begin(b.plan.method1(5, klass, 0x1e6, -1, value_type, set.view()));
                             b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0xfe09, 1); b.box(record.type, c);
                             b.call(RuntimeMember.Set); b.op(0x26); b.op(0x2a);
@@ -856,7 +857,7 @@ bool il_logical_assignment(int op, Compiler c)
                 int target = c.types;
                 while (target != 0)
                 {
-                    if (fits(type, target, c)) { int interface_type = b.interfaces.at(target); b.plan.implements(klass, interface_type); }
+                    if (fits(type, target, c) || il_assignment_fits(type,target,c,b)) { int interface_type = b.interfaces.at(target); b.plan.implements(klass, interface_type); }
                     target = get_type(target, c).next;
                 }
                 int constructor = b.plan.method0(5, klass, 0x1886, -1, ".ctor");

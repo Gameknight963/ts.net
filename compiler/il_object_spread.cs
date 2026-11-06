@@ -15,6 +15,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_prepare_spreads(Compiler c, IlBackend b)
     {
+        il_prepare_assignments(c,b);
         bool constructs=false;
         for(int i=1;i<=c.node_store.count();i++) if(get_node(i,c).kind==NodeKind.Construct)constructs=true;
         for(int i=1;i<=c.node_store.count();i++){

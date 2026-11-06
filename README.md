@@ -29,7 +29,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Classes and inheritance | 14 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, numeric and computed member names, generics, structural interfaces, inheritance (including ordinary and bound constructor functions), super, getters/setters, auto-accessors and #private fields/methods/accessors with brand checks. Object, String, Boolean, Array, Promise, Error, native error and AggregateError base classes are supported; other built-in base classes and decorators are missing. Some generated auto-accessor initializer names differ from tsc; base constructors returning replacement objects still have gaps. |
 | Exceptions | 9 / 10 | throw, try/catch/finally, standard error objects, cause, and instanceof. Error prototypes, prototype mutation and custom error subclasses are supported. TypeScript source locations in stack traces are missing. |
 | Async | 4 / 10 | Promise construction, resolve/reject/withResolvers/try, all/allSettled/race/any over supported iterables (arrays, strings and arguments), then/catch/finally, thenable assimilation, subclasses, queueMicrotask and async declarations/expressions/arrows/methods, and await in return expressions (operators, assignments, optional chains, calls, literals and constructors) outside try regions. Await statements/declarations, try regions, custom iterators and custom promise species are missing. |
-| Standard library | 2 / 5 | Object/String/Boolean/Array construction, Array.isArray/of/from (supported iterables and array-like objects), prototype get/set, Math constants and common numeric/trigonometric functions, selected Number/Object helpers, string formatting, prefix/suffix checks, concatenation and array/string methods, including generic join, map, filter, forEach, every, some, reduce, reduceRight, find, findIndex, findLast, findLastIndex, flat, flatMap, lastIndexOf, fill, copyWithin, toReversed, toSorted, toSpliced and with. Calling fill or copyWithin on a non-array currently requires casting the function to `any`. Custom array species and many built-ins are missing. |
+| Standard library | 2 / 5 | Object/String/Boolean/Array construction, Array.isArray/of/from (supported iterables and array-like objects), prototype get/set, Math constants and common numeric/trigonometric functions, selected Number/Object helpers, Object.assign, string formatting, prefix/suffix checks, concatenation and array/string methods, including generic join, map, filter, forEach, every, some, reduce, reduceRight, find, findIndex, findLast, findLastIndex, flat, flatMap, lastIndexOf, fill, copyWithin, toReversed, toSorted, toSpliced and with. Calling fill or copyWithin on a non-array currently requires casting the function to `any`; some Object.assign calls involving primitives or arrays also need this. Custom array species and many built-ins are missing. |
 
 </details>
 
@@ -83,7 +83,7 @@ Runtime performance:
 
 </details>
 
-Array methods, measured on 2026-11-06:
+Array and object methods, measured on 2026-11-06:
 
 | Workload | ts.net | Node |
 |---|---|---|
@@ -92,8 +92,9 @@ Array methods, measured on 2026-11-06:
 | reduce and reduceRight, 10 pairs over 10K numbers | 6.75 ms | 1.25 ms |
 | from, 20 copies of 10K packed numbers | 1.14 ms | 0.36 ms |
 | copyWithin, 1K copies of 5K entries in a 10K packed array | 0.84 ms | 268.92 ms |
+| Object.assign, create 1K objects with 3 fields | 0.59 ms | 0.06 ms |
 
-Execution time only; input creation, startup and compilation are excluded. Release builds, five warmup passes, and five timed samples in each of three fresh processes; the table reports the median of 15 samples. Results matched Node, and .NET used `DOTNET_TieredCompilation=0`. The copyWithin workload changes the first input value before every copy and checks its copied value afterward.
+Execution time only; source input creation, startup and compilation are excluded. Output allocation is included. Release builds, five warmup passes, and five timed samples in each of three fresh processes; the table reports the median of 15 samples. Results matched Node, and .NET used `DOTNET_TieredCompilation=0`. The copyWithin workload changes the first input value before every copy and checks its copied value afterward.
 
 Promises, measured on 2026-11-06:
 
@@ -111,7 +112,7 @@ Compilation times:
 | Small numeric benchmark | 497.09 ms | 338.65 ms |
 | 5,000 variables | 678.81 ms | 375.20 ms |
 
-The packed copyWithin result is encouraging; [V8?s published per-property implementation](https://chromium.googlesource.com/v8/v8/+/refs/heads/main/src/builtins/array-copywithin.tq) is consistent with the large gap against our guarded bulk copy. Array callbacks, joins and Promise workloads remain substantially slower. These microbenchmarks do not establish overall application performance.
+The packed copyWithin result is encouraging; [V8?s published per-property implementation](https://chromium.googlesource.com/v8/v8/+/refs/heads/main/src/builtins/array-copywithin.tq) is consistent with the large gap against our guarded bulk copy. Array callbacks, joins, object copying and Promise workloads remain substantially slower. These microbenchmarks do not establish overall application performance.
 
 The compiler used to be written in [crust](https://github.com/Gameknight963/crust), my C-like memory safe language. It was ported to C# for various reasons. The point is, compilation is slower after the C# port. The larger source takes 1.8x as long as Microsoft’s Go-based TypeScript compiler. It used to be more or less on par.
 
