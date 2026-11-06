@@ -40,3 +40,10 @@ function arrayKey(): string {
 }
 console.log(shrink(), grow(), binding(), arrayKey());
 
+function nullishKeyOrder(receiver:any):void {
+    const key:any={toString():string {console.log('unexpected key conversion');return 'x';}};
+    try { console.log(receiver[key]); } catch(error) { console.log('nullish read',error instanceof TypeError); }
+    try { receiver[key]=1; } catch(error) { console.log('nullish write',error instanceof TypeError); }
+}
+nullishKeyOrder(null);
+nullishKeyOrder(undefined);

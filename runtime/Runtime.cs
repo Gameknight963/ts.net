@@ -199,6 +199,7 @@ public static partial class Js
 
     public static object IndexGet(object receiver, object key)
     {
+        if (IsNullish(receiver)) throw new InvalidOperationException("Cannot read property of null or undefined");
         if (receiver is JsArray array) return array.GetIndex(key);
         string text = PropertyKey(key);
         if (receiver is string value && JsArray.Index(text, out uint index) && index < value.Length)
@@ -207,6 +208,7 @@ public static partial class Js
     }
     public static void IndexSet(object receiver, object key, object value)
     {
+        if (IsNullish(receiver)) throw new InvalidOperationException("Cannot write property of null or undefined");
         if (receiver is JsArray array) array.SetIndex(key, value);
         else Set(receiver, PropertyKey(key), value);
     }
