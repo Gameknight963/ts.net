@@ -67,3 +67,11 @@ const optionalDynamic: any = optional;
 optionalDynamic.n = undefined;
 optionalDynamic.b = undefined;
 console.log(optional.n, optional.b);
+
+function coalesceBoolean(value:boolean|undefined):boolean {return value??true;}
+function coalesceNumber(value:number|undefined):number {return value??9;}
+console.log(coalesceBoolean(false),coalesceBoolean(true),coalesceBoolean(undefined),coalesceNumber(0),coalesceNumber(NaN),coalesceNumber(undefined));
+let fallbackCalls=0;
+function fallback():boolean {fallbackCalls++;return false;}
+function fallbackFlag(value:boolean|undefined):boolean {return value??fallback();}
+console.log(fallbackFlag(false),fallbackFlag(true),fallbackCalls,fallbackFlag(undefined),fallbackCalls);

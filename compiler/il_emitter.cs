@@ -415,8 +415,18 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.Nullish)
         {
             int alternate = b.label(); int done = b.label();
-            il_boxed(n.left, c, b); b.op(0x25); b.call(RuntimeMember.IsNullish); b.emit(0x3a, alternate);
-            b.from_object(n.type, c);
+            TypeKind leftKind = get_type(get_node(n.left, c).type, c).kind;
+            if (leftKind is TypeKind.Number or TypeKind.Boolean)
+            {
+                il_expression(n.left, c, b); b.op(0x25);
+                b.call(leftKind == TypeKind.Number ? RuntimeMember.NumberMissing : RuntimeMember.BooleanMissing);
+                b.emit(0x3a, alternate); b.convert(get_node(n.left, c).type, n.type, c);
+            }
+            else
+            {
+                il_boxed(n.left, c, b); b.op(0x25); b.call(RuntimeMember.IsNullish); b.emit(0x3a, alternate);
+                b.from_object(n.type, c);
+            }
             b.emit(0x38, done); b.mark(alternate); b.op(0x26); il_as(n.right, n.type, c, b); b.mark(done);
         }
         else if (n.kind == NodeKind.Conditional)
