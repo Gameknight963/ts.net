@@ -9,6 +9,8 @@ internal static partial class CompilerFunctions
     internal static int il_flat_parameter(int function, Compiler c)
     {
         Node n = get_node(function, c); int parameter = n.children;
+        // Async parameter binding belongs inside the rejection boundary.
+        if (n.right != 0) return 0;
         if (parameter == 0) { return 0; }
         Node p = get_node(parameter, c);
         if (p.next != 0 || p.left != 0 || p.right == 0) { return 0; }

@@ -6,9 +6,6 @@ import (
 )
 
 func (b *irBuilder) functionValue(n *ast.Node) int {
-	if ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync != 0 {
-		b.unsupported(n)
-	}
 	if n.Kind == ast.KindMethodDeclaration && n.AsMethodDeclaration().AsteriskToken != nil {
 		b.unsupported(n)
 	}
@@ -42,7 +39,7 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 	if n.Kind != ast.KindConstructor {
 		typ = b.typ(b.c.GetReturnTypeOfSignature(b.c.GetSignatureFromDeclaration(n)))
 	}
-	if n.Type() == nil && n.Kind != ast.KindFunctionDeclaration && n.Kind != ast.KindConstructor {
+	if n.Type() == nil && n.Kind != ast.KindFunctionDeclaration && n.Kind != ast.KindConstructor && ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync == 0 {
 		if context := b.c.GetContextualType(n, checker.ContextFlagsNone); context != nil {
 			if signatures := b.c.GetSignaturesOfType(context, checker.SignatureKindCall); len(signatures) == 1 {
 				typ = b.typ(b.c.GetReturnTypeOfSignature(signatures[0]))
@@ -63,7 +60,8 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 		// A named expression's self value belongs to each created instance.
 		b.nodes[function-1].constant = 1
 	}
-	if n.Kind == ast.KindFunctionDeclaration || n.Kind == ast.KindFunctionExpression {
+	async := b.markAsyncFunction(function, n)
+	if !async && (n.Kind == ast.KindFunctionDeclaration || n.Kind == ast.KindFunctionExpression) {
 		b.markFunctionPrototype(function, n)
 	}
 	b.nodes[function-1].name = b.text(name)
@@ -143,7 +141,7 @@ func (b *irBuilder) functionIdentity(n *ast.Node, value, function, self int) int
 	needed := false
 	for i := function; i <= len(b.nodes); i++ {
 		node := b.nodes[i-1]
-		if node.kind == 3 && node.symbol == self && (!direct[i] || b.nodes[function-1].fourth != 0 && b.nodes[b.nodes[function-1].fourth-1].name != 0) {
+		if node.kind == 3 && node.symbol == self && (!direct[i] || b.nodes[function-1].right != 0 || b.nodes[function-1].fourth != 0 && b.nodes[b.nodes[function-1].fourth-1].name != 0) {
 			needed = true
 			break
 		}

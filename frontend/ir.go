@@ -1168,7 +1168,9 @@ func exportIR(s *session) (result []byte, err error) {
 			b.nodes[id-1].typ = typ
 			b.symbols[symbol-1].typ = typ
 			b.symbols[symbol-1].function = id
-			b.markFunctionPrototype(id, n)
+			if !b.markAsyncFunction(id, n) {
+				b.markFunctionPrototype(id, n)
+			}
 			functions[n] = id
 			if last == 0 {
 				b.functions = id
