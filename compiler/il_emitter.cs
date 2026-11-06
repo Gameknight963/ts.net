@@ -92,7 +92,7 @@ internal static partial class CompilerFunctions
         if (n.kind == NodeKind.Name && b.raw_slot(n.symbol) == -6) { b.load_storage(n.symbol); return; }
         if (il_integer_remainder(entry, c, b))
         {
-            b.load_storage(get_node(n.left, c).symbol); b.emit(0x20, (int)number(get_token(get_node(n.right, c).token, c).text, c)); b.op(0x5e); return;
+            il_integer(n.left, c, b); b.emit(0x20, (int)number(get_token(get_node(n.right, c).token, c).text, c)); b.op(0x5e); return;
         }
         if (n.kind == NodeKind.Number && il_int_result(entry, c))
         {

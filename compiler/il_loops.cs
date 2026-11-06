@@ -202,8 +202,10 @@ internal static partial class CompilerFunctions
     {
         Node n = get_node(entry, c);
         if (n.kind != NodeKind.Binary || !is_text(get_token(n.token, c).text, text_modulo, c)) { return false; }
-        Node left = get_node(n.left, c); Node right = get_node(n.right, c);
-        if (left.kind != NodeKind.Name || b.raw_slot(left.symbol) != -6 || b.nonnegative_ints.at(left.symbol) == 0 || right.kind != NodeKind.Number) { return false; }
+        Node right = get_node(n.right, c);
+        // Bitwise expressions can prove a nonnegative int without a loop guard.
+        // This proof also excludes general numbers and negative zero.
+        if (right.kind != NodeKind.Number || !il_nonnegative_integer(n.left, c, b)) { return false; }
         double divisor = number(get_token(right.token, c).text, c);
         return divisor > 0 && divisor <= 2147483647 && divisor == (double)(int)divisor;
     }
