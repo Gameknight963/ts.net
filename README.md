@@ -11,6 +11,28 @@ The first build downloads the pinned Microsoft TypeScript frontend source.
 
 Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
+## Current feature completion
+
+42%.
+
+<details>
+
+| Feature | Points | Current support |
+|---|---|---|
+| Values and operators | 7 / 10 | Numbers, strings, booleans, null, undefined, arithmetic, comparisons and bitwise operators. <br> BigInt, symbols and some operators are missing. |
+| Control flow | 9 / 10 | Conditions, loops, for-of, switch, labels, break and continue. For-in is missing. |
+| Functions | 8 / 10 | Closures, callbacks, overloads, default/optional/rest parameters and destructuring. General this, call/apply/bind and generators are missing. |
+| Objects and arrays | 7 / 10 | Structural objects, computed properties, spreads, destructuring and sparse arrays. Accessors and general prototype behavior are missing. |
+| Types and generics | 5 / 10 | Microsoft's type checking, interfaces, aliases, basic generics and union/nullable storage. Runtime representations still have gaps. |
+| Modules | 4 / 5 | Imports, exports, default exports and multiple files. Dynamic import is missing. |
+| Enums | 0 / 5 | Not implemented |
+| Classes and inheritance | 0 / 15 | Not implemented |
+| Exceptions | 0 / 10 | Not implemented |
+| Async | 0 / 10 | Not implemented |
+| Standard library | 2 / 5 | Selected Number/Object helpers and array/string methods. Many built-ins are missing. |
+
+</details>
+
 ## Current performance
 
 As of [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9):
