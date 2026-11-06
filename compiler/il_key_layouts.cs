@@ -41,11 +41,17 @@ void il_prepare_key_layouts(Compiler c, IlBackend b)
             if (shared != 0) { b.literal_constructors.at_mut(i) = shared; continue; }
             templates.push((int)i); Vector<byte> name = numbered_name('K', (int)i); int parent = b.classes.at(n.type);
             int type = b.plan.type(name.view(), parent, 0x101); int constructor = b.plan.method0(5, type, 0x1886, -1, ".ctor");
-            b.literal_classes.at_mut(i) = type; b.literal_constructors.at_mut(i) = constructor; b.begin(constructor); b.emit(0xfe09, 0); b.emit(0x28, b.constructor(n.type)); b.op(0x2a);
+            b.literal_classes.at_mut(i) = type; b.literal_constructors.at_mut(i) = constructor; b.begin(constructor); b.emit(0xfe09, 0); b.emit(0x28, b.constructor(n.type));
+            if(il_has_dynamic_indices(n.type,c))
+            {
+                for(int member=get_type(n.type,c).fields;member!=0;member=get_field(member,c).next){b.emit(0xfe09,0);il_text(get_field(member,c).name,c,b);b.call(RuntimeMember.DeleteOwn);b.op(0x26);}
+                for(int property=n.children;property!=0;property=get_node(property,c).next){b.emit(0xfe09,0);il_text(get_node(property,c).name,c,b);b.call(RuntimeMember.Undefined);b.call(RuntimeMember.DefineOwn);}
+            }
+            b.op(0x2a);
             b.begin(b.plan.method0(5, type, 0xc6, -5, "OwnKeys")); b.emit(0xfe09, 0);
-            int count = 0; bool text_keys = true; int child = n.children; while (child != 0) { count++; int nameLocal = get_node(child, c).name; if (text_size(nameLocal, c) > 0 && text_byte(nameLocal, 0, c) >= '0' && text_byte(nameLocal, 0, c) <= '9') { text_keys = false; } child = get_node(child, c).next; }
+            int count = 0; bool text_keys = true; int child = n.children; while (child != 0) { int nameLocal = get_node(child,c).name;if(il_has_dynamic_indices(n.type,c)){child=get_node(child,c).next;continue;} count++; if (text_size(nameLocal, c) > 0 && text_byte(nameLocal, 0, c) >= '0' && text_byte(nameLocal, 0, c) <= '9') { text_keys = false; } child = get_node(child, c).next; }
             b.emit(0x20, count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType)); int index = 0; child = n.children;
-            while (child != 0) { Node p = get_node(child, c); b.op(0x25); b.emit(0x20, index++); il_text(p.name, c, b); b.op(0xa2); child = p.next; }
+            while (child != 0) { Node p = get_node(child, c);if(il_has_dynamic_indices(n.type,c)){child=p.next;continue;} b.op(0x25); b.emit(0x20, index++); il_text(p.name, c, b); b.op(0xa2); child = p.next; }
             b.call(text_keys ? RuntimeMember.KeysFromTextFields : RuntimeMember.KeysFromFixed); b.op(0x2a); il_enumeration_shape(n.type, type, i, c, b);
         }
     }

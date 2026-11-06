@@ -81,7 +81,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_enumeration_shape(int type, int klass, int literal, Compiler c, IlBackend b)
     {
-        if (!b.enumerate_values && !b.enumerate_entries) { return; }
+        if ((!b.enumerate_values && !b.enumerate_entries) || il_has_dynamic_indices(type,c)) { return; }
         Vector<int> fields = new Vector<int>();
         if (literal == 0)
         {

@@ -78,7 +78,9 @@ void il_spread_shapes(Compiler c, IlBackend b)
             int member = get_type(type, c).fields;
             while (member != 0)
             {
-                Field record = get_field(member, c); b.emit(0xfe09, 0); b.empty(record.type, c); b.store_field(member, c); member = record.next;
+                Field record = get_field(member, c); b.emit(0xfe09, 0); b.empty(record.type, c); b.store_field(member, c);
+                if(il_has_dynamic_indices(type,c)){b.emit(0xfe09,0);il_text(record.name,c,b);b.call(RuntimeMember.DeleteOwn);b.op(0x26);}
+                member = record.next;
             }
             b.op(0x2a);
             b.begin(b.plan.method1(5, klassLocal, 0xc6, -2, -4, "HasOwn"));
@@ -97,7 +99,7 @@ void il_spread_shapes(Compiler c, IlBackend b)
                 Field record = get_field(member, c); int absent = b.label();
                 b.emit(0xfe09, 0); il_text(record.name, c, b); b.call(RuntimeMember.HasOwnBase); b.emit(0x39, absent);
                 b.emit(0xfe09, 0); b.emit(0xfe09, 0); il_text(record.name, c, b); b.call(RuntimeMember.Get); b.from_object(record.type, c); b.store_field(member, c);
-                b.emit(0xfe09, 0); il_text(record.name, c, b); b.call(RuntimeMember.Undefined); b.call(RuntimeMember.DefineOwn);
+                if(!il_dynamic_index_field(member,c)){b.emit(0xfe09, 0); il_text(record.name, c, b); b.call(RuntimeMember.Undefined); b.call(RuntimeMember.DefineOwn);}
                 b.mark(absent); member = record.next;
             }
             b.op(0x2a);

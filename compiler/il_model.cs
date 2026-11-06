@@ -4,7 +4,7 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 internal enum RuntimeMember
 {
-    DynamicObjectType, DynamicObjectConstructor, AsyncFunction, AsyncAwait, AsyncAwaitContinue, MarkFunctionPrototype, In, InNumber, SealModuleNamespace, InitializeEnum, BuiltinNamespace, CopyObjectRest, DefineAccessor, ResolveThis, NewTarget, EnableNewTarget, Arguments, EnableArguments, SuperBase, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, DefineAutoAccessor, InitializeAutoAccessor, DefinePrivateMember, InitializePrivateMember, PrivateGet, PrivateSet, PrivateHas, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    DynamicObjectType, DynamicObjectConstructor, AsyncFunction, AsyncAwait, AsyncAwaitContinue, MarkFunctionPrototype, In, InNumber, SealModuleNamespace, InitializeEnum, BuiltinNamespace, CopyObjectRest, DeleteOwn, DefineAccessor, ResolveThis, NewTarget, EnableNewTarget, Arguments, EnableArguments, SuperBase, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, DefineAutoAccessor, InitializeAutoAccessor, DefinePrivateMember, InitializePrivateMember, PrivateGet, PrivateSet, PrivateHas, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, NumberAtIsNullish, LooseEqual, LooseEqualNumber, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
@@ -175,11 +175,17 @@ internal sealed partial class IlBackend
     public int field_storage(int type, Compiler c) { return get_type(type, c).kind == TypeKind.Number ? -3 : this.type(type, c); }
     public void load_field(int member, Compiler c)
     {
+        if (il_dynamic_index_field(member,c)) { il_text(get_field(member,c).name,c,this);this.call(RuntimeMember.Get);this.from_object(get_field(member,c).type,c);return; }
         this.emit(0x7b, this.field_token(member));
         if (get_type(get_field(member, c).type, c).kind == TypeKind.Number) { this.call(RuntimeMember.DecodeNumberField); }
     }
     public void store_field(int member, Compiler c)
     {
+        if (il_dynamic_index_field(member,c))
+        {
+            int type=get_field(member,c).type;int value=this.local(this.type(type,c));this.emit(0xfe0e,value);
+            il_text(get_field(member,c).name,c,this);this.emit(0xfe0c,value);this.box(type,c);this.call(RuntimeMember.Set);this.op(0x26);return;
+        }
         if (get_type(get_field(member, c).type, c).kind == TypeKind.Number) { this.call(RuntimeMember.EncodeNumberField); }
         this.emit(0x7d, this.field_token(member));
     }
@@ -528,6 +534,7 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.InitializeEnum, b.plan.method1(6, js, 0, -1, -5, "InitializeEnum"));
         b.ref_set(RuntimeMember.ObjectSpread, b.plan.method2(6, js, 0, -1, -5, -5, "ObjectSpread"));
         b.ref_set(RuntimeMember.DefineOwn, b.plan.method2(6, obj, 1, -1, -4, -5, "DefineOwn"));
+        b.ref_set(RuntimeMember.DeleteOwn, b.plan.method1(6, obj, 1, -2, -4, "DeleteOwn"));
         b.ref_set(RuntimeMember.MarkPresent, b.plan.method1(6, obj, 1, -1, -4, "MarkPresent"));
         b.ref_set(RuntimeMember.TryCloneSpread, b.plan.method1(6, js, 2, -5, -5, "TryCloneSpread"));
         b.ref_set(RuntimeMember.OwnKeysBase, b.plan.method0(6, obj, 1, -5, "OwnKeys"));
@@ -775,7 +782,7 @@ bool il_logical_assignment(int op, Compiler c)
                             b.emit(0xfe09, 0); b.load_field(actual, c); b.convert(original, record.type, c); b.op(0x2a);
                             b.begin(b.plan.method1(5, klass, 0x1e6, -1, value_type, set.view()));
                             b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.convert(record.type, original, c); b.store_field(actual, c);
-                            if (b.spread_types.at(type) != 0) { b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0x6f, b.RuntimeToken(RuntimeMember.MarkPresent)); }
+                            if (b.spread_types.at(type) != 0 && !il_dynamic_index_field(member,c)) { b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0x6f, b.RuntimeToken(RuntimeMember.MarkPresent)); }
                             b.op(0x2a);
                         }
                         else
@@ -854,7 +861,10 @@ bool il_logical_assignment(int op, Compiler c)
                 }
                 int constructor = b.plan.method0(5, klass, 0x1886, -1, ".ctor");
                 b.constructors.at_mut(type) = constructor;
-                b.begin(constructor); b.emit(0xfe09, 0); b.call(RuntimeMember.Constructor); b.op(0x2a);
+                b.begin(constructor); b.emit(0xfe09, 0); b.call(RuntimeMember.Constructor);
+                for(int numeric=get_type(type,c).fields;numeric!=0;numeric=get_field(numeric,c).next)
+                    if(il_has_dynamic_indices(type,c)){b.emit(0xfe09,0);il_text(get_field(numeric,c).name,c,b);b.call(RuntimeMember.Undefined);b.call(RuntimeMember.DefineOwn);}
+                b.op(0x2a);
                 int member = get_type(type, c).fields;
                 while (member != 0)
                 {
@@ -870,15 +880,15 @@ bool il_logical_assignment(int op, Compiler c)
                     TypeKind member_kind = get_type(record.type, c).kind;
                     if (member_kind == TypeKind.String || member_kind == TypeKind.Shape || member_kind == TypeKind.Array) { b.from_object(record.type, c); }
                     b.store_field(member, c);
-                    if (b.spread_types.at(type) != 0) { b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0x6f, b.RuntimeToken(RuntimeMember.MarkPresent)); }
+                    if (b.spread_types.at(type) != 0 && !il_dynamic_index_field(member,c)) { b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0x6f, b.RuntimeToken(RuntimeMember.MarkPresent)); }
                     b.op(0x2a);
                     member = record.next;
                 }
                 b.begin(b.plan.method0(5, klass, 0xc6, -5, "OwnKeys"));
                 b.emit(0xfe09, 0); int key_count = 0; bool text_keys = true; member = get_type(type, c).fields;
-                while (member != 0) { key_count++; int nameLocal = get_field(member, c).name; if (text_size(nameLocal, c) > 0 && text_byte(nameLocal, 0, c) >= '0' && text_byte(nameLocal, 0, c) <= '9') { text_keys = false; } member = get_field(member, c).next; }
+                while (member != 0) { if(!il_has_dynamic_indices(type,c)){key_count++; int nameLocal = get_field(member, c).name; if (text_size(nameLocal, c) > 0 && text_byte(nameLocal, 0, c) >= '0' && text_byte(nameLocal, 0, c) <= '9') { text_keys = false; }} member = get_field(member, c).next; }
                 b.emit(0x20, key_count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType)); member = get_type(type, c).fields; int key_index = 0;
-                while (member != 0) { b.op(0x25); b.emit(0x20, key_index++); il_text(get_field(member, c).name, c, b); b.op(0xa2); member = get_field(member, c).next; }
+                while (member != 0) { if(!il_has_dynamic_indices(type,c)){b.op(0x25); b.emit(0x20, key_index++); il_text(get_field(member, c).name, c, b); b.op(0xa2);} member = get_field(member, c).next; }
                 b.call(text_keys ? RuntimeMember.KeysFromTextFields : RuntimeMember.KeysFromFixed); b.op(0x2a);
                 b.begin(b.plan.method0(5, klass, 0xc6, -3, "OwnKeyCount"));
                 b.emit(0xfe09, 0); b.emit(0x20, key_count); b.call(RuntimeMember.KeyCountWithFixed); b.op(0x2a);
@@ -888,7 +898,8 @@ bool il_logical_assignment(int op, Compiler c)
                 {
                     Field record = get_field(member, c); int next = b.label();
                     b.emit(0xfe09, 1); il_text(record.name, c, b); b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
-                    b.emit(0x20, 1); b.op(0x2a); b.mark(next); member = record.next;
+                    if(il_dynamic_index_field(member,c)){b.emit(0xfe09,0);b.emit(0xfe09,1);b.call(RuntimeMember.HasOwnBase);}else b.emit(0x20,1);
+                    b.op(0x2a); b.mark(next); member = record.next;
                 }
                 b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.call(RuntimeMember.HasOwnBase); b.op(0x2a);
                 b.begin(b.plan.method1(5, klass, 0xc6, -5, -4, "Get"));
@@ -914,7 +925,7 @@ bool il_logical_assignment(int op, Compiler c)
                         b.plan.StringLiteral(b.method, "property write violates static field type"); b.emit(0x28, (int)b.cast(record.type));
                     }
                     b.store_field(member, c);
-                    if (b.spread_types.at(type) != 0) { b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0x6f, b.RuntimeToken(RuntimeMember.MarkPresent)); }
+                    if (b.spread_types.at(type) != 0 && !il_dynamic_index_field(member,c)) { b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0x6f, b.RuntimeToken(RuntimeMember.MarkPresent)); }
                     b.emit(0xfe09, 2); b.op(0x2a); b.mark(next);
                     member = record.next;
                 }
