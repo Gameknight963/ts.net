@@ -1,20 +1,11 @@
 package main
 
-/*
-#include <stdint.h>
-#include <stdlib.h>
-*/
-import "C"
-
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
-	"unsafe"
 
 	"github.com/microsoft/typescript-go/internal/ast"
 	"github.com/microsoft/typescript-go/internal/bundled"
@@ -42,14 +33,6 @@ type session struct {
 	file    *ast.SourceFile
 }
 
-// The table roots Go compiler objects and rejects stale handles. Calls are
-// serialized for this experiment. No Go pointer is returned to C or Crust.
-var registry = struct {
-	sync.Mutex
-	next     uint64
-	sessions map[uint64]*session
-}{sessions: make(map[uint64]*session)}
-
 func encode(value any) string {
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -57,17 +40,7 @@ func encode(value any) string {
 	}
 	return string(data)
 }
-
 func errorReport(message string) string { return encode(map[string]string{"error": message}) }
-
-func recoverExport(output **C.char, status *C.int) {
-	if failure := recover(); failure != nil {
-		if output != nil {
-			*output = C.CString(errorReport(fmt.Sprintf("frontend panic: %v", failure)))
-		}
-		*status = internalFailure
-	}
-}
 
 func load(path string) (*session, string, int) {
 	absolute, err := filepath.Abs(path)
@@ -165,94 +138,4 @@ func inspect(s *session, name string) (string, int) {
 		result["initializerKind"] = initializer.Kind.String()
 	}
 	return encode(result), ok
-}
-
-//export tsnet_open_file
-func tsnet_open_file(path *C.char, handle *C.uint64_t, output **C.char) (status C.int) {
-	if output != nil {
-		*output = nil
-	}
-	if handle != nil {
-		*handle = 0
-	}
-	defer recoverExport(output, &status)
-	if path == nil || handle == nil || output == nil {
-		return invalidArgument
-	}
-	s, report, code := load(C.GoString(path))
-	if code == ok {
-		registry.Lock()
-		registry.next++
-		id := registry.next
-		registry.sessions[id] = s
-		registry.Unlock()
-		*handle = C.uint64_t(id)
-	}
-	*output = C.CString(report)
-	return C.int(code)
-}
-
-//export tsnet_inspect_binding
-func tsnet_inspect_binding(handle C.uint64_t, name *C.char, output **C.char) (status C.int) {
-	if output != nil {
-		*output = nil
-	}
-	defer recoverExport(output, &status)
-	if name == nil || output == nil {
-		return invalidArgument
-	}
-	registry.Lock()
-	defer registry.Unlock()
-	s, found := registry.sessions[uint64(handle)]
-	if !found {
-		*output = C.CString(errorReport("invalid or closed session"))
-		return invalidHandle
-	}
-	report, code := inspect(s, C.GoString(name))
-	*output = C.CString(report)
-	return C.int(code)
-}
-
-//export tsnet_close_file
-func tsnet_close_file(handle C.uint64_t) C.int {
-	registry.Lock()
-	defer registry.Unlock()
-	if _, found := registry.sessions[uint64(handle)]; !found {
-		return invalidHandle
-	}
-	delete(registry.sessions, uint64(handle))
-	return ok
-}
-
-//export tsnet_free_buffer
-func tsnet_free_buffer(buffer *C.char) { C.free(unsafe.Pointer(buffer)) }
-
-func main() {}
-
-//export tsnet_export_ir
-func tsnet_export_ir(handle C.uint64_t, output **C.char, length *C.int) (status C.int) {
-	if output != nil {
-		*output = nil
-	}
-	if length != nil {
-		*length = 0
-	}
-	if output == nil || length == nil {
-		return invalidArgument
-	}
-	defer recoverExport(output, &status)
-	registry.Lock()
-	defer registry.Unlock()
-	s, found := registry.sessions[uint64(handle)]
-	if !found {
-		return invalidHandle
-	}
-	data, err := exportIR(s)
-	if err != nil {
-		data = []byte(err.Error())
-		status = compilerFailure
-	}
-	*output = (*C.char)(C.CBytes(data))
-	*length = C.int(len(data))
-	return status
 }

@@ -9,10 +9,8 @@ $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
     if (!$SkipCompilerBuild) {
-        & "$PSScriptRoot/native-frontend.ps1"
-        & "$PSScriptRoot/build-metadata-writer.ps1"
-        & crust build --release
-        if ($LASTEXITCODE) { throw 'Crust compiler build failed' }
+        & dotnet build "$root/compiler/Tsnet.Compiler.csproj" -c Release --nologo -v quiet
+        if ($LASTEXITCODE) { throw 'Compiler build failed' }
     }
     $inputPath = (Resolve-Path -LiteralPath $InputFile).Path
     $outputPath = [IO.Path]::GetFullPath((Join-Path $root $OutputDirectory))
@@ -24,10 +22,10 @@ try {
         $stalePath = Join-Path $applicationPath $staleName
         if (Test-Path -LiteralPath $stalePath) { Remove-Item -LiteralPath $stalePath }
     }
-    & "$root/target/crust/tsnetc/tsnetc.exe" $inputPath "$applicationPath/App.dll"
+    & dotnet "$root/compiler/bin/Release/net10.0/tsnetc.dll" $inputPath "$applicationPath/App.dll"
     if ($LASTEXITCODE) { throw 'TypeScript compilation failed' }
     # Build the shared runtime incrementally; generated applications go directly
-    # from Crust's IL plan to an assembly without a C# compilation step.
+    # from an IL plan to an assembly without compiling generated C# source.
     '<configuration><packageSources><clear /></packageSources></configuration>' |
         Set-Content -LiteralPath "$outputPath/NuGet.Config" -Encoding utf8
     & dotnet build "$root/runtime/Tsnet.Runtime.csproj" -c Release --configfile "$outputPath/NuGet.Config" --nologo -v quiet

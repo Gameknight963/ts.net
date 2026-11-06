@@ -3,7 +3,7 @@
 ## Project direction
 
 - Compile actual TypeScript using Microsoft’s compiler frontend.
-- Write the compiler in Crust. Use the existing C# assembly writer where needed.
+- Write the compiler in C#, using System.Reflection.Metadata for assembly output.
 - Expand TypeScript support while improving performance.
 - Aim to beat V8 substantially, but support performance claims with measurements.
 - When an approach stalls, inspect the generated IL and machine code, compare
@@ -15,8 +15,7 @@
 
 - Preserve TypeScript behavior when optimizing. Use proofs or runtime guards
   with a correct fallback.
-- Prefer safe Crust code where practical. Keep raw pointers and unsafe code
-  where they make sense.
+- Prefer safe C# code. Use unsafe code only where it makes sense.
 - Observe Crust’s strengths, annoyances, and architectural issues while working.
   Put these observations under artifacts; do not commit them.
 - Do not introduce dependencies with licensing obligations without discussing

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <UseAppHost>false</UseAppHost>
+    <AssemblyName>tsnetc</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../backend/metadata/Writer.cs" Link="MetadataWriter.cs" />
+  </ItemGroup>
+  <Import Project="Frontend.targets" />
+</Project>

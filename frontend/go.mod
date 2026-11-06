@@ -15,4 +15,4 @@ require (
 	golang.org/x/text v0.38.0 // indirect
 )
 
-replace github.com/microsoft/typescript-go => ../../../artifacts/typescript-native/tsc
+replace github.com/microsoft/typescript-go => ../artifacts/typescript-native/tsc

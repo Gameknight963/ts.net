@@ -1,41 +1,9 @@
+#nullable enable
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
-using System.Runtime.InteropServices;
 using System.Text;
-
-// This boundary accepts assembly concepts, not TypeScript syntax or types.
-// IDs belong to the input plan; metadata tokens are assigned only here.
-public static class NativeWriter
-{
-    [UnmanagedCallersOnly(EntryPoint = "tsnet_emit_assembly")]
-    public static unsafe int Emit(byte* data, int length, byte* path, byte* error, int capacity)
-    {
-        try
-        {
-            if (data == null || length < 4 || path == null || capacity < 0) throw new ArgumentException("Invalid writer arguments");
-            var plan = new AssemblyPlan(new BinaryReader(new MemoryStream(new ReadOnlySpan<byte>(data, length).ToArray())));
-            var image = plan.Build();
-            string destination = Marshal.PtrToStringUTF8((nint)path)!;
-            string temporary = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            try { File.WriteAllBytes(temporary, image); File.Move(temporary, destination, overwrite: true); }
-            finally { if (File.Exists(temporary)) File.Delete(temporary); }
-            return 0;
-        }
-        catch (Exception exception)
-        {
-            if (error != null && capacity > 0)
-            {
-                byte[] message = Encoding.UTF8.GetBytes(exception.Message);
-                int count = Math.Min(message.Length, capacity - 1);
-                message.AsSpan(0, count).CopyTo(new Span<byte>(error, count));
-                error[count] = 0;
-            }
-            return 1;
-        }
-    }
-}
 
 sealed class AssemblyPlan
 {
@@ -86,7 +54,7 @@ sealed class AssemblyPlan
             result ??= new StringBuilder();
             result.Append(Utf8.GetString(bytes, start, i - start));
             result.Append((char)(((bytes[i] & 15) << 12) | ((bytes[i + 1] & 63) << 6) | (bytes[i + 2] & 63)));
-            i += 2;start = i + 1;
+            i += 2; start = i + 1;
         }
         if (result == null) return Utf8.GetString(bytes);
         result.Append(Utf8.GetString(bytes, start, bytes.Length - start));
@@ -118,7 +86,8 @@ sealed class AssemblyPlan
                 case 4:
                     int owner = reader.ReadInt32();
                     typeRows[owner].Fields.Add(new(id, reader.ReadInt32(), reader.ReadInt32(), Text(reader))); break;
-                case 5: case 6:
+                case 5:
+                case 6:
                     var method = new MethodRow(id, reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32(), Parameters(reader), Text(reader));
                     methodRows.Add(id, method);
                     if (command == 5) typeRows[method.Owner].Methods.Add(method); else members.Add(method);
@@ -195,19 +164,51 @@ sealed class AssemblyPlan
             switch (instruction.Code)
             {
                 case -1: case 0x00: case 0x38: break;
-                case 0x14: case 0x16: case 0x20: case 0x23: case 0x72:
-                case 0x7e: case 0xfe06: case 0xfe09: case 0xfe0c: push = 1; break;
+                case 0x14:
+                case 0x16:
+                case 0x20:
+                case 0x23:
+                case 0x72:
+                case 0x7e:
+                case 0xfe06:
+                case 0xfe09:
+                case 0xfe0c: push = 1; break;
                 case 0x25: pop = 1; push = 2; break;
                 case 0x26: case 0x39: case 0x3a: case 0x80: case 0xfe0b: case 0xfe0e: pop = 1; break;
-                case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5d: case 0x5e:
-                case 0x5f: case 0x60: case 0x61: case 0x62: case 0x63: case 0x64:
-                case 0xfe01: case 0xfe02: case 0xfe03: case 0xfe04: case 0xfe05: pop = 2; push = 1; break;
+                case 0x58:
+                case 0x59:
+                case 0x5a:
+                case 0x5b:
+                case 0x5d:
+                case 0x5e:
+                case 0x5f:
+                case 0x60:
+                case 0x61:
+                case 0x62:
+                case 0x63:
+                case 0x64:
+                case 0xfe01:
+                case 0xfe02:
+                case 0xfe03:
+                case 0xfe04:
+                case 0xfe05: pop = 2; push = 1; break;
                 case 0x91: case 0x99: case 0x9a: pop = 2; push = 1; break;
-                case 0x65: case 0x66: case 0x69: case 0x6c: case 0x74: case 0x75: case 0x76: case 0x7b:
-                case 0x8c: case 0x8d: case 0xa5: pop = 1; push = 1; break;
+                case 0x65:
+                case 0x66:
+                case 0x69:
+                case 0x6c:
+                case 0x74:
+                case 0x75:
+                case 0x76:
+                case 0x7b:
+                case 0x8c:
+                case 0x8d:
+                case 0xa5: pop = 1; push = 1; break;
                 case 0x7d: pop = 2; break;
                 case 0xa1: case 0xa2: pop = 3; break;
-                case 0x28: case 0x6f: case 0x73:
+                case 0x28:
+                case 0x6f:
+                case 0x73:
                     int target = instruction.Operand;
                     if (!methodRows.ContainsKey(target)) target = specifications.First(s => s.Id == target).Method;
                     var called = methodRows[target];
@@ -256,7 +257,19 @@ sealed class AssemblyPlan
                 case 0xfe0c: il.LoadLocal(operand); break;
                 case 0xfe0e: il.StoreLocal(operand); break;
                 case 0x38: case 0x39: case 0x3a: il.Branch((ILOpCode)instruction.Code, Label(operand)); break;
-                case 0x28: case 0x6f: case 0x73: case 0x74: case 0x75: case 0x7b: case 0x7d: case 0x7e: case 0x80: case 0x8c: case 0x8d: case 0xa5: case 0xfe06:
+                case 0x28:
+                case 0x6f:
+                case 0x73:
+                case 0x74:
+                case 0x75:
+                case 0x7b:
+                case 0x7d:
+                case 0x7e:
+                case 0x80:
+                case 0x8c:
+                case 0x8d:
+                case 0xa5:
+                case 0xfe06:
                     if (operand == 0) throw new InvalidDataException($"Missing IL operand in {method.Name}, opcode {instruction.Code:x}");
                     il.OpCode((ILOpCode)instruction.Code); il.Token(Handle(operand)); break;
                 default: il.OpCode((ILOpCode)instruction.Code); break;

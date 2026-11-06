@@ -2,13 +2,11 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
-    & "$PSScriptRoot/native-frontend.ps1"
-    & "$PSScriptRoot/build-metadata-writer.ps1"
-    & crust check
-    if ($LASTEXITCODE) { throw 'Crust check failed' }
-    & crust build --release
-    if ($LASTEXITCODE) { throw 'Crust build failed' }
-    $compiler = "$root/target/crust/tsnetc/tsnetc.exe"
+    & dotnet build "$root/compiler/Tsnet.Compiler.csproj" -c Release --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Compiler build failed' }
+    $compiler = "$root/compiler/bin/Release/net10.0/tsnetc.dll"
+    [IO.Directory]::CreateDirectory("$root/artifacts/metadata-writer") | Out-Null
+    '<configuration><packageSources><clear /></packageSources></configuration>' | Set-Content "$root/artifacts/metadata-writer/NuGet.Config"
     $utf8 = New-Object System.Text.UTF8Encoding($false)
     $testRoot = "$root/artifacts/tests"
     [IO.Directory]::CreateDirectory($testRoot) | Out-Null
@@ -232,8 +230,21 @@ try {
         [IO.File]::WriteAllText($inputPath, $case.Source, $utf8)
         # Existing output must survive a failed frontend compilation.
         [IO.File]::WriteAllText($outputPath, '// sentinel', $utf8)
-        $message = @(& $compiler $inputPath $outputPath) -join "`n"
-        if ($LASTEXITCODE -eq 0 -or !$message.Contains($case.Error)) {
+        $start = New-Object System.Diagnostics.ProcessStartInfo
+        $start.FileName = (Get-Command dotnet).Source
+        $start.Arguments = '"' + $compiler + '" "' + $inputPath + '" "' + $outputPath + '"'
+        $start.UseShellExecute = $false
+        $start.CreateNoWindow = $true
+        $start.RedirectStandardOutput = $true
+        $start.RedirectStandardError = $true
+        $process = [Diagnostics.Process]::Start($start)
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $message = $stdout.Result + $stderr.Result
+        $status = $process.ExitCode
+        $process.Dispose()
+        if ($status -eq 0 -or !$message.Contains($case.Error)) {
             throw "Expected frontend diagnostic: $($case.Source)`n$message"
         }
         if ([IO.File]::ReadAllText($outputPath) -ne '// sentinel') { throw 'Frontend failure overwrote output' }
@@ -241,13 +252,15 @@ try {
     }
     Write-Host "PASS $index frontend rejection and output-preservation checks"
     & "$PSScriptRoot/test-compiler-storage.ps1"
-    & "$PSScriptRoot/test-metadata-writer.ps1"
+
     & dotnet build tests/inspect-writer/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Assembly writer inspector build failed' }
     & dotnet tests/inspect-writer/bin/Release/net10.0/Inspect.dll
     if ($LASTEXITCODE) { throw 'Assembly writer string checks failed' }
-    & dotnet msbuild tsnet.crproj -t:Check -nologo -v:minimal
-    if ($LASTEXITCODE) { throw 'Visual Studio project check failed' }
+    & dotnet build tests/inspect-compiler/Inspect.csproj -c Release --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Compiler inspector build failed' }
+    & dotnet tests/inspect-compiler/bin/Release/net10.0/Inspect.Compiler.dll
+    if ($LASTEXITCODE) { throw 'Compiler storage or writer preservation checks failed' }
     Write-Host 'All tests passed.'
 }
 finally { Pop-Location }

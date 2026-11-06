@@ -1,0 +1,42 @@
+<Project>
+  <PropertyGroup>
+    <FrontendDirectory>$(MSBuildThisFileDirectory)../frontend</FrontendDirectory>
+    <FrontendCheckout>$(MSBuildThisFileDirectory)../artifacts/typescript-native</FrontendCheckout>
+    <FrontendRevision>1e4744d68260a7cb91b62b12edc3f6a2187faaf1</FrontendRevision>
+    <GoExe Condition="'$(GoExe)' == '' and Exists('C:/Program Files/Go/bin/go.exe')">C:/Program Files/Go/bin/go.exe</GoExe>
+    <GoExe Condition="'$(GoExe)' == ''">go</GoExe>
+    <FrontendExeExtension Condition="'$(OS)' == 'Windows_NT'">.exe</FrontendExeExtension>
+    <FrontendOS Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">windows</FrontendOS>
+    <FrontendOS Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux-'))">linux</FrontendOS>
+    <FrontendOS Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-'))">darwin</FrontendOS>
+    <FrontendArch Condition="$([System.String]::Copy('$(RuntimeIdentifier)').EndsWith('-x64'))">amd64</FrontendArch>
+    <FrontendArch Condition="$([System.String]::Copy('$(RuntimeIdentifier)').EndsWith('-arm64'))">arm64</FrontendArch>
+    <FrontendExeExtension Condition="'$(FrontendOS)' != '' and '$(FrontendOS)' != 'windows'"></FrontendExeExtension>
+    <FrontendExeExtension Condition="'$(FrontendOS)' == 'windows'">.exe</FrontendExeExtension>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrontendSource Include="$(FrontendDirectory)/*.go;$(FrontendDirectory)/go.mod;$(FrontendDirectory)/go.sum" />
+  </ItemGroup>
+  <Target Name="PrepareFrontendSource">
+    <MakeDir Directories="$(FrontendCheckout)" Condition="!Exists('$(FrontendCheckout)')" />
+    <Exec Command="git clone --depth 1 --branch v7.0.2 --filter=blob:none --sparse https://github.com/microsoft/TypeScript.git &quot;$(FrontendCheckout)&quot;" Condition="!Exists('$(FrontendCheckout)/.git')" />
+    <Exec Command="git -C &quot;$(FrontendCheckout)&quot; sparse-checkout set tsc" Condition="!Exists('$(FrontendCheckout)/tsc/internal/compiler/program.go')" />
+    <Exec Command="git -C &quot;$(FrontendCheckout)&quot; rev-parse HEAD" ConsoleToMSBuild="true" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="ActualFrontendRevision" />
+    </Exec>
+    <Error Condition="'$(ActualFrontendRevision)' != '$(FrontendRevision)'" Text="Expected TypeScript revision $(FrontendRevision), found $(ActualFrontendRevision)" />
+  </Target>
+  <Target Name="BuildFrontend" AfterTargets="Build" DependsOnTargets="PrepareFrontendSource"
+          Inputs="@(FrontendSource);$(MSBuildThisFileFullPath)" Outputs="$(TargetDir)tsnet-frontend$(FrontendExeExtension)">
+    <Exec WorkingDirectory="$(FrontendDirectory)" Command="&quot;$(GoExe)&quot; build -mod=readonly -trimpath -o &quot;$(TargetDir)tsnet-frontend$(FrontendExeExtension)&quot; ."
+          EnvironmentVariables="CGO_ENABLED=0;GOWORK=off;GOOS=$(FrontendOS);GOARCH=$(FrontendArch);GOCACHE=$(MSBuildThisFileDirectory)../artifacts/go-build-cache;GOMODCACHE=$(MSBuildThisFileDirectory)../artifacts/go-mod-cache" />
+  </Target>
+  <Target Name="CopyFrontendNotices" AfterTargets="Build">
+    <Copy SourceFiles="$(FrontendCheckout)/LICENSE.txt" DestinationFiles="$(TargetDir)TypeScript-LICENSE.txt" />
+    <Copy SourceFiles="$(FrontendCheckout)/NOTICE.txt" DestinationFiles="$(TargetDir)TypeScript-NOTICE.txt" Condition="Exists('$(FrontendCheckout)/NOTICE.txt')" />
+  </Target>
+  <Target Name="PublishFrontend" AfterTargets="Publish">
+    <Copy SourceFiles="$(TargetDir)tsnet-frontend$(FrontendExeExtension);$(TargetDir)TypeScript-LICENSE.txt" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="$(TargetDir)TypeScript-NOTICE.txt" DestinationFolder="$(PublishDir)" Condition="Exists('$(TargetDir)TypeScript-NOTICE.txt')" />
+  </Target>
+</Project>
