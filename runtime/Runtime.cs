@@ -139,6 +139,7 @@ public static partial class Js
         _ => !ReferenceEquals(value, Undefined)
     };
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object Get(object receiver, string key) => receiver switch
     {
         TsObject obj => obj.Get(key),
