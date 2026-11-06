@@ -68,3 +68,17 @@ namespace Tree {
         console.log('function-scope', read(), FunctionScope.read(), original===read);
     }
 }
+
+let capturedEnum: any;
+namespace Tree {
+    export enum Replaced {
+        First = replaceEnum(),
+        Second = First + 1,
+    }
+}
+function replaceEnum(): number {
+    capturedEnum = Tree.Replaced;
+    (Tree as any).Replaced = {First: 31, Second: 32};
+    return 21;
+}
+console.log('enum-capture', capturedEnum.First, capturedEnum.Second, capturedEnum[22], Tree.Replaced.First, Tree.Replaced.Second);

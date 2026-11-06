@@ -183,6 +183,21 @@ func (b *irBuilder) enumDeclaration(n *ast.Node) int {
 		last = b.nodes[last-1].next
 	}
 	appendStatement := func(statement int) { b.nodes[last-1].next = statement; last = statement }
+	// The emitted enum IIFE captures its object once. Computed initializers may
+	// replace the public binding without redirecting subsequent member writes.
+	owner := b.enumOwner(n, n)
+	ownerType := b.nodes[owner-1].typ
+	b.symbols = append(b.symbols, irSymbol{name: b.text("$enum"), typ: ownerType})
+	binding := len(b.symbols)
+	local := b.node(13, n, "$enum")
+	b.nodes[local-1].symbol = binding
+	b.nodes[local-1].typ = ownerType
+	b.nodes[local-1].left = owner
+	appendStatement(local)
+	symbol := b.c.GetSymbolAtLocation(n.Name())
+	previousOwner := b.namespaceOwners[symbol]
+	b.namespaceOwners[symbol] = binding
+	defer func() { b.namespaceOwners[symbol] = previousOwner }()
 	for _, member := range n.AsEnumDeclaration().Members.Nodes {
 		name, known := b.literalPropertyName(member.Name())
 		if !known {
