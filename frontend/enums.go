@@ -61,6 +61,11 @@ func (b *irBuilder) enumLiteral(n *ast.Node, value any) int {
 }
 func (b *irBuilder) enumOwner(n *ast.Node, declaration *ast.Node) int {
 	name := declaration.Name()
+	if owner := b.namespaceExports[b.c.GetSymbolAtLocation(name)]; owner != nil {
+		id := b.namespaceReference(name, owner)
+		b.nodes[id-1].typ = b.typ(b.c.GetTypeOfSymbol(b.c.GetSymbolAtLocation(name)))
+		return id
+	}
 	symbol := b.symbol(name)
 	id := b.node(3, n, name.Text())
 	b.nodes[id-1].name = b.text(name.Text())

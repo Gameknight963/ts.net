@@ -432,7 +432,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 				return b.moduleNamespaceReference(n, target)
 			}
 		}
-		if owner := b.namespaceExports[b.c.GetSymbolAtLocation(n)]; owner != nil {
+		if owner := b.namespaceExports[b.c.GetSymbolAtLocation(n)]; owner != nil && !namespaceLocalFunction(n, owner, b.c.GetSymbolAtLocation(n)) {
 			return b.namespaceReference(n, owner)
 		}
 		if (n.Text() == "console" || n.Text() == "performance" || n.Text() == "Object" || n.Text() == "Number") && b.isBuiltinIdentifier(n) {

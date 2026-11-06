@@ -20,6 +20,16 @@ internal static partial class CompilerFunctions
         }
         else
         {
+            // Exported namespace bindings write their property immediately,
+            // so later defaults can read an earlier destructured export.
+            if (binding.fourth != 0)
+            {
+                Node target = get_node(binding.fourth, c);
+                int value = b.local(b.type(binding.type, c)); b.emit(0xfe0e, value);
+                il_boxed(target.left, c, b); il_text(target.name, c, b);
+                b.emit(0xfe0c, value); b.box(binding.type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26);
+                return;
+            }
             if (b.global_fields.at(binding.symbol) != 0 || b.capture_fields.at(binding.symbol) != 0) { b.initialize(binding.symbol); return; }
             if (b.iteration_vars.at(binding.symbol) == 0) { b.slots.at_mut(binding.symbol) = b.local(b.type(binding.type, c)); }
             b.store(binding.symbol);

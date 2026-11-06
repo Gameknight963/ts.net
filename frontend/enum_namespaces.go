@@ -2,22 +2,64 @@ package main
 
 import "github.com/microsoft/typescript-go/internal/ast"
 
+func enumNamespaceBody(n *ast.Node) []*ast.Node {
+	if n.Body() == nil {
+		return nil
+	}
+	if n.Body().Kind == ast.KindModuleBlock {
+		return n.Body().AsModuleBlock().Statements.Nodes
+	}
+	if n.Body().Kind == ast.KindModuleDeclaration {
+		return []*ast.Node{n.Body()}
+	}
+	return nil
+}
+
+func namespaceExported(n *ast.Node) bool {
+	return ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsExport != 0 || n.Parent != nil && n.Parent.Kind == ast.KindModuleDeclaration
+}
+
+func namespaceBindingNames(n *ast.Node, register func(*ast.Node)) {
+	if n.Kind == ast.KindIdentifier {
+		register(n)
+		return
+	}
+	if n.Kind == ast.KindArrayBindingPattern || n.Kind == ast.KindObjectBindingPattern {
+		for _, element := range n.Elements() {
+			if element.Name() != nil {
+				namespaceBindingNames(element.Name(), register)
+			}
+		}
+	}
+}
+
+func (b *irBuilder) isEnumNamespace(n *ast.Node) bool {
+	for current := n; current != nil; current = current.Parent {
+		if current.Kind == ast.KindModuleDeclaration {
+			symbol := b.c.GetSymbolAtLocation(current.Name())
+			if symbol != nil && symbol.Flags&ast.SymbolFlagsRegularEnum != 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // Register all merged bodies before lowering functions that may read exports
 // declared in a later body.
 func (b *irBuilder) prepareEnumNamespaces(files []*ast.SourceFile) {
 	b.namespaceExports = map[*ast.Symbol]*ast.Node{}
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
-		if n.Kind == ast.KindModuleDeclaration && n.Body() != nil && n.Body().Kind == ast.KindModuleBlock {
-			symbol := b.c.GetSymbolAtLocation(n.Name())
-			if symbol != nil && symbol.Flags&ast.SymbolFlagsRegularEnum != 0 {
-				for _, statement := range n.Body().AsModuleBlock().Statements.Nodes {
-					if ast.GetCombinedModifierFlags(statement)&ast.ModifierFlagsExport == 0 {
+		if n.Kind == ast.KindModuleDeclaration {
+			if b.isEnumNamespace(n) {
+				for _, statement := range enumNamespaceBody(n) {
+					if !namespaceExported(statement) {
 						continue
 					}
 					register := func(d *ast.Node) {
-						if d.Name() != nil && d.Name().Kind == ast.KindIdentifier {
-							b.namespaceExports[b.c.GetSymbolAtLocation(d.Name())] = n
+						if d.Name() != nil {
+							namespaceBindingNames(d.Name(), func(name *ast.Node) { b.namespaceExports[b.c.GetSymbolAtLocation(name)] = n })
 						}
 					}
 					if statement.Kind == ast.KindVariableStatement {
@@ -45,39 +87,96 @@ func (b *irBuilder) namespaceReference(n, owner *ast.Node) int {
 	return id
 }
 
+func namespaceLocalFunction(n, owner *ast.Node, symbol *ast.Symbol) bool {
+	if symbol == nil || symbol.ValueDeclaration == nil || symbol.ValueDeclaration.Kind != ast.KindFunctionDeclaration || symbol.ValueDeclaration.Parent != owner.Body() {
+		return false
+	}
+	for current := n; current != nil; current = current.Parent {
+		if current == owner.Body() {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *irBuilder) enumNamespaceStatements(statements []*ast.Node, owner *ast.Node) int {
+	// Local functions are hoisted, but publishing them on the namespace must
+	// happen at their declaration's position in the source.
+	first, last := 0, 0
+	appendStatement := func(id int) {
+		if id == 0 {
+			return
+		}
+		if last == 0 {
+			first = id
+		} else {
+			b.nodes[last-1].next = id
+		}
+		last = id
+		for b.nodes[last-1].next != 0 {
+			last = b.nodes[last-1].next
+		}
+	}
+	for _, statement := range statements {
+		if statement.Kind == ast.KindFunctionDeclaration {
+			appendStatement(b.lower(statement))
+		}
+	}
+	for _, statement := range statements {
+		if statement.Kind != ast.KindFunctionDeclaration {
+			appendStatement(b.lower(statement))
+		} else if statement.Body() != nil && ast.GetCombinedModifierFlags(statement)&ast.ModifierFlagsExport != 0 {
+			name := statement.Name()
+			value := b.node(3, name, name.Text())
+			b.nodes[value-1].name = b.text(name.Text())
+			b.nodes[value-1].symbol = b.symbol(name)
+			b.nodes[value-1].typ = b.symbols[b.nodes[value-1].symbol-1].typ
+			target := b.namespaceReference(name, owner)
+			assignment := b.node(10, name, "=")
+			b.nodes[assignment-1].left = target
+			b.nodes[assignment-1].right = value
+			b.nodes[assignment-1].typ = b.nodes[value-1].typ
+			export := b.node(18, statement, ";")
+			b.nodes[export-1].left = assignment
+			appendStatement(export)
+		}
+	}
+	return first
+}
+
 // Each namespace body gets its own closure for private declarations. Exported
 // bindings live on the enum object, so writes remain visible through aliases.
 func (b *irBuilder) enumNamespace(n *ast.Node) int {
 	if ast.HasAmbientModifier(n) {
 		return 0
 	}
-	symbol := b.c.GetSymbolAtLocation(n.Name())
-	if symbol == nil || symbol.Flags&ast.SymbolFlagsRegularEnum == 0 || n.Body() == nil || n.Body().Kind != ast.KindModuleBlock {
+	if !b.isEnumNamespace(n) || n.Body() == nil || (n.Body().Kind != ast.KindModuleBlock && n.Body().Kind != ast.KindModuleDeclaration) {
 		b.unsupported(n)
 	}
 	if b.namespaceExports == nil {
 		b.namespaceExports = map[*ast.Symbol]*ast.Node{}
 	}
-	statements := n.Body().AsModuleBlock().Statements.Nodes
+	statements := enumNamespaceBody(n)
 	exported := map[int]*ast.Node{}
 	var register func(*ast.Node)
 	register = func(d *ast.Node) {
-		if d.Name() == nil || d.Name().Kind != ast.KindIdentifier {
+		if d.Name() == nil {
 			b.unsupported(d)
 		}
-		name := d.Name()
-		b.namespaceExports[b.c.GetSymbolAtLocation(name)] = n
-		exported[b.symbol(name)] = name
+		namespaceBindingNames(d.Name(), func(name *ast.Node) {
+			b.namespaceExports[b.c.GetSymbolAtLocation(name)] = n
+			exported[b.symbol(name)] = name
+		})
 	}
 	for _, statement := range statements {
-		if ast.GetCombinedModifierFlags(statement)&ast.ModifierFlagsExport == 0 {
+		if !namespaceExported(statement) {
 			continue
 		}
 		if statement.Kind == ast.KindVariableStatement {
 			for _, d := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
 				register(d)
 			}
-		} else if statement.Kind == ast.KindFunctionDeclaration || statement.Kind == ast.KindClassDeclaration {
+		} else if statement.Kind == ast.KindFunctionDeclaration || statement.Kind == ast.KindClassDeclaration || statement.Kind == ast.KindModuleDeclaration || statement.Kind == ast.KindEnumDeclaration {
 			register(statement)
 		} else if statement.Kind != ast.KindInterfaceDeclaration && statement.Kind != ast.KindTypeAliasDeclaration {
 			b.unsupported(statement)
@@ -92,13 +191,17 @@ func (b *irBuilder) enumNamespace(n *ast.Node) int {
 	first := len(b.nodes)
 	body := b.node(12, n, "namespace scope")
 	b.nodes[body-1].name = b.text("scope")
-	b.nodes[body-1].children = b.blockStatements(statements)
+	b.nodes[body-1].children = b.enumNamespaceStatements(statements, n)
 	b.nodes[function-1].left = body
 	end := len(b.nodes)
 	for i := first; i < end; i++ {
 		node := b.nodes[i]
 		name := exported[node.symbol]
-		if node.kind != 13 || name == nil {
+		if node.kind == 37 && name != nil {
+			b.nodes[i].fourth = b.namespaceReference(name, n)
+			continue
+		}
+		if node.kind != 13 || name == nil || name.Parent.Kind == ast.KindFunctionDeclaration {
 			continue
 		}
 		if node.left == 0 {

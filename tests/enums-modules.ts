@@ -5,3 +5,6 @@ console.log(Object.keys(Renamed).length);
 console.log(Renamed.state,Renamed.next(),names.Exported.next());
 Renamed.state=8;
 console.log(names.Exported.next(),Renamed.state);
+console.log(Renamed.Nested.read(), names.Exported.Nested.Choice[6], new Renamed.Nested.Box().value);
+names.Exported.Nested.value=20;
+console.log(Renamed.Nested.read(), Renamed.Nested===names.Exported.Nested);
