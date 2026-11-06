@@ -96,6 +96,14 @@ Array and object methods, measured on 2026-11-06:
 
 Execution time only; source input creation, startup and compilation are excluded. Output allocation is included. Release builds, five warmup passes, and five timed samples in each of three fresh processes; the table reports the median of 15 samples. Results matched Node, and .NET used `DOTNET_TieredCompilation=0`. The copyWithin workload changes the first input value before every copy and checks its copied value afterward.
 
+Map, measured on 2026-11-06:
+
+| Workload | ts.net | Node |
+|---|---|---|
+| Create a Map, insert and read 10K entries, then delete half | 4.38 ms | 0.80 ms |
+
+Includes construction and allocation, excluding startup and compilation. The same warmup, fresh-process counts and .NET settings apply; all samples returned the checksum 50,010,000.
+
 Promises, measured on 2026-11-06:
 
 | Workload | ts.net | Node |
@@ -117,7 +125,7 @@ Compilation times:
 | Small numeric benchmark | 497.09 ms | 338.65 ms |
 | 5,000 variables | 678.81 ms | 375.20 ms |
 
-The packed copyWithin result is encouraging; [V8?s published per-property implementation](https://chromium.googlesource.com/v8/v8/+/refs/heads/main/src/builtins/array-copywithin.tq) is consistent with the large gap against our guarded bulk copy. The loop that rarely awaits is disappointing too; callbacks, joins, object copying and Promise workloads remain substantially slower. These microbenchmarks do not establish overall application performance.
+The packed copyWithin result is encouraging; [V8?s published per-property implementation](https://chromium.googlesource.com/v8/v8/+/refs/heads/main/src/builtins/array-copywithin.tq) is consistent with the large gap against our guarded bulk copy. The Map workload and the loop that rarely awaits are disappointing too; callbacks, joins, object copying and Promise workloads remain substantially slower. These microbenchmarks do not establish overall application performance.
 
 The compiler used to be written in [crust](https://github.com/Gameknight963/crust), my C-like memory safe language. It was ported to C# for various reasons. The point is, compilation is slower after the C# port. The larger source takes 1.8x as long as Microsoft’s Go-based TypeScript compiler. It used to be more or less on par.
 
