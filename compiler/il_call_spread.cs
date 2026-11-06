@@ -83,7 +83,8 @@ internal static partial class CompilerFunctions
         if (il_static_spread_call(entry, c, b)) { return; }
         bool array_call = il_array_call(entry, c);
         bool value_call = !array_call && il_direct_function(call.left, c, b) == 0 && !builtin(call.left, text_console, text_log, c) && !builtin(call.left, text_performance, text_now, c) && !builtin_has_own(call.left, c);
-        int target = -1; if (value_call) { il_boxed(call.left, c, b); target = b.local(-5); b.emit(0xfe0e, target); }
+        int target = -1; int methodReceiver=-1;
+        if (value_call) { methodReceiver=il_method_target(call.left,c,b); target = b.local(-5); b.emit(0xfe0e, target); }
         if (array_call) { il_expression(callee.left, c, b); receiver = b.local(-5); b.emit(0xfe0e, receiver); }
         if (array_call && is_text(callee.name, text_reverse, c))
         {
@@ -93,7 +94,7 @@ internal static partial class CompilerFunctions
         b.emit(0x20, 0); b.emit(0x73, b.RuntimeToken(numeric != 0 ? RuntimeMember.NumberArrayConstructor : RuntimeMember.ArrayConstructor));
         int array = b.local(-5); b.emit(0xfe0e, array); int argument = call.children;
         while (argument != 0) { il_append_call_argument(argument, array, numeric, c, b); argument = get_node(argument, c).next; }
-        if (value_call) { b.emit(0xfe0c, target); b.emit(0xfe0c, array); b.call(RuntimeMember.CallFunctionArguments); il_function_result(call.type, c, b); return; }
+        if (value_call) { b.emit(0xfe0c, target);if(methodReceiver>=0){b.emit(0xfe0c,methodReceiver);} b.emit(0xfe0c, array); b.call(methodReceiver>=0 ? RuntimeMember.CallMethodArguments : RuntimeMember.CallFunctionArguments); il_function_result(call.type, c, b); return; }
         if (builtin(call.left, text_console, text_log, c)) { b.emit(0xfe0c, array); b.call(RuntimeMember.LogArguments); return; }
         if (builtin_has_own(call.left, c))
         {

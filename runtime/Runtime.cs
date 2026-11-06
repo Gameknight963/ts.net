@@ -143,6 +143,7 @@ public static partial class Js
     {
         TsObject obj => obj.Get(key),
         string text when key == "length" => (double)text.Length,
+        string when key == "at" => StringAtFunction(),
         string or double or bool => Undefined,
         _ => throw new InvalidOperationException("Cannot read property of undefined")
     };

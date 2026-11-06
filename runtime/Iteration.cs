@@ -14,6 +14,8 @@ public static class Iteration
         }
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static string CodeUnit(char value) => value < 256 ? Characters.Latin[value] : new string(value, 1);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double Length(object value) => value switch
     {
         JsArray array => array.Length(),

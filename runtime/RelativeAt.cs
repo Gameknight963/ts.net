@@ -1,0 +1,90 @@
+using System;
+using System.Runtime.CompilerServices;
+
+public static partial class Js
+{
+    sealed class RelativeAtFunction(bool text) : JsFunction((FunctionBody)(static _ =>
+        throw new InvalidOperationException("at requires a receiver")), null, "at", 1)
+    {
+        internal readonly bool Text = text;
+    }
+    static class RelativeAtFunctions
+    {
+        internal static readonly RelativeAtFunction Array = new(false);
+        internal static readonly RelativeAtFunction String = new(true);
+    }
+    public static object ArrayAtFunction() => RelativeAtFunctions.Array;
+    public static object StringAtFunction() => RelativeAtFunctions.String;
+    public static object RelativeAtTarget(object receiver) => Get(receiver, "at");
+
+    static void RequireAtReceiver(object receiver)
+    {
+        if (IsNullish(receiver)) throw new InvalidOperationException("at requires a receiver");
+    }
+    static double AtLength(object receiver)
+    {
+        RequireAtReceiver(receiver);
+        if (receiver is JsArray array) return array.Length();
+        if (receiver is string text) return text.Length;
+        double value = Number(Get(receiver, "length"));
+        return value > 0 ? Math.Min(Math.Truncate(value), 9007199254740991.0) : 0;
+    }
+    static string AtString(object receiver)
+    {
+        RequireAtReceiver(receiver);
+        object primitive = receiver is TsObject obj ? OrdinaryPrimitive(obj, true, null) : receiver;
+        return primitive is double number ? NumberKeyString(number) : Text(primitive);
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static double AtIndex(double index, double length)
+    {
+        double integer = double.IsNaN(index) ? 0 : Math.Truncate(index);
+        return integer < 0 ? length + integer : integer;
+    }
+    static object AtPrimitive(object receiver, double index, bool text)
+    {
+        if (text) {
+            string value = AtString(receiver);
+            double position = AtIndex(index, value.Length);
+            return position >= 0 && position < value.Length ? Iteration.CodeUnit(value[(int)position]) : Undefined;
+        }
+        double length = AtLength(receiver), selected = AtIndex(index, length);
+        return selected >= 0 && selected < length ? IndexGet(receiver, selected) : Undefined;
+    }
+    static object AtConverted(object receiver, object index, bool text)
+    {
+        // The receiver/length snapshot precedes observable index conversion.
+        if (text) {
+            string value = AtString(receiver);
+            double position = AtIndex(Number(index), value.Length);
+            return position >= 0 && position < value.Length ? Iteration.CodeUnit(value[(int)position]) : Undefined;
+        }
+        double length = AtLength(receiver), selected = AtIndex(Number(index), length);
+        return selected >= 0 && selected < length ? IndexGet(receiver, selected) : Undefined;
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object CallAtIndex(object target, object receiver, double? index) => target is RelativeAtFunction method
+        ? AtPrimitive(receiver, index.GetValueOrDefault(), method.Text) : CallFunction(target, new[] { BoxNumber(index) });
+    public static object CallMethod0(object target, object receiver) => target is RelativeAtFunction method
+        ? AtPrimitive(receiver, 0, method.Text) : CallFunction0(target);
+    public static object CallMethod(object target, object receiver, object[] arguments) => target is RelativeAtFunction method
+        ? AtConverted(receiver, FunctionArgument(arguments, 0), method.Text) : CallFunction(target, arguments);
+    public static object CallMethodArguments(object target, object receiver, object arguments) => target is RelativeAtFunction method
+        ? AtConverted(receiver, Iteration.Value(arguments, 0), method.Text) : CallFunctionArguments(target, arguments);
+    public static double? CallMethodNumber0(object target, object receiver) => target is RelativeAtFunction method
+        ? Cast<double?>(AtPrimitive(receiver, 0, method.Text), "Function result violates number type") : CallFunctionNumber0(target);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double? CallMethodNumber1(object target, object receiver, double? first)
+    {
+        if (target is RelativeAtFunction method) {
+            if (!method.Text && receiver is NumberArray numbers) {
+                double length = numbers.Length(), index = AtIndex(first.GetValueOrDefault(), length);
+                return index >= 0 && index < length ? numbers.GetNumberAt(ToInt32(index)) : null;
+            }
+            return Cast<double?>(AtPrimitive(receiver, first.GetValueOrDefault(), method.Text), "Function result violates number type");
+        }
+        return CallFunctionNumber1(target, first);
+    }
+    public static double? CallMethodNumber2(object target, object receiver, double? first, double? second) => target is RelativeAtFunction
+        ? CallMethodNumber1(target, receiver, first) : CallFunctionNumber2(target, first, second);
+}

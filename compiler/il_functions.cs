@@ -228,17 +228,19 @@ void il_function_class(int symbol, Compiler c, IlBackend b)
     {
         Node n = get_node(entry, c); int count = 0; bool numeric = get_type(n.type, c).kind == TypeKind.Number; int argument = n.children;
         while (argument != 0) { Node value = get_node(argument, c); count++; if (get_type(value.type, c).kind != TypeKind.Number && value.kind != NodeKind.Undefined) { numeric = false; } argument = value.next; }
-        il_boxed(n.left, c, b);
+        int receiver=il_method_target(n.left,c,b);
+        if (receiver>=0) {b.emit(0xfe0c,receiver);}
         if (numeric && count <= 2)
         {
             int number = n.type;
             argument = n.children;
             while (argument != 0) { il_as(argument, number, c, b); argument = get_node(argument, c).next; }
-            b.call(count == 0 ? RuntimeMember.CallFunctionNumber0 : count == 1 ? RuntimeMember.CallFunctionNumber1 : RuntimeMember.CallFunctionNumber2); return;
+            b.call(receiver>=0 ? (count==0 ? RuntimeMember.CallMethodNumber0 : count==1 ? RuntimeMember.CallMethodNumber1 : RuntimeMember.CallMethodNumber2) :
+                (count == 0 ? RuntimeMember.CallFunctionNumber0 : count == 1 ? RuntimeMember.CallFunctionNumber1 : RuntimeMember.CallFunctionNumber2)); return;
         }
-        if (count == 0) { b.call(RuntimeMember.CallFunction0); il_function_result(n.type, c, b); return; }
+        if (count == 0) { b.call(receiver>=0 ? RuntimeMember.CallMethod0 : RuntimeMember.CallFunction0); il_function_result(n.type, c, b); return; }
         b.emit(0x20, count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType)); argument = n.children; int index = 0;
         while (argument != 0) { b.op(0x25); b.emit(0x20, index++); il_boxed(argument, c, b); b.op(0xa2); argument = get_node(argument, c).next; }
-        b.call(RuntimeMember.CallFunction); il_function_result(n.type, c, b);
+        b.call(receiver>=0 ? RuntimeMember.CallMethod : RuntimeMember.CallFunction); il_function_result(n.type, c, b);
     }
 }

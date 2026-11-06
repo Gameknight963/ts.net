@@ -468,6 +468,11 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Property)
         {
+            TypeKind atOwner=get_type(get_node(n.left,c).type,c).kind;
+            if ((atOwner==TypeKind.Array || atOwner==TypeKind.String) && is_text(n.name,text_at_method,c)) {
+                il_expression(n.left,c,b);b.call(RuntimeMember.RelativeAtTarget);return;
+            }
+
             Node receiver = get_node(n.left, c);
             if (is_text(n.name, text_length, c) && receiver.kind == NodeKind.Call &&
                 get_node(receiver.left, c).kind == NodeKind.ObjectKeysFunction && !il_call_has_spread(n.left, c))
@@ -512,6 +517,7 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.Call)
         {
             if (il_number_predicate(entry, true, c, b)) { return; }
+            if (il_at_call(entry,c)) {il_emit_at(entry,c,b);return;}
             if (il_call_has_spread(entry, c)) { il_spread_call(entry, c, b); return; }
             if (get_node(n.left, c).kind == NodeKind.ObjectKeysFunction) { il_object_keys_call(entry, false, c, b); return; }
             if (get_node(n.left, c).kind == NodeKind.ObjectValuesFunction || get_node(n.left, c).kind == NodeKind.ObjectEntriesFunction) { il_object_enumeration_call(entry, c, b); return; }
