@@ -5,11 +5,11 @@ Work-in-progress TypesScript to IL compiler.
 
 ## Building
 
-Build with the .NET 10 SDK, Go 1.27 or newer, and Git: `dotnet build tsnet.sln -c Release`. The first build downloads the pinned Microsoft TypeScript frontend source.
+Reqires .NET 10 SDK, Go 1.27 or newer, and Git.
+
+The first build downloads the pinned Microsoft TypeScript frontend source.
 
 Then run `.\scripts\build.ps1 -Run` to compile and run an example.
-
-Cross-publish for Linux with `dotnet publish compiler/Tsnet.Compiler.csproj -c Release -r linux-x64 --self-contained false`. The output includes the managed compiler and a Go frontend executable; NativeAOT and a C toolchain are not required.
 
 ## Current performance
 
@@ -18,7 +18,7 @@ As of [90731bc](https://github.com/Gameknight963/ts.net/commit/90731bc4a6b9529f2
 Runtime performance:
 
 | Workload | ts.net | Node | Result |
-|---|---:|---:|---|
+|---|---|---|---|
 | Numeric loop, 20M iterations | 14.34 ms | 74.30 ms | 5.2x faster |
 | Typed-object loop, 500K iterations | 0.36 ms | 0.65 ms | 1.8x faster |
 | `any` property loop, 350K iterations | 0.29 ms | 0.43 ms | 1.5x faster |
@@ -56,6 +56,6 @@ Compilation times:
 
 Numeric array `.at()` calls are close to Node here, while string `.at()` is slightly slower. The numeric `.at()` allocation check measured 152 bytes total for one million calls, with no per-call boxing.
 
-Cold compilation is slower after the C# port; the larger source takes 1.8x as long as Microsoft’s Go-based TypeScript compiler.
+The compiler used to be written in [crust](https://github.com/Gameknight963/crust), my C-like memory safe language. It was ported to C# for various reasons. The point is, compilation is slower after the C# port. The larger source takes 1.8x as long as Microsoft’s Go-based TypeScript compiler. It used to be more or less on par.
 
-Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2. Runtime measurements exclude startup and use matching checksums, at least 500 ms of warmup, and 35 samples across five fresh processes. Compilation timings include startup and are medians of seven fresh processes with warm filesystem caches.
+Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
