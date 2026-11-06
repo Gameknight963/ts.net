@@ -22,3 +22,13 @@ long largeBytes = GC.GetAllocatedBytesForCurrentThread() - before;
 if (small != 4 || large != 100003 || largeBytes != smallBytes)
     throw new Exception($"Numeric callbacks changed results or allocated per call: {small}, {large}, {smallBytes}, {largeBytes}");
 Console.WriteLine("PASS generated numeric callback overrides and no allocation per repeated call");
+
+var boundTarget=new JsFunction((FunctionBody)(static values=>(double)values[0]+(double)values[1]),(RawNumberFunction2)(static (first,second)=>first+second),"add",2);
+var bound=(JsFunction)Js.CallMethod(boundTarget.Get("bind"),boundTarget,new object[]{Js.Undefined,3d});
+for(int i=0;i<30;i++)RunBoundCalls(bound,1000);
+before=GC.GetAllocatedBytesForCurrentThread();
+double boundSum=RunBoundCalls(bound,100000);
+long boundBytes=GC.GetAllocatedBytesForCurrentThread()-before;
+if(boundSum!=5000250000d || boundBytes!=0)throw new Exception($"Bound numeric calls changed results or allocated: {boundSum}, {boundBytes}");
+Console.WriteLine("PASS bound numeric callbacks: matching results and zero allocations for 100000 calls");
+static double RunBoundCalls(JsFunction function,int count){double sum=0;for(int i=0;i<count;i++)sum+=function.InvokeNumber1(i).GetValueOrDefault();return sum;}

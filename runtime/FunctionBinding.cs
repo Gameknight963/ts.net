@@ -35,12 +35,13 @@ internal sealed class JsBoundFunction : JsFunction
 {
     readonly JsFunction target;
     readonly object[] prefix;
+    readonly object boundReceiver;
     readonly double boundLength;
     JsClassFunction InheritedStatics => target is JsClassFunction cls ? cls.Parent : target is JsBoundFunction bound ? bound.InheritedStatics : null;
     JsBoundFunction(JsFunction target, object receiver, object[] prefix, string name, double length)
         : base((FunctionBody)(arguments => Js.CallMethod(target, receiver, Combine(prefix, arguments))), null, name, 0)
     {
-        this.target = target; this.prefix = prefix; boundLength = length;
+        this.target = target; this.prefix = prefix; boundReceiver = receiver; boundLength = length;
     }
     internal static JsBoundFunction Create(JsFunction target, object receiver, object[] prefix)
     {
@@ -56,6 +57,26 @@ internal sealed class JsBoundFunction : JsFunction
     }
     public override object Get(string key) => key == "length" ? boundLength : HasOwn(key) ? base.Get(key) : InheritedStatics is not null ? InheritedStatics.GetWithReceiver(key, this) : base.Get(key);
     public override bool HasProperty(string key) => base.HasProperty(key) || InheritedStatics is not null && InheritedStatics.HasProperty(key);
+    // Match the existing nullable-number call ABI; other values retain the general path.
+    bool NumberPrefix(int index, out double? value)
+    {
+        object argument = prefix[index]; value = argument is double number ? number : null;
+        return argument is double || Js.IsUndefined(argument);
+    }
+    public override double? InvokeNumber0()
+    {
+        if (prefix.Length == 0) return Js.CallMethodNumber0(target, boundReceiver);
+        if (prefix.Length == 1 && NumberPrefix(0, out var first)) return Js.CallMethodNumber1(target, boundReceiver, first);
+        if (prefix.Length == 2 && NumberPrefix(0, out first) && NumberPrefix(1, out var second)) return Js.CallMethodNumber2(target, boundReceiver, first, second);
+        return base.InvokeNumber0();
+    }
+    public override double? InvokeNumber1(double? value)
+    {
+        if (prefix.Length == 0) return Js.CallMethodNumber1(target, boundReceiver, value);
+        if (prefix.Length == 1 && NumberPrefix(0, out var first)) return Js.CallMethodNumber2(target, boundReceiver, first, value);
+        return base.InvokeNumber1(value);
+    }
+    public override double? InvokeNumber2(double? first, double? second) => prefix.Length == 0 ? Js.CallMethodNumber2(target, boundReceiver, first, second) : base.InvokeNumber2(first, second);
     public override object InvokeWithReceiver(object receiver, object[] arguments) => Invoke(arguments);
     public override object Construct(object[] arguments) => target.Construct(Combine(prefix, arguments));
     public override bool HasInstance(object value) => target.HasInstance(value);
