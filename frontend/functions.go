@@ -22,7 +22,7 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 	}
 	if parent != nil {
 		switch parent.Kind {
-		case ast.KindVariableDeclaration, ast.KindPropertyAssignment:
+		case ast.KindVariableDeclaration, ast.KindPropertyAssignment, ast.KindPropertyDeclaration:
 			if property, known := b.literalPropertyName(parent.Name()); known {
 				name = property
 			}
@@ -38,8 +38,11 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 		}
 	}
 	value := b.node(38, n, "function")
-	typ := b.typ(b.c.GetReturnTypeOfSignature(b.c.GetSignatureFromDeclaration(n)))
-	if n.Type() == nil && n.Kind != ast.KindFunctionDeclaration {
+	typ := b.typ(b.c.GetAnyType())
+	if n.Kind != ast.KindConstructor {
+		typ = b.typ(b.c.GetReturnTypeOfSignature(b.c.GetSignatureFromDeclaration(n)))
+	}
+	if n.Type() == nil && n.Kind != ast.KindFunctionDeclaration && n.Kind != ast.KindConstructor {
 		if context := b.c.GetContextualType(n, checker.ContextFlagsNone); context != nil {
 			if signatures := b.c.GetSignaturesOfType(context, checker.SignatureKindCall); len(signatures) == 1 {
 				typ = b.typ(b.c.GetReturnTypeOfSignature(signatures[0]))

@@ -64,7 +64,7 @@ internal enum NodeKind
     ObjectKeysFunction,
     ObjectValuesFunction,
     ObjectEntriesFunction,
-    Throw, Try, CatchValue, BuiltinError, Construct
+    Throw, Try, CatchValue, BuiltinError, Construct, ClassValue, ClassStatic, ClassField
 }
 
 internal struct Token
@@ -79,6 +79,7 @@ internal struct Token
 internal struct Type
 {
     public TypeKind kind;
+    // Nonzero names identify class families, shared by generic instantiations.
     public int name;
     public int id;
     public int fields;

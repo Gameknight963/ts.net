@@ -51,6 +51,7 @@ type irBuilder struct {
 	enumDeclared          map[*ast.Symbol]bool
 	thisSymbol            int
 	thisScope             bool
+	classIDs              map[*ast.Symbol]int
 }
 
 func (b *irBuilder) beginControl(n *ast.Node, id int, loop bool) {
@@ -90,13 +91,16 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
-	if symbol := t.Symbol(); symbol != nil && errorKind(symbol.Name) {
+	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || symbol.Name == "Function") {
 		for _, declaration := range symbol.Declarations {
 			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
 				t = b.c.GetAnyType()
 				break
 			}
 		}
+	}
+	if symbol := t.Symbol(); symbol != nil && symbol.Flags&ast.SymbolFlagsClass != 0 && len(b.c.GetConstructSignatures(t)) != 0 {
+		t = b.c.GetAnyType()
 	}
 	t = b.c.GetBaseTypeOfLiteralType(t)
 	if id := b.typeIDs[t]; id != 0 {
@@ -175,6 +179,17 @@ func (b *irBuilder) typ(t *checker.Type) int {
 		} else if len(infos) > 1 {
 			b.types[id-1].element = b.typ(b.c.GetAnyType())
 		}
+	}
+	if symbol := t.Symbol(); symbol != nil && symbol.Flags&ast.SymbolFlagsClass != 0 {
+		if b.classIDs == nil {
+			b.classIDs = map[*ast.Symbol]int{}
+		}
+		classID := b.classIDs[symbol]
+		if classID == 0 {
+			classID = len(b.classIDs) + 1
+			b.classIDs[symbol] = classID
+		}
+		b.types[id-1].name = b.text("class:" + strconv.Itoa(classID))
 	}
 	last := 0
 	for _, property := range b.c.GetPropertiesOfType(t) {
@@ -320,6 +335,8 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.typ = b.symbols[row.symbol-1].typ
 		row.constant = 1
 		row.left = b.lower(n.Expression())
+	case ast.KindClassDeclaration, ast.KindClassExpression:
+		return b.classValue(n)
 	case ast.KindArrowFunction, ast.KindFunctionExpression:
 		return b.functionValue(n)
 	case ast.KindThisKeyword:

@@ -146,7 +146,7 @@ internal static partial class CompilerFunctions
             else
             {
                 int member = field(owner, n.name, c);
-                if (member == 0 && get_type(owner, c).element != 0) { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); return; }
+                if (member == 0 && (get_type(owner, c).element != 0 || get_type(owner,c).name != 0)) { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); return; }
                 if (member == 0) { fail(n.token, "unresolved lowered field", c); }
                 b.emit(0x74, b.interface_type(owner));
                 b.emit(0x6f, b.getter(member));
@@ -426,6 +426,7 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Number) { b.plan.number(b.method, number(get_token(n.token, c).text, c)); b.call(RuntimeMember.WrapNumber); }
         else if (n.kind == NodeKind.Boolean) { b.emit(0x20, is_text(get_token(n.token, c).text, text_true, c) ? 1 : 0); b.call(RuntimeMember.WrapBoolean); }
+        else if(n.kind==NodeKind.ClassValue){il_class_value(entry,c,b);}
         else if(n.kind==NodeKind.BuiltinError){il_text(get_token(n.token,c).text,c,b);b.call(RuntimeMember.GetErrorConstructor);}
         else if(n.kind==NodeKind.Construct){
             il_boxed(n.left,c,b);
@@ -520,7 +521,7 @@ internal static partial class CompilerFunctions
             else
             {
                 int member = field(owner, n.name, c);
-                if (member == 0 && get_type(owner, c).element != 0) { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); return; }
+                if (member == 0 && (get_type(owner, c).element != 0 || get_type(owner,c).name != 0)) { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); return; }
                 if (member == 0 || b.getter(member) == 0) { fail(n.token, "unresolved lowered getter", c); }
                 b.emit(0x74, b.interface_type(owner));
                 b.emit(0x6f, b.getter(member));
@@ -811,6 +812,8 @@ internal static partial class CompilerFunctions
             if (raw == -6) { il_integer(n.left, c, b); b.store_storage(n.symbol); }
             else { il_as(n.left, n.type, c, b); b.store(n.symbol); }
         }
+        else if (n.kind == NodeKind.ClassStatic) { il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.InitializeClass); }
+        else if (n.kind == NodeKind.ClassField) { il_boxed(n.left,c,b);il_text(n.name,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.DefineClassField); }
         else if (n.kind == NodeKind.Return)
         {
             if (n.left != 0) { if (b.raw_function_return) { il_number(n.left, c, b); } else { il_as(n.left, return_type, c, b); } }

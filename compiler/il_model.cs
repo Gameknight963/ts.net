@@ -4,7 +4,7 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 internal enum RuntimeMember
 {
-    GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, NumberAtIsNullish, LooseEqual, LooseEqualNumber, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
@@ -470,6 +470,17 @@ bool il_logical_assignment(int op, Compiler c)
         int object_type = b.RuntimeToken(RuntimeMember.ObjectType);
         b.ref_set(RuntimeMember.ObjectConstructor, b.plan.method0(6, object_type, 1, -1, ".ctor"));
         int js = b.RuntimeToken(RuntimeMember.JsType); int obj = b.RuntimeToken(RuntimeMember.TsObjectType);
+        int classInstance=b.plan.reference("Tsnet.Runtime","","JsClassInstance");
+        b.ref_set(RuntimeMember.ClassInstanceType,classInstance);
+        b.ref_set(RuntimeMember.ClassInstanceConstructor,b.plan.method0(6,classInstance,1,-1,".ctor"));
+        Vector<int> classArgs=new Vector<int>();classArgs.push(-4);classArgs.push(-5);classArgs.push(-5);classArgs.push(-5);
+        b.ref_set(RuntimeMember.CreateClass,b.plan.method(6,js,0,-5,classArgs.view(),"CreateClass"));
+        Vector<int> methodArgs=new Vector<int>();methodArgs.push(-5);methodArgs.push(-4);methodArgs.push(-5);methodArgs.push(-2);
+        b.ref_set(RuntimeMember.DefineClassMethod,b.plan.method(6,js,0,-1,methodArgs.view(),"DefineClassMethod"));
+        b.ref_set(RuntimeMember.InitializeClass,b.plan.method2(6,js,0,-1,-5,-5,"InitializeClass"));
+        Vector<int> fieldArgs=new Vector<int>();fieldArgs.push(-5);fieldArgs.push(-4);fieldArgs.push(-5);
+        b.ref_set(RuntimeMember.DefineClassField,b.plan.method(6,js,0,-1,fieldArgs.view(),"DefineClassField"));
+
         b.ref_set(RuntimeMember.NamePropertyFunction, b.plan.method2(6, js, 0, -5, -5, -4, "NamePropertyFunction"));
         b.ref_set(RuntimeMember.PropertyKey, b.plan.method1(6, js, 0, -4, -5, "PropertyKey"));
         b.ref_set(RuntimeMember.EncodeNumberField, b.plan.method1(6, js, 0, -3, -10, "EncodeNumberField"));
@@ -785,6 +796,7 @@ bool il_logical_assignment(int op, Compiler c)
         {
             if (get_type(type, c).kind == TypeKind.Shape)
             {
+                if (get_type(type,c).name != 0) { il_class_shape(type,c,b); type=get_type(type,c).next; continue; }
                 Vector<byte> name = numbered_name('O', get_type(type, c).id);
                 int base_type = b.RuntimeToken(RuntimeMember.TsObjectType);
                 int klass = b.plan.type(name.view(), base_type, b.layout_needed.at(type) != 0 || b.spread_types.at(type) != 0 ? 1 : 0x101);

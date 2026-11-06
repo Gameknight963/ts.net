@@ -21,7 +21,7 @@ public static partial class Js
         object primitive = obj;
         for (int step = 0; step < 2; step++) {
             string name = (step == 0) == stringHint ? "toString" : "valueOf";
-            if (obj.HasOwn(name)) {
+            if (obj.HasProperty(name)) {
                 object method = obj.Get(name);
                 if (method is JsFunction) {
                     primitive = CallMethod0(method, obj);

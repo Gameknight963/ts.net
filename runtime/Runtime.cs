@@ -11,6 +11,7 @@ public abstract partial class TsObject
     private OwnProperties extra;
 
     public virtual bool HasOwn(string key) => extra != null && extra.ContainsKey(key);
+    public virtual bool HasProperty(string key) => HasOwn(key);
 
     public virtual object Get(string key) =>
         extra != null && extra.TryGetValue(key, out var value) ? value : Js.Undefined;
