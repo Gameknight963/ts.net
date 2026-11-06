@@ -8,7 +8,7 @@ import (
 // Fold only syntax without reads or calls. A literal-typed identifier can still
 // throw before its binding initializes and must be evaluated at runtime.
 func (b *irBuilder) literalPropertyName(name *ast.Node) (string, bool) {
-	if name.Kind == ast.KindIdentifier || name.Kind == ast.KindStringLiteral {
+	if name.Kind == ast.KindIdentifier || name.Kind == ast.KindStringLiteral || name.Kind == ast.KindNumericLiteral {
 		return name.Text(), true
 	}
 	if name.Kind != ast.KindComputedPropertyName {
