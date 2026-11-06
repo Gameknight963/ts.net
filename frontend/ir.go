@@ -674,6 +674,14 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		}
 	case ast.KindBinaryExpression:
 		expr := n.AsBinaryExpression()
+		if expr.OperatorToken.Kind == ast.KindInKeyword {
+			id = b.node(67, n, "in")
+			row = b.nodes[id-1]
+			row.typ = b.typ(b.c.GetTypeAtLocation(n))
+			row.left = b.lower(expr.Left)
+			row.right = b.lower(expr.Right)
+			break
+		}
 		if expr.OperatorToken.Kind == ast.KindCommaToken {
 			id = b.node(31, n, ",")
 			row = b.nodes[id-1]

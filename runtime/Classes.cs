@@ -7,6 +7,7 @@ public class JsClassInstance : TsObject
     internal JsClassInstance ParentPrototype;
     internal JsClassInstance InheritedPrototype => Owner is null ? ParentPrototype : Owner.Prototype;
     HashSet<string> hidden;
+    internal override bool HasInProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasInProperty(key);
     public override bool HasProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasProperty(key);
     public override object Get(string key) => GetWithReceiver(key, this);
     public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? base.Get(key) : InheritedPrototype is null ? Js.Undefined : InheritedPrototype.GetWithReceiver(key, receiver);
@@ -41,7 +42,7 @@ public sealed class JsClassFunction : JsFunction
         if (derived && parent is not null && Parent is null) throw new InvalidOperationException("Base class must be a compiled class");
         this.factory = (FunctionBody)factory; this.fields = (JsFunction)fields; this.constructor = constructor as JsFunction;
         Prototype = (JsClassInstance)this.factory(Array.Empty<object>());
-        Prototype.ParentPrototype = Parent?.Prototype;
+        Prototype.ParentPrototype = Parent?.Prototype ?? (derived ? null : Js.DefaultClassObjectPrototype);
         Prototype.DefineMethod("constructor", this);
     }
     public override bool HasOwn(string key) => key == "prototype" || base.HasOwn(key);

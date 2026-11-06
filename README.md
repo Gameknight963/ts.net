@@ -19,7 +19,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 | Feature | Points | Current support |
 |---|---|---|
-| Values and operators | 8 / 10 | Numbers, strings, booleans, null, undefined, arithmetic, comparisons, bitwise operators and optional chaining. <br> BigInt, symbols and some operators are missing. |
+| Values and operators | 8 / 10 | Numbers, strings, booleans, null, undefined, arithmetic, comparisons, bitwise operators, optional chaining and in. <br> BigInt, symbols and some operators are missing. |
 | Control flow | 9 / 10 | Conditions, loops, for-of, switch, labels, break and continue. For-in is missing. |
 | Functions | 9 / 10 | Closures, callbacks, overloads, default/optional/rest parameters, destructuring, function/method receivers, arrow this capture and call/apply/bind. Top-level this, function constructors and generators are missing. |
 | Objects and arrays | 9 / 10 | Structural objects, methods, getters/setters, computed properties, spreads, destructuring, object rest bindings and sparse arrays. General prototype behavior is incomplete. |

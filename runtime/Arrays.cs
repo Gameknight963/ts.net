@@ -153,6 +153,7 @@ public partial class JsArray : TsObject
         return value < uint.MaxValue;
     }
     public override bool HasOwn(string key) => key == "length" || (Index(key, out uint index) ? HasElement(index) : base.HasOwn(key));
+    public override bool HasProperty(string key) => HasOwn(key) || Js.IsArrayMethod(key) || base.HasProperty(key);
     public override object Get(string key) => key == "length" ? (double)Count : Index(key, out uint index) ? Read(index) :
         base.HasOwn(key) ? base.Get(key) : Js.ArrayMethodValue(key);
     public override object Set(string key, object value)

@@ -31,7 +31,7 @@ try {
     if ($LASTEXITCODE) { throw 'Numeric string checks failed' }
 
     # Differential execution checks against the actual TypeScript compiler.
-    foreach ($fixture in @('tests/behavior.ts', 'tests/exceptions.ts', 'tests/enums.ts', 'tests/enums-namespaces.ts', 'tests/enums-modules.ts', 'tests/enums-const-import.ts', 'tests/enums-large.ts', 'tests/globals.ts', 'tests/modules.ts', 'tests/default-modules.ts', 'tests/structural-fields.ts', 'tests/optional-context.ts', 'tests/optional-chaining.ts', 'tests/optional-chaining-modules.ts', 'tests/optional-chaining-allocation.ts', 'tests/has-own.ts', 'tests/object-keys.ts', 'tests/object-enumeration.ts', 'tests/object-spread.ts', 'tests/spread-fastpath.ts', 'tests/key-layouts.ts', 'tests/object-key-count.ts', 'tests/string-index.ts', 'tests/string-search.ts', 'tests/string-search-allocation.ts', 'tests/numeric-string-index.ts', 'tests/string-ranges.ts', 'tests/string-ranges-allocation.ts', 'tests/has-own-fastpath.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/functions.ts', 'tests/function-prototypes.ts', 'tests/receivers.ts', 'tests/function-binding.ts', 'tests/classes.ts', 'tests/class-spread.ts', 'tests/classes-modules.ts', 'tests/inheritance.ts', 'tests/inheritance-modules.ts', 'tests/accessors.ts', 'tests/function-self.ts', 'tests/iife-captures.ts', 'tests/closures.ts', 'tests/closure-module-access.ts', 'tests/local-functions.ts', 'tests/local-function-loop.ts', 'tests/closure-loop.ts', 'tests/function-dispatch.ts', 'tests/call-arity.ts', 'tests/function-aliases.ts', 'tests/void-values.ts', 'tests/straightforward.ts', 'tests/logical-assignment.ts', 'tests/dynamic-arithmetic.ts', 'tests/nullable-values.ts', 'tests/number-fields.ts', 'tests/push-values.ts', 'tests/push-local-arrays.ts', 'tests/numeric-fastpaths.ts', 'tests/masked-remainder.ts', 'tests/number-text.ts', 'tests/numeric-constants.ts', 'tests/number-predicates.ts', 'tests/number-bindings.ts', 'tests/bitwise.ts', 'tests/exponentiation.ts', 'tests/number-strings.ts', 'tests/object-number.ts', 'tests/relational.ts', 'tests/equality.ts', 'tests/characters.ts', 'tests/characters-allocation.ts', 'tests/at.ts', 'tests/at-allocation.ts', 'tests/scalar-objects.ts', 'tests/scalar-dynamic.ts', 'tests/scalar-references.ts', 'tests/integer-loops.ts', 'tests/integer-call-loops.ts', 'tests/arrays.ts', 'tests/mixed-index.ts', 'tests/union-arrays.ts', 'tests/loop-accumulators.ts', 'tests/computed-index.ts', 'tests/computed-properties.ts', 'tests/key-coercion-effects.ts', 'tests/dense-read.ts', 'tests/typeof-number.ts', 'tests/slice.ts', 'tests/reverse.ts', 'tests/array-search.ts', 'tests/packed-arrays.ts', 'tests/array-ranges.ts', 'tests/inferred-arrays.ts', 'tests/fresh-any-arrays.ts', 'tests/for-of.ts', 'tests/array-spread.ts', 'tests/array-destructuring.ts', 'tests/object-destructuring.ts', 'tests/object-rest.ts', 'tests/destructuring-fastpath.ts', 'tests/destructured-parameters.ts', 'tests/rest-parameters.ts', 'tests/call-spread.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
+    foreach ($fixture in @('tests/behavior.ts', 'tests/exceptions.ts', 'tests/enums.ts', 'tests/enums-namespaces.ts', 'tests/enums-modules.ts', 'tests/enums-const-import.ts', 'tests/enums-large.ts', 'tests/globals.ts', 'tests/modules.ts', 'tests/default-modules.ts', 'tests/structural-fields.ts', 'tests/optional-context.ts', 'tests/in-operator.ts', 'tests/in-operator-allocation.ts', 'tests/optional-chaining.ts', 'tests/optional-chaining-modules.ts', 'tests/optional-chaining-allocation.ts', 'tests/has-own.ts', 'tests/object-keys.ts', 'tests/object-enumeration.ts', 'tests/object-spread.ts', 'tests/spread-fastpath.ts', 'tests/key-layouts.ts', 'tests/object-key-count.ts', 'tests/string-index.ts', 'tests/string-search.ts', 'tests/string-search-allocation.ts', 'tests/numeric-string-index.ts', 'tests/string-ranges.ts', 'tests/string-ranges-allocation.ts', 'tests/has-own-fastpath.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/functions.ts', 'tests/function-prototypes.ts', 'tests/receivers.ts', 'tests/function-binding.ts', 'tests/classes.ts', 'tests/class-spread.ts', 'tests/classes-modules.ts', 'tests/inheritance.ts', 'tests/inheritance-modules.ts', 'tests/accessors.ts', 'tests/function-self.ts', 'tests/iife-captures.ts', 'tests/closures.ts', 'tests/closure-module-access.ts', 'tests/local-functions.ts', 'tests/local-function-loop.ts', 'tests/closure-loop.ts', 'tests/function-dispatch.ts', 'tests/call-arity.ts', 'tests/function-aliases.ts', 'tests/void-values.ts', 'tests/straightforward.ts', 'tests/logical-assignment.ts', 'tests/dynamic-arithmetic.ts', 'tests/nullable-values.ts', 'tests/number-fields.ts', 'tests/push-values.ts', 'tests/push-local-arrays.ts', 'tests/numeric-fastpaths.ts', 'tests/masked-remainder.ts', 'tests/number-text.ts', 'tests/numeric-constants.ts', 'tests/number-predicates.ts', 'tests/number-bindings.ts', 'tests/bitwise.ts', 'tests/exponentiation.ts', 'tests/number-strings.ts', 'tests/object-number.ts', 'tests/relational.ts', 'tests/equality.ts', 'tests/characters.ts', 'tests/characters-allocation.ts', 'tests/at.ts', 'tests/at-allocation.ts', 'tests/scalar-objects.ts', 'tests/scalar-dynamic.ts', 'tests/scalar-references.ts', 'tests/integer-loops.ts', 'tests/integer-call-loops.ts', 'tests/arrays.ts', 'tests/mixed-index.ts', 'tests/union-arrays.ts', 'tests/loop-accumulators.ts', 'tests/computed-index.ts', 'tests/computed-properties.ts', 'tests/key-coercion-effects.ts', 'tests/dense-read.ts', 'tests/typeof-number.ts', 'tests/slice.ts', 'tests/reverse.ts', 'tests/array-search.ts', 'tests/packed-arrays.ts', 'tests/array-ranges.ts', 'tests/inferred-arrays.ts', 'tests/fresh-any-arrays.ts', 'tests/for-of.ts', 'tests/array-spread.ts', 'tests/array-destructuring.ts', 'tests/object-destructuring.ts', 'tests/object-rest.ts', 'tests/destructuring-fastpath.ts', 'tests/destructured-parameters.ts', 'tests/rest-parameters.ts', 'tests/call-spread.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
         & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/$name" $fixture
@@ -47,17 +47,19 @@ try {
         Write-Host "PASS differential: $name"
     }
 
-    # Native ES modules expose namespace key ordering and read-only bindings.
-    & "$PSScriptRoot/build.ps1" -InputFile tests/module-namespace-order.ts -OutputDirectory artifacts/tests/module-namespace-order -SkipCompilerBuild | Out-Host
-    & tsc.cmd --strict --target es2022 --module es2022 --outDir "$testRoot/node/module-namespace-order" tests/module-namespace-order.ts
-    if ($LASTEXITCODE) { throw 'ES module reference compilation failed' }
-    '{"type":"module"}' | Set-Content "$testRoot/node/module-namespace-order/package.json" -Encoding utf8
-    $expected = @(& node "$testRoot/node/module-namespace-order/module-namespace-order.js")
-    if ($LASTEXITCODE) { throw 'ES module reference failed' }
-    $actual = @(& dotnet "$testRoot/module-namespace-order/bin/Release/net10.0/App.dll")
-    if ($LASTEXITCODE) { throw 'Module namespace application failed' }
-    if (($expected -join "`n") -cne ($actual -join "`n")) { throw 'ES module namespace output mismatch' }
-    Write-Host 'PASS ES module namespace ordering, identity, live bindings, and read-only properties'
+    # Namespace semantics need native ES modules as the reference.
+    foreach ($name in @('module-namespace-order', 'in-operator-modules')) {
+        & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
+        & tsc.cmd --strict --target es2022 --module es2022 --outDir "$testRoot/node/$name" "tests/$name.ts"
+        if ($LASTEXITCODE) { throw "ES module reference compilation failed: $name" }
+        '{"type":"module"}' | Set-Content "$testRoot/node/$name/package.json" -Encoding utf8
+        $expected = @(& node "$testRoot/node/$name/$name.js")
+        if ($LASTEXITCODE) { throw "ES module reference failed: $name" }
+        $actual = @(& dotnet "$testRoot/$name/bin/Release/net10.0/App.dll")
+        if ($LASTEXITCODE) { throw "Module namespace application failed: $name" }
+        if (($expected -join "`n") -cne ($actual -join "`n")) { throw "ES module output mismatch: $name" }
+        Write-Host "PASS ES module differential: $name"
+    }
 
     # The spec sorts all namespace export names lexically; V8 currently orders
     # integer-looking names numerically, so this case uses explicit expectations.
@@ -148,6 +150,11 @@ try {
     if ($LASTEXITCODE) { throw 'Closure inspector build failed' }
     & dotnet tests/inspect-closures/bin/Release/net10.0/Inspect.dll "$testRoot/closure-loop/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Closure storage or allocation check failed' }
+
+    & dotnet build tests/inspect-in/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Membership inspector build failed' }
+    & dotnet tests/inspect-in/bin/Release/net10.0/Inspect.dll "$testRoot/in-operator-allocation/bin/Release/net10.0/App.dll"
+    if ($LASTEXITCODE) { throw 'Membership allocation checks failed' }
 
     & dotnet build tests/inspect-optional/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Optional chaining inspector build failed' }

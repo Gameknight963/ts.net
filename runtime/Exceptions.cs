@@ -19,6 +19,7 @@ public sealed class JsCaughtError : TsObject
     }
     public void DefineHidden(string key, object value) { base.Set(key, value); hidden.Add(key); }
     public override bool HasOwn(string key) => key == "stack" || base.HasOwn(key);
+    public override bool HasProperty(string key) => key is "name" or "message" or "toString" || base.HasProperty(key);
     public override object Get(string key) => base.HasOwn(key) ? base.Get(key) : key switch
     {
         "name" => Family,

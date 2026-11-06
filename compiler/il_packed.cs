@@ -49,13 +49,14 @@ internal static partial class CompilerFunctions
     }
     internal static bool il_key_may_invoke(Node n, Compiler c)
     {
-        int key = n.kind == NodeKind.Property || n.kind == NodeKind.Index ? n.right : n.kind == NodeKind.Binding ? n.third : 0;
+        int key = n.kind == NodeKind.HasProperty ? n.left : n.kind == NodeKind.Property || n.kind == NodeKind.Index ? n.right : n.kind == NodeKind.Binding ? n.third : 0;
         if (key == 0) { return false; }
         TypeKind kind = get_type(get_node(key, c).type, c).kind;
         return kind != TypeKind.String && kind != TypeKind.Number && kind != TypeKind.Boolean && kind != TypeKind.Void;
     }
     internal static bool il_coercion_may_invoke(Node n, Compiler c)
     {
+        if (n.kind == NodeKind.HasProperty) { return il_numeric_coercion_calls(n.left, c); }
         if (n.kind == NodeKind.Unary)
         {
             return !is_text(get_token(n.token, c).text, text_not, c) && il_numeric_coercion_calls(n.left, c);

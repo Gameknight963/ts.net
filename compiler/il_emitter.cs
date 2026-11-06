@@ -436,6 +436,12 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Number) { b.plan.number(b.method, number(get_token(n.token, c).text, c)); b.call(RuntimeMember.WrapNumber); }
         else if (n.kind == NodeKind.Boolean) { b.emit(0x20, is_text(get_token(n.token, c).text, text_true, c) ? 1 : 0); b.call(RuntimeMember.WrapBoolean); }
+        else if (n.kind == NodeKind.HasProperty)
+        {
+            bool numeric=get_type(get_node(n.left,c).type,c).kind==TypeKind.Number;
+            if(numeric)il_expression(n.left,c,b);else il_boxed(n.left,c,b);
+            il_boxed(n.right,c,b);b.call(numeric?RuntimeMember.InNumber:RuntimeMember.In);b.call(RuntimeMember.WrapBoolean);
+        }
         else if(n.kind==NodeKind.OptionalChain){il_optional_chain(entry,false,c,b);}
         else if(n.kind==NodeKind.BuiltinNamespace){il_text(get_token(n.token,c).text,c,b);b.call(RuntimeMember.BuiltinNamespace);}
         else if(n.kind==NodeKind.ResolveThis){il_boxed(n.left,c,b);b.call(RuntimeMember.ResolveThis);}

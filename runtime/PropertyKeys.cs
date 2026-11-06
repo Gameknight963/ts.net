@@ -27,7 +27,7 @@ public static partial class Js
                     primitive = CallMethod0(method, obj);
                     if (KeyPrimitive(primitive)) break;
                 }
-            } else if (name == "toString") {
+            } else if (name == "toString" && obj.HasInProperty(name)) {
                 if (obj is JsArray array) {
                     if (array.HasOwn("join")) {
                         object join = array.Get("join");
