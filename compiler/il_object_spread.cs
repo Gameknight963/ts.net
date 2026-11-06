@@ -15,6 +15,10 @@ internal static partial class CompilerFunctions
     }
     internal static void il_prepare_spreads(Compiler c, IlBackend b)
     {
+        for(int i=1;i<=c.node_store.count();i++){
+            Node node=get_node(i,c);
+            if(node.kind==NodeKind.Destructure && node.constant && il_has_object_rest(i,c))b.spread_any_constructor=-1;
+        }
         for (int i = 1; i <= c.node_store.count(); i++)
         {
             if (!il_object_needs_entries(i, c)) { continue; }

@@ -195,6 +195,10 @@ func (b *irBuilder) typ(t *checker.Type) int {
 	}
 	last := 0
 	for _, property := range b.c.GetPropertiesOfType(t) {
+		// Symbol keys cannot be represented by the string-keyed runtime yet.
+		if checker.IsKnownSymbol(property) {
+			continue
+		}
 		name := b.text(ast.SymbolName(property))
 		typ := b.typ(b.c.GetTypeOfSymbol(property))
 		// Non-finite numeric reverse keys can overwrite these named members.
@@ -804,12 +808,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			b.unsupported(n)
 		}
 		if n.AsBindingElement().DotDotDotToken != nil {
-			if n.Parent.Kind == ast.KindObjectBindingPattern {
-				b.unsupported(n)
-			}
 			row.constant = 1
 		}
-		if n.Parent.Kind == ast.KindObjectBindingPattern {
+		if n.Parent.Kind == ast.KindObjectBindingPattern && n.AsBindingElement().DotDotDotToken == nil {
 			key := n.AsBindingElement().PropertyName
 			if key == nil {
 				key = n.Name()

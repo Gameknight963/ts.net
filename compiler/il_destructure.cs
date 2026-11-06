@@ -152,6 +152,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_object_bindings(int entry, int source, Compiler c, IlBackend b)
     {
+        if(il_has_object_rest(entry,c)){il_object_rest_bindings(entry,source,c,b);return;}
         Node pattern = get_node(entry, c); int child = pattern.children;
         b.emit(0xfe0c, source); b.call(RuntimeMember.RequireObject);
         while (child != 0)
