@@ -457,6 +457,7 @@ internal static partial class CompilerFunctions
         else if(n.kind==NodeKind.AsyncAwait){il_boxed(n.left,c,b);if(n.right!=0){il_boxed(n.right,c,b);b.call(RuntimeMember.AsyncAwaitContinue);}else b.call(RuntimeMember.AsyncAwait);}
         else if(n.kind==NodeKind.SavedCall){il_saved_call(entry,c,b);}
         else if(n.kind==NodeKind.AsyncPropertyKey){il_boxed(n.left,c,b);b.call(RuntimeMember.PropertyKey);}
+        else if (n.kind == NodeKind.AsyncResume) { il_boxed(n.left, c, b); b.call(RuntimeMember.AsyncResume); }
         else if (n.kind == NodeKind.DestructuringState)
         {
             il_boxed(n.left, c, b); b.emit(0x20, n.constant ? 1 : 0); b.call(RuntimeMember.BeginDestructuring);

@@ -74,8 +74,17 @@ func (a *asyncExpressionLowering) statement(id int, next func() int) int {
 		a.b.nodes[id-1].children = a.statements(children, next)
 		return id
 	}
+	if n.kind == 27 {
+		return a.switchStatement(id, n, next)
+	}
 	a.discard(id)
 	switch n.kind {
+	case 29: // labeled statement; transfers unwind synchronous finally blocks
+		continuation := a.function(false, func(_ int) int { return next() })
+		return a.bind(continuation, func(done int) int {
+			a.rewriteBreaks(n.left, id, done)
+			return a.statement(n.left, func() int { return a.resume(done) })
+		})
 	case 13, 18, 50: // declaration, expression statement, throw
 		return a.expression(n.left, func(value int) int {
 			n.left = value

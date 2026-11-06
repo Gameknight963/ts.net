@@ -14,9 +14,22 @@ public static partial class Js
     }
     static void CompleteAsyncResult(object result, JsPromise promise, PromiseResolvingFunctions pair)
     {
+        // Internal synchronous transfers unwind generated functions without
+        // adding Promise jobs or growing the stack across case fallthrough.
+        try
+        {
+            while (result is AsyncResumeRecord resume)
+                result = resume.Continuation.InvokeWithReceiver(Undefined, Array.Empty<object>());
+        }
+        catch (Exception error) { pair.RejectError(error); return; }
         if (result is AsyncAwaitRecord awaiting) awaiting.Attach(promise, pair);
         else pair.Resolve.InvokeWithReceiver(Undefined, new[] { result });
     }
+    sealed class AsyncResumeRecord(JsFunction continuation)
+    {
+        internal readonly JsFunction Continuation = continuation;
+    }
+    public static object AsyncResume(object continuation) => new AsyncResumeRecord((JsFunction)continuation);
     sealed class AsyncAwaitRecord(JsPromise awaited, JsFunction continuation = null)
     {
         internal void Attach(JsPromise target, PromiseResolvingFunctions pair)
