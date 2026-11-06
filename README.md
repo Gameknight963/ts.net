@@ -13,7 +13,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current feature completion
 
-69%.
+69%. (haha funny number)
 
 <details>
 
