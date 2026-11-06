@@ -2,3 +2,4 @@ export async function work(value:number):Promise<number>{let result=await value;
 export async function branch(value:boolean):Promise<string>{if(await value){await 0;return 'yes';}return 'no';}
 export async function pattern():Promise<number>{const {x=await 4,...rest}=await Promise.resolve({x:undefined,y:5});return x+rest.y;}
 export async function choose(value:number):Promise<string>{switch(await value){case await 1:await 0;return 'one';default:await 0;break;}return 'other';}
+export async function loop():Promise<number>{let total=0;for(const value of await [1,2,3])total+=await value;for(let i=0;await(i<2);i++)total+=i;return total;}

@@ -9,15 +9,19 @@ func (a *asyncExpressionLowering) resume(symbol int) int {
 // Switch breaks may cross a synchronous try/finally. Return a transfer record
 // rather than calling the continuation before that finally has executed.
 func (a *asyncExpressionLowering) rewriteBreaks(id, target, continuation int) {
+	a.rewriteJumps(id, target, continuation, 25)
+}
+
+func (a *asyncExpressionLowering) rewriteJumps(id, target, continuation, kind int) {
 	if id == 0 {
 		return
 	}
 	n := a.b.nodes[id-1]
-	if n.kind == 19 || n.kind == 38 || n.kind == 26 {
+	if n.kind == 19 || n.kind == 38 {
 		return
 	}
-	if n.kind == 25 {
-		if n.left == target {
+	if n.kind == 25 || n.kind == 26 {
+		if n.kind == kind && n.left == target {
 			resume := a.node(77, "async switch break")
 			a.b.nodes[resume-1].left = a.reference(continuation)
 			a.b.nodes[id-1] = irNode{kind: 14, token: n.token, left: resume, next: n.next}
@@ -25,10 +29,10 @@ func (a *asyncExpressionLowering) rewriteBreaks(id, target, continuation int) {
 		return
 	}
 	for _, child := range []int{n.left, n.right, n.third, n.fourth} {
-		a.rewriteBreaks(child, target, continuation)
+		a.rewriteJumps(child, target, continuation, kind)
 	}
 	for child := n.children; child != 0; child = a.b.nodes[child-1].next {
-		a.rewriteBreaks(child, target, continuation)
+		a.rewriteJumps(child, target, continuation, kind)
 	}
 }
 

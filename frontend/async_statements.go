@@ -77,8 +77,16 @@ func (a *asyncExpressionLowering) statement(id int, next func() int) int {
 	if n.kind == 27 {
 		return a.switchStatement(id, n, next)
 	}
+	if n.kind == 17 {
+		return a.forStatement(id, n, next)
+	}
+	if n.kind == 34 || n.kind == 68 {
+		return a.forEachStatement(id, n, next)
+	}
 	a.discard(id)
 	switch n.kind {
+	case 16, 24:
+		return a.whileStatement(id, n, next)
 	case 29: // labeled statement; transfers unwind synchronous finally blocks
 		continuation := a.function(false, func(_ int) int { return next() })
 		return a.bind(continuation, func(done int) int {
