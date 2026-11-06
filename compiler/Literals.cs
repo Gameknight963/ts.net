@@ -102,6 +102,7 @@ internal static partial class CompilerFunctions
     internal static readonly TextBytes text_includes = "includes";
     internal static readonly TextBytes text_index_of = "indexOf";
     internal static readonly TextBytes text_reverse = "reverse";
+    internal static readonly TextBytes text_substring = "substring";
     internal static readonly TextBytes text_slice = "slice";
     internal static readonly TextBytes text_property_access_requires_object_or_any = "property access requires object or any";
     internal static readonly TextBytes text_object_has_no_such_property = "object has no such property";

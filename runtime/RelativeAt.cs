@@ -69,29 +69,41 @@ public static partial class Js
         return selected >= 0 && selected < length ? IndexGet(receiver, selected) : Undefined;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static object CallMethodIndex(object target, object receiver, double? index) => target is CharacterFunction character
+    public static object CallMethodIndex(object target, object receiver, double? index) => target is StringRangeFunction range
+        ? StringRangePrimitive(range, receiver, index, null)
+        : target is CharacterFunction character
         ? CharacterValue(AtString(receiver), index.GetValueOrDefault(), character.Kind)
         : target is RelativeAtFunction method
         ? AtPrimitive(receiver, index.GetValueOrDefault(), method.Text) : CallFunction(target, new[] { BoxNumber(index) });
-    public static object CallMethod0(object target, object receiver) => target is CharacterFunction character
+    public static object CallMethod0(object target, object receiver) => target is StringRangeFunction range
+        ? StringRangePrimitive(range, receiver, null, null)
+        : target is CharacterFunction character
         ? CharacterValue(AtString(receiver), 0, character.Kind)
         : target is RelativeAtFunction method
         ? AtPrimitive(receiver, 0, method.Text) : CallFunction0(target);
-    public static object CallMethod(object target, object receiver, object[] arguments) => target is CharacterFunction character
+    public static object CallMethod(object target, object receiver, object[] arguments) => target is StringRangeFunction range
+        ? StringRangeConverted(range, receiver, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1))
+        : target is CharacterFunction character
         ? CharacterConverted(character, receiver, FunctionArgument(arguments, 0))
         : target is RelativeAtFunction method
         ? AtConverted(receiver, FunctionArgument(arguments, 0), method.Text) : CallFunction(target, arguments);
-    public static object CallMethodArguments(object target, object receiver, object arguments) => target is CharacterFunction character
+    public static object CallMethodArguments(object target, object receiver, object arguments) => target is StringRangeFunction range
+        ? StringRangeConverted(range, receiver, Iteration.Value(arguments, 0), Iteration.Value(arguments, 1))
+        : target is CharacterFunction character
         ? CharacterConverted(character, receiver, Iteration.Value(arguments, 0))
         : target is RelativeAtFunction method
         ? AtConverted(receiver, Iteration.Value(arguments, 0), method.Text) : CallFunctionArguments(target, arguments);
-    public static double? CallMethodNumber0(object target, object receiver) => target is CharacterFunction character
+    public static double? CallMethodNumber0(object target, object receiver) => target is StringRangeFunction range
+        ? Cast<double?>(StringRangePrimitive(range, receiver, null, null), "Function result violates number type")
+        : target is CharacterFunction character
         ? CharacterNumericResult(character, receiver, 0)
         : target is RelativeAtFunction method
         ? Cast<double?>(AtPrimitive(receiver, 0, method.Text), "Function result violates number type") : CallFunctionNumber0(target);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double? CallMethodNumber1(object target, object receiver, double? first)
     {
+        if (target is StringRangeFunction range)
+            return Cast<double?>(StringRangePrimitive(range, receiver, first, null), "Function result violates number type");
         if (target is CharacterFunction character)
             return CharacterNumericResult(character, receiver, first.GetValueOrDefault());
         if (target is RelativeAtFunction method) {
@@ -103,6 +115,8 @@ public static partial class Js
         }
         return CallFunctionNumber1(target, first);
     }
-    public static double? CallMethodNumber2(object target, object receiver, double? first, double? second) => target is RelativeAtFunction or CharacterFunction
+    public static double? CallMethodNumber2(object target, object receiver, double? first, double? second) => target is StringRangeFunction range
+        ? Cast<double?>(StringRangePrimitive(range, receiver, first, second), "Function result violates number type")
+        : target is RelativeAtFunction or CharacterFunction
         ? CallMethodNumber1(target, receiver, first) : CallFunctionNumber2(target, first, second);
 }

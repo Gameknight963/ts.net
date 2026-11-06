@@ -1,0 +1,33 @@
+const sample='abcdef';
+const bounds=[-Infinity,-4294967296,-9,-2.9,-1,-0.5,-0,0,1,2.9,5,6,9,4294967296,NaN,Infinity];
+for(const first of bounds)for(const last of bounds) console.log(sample.slice(first,last),sample.substring(first,last));
+const dynamic: any=sample;
+for(const first of [undefined,null,false,true,'2','bad'])for(const last of [undefined,null,false,true,'4','bad']) console.log(dynamic.slice(first,last),dynamic.substring(first,last));
+console.log(dynamic.substring(),sample.substring(2),sample.slice(),sample.slice(2));
+console.log(dynamic.substring(undefined,undefined),sample.slice(undefined,undefined));
+console.log(sample['substring'](4,1),sample['slice'](-4,-1));
+console.log(sample.substring.name,sample.substring.length,sample.slice.name,sample.slice.length);
+console.log(sample.substring==='x'.substring,sample.slice==='x'.slice,sample.slice===sample.substring);
+const tuple: [number,number]=[4,1];
+console.log(sample.substring(...tuple),sample.slice(...tuple));
+const spread: any[]=[1,4,9];
+console.log(dynamic.substring(...spread),dynamic.slice(...spread));
+let order='';
+const end: any={valueOf:(()=>4) as any};
+const start: any={valueOf:()=>{order+='B';end.valueOf=()=>{order+='E';return 4;};return 1;}};
+const receiver={read:sample.substring,toString:()=>{order+='S';return 'abcde';}};
+console.log(receiver.read(start,end),order);
+const borrowedSlice={read:sample.slice,toString:()=>sample};
+console.log(borrowedSlice.read(-4,-1),borrowedSlice.read(...tuple));
+console.log((receiver.read as any)(4,1),(borrowedSlice.read as any)(1,4));
+const numericReceiver: any={substring:sample.substring,toString:()=>12345};
+console.log(numericReceiver.substring(1,4));
+const custom: any={substring:(...args: any[])=>args.length};
+console.log(custom.substring(),custom.substring(1),custom.substring(1,4),custom.substring(...spread));
+let evaluations=0;
+console.log(dynamic.substring(1,4,++evaluations),evaluations);
+const unicode='A\uD83D\uDE00B\uD800';
+for(let i=0;i<=unicode.length;i++)for(let j=0;j<=unicode.length;j++){
+ const a=unicode.substring(i,j);const b=unicode.slice(i,j);
+ console.log(a.length,a.charCodeAt(0),a.charCodeAt(a.length-1),b.length,b.charCodeAt(0),b.charCodeAt(b.length-1));
+}
