@@ -12,15 +12,19 @@ public static partial class Js
             // that rejects the result, including a throwing resolve getter.
             var capability = NewPromiseCapability(receiver);
             object input = null;
+            int position = 0; bool closeable = false;
             try
             {
                 object resolve = Js.Get(receiver, "resolve");
                 if (resolve is not JsFunction) throw new InvalidOperationException("Promise resolve is not callable");
                 input = Iteration.Start(FunctionArgument(arguments, 0));
                 var state = new PromiseCombinationState(mode, capability);
-                for (int position = 0; position < Iteration.Length(input); position += Iteration.Step(input, position))
+                while (true)
                 {
+                    closeable = false;
+                    if (position >= Iteration.Length(input)) break;
                     object item = input is JsArray array ? IndexedValue(array, position) : Iteration.Value(input, position);
+                    position += Iteration.Step(input, position); closeable = true;
                     int index = state.Add();
                     object promise = CallMethod(resolve, receiver, new[] { item });
                     var handlers = state.Handlers(index);
@@ -28,7 +32,7 @@ public static partial class Js
                 }
                 state.Finish();
             }
-            catch (Exception error) { CloseIteration(input, true); capability.Complete(CaughtValue(error), true); }
+            catch (Exception error) { if (closeable) CloseIterationAt(input, position, true); capability.Complete(CaughtValue(error), true); }
             return capability.Promise;
         }
     }

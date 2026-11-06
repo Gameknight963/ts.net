@@ -58,7 +58,7 @@ public static partial class Js
     public static object CloseDestructuring(object state)
     {
         var cursor = (DestructuringState)state;
-        if (!cursor.ObjectPattern && !cursor.Finished) CloseIteration(cursor.Source, false);
+        if (!cursor.ObjectPattern && !cursor.Finished) CloseIterationAt(cursor.Source, cursor.Position, false);
         return Undefined;
     }
 }

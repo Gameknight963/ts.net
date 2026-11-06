@@ -188,11 +188,15 @@ public static partial class Js
             object adder = result.Get(set ? "add" : "set");
             if (adder is not JsFunction) throw new InvalidOperationException("Collection adder is not callable");
             object source = Iteration.Start(input);
+            int position = 0; bool closeable = false;
             try
             {
-                for (int position = 0; position < Iteration.Length(source); position += Iteration.Step(source, position))
+                while (true)
                 {
+                    closeable = false;
+                    if (position >= Iteration.Length(source)) break;
                     object value = Iteration.Value(source, position);
+                    position += Iteration.Step(source, position); closeable = true;
                     if (set) CallMethod(adder, result, new[] { value });
                     else
                     {
@@ -202,7 +206,7 @@ public static partial class Js
                     }
                 }
             }
-            catch { CloseIteration(source, true); throw; }
+            catch { if (closeable) CloseIterationAt(source, position, true); throw; }
             return result;
         }
         public override object Construct(object[] arguments) => Create(arguments, null);
@@ -216,7 +220,7 @@ public static partial class Js
         static JsFunction Next(bool set) => new CollectionMethod("next", 0, (receiver, _) => receiver is JsCollectionIterator iterator && iterator.IsSetIterator == set ? iterator.Next() : throw new InvalidOperationException("Incompatible iterator receiver"));
         static TsObject Create(bool set)
         {
-            var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
+            var prototype = new JsClassInstance { ParentPrototype = NativeIteratorPrototype };
             prototype.DefineMethod("next", set ? SetNext : MapNext);
             return prototype;
         }

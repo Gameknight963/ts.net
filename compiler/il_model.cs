@@ -4,7 +4,7 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 internal enum RuntimeMember
 {
-    IterationStart, CloseIteration, CloseAsyncIteration, CloseDestructuring,
+    IterationStart, CloseIteration, CloseIterationAt, SequenceIteratorHasReturn, CloseAsyncIteration, CloseDestructuring,
     ForAwaitNext, ForAwaitAccept, ForAwaitNeedsClose, ForAwaitClose, RequireIteratorResult, AsyncIteratorTry,
     BeginDestructuring, ReadDestructuring, RestDestructuring, AsyncResume, BeginAsyncIteration, NextAsyncIteration, AsyncIterationValue, AsyncTry, AsyncTryEnd,
     DynamicObjectType, DynamicObjectConstructor, AsyncFunction, AsyncAwait, AsyncAwaitContinue, MarkFunctionPrototype, In, InNumber, SealModuleNamespace, InitializeEnum, BuiltinNamespace, CopyObjectRest, DeleteOwn, DefineAccessor, ResolveThis, NewTarget, EnableNewTarget, Arguments, EnableArguments, SuperBase, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, DefineAutoAccessor, InitializeAutoAccessor, DefinePrivateMember, InitializePrivateMember, PrivateGet, PrivateSet, PrivateHas, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
@@ -737,6 +737,9 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.ForOfLength, b.plan.method1(6, js, 0, -3, -5, "ForOfLength"));
         b.ref_set(RuntimeMember.IterationStart, b.plan.method1(6, js, 0, -5, -5, "IterationStart"));
         b.ref_set(RuntimeMember.CloseIteration, b.plan.method2(6, js, 0, -1, -5, -2, "CloseIteration"));
+        Vector<int> closeAtArguments = new(); closeAtArguments.push(-5); closeAtArguments.push(-6); closeAtArguments.push(-2);
+        b.ref_set(RuntimeMember.CloseIterationAt, b.plan.method(6, js, 0, -1, closeAtArguments.view(), "CloseIterationAt"));
+        b.ref_set(RuntimeMember.SequenceIteratorHasReturn, b.plan.method0(6, js, 0, -2, "SequenceIteratorHasReturn"));
         b.ref_set(RuntimeMember.CloseAsyncIteration, b.plan.method1(6, js, 0, -5, -5, "CloseAsyncIteration"));
         b.ref_set(RuntimeMember.CloseDestructuring, b.plan.method1(6, js, 0, -5, -5, "CloseDestructuring"));
         b.ref_set(RuntimeMember.ForOfValue, b.plan.method2(6, js, 0, -5, -5, -6, "ForOfValue"));

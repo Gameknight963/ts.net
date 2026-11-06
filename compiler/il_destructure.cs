@@ -64,10 +64,21 @@ internal static partial class CompilerFunctions
             else { il_as(child, storage, c, b); }
             b.emit(0xfe0e, slot); slots.push(slot); types.push((int)storage); child = value.next;
         }
+        bool mayThrow = false; int bindingIndex = 0;
+        for (int item = pattern.children; item != 0; item = get_node(item, c).next, bindingIndex++)
+        {
+            Node binding = get_node(item, c);
+            if (binding.kind == NodeKind.Binding && (binding.left != 0 || binding.fourth != 0 || bindingIndex < types.count() && types.at(bindingIndex) != binding.type)) mayThrow = true;
+        }
+        int closeable = b.local(-2), position = b.local(-6);
+        b.emit(0x20, 1); b.emit(0xfe0e, closeable); b.emit(0x20, 0); b.emit(0xfe0e, position);
+        int start = b.label(), end = b.label(), handler = b.label(), handlerEnd = b.label(), normal = b.label(); b.mark(start);
         child = pattern.children; int index = 0;
         while (child != 0)
         {
             Node binding = get_node(child, c);
+            b.emit(0x20, index < slots.count() ? 1 : 0); b.emit(0xfe0e, closeable);
+            b.emit(0x20, index + 1); b.emit(0xfe0e, position);
             if (binding.kind == NodeKind.Binding)
             {
                 if (index < slots.count()) { b.emit(0xfe0c, slots.at(index)); b.convert((int)types.at(index), binding.type, c); }
@@ -76,7 +87,33 @@ internal static partial class CompilerFunctions
             }
             index++; child = binding.next;
         }
+        if (mayThrow)
+        {
+            b.emit(0xdd, normal); b.mark(end); b.mark(handler);
+            int exception = b.RuntimeToken(RuntimeMember.ExceptionType), error = b.local(exception); b.emit(0xfe0e, error);
+            il_close_literal_iterator(literal, slots, types, closeable, position, true, c, b);
+            b.emit(0xfe0c, error); b.op(0x7a); b.mark(handlerEnd);
+            b.plan.catch_region(b.method, start, end, handler, handlerEnd, exception);
+        }
+        b.mark(normal); il_close_literal_iterator(literal, slots, types, closeable, position, false, c, b);
         return true;
+    }
+    internal static void il_close_literal_iterator(Node literal, Vector<int> slots, Vector<int> types, int closeable, int position, bool suppress, Compiler c, IlBackend b)
+    {
+        int skip = b.label(); b.emit(0xfe0c, closeable); b.emit(0x39, skip);
+        b.call(RuntimeMember.SequenceIteratorHasReturn); b.emit(0x39, skip);
+        // Saved RHS values let the uncommon cleanup path reconstruct the source
+        // without repeating expressions. Defaults may install return dynamically.
+        b.emit(0x20, 0); b.emit(0x73, b.RuntimeToken(RuntimeMember.ArrayConstructor)); int source = b.local(-5); b.emit(0xfe0e, source);
+        int child = literal.children, index = 0;
+        while (child != 0)
+        {
+            Node value = get_node(child, c); b.emit(0xfe0c, source);
+            if (value.kind == NodeKind.Undefined && value.constant) b.call(RuntimeMember.ArrayHole);
+            else { b.emit(0xfe0c, slots.at(index)); b.box(types.at(index), c); b.call(RuntimeMember.ArrayAppend); }
+            index++; child = value.next;
+        }
+        il_close_iteration(source, closeable, suppress, b, position); b.mark(skip);
     }
     internal static bool il_literal_object_bindings(int entry, Compiler c, IlBackend b)
     {
@@ -166,9 +203,9 @@ internal static partial class CompilerFunctions
         }
         b.emit(0xdd, normal); b.mark(end); b.mark(handler);
         int exception = b.RuntimeToken(RuntimeMember.ExceptionType), error = b.local(exception); b.emit(0xfe0e, error);
-        il_close_iteration(source, closeable, true, b); b.emit(0xfe0c, error); b.op(0x7a); b.mark(handlerEnd);
+        il_close_iteration(source, closeable, true, b, position); b.emit(0xfe0c, error); b.op(0x7a); b.mark(handlerEnd);
         b.plan.catch_region(b.method, start, end, handler, handlerEnd, exception);
-        b.mark(normal); il_close_iteration(source, closeable, false, b); b.destructure_close = previousClose;
+        b.mark(normal); il_close_iteration(source, closeable, false, b, position); b.destructure_close = previousClose;
     }
     internal static void il_object_bindings(int entry, int source, Compiler c, IlBackend b)
     {

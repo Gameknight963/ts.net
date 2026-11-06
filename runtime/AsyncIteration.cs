@@ -38,6 +38,6 @@ public static partial class Js
     public static object CloseAsyncIteration(object state)
     {
         var cursor = (AsyncIterationState)state; cursor.NeedsClose = false;
-        CloseIteration(cursor.Source, false); return Undefined;
+        CloseIterationAt(cursor.Source, unchecked((int)cursor.Position), false); return Undefined;
     }
 }

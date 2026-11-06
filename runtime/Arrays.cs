@@ -208,16 +208,20 @@ public partial class JsArray : TsObject
             for (uint i = 0; i < numbers.Length(); i++) destination.PushNumber(numbers.GetNumberAt(unchecked((int)i)));
             return;
         }
+        uint nextPosition = 0; bool closeable = false;
         try
         {
-            for (uint i = 0; i < Iteration.Length(source);)
+            while (true)
             {
-                int position = unchecked((int)i);
-                Append(Iteration.Value(source, position));
-                i += (uint)Iteration.Step(source, position);
+                closeable = false;
+                if (nextPosition >= Iteration.Length(source)) break;
+                int position = unchecked((int)nextPosition);
+                object value = Iteration.Value(source, position);
+                nextPosition += (uint)Iteration.Step(source, position); closeable = true;
+                Append(value);
             }
         }
-        catch { Js.CloseIteration(source, true); throw; }
+        catch { if (closeable) Js.CloseIterationAt(source, unchecked((int)nextPosition), true); throw; }
     }
     public double PushMany(object[] items)
     {

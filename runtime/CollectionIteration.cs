@@ -40,19 +40,22 @@ public static partial class Js
     {
         TsObject iterator = IterationObject(source);
         if (iterator == null) return;
-        try
-        {
-            object method = iterator.Get("return");
-            if (IsNullish(method)) return;
-            if (method is not JsFunction function) throw new InvalidOperationException("Iterator return is not callable");
-            RequireIteratorResult(function.InvokeWithReceiver(iterator, Array.Empty<object>()));
-        }
+        try { CloseIteratorObject(iterator); }
         catch when (suppressError) { }
+    }
+    static void CloseIteratorObject(TsObject iterator)
+    {
+        if (iterator == null) return;
+        object method = iterator.Get("return");
+        if (IsNullish(method)) return;
+        if (method is not JsFunction function) throw new InvalidOperationException("Iterator return is not callable");
+        RequireIteratorResult(function.InvokeWithReceiver(iterator, Array.Empty<object>()));
     }
     internal static TsObject IterationObject(object source) => source switch
         {
             JsCollectionIterator { Owner: not null } native => native,
             JsProtocolIterator { Done: false } custom => custom.Source,
+            JsSequenceIterator { Done: false } native => native,
             _ => null
         };
 }

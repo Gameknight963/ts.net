@@ -2,7 +2,7 @@ using System;
 
 public static partial class Js
 {
-    static object IteratorResult(object value, bool done)
+    internal static object IteratorResult(object value, bool done)
     {
         var result = new JsDynamicObject();
         result.DefineOwn("value", value);
@@ -26,11 +26,11 @@ public static partial class Js
             // loop then awaits the resulting iterator-result promise separately.
             value.Then(new PromiseReaction(null, null, null, (resolved, rejected) =>
             {
-                if (rejected) { if (more) CloseIteration(cursor.Source, true); pair.Reject.InvokeWithReceiver(Undefined, new[] { resolved }); }
+                if (rejected) { if (more) CloseIterationAt(cursor.Source, unchecked((int)cursor.Position), true); pair.Reject.InvokeWithReceiver(Undefined, new[] { resolved }); }
                 else pair.Resolve.InvokeWithReceiver(Undefined, new[] { IteratorResult(resolved, !more) });
             }));
         }
-        catch (Exception error) { if (more) CloseIteration(cursor.Source, true); pair.RejectError(error); }
+        catch (Exception error) { if (more) CloseIterationAt(cursor.Source, unchecked((int)cursor.Position), true); pair.RejectError(error); }
         return result;
     }
 
@@ -55,7 +55,7 @@ public static partial class Js
         var pair = new PromiseResolvingFunctions(result);
         try
         {
-            TsObject iterator = IterationObject(cursor.Source);
+            TsObject iterator = IterationObjectAt(cursor.Source, unchecked((int)cursor.Position));
             object method = iterator == null ? Undefined : iterator.Get("return");
             if (IsNullish(method)) pair.Resolve.InvokeWithReceiver(Undefined, new[] { IteratorResult(Undefined, true) });
             else

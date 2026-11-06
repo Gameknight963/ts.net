@@ -6,10 +6,11 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 internal static partial class CompilerFunctions
 {
-    internal static void il_close_iteration(int source, int enabled, bool suppress, IlBackend b)
+    internal static void il_close_iteration(int source, int enabled, bool suppress, IlBackend b, int position = -1)
     {
         int skip = b.label(); b.emit(0xfe0c, enabled); b.emit(0x39, skip);
-        b.emit(0xfe0c, source); b.emit(0x20, suppress ? 1 : 0); b.call(RuntimeMember.CloseIteration); b.mark(skip);
+        b.emit(0xfe0c, source); if (position >= 0) b.emit(0xfe0c, position);
+        b.emit(0x20, suppress ? 1 : 0); b.call(position >= 0 ? RuntimeMember.CloseIterationAt : RuntimeMember.CloseIteration); b.mark(skip);
     }
     internal static void il_prepare_iteration_vars(int owner, Compiler c, IlBackend b)
     {
@@ -134,13 +135,13 @@ internal static partial class CompilerFunctions
         {
             b.emit(0xdd, normal); b.mark(protectedEnd); b.mark(handler);
             int exception = b.RuntimeToken(RuntimeMember.ExceptionType), error = b.local(exception); b.emit(0xfe0e, error);
-            il_close_iteration(iterable, closeable, true, b); b.emit(0xfe0c, error); b.op(0x7a); b.mark(handlerEnd);
+            il_close_iteration(iterable, closeable, true, b, position); b.emit(0xfe0c, error); b.op(0x7a); b.mark(handlerEnd);
             b.plan.catch_region(b.method, protectedStart, protectedEnd, handler, handlerEnd, exception);
             b.exception_frames.RemoveAt(b.exception_frames.Count - 1);
-            b.mark(normal); il_close_iteration(iterable, closeable, false, b); b.emit(0x38, completed);
+            b.mark(normal); il_close_iteration(iterable, closeable, false, b, position); b.emit(0x38, completed);
             foreach (var exit in frame.Exits)
             {
-                b.mark(exit.Label); il_close_iteration(iterable, closeable, false, b);
+                b.mark(exit.Label); il_close_iteration(iterable, closeable, false, b, position);
                 if (exit.Return) { if (exit.Value >= 0) b.emit(0xfe0c, exit.Value); il_exception_return(result, c, b); }
                 else il_exception_jump(exit.TargetNode, exit.TargetLabel, c, b);
             }
