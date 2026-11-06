@@ -82,7 +82,7 @@ func (a *asyncExpressionLowering) bind(value int, next func(int) int) int {
 	a.b.nodes[binding-1].left = value
 	return a.sequence(binding, next(symbol))
 }
-func (a *asyncExpressionLowering) function(parameter bool, body func(int) int) int {
+func (a *asyncExpressionLowering) functionParameters(count int, body func([]int) int) int {
 	function := a.node(19, "await continuation")
 	symbol := a.symbol(a.any)
 	a.b.symbols[symbol-1].function = function
@@ -90,18 +90,33 @@ func (a *asyncExpressionLowering) function(parameter bool, body func(int) int) i
 	a.b.nodes[function-1].name = a.b.text("")
 	a.b.nodes[function-1].next = a.b.functions
 	a.b.functions = function
-	argument := 0
-	if parameter {
-		argument = a.symbol(a.any)
+	arguments := make([]int, count)
+	parameters := make([]int, count)
+	for i := range arguments {
+		argument := a.symbol(a.any)
+		arguments[i] = argument
 		p := a.node(13, "await argument")
 		a.b.nodes[p-1].symbol = argument
-		a.b.nodes[function-1].children = p
+		parameters[i] = p
 	}
-	a.b.nodes[function-1].left = body(argument)
+	a.b.nodes[function-1].children = a.link(parameters)
+	a.b.nodes[function-1].left = body(arguments)
 	value := a.node(38, "await continuation")
 	a.b.nodes[value-1].symbol = symbol
 	a.b.nodes[value-1].left = function
 	return value
+}
+func (a *asyncExpressionLowering) function(parameter bool, body func(int) int) int {
+	count := 0
+	if parameter {
+		count = 1
+	}
+	return a.functionParameters(count, func(arguments []int) int {
+		if parameter {
+			return body(arguments[0])
+		}
+		return body(0)
+	})
 }
 func (a *asyncExpressionLowering) hasAwait(id int) bool {
 	if id == 0 {
@@ -179,9 +194,8 @@ func (a *asyncExpressionLowering) joined(next asyncExpressionContinuation, body 
 	})
 }
 func (a *asyncExpressionLowering) call(n irNode, next asyncExpressionContinuation) int {
-	callee := a.b.nodes[n.left-1]
 	arguments := a.list(n.children)
-	finish := func(target, receiver int) int {
+	return a.callTarget(n.left, func(target, receiver int) int {
 		return a.operands(arguments, false, func(values []int) int {
 			n.kind = 71
 			n.left = a.reference(target)
@@ -192,17 +206,24 @@ func (a *asyncExpressionLowering) call(n irNode, next asyncExpressionContinuatio
 			n.children = a.link(values)
 			return next(a.operation(n))
 		})
+	})
+}
+func (a *asyncExpressionLowering) callTarget(id int, next func(int, int) int) int {
+	callee := a.b.nodes[id-1]
+	if callee.kind == 62 {
+		a.discard(id)
+		return a.chain(callee, next)
 	}
 	if callee.kind == 5 || callee.kind == 33 {
+		a.discard(id)
 		return a.expression(callee.left, func(value int) int {
 			return a.bind(value, func(receiver int) int {
-				a.discard(n.left)
 				get := func(key int) int {
 					callee.left = a.reference(receiver)
 					if callee.kind == 33 {
 						callee.right = key
 					}
-					return a.bind(a.operation(callee), func(target int) int { return finish(target, receiver) })
+					return a.bind(a.operation(callee), func(target int) int { return next(target, receiver) })
 				}
 				if callee.kind == 33 {
 					return a.expression(callee.right, get)
@@ -211,7 +232,7 @@ func (a *asyncExpressionLowering) call(n irNode, next asyncExpressionContinuatio
 			})
 		})
 	}
-	return a.expression(n.left, func(value int) int { return a.bind(value, func(target int) int { return finish(target, 0) }) })
+	return a.expression(id, func(value int) int { return a.bind(value, func(target int) int { return next(target, 0) }) })
 }
 func (a *asyncExpressionLowering) expression(id int, next asyncExpressionContinuation) int {
 	if !a.hasAwait(id) {
@@ -263,6 +284,8 @@ func (a *asyncExpressionLowering) expression(id int, next asyncExpressionContinu
 				return a.expression(n.right, func(right int) int { n.left = a.reference(symbol); n.right = right; return next(a.operation(n)) })
 			})
 		})
+	case 62: // optional chain
+		return a.chain(n, func(value, receiver int) int { return next(a.reference(value)) })
 	case 10: // assignment
 		return a.assignment(n, next)
 	case 11: // prefix/postfix update with an awaited reference
@@ -494,5 +517,68 @@ func (a *asyncExpressionLowering) assignment(n irNode, next asyncExpressionConti
 				return store(binary)
 			})
 		})
+	})
+}
+
+// Share both the value and the receiver across optional branches. Calls following
+// a parenthesized chain still use the receiver of its last property access.
+func (a *asyncExpressionLowering) chain(n irNode, next func(int, int) int) int {
+	steps := a.list(n.children)
+	continuation := a.functionParameters(2, func(arguments []int) int { return next(arguments[0], arguments[1]) })
+	return a.bind(continuation, func(join int) int {
+		finish := func(value, receiver int) int {
+			call := a.node(6, "await chain join")
+			a.b.nodes[call-1].left = a.reference(join)
+			args := []int{value, receiver}
+			a.b.nodes[call-1].children = a.link(args)
+			return a.returned(call)
+		}
+		var walk func(int, int, int) int
+		walk = func(index, value, receiver int) int {
+			if index == len(steps) {
+				this := a.node(20, "undefined")
+				if receiver != 0 {
+					this = a.reference(receiver)
+				}
+				return finish(a.reference(value), this)
+			}
+			step := a.b.nodes[steps[index]-1]
+			a.discard(steps[index])
+			advance := func() int {
+				if step.kind == 65 {
+					return a.operands(a.list(step.children), false, func(args []int) int {
+						call := a.node(71, "await chain call")
+						a.b.nodes[call-1].left = a.reference(value)
+						if receiver != 0 {
+							a.b.nodes[call-1].right = a.reference(receiver)
+						}
+						a.b.nodes[call-1].children = a.link(args)
+						return a.bind(call, func(result int) int { return walk(index+1, result, 0) })
+					})
+				}
+				get := func(key int) int {
+					step.constant = 0
+					step.right = key
+					child := a.operation(step)
+					root := a.node(62, "await chain property")
+					a.b.nodes[root-1].typ = step.typ
+					a.b.nodes[root-1].left = a.reference(value)
+					a.b.nodes[root-1].children = child
+					return a.bind(root, func(result int) int { return walk(index+1, result, value) })
+				}
+				if step.kind == 64 {
+					return a.expression(step.right, get)
+				}
+				return get(0)
+			}
+			if step.constant != 0 {
+				return a.branch(a.nullish(value), finish(a.node(20, "undefined"), a.node(20, "undefined")), advance())
+			}
+			return advance()
+		}
+		if len(steps) > 0 && a.b.nodes[steps[0]-1].kind == 65 {
+			return a.callTarget(n.left, func(value, receiver int) int { return walk(0, value, receiver) })
+		}
+		return a.expression(n.left, func(base int) int { return a.bind(base, func(value int) int { return walk(0, value, 0) }) })
 	})
 }
