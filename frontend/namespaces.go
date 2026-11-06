@@ -4,7 +4,33 @@ package main
 // Once it does, property lookups must observe writes through aliases as well.
 func (b *irBuilder) dynamicNamespaces() {
 	number, object := false, false
+	// Definitions and plain assignment targets do not read a constructor alias.
+	noRead := map[int]bool{}
 	for _, node := range b.nodes {
+		if node.kind == 4 {
+			for child := node.children; child != 0; child = b.nodes[child-1].next {
+				noRead[child] = true
+			}
+		}
+		if node.kind == 10 && b.texts[b.tokens[node.token-1].text-1] == "=" {
+			noRead[node.left] = true
+		}
+	}
+	for index, node := range b.nodes {
+		if !noRead[index+1] {
+			if (node.kind == 5 || node.kind == 63) && node.name != 0 && b.texts[node.name-1] == "constructor" {
+				object = true
+			}
+			if (node.kind == 33 || node.kind == 64) && node.right != 0 {
+				key := b.nodes[node.right-1]
+				if key.kind == 1 {
+					object = object || b.texts[b.tokens[key.token-1].text-1] == "constructor"
+				} else if key.typ == 0 || (b.types[key.typ-1].kind != 0 && b.types[key.typ-1].kind != 2) {
+					object = true
+				}
+			}
+		}
+
 		if node.kind == 66 {
 			name := b.texts[b.tokens[node.token-1].text-1]
 			number = number || name == "Number"

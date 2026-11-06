@@ -21,12 +21,12 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 |---|---|---|
 | Values and operators | 8 / 10 | Numbers, strings, booleans, null, undefined, arithmetic, comparisons, bitwise operators, optional chaining and in. <br> BigInt, symbols and some operators are missing. |
 | Control flow | 9 / 10 | Conditions, loops, for-of, switch, labels, break and continue. For-in is missing. |
-| Functions | 9 / 10 | Closures, callbacks, overloads, default/optional/rest parameters, destructuring, function/method receivers, arrow this capture and call/apply/bind. Top-level this, function constructors and generators are missing. |
+| Functions | 9 / 10 | Closures, callbacks, overloads, default/optional/rest parameters, destructuring, function/method receivers, arrow this capture, ordinary function constructors, instanceof and call/apply/bind. Top-level this, new.target and generators are missing. |
 | Objects and arrays | 9 / 10 | Structural objects, methods, getters/setters, computed properties, spreads, destructuring, object rest bindings and sparse arrays. General prototype behavior is incomplete. |
 | Types and generics | 5 / 10 | Microsoft's type checking, interfaces, aliases, basic generics and union/nullable storage. Runtime representations still have gaps. |
 | Modules | 4 / 5 | Imports, exports, default exports, namespace values, live bindings and multiple files. Dynamic import is missing. |
 | Enums | 4 / 5 | Numeric, string, mixed, computed and const enums; reverse mappings, merged enums, and imports. Namespace merging supports exported variables, functions and classes; __proto__ members follow assignment behavior. Nested namespace exports and general prototype behavior remain incomplete. |
-| Classes and inheritance | 12 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, generics, structural interfaces, inheritance, super and getters/setters. Built-in base classes, auto-accessors, #private fields, dynamic field keys and decorators are missing. Base constructors returning replacement objects still have gaps. |
+| Classes and inheritance | 12 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, generics, structural interfaces, inheritance, super and getters/setters. Built-in/function base classes, auto-accessors, #private fields, dynamic field keys and decorators are missing. Base constructors returning replacement objects still have gaps. |
 | Exceptions | 8 / 10 | throw, try/catch/finally, standard error objects, cause, and instanceof. Error prototypes and TypeScript source locations in stack traces are missing. |
 | Async | 0 / 10 | Not implemented |
 | Standard library | 2 / 5 | Selected Number/Object helpers and array/string methods. Many built-ins are missing. |

@@ -15,8 +15,11 @@ internal static partial class CompilerFunctions
     }
     internal static void il_prepare_spreads(Compiler c, IlBackend b)
     {
+        bool constructs=false;
+        for(int i=1;i<=c.node_store.count();i++) if(get_node(i,c).kind==NodeKind.Construct)constructs=true;
         for(int i=1;i<=c.node_store.count();i++){
             Node node=get_node(i,c);
+            if(constructs && node.kind==NodeKind.Function && node.third!=0)b.spread_any_constructor=-1;
             if(node.kind==NodeKind.Destructure && node.constant && il_has_object_rest(i,c))b.spread_any_constructor=-1;
         }
         for (int i = 1; i <= c.node_store.count(); i++)
@@ -100,9 +103,9 @@ void il_spread_shapes(Compiler c, IlBackend b)
             b.op(0x2a);
         }
         if (b.spread_any_constructor != -1) { return; }
-        int parent = b.RuntimeToken(RuntimeMember.TsObjectType); int klass = b.plan.type("DAny", parent, 0x101);
+        int parent = b.RuntimeToken(RuntimeMember.DynamicObjectType); int klass = b.plan.type("DAny", parent, 0x101);
         int constructor = b.plan.method0(5, klass, 0x1886, -1, ".ctor"); b.spread_any_constructor = constructor;
-        b.begin(constructor); b.emit(0xfe09, 0); b.call(RuntimeMember.Constructor); b.op(0x2a); il_spread_count(klass, b);
+        b.begin(constructor); b.emit(0xfe09, 0); b.call(RuntimeMember.DynamicObjectConstructor); b.op(0x2a); il_spread_count(klass, b);
         Vector<int> emitted = new Vector<int>(); int target = c.types;
         while (target != 0)
         {

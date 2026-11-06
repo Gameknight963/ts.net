@@ -15,6 +15,7 @@ public static partial class Js
     }
     class NativeNamespaceFunction(string name, FunctionBody body, int length, object numeric = null) : JsFunction(body, numeric, name, length)
     {
+        internal override bool IsReadOnlyOwnProperty(string key) => key == "prototype" || base.IsReadOnlyOwnProperty(key);
         public override object Set(string key, object value) => key == "prototype" ? throw new InvalidOperationException("Function prototype is read-only") : base.Set(key, value);
         readonly HashSet<string> hidden = new();
         internal void Member(string name, object value) { DefineOwn(name, value); hidden.Add(name); }
@@ -33,7 +34,8 @@ public static partial class Js
     static NativeNamespaceFunction ObjectNamespace()
     {
         var result = new NativeNamespaceFunction("Object", static _ => throw new InvalidOperationException("Object construction is not implemented"), 1);
-        result.MarkOrdinaryPrototype();
+        result.UseObjectPrototype(DefaultClassObjectPrototype);
+        DefaultClassObjectPrototype.DefineMethod("constructor",result);
         result.Member("keys", GetObjectKeysFunction()); result.Member("values", GetObjectValuesFunction()); result.Member("entries", GetObjectEntriesFunction());
         result.Member("hasOwn", new JsFunction((FunctionBody)(static args => BoxBoolean(HasOwn(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "hasOwn", 2)); return result;
     }
@@ -44,6 +46,7 @@ public static partial class Js
         internal static readonly JsFunction Object = ObjectNamespace();
         internal static readonly JsFunction Number = new NumberNamespace();
     }
+    internal static JsFunction GetObjectConstructor() => RuntimeNamespaces.Object;
     public static void ConsoleLog(object[] args) => CallMethod(RuntimeNamespaces.Console.Get("log"), RuntimeNamespaces.Console, args);
     public static double PerformanceNow() => CallMethodNumber0(RuntimeNamespaces.Performance.Get("now"), RuntimeNamespaces.Performance).GetValueOrDefault(double.NaN);
     public static object BuiltinNamespace(string name) => name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : Undefined;

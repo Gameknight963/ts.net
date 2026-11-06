@@ -51,6 +51,7 @@ public static partial class Js
     {
         readonly string family;
         internal ErrorConstructor(string name) : base((FunctionBody)(arguments => NewError(name, arguments)), null, name, name == "AggregateError" ? 2 : 1) { family = name; MarkOrdinaryPrototype(); }
+        internal override bool IsReadOnlyOwnProperty(string key) => key == "prototype" || base.IsReadOnlyOwnProperty(key);
         public override object Set(string key, object value) => key == "prototype" ? throw new InvalidOperationException("Function prototype is read-only") : base.Set(key, value);
         public override object Construct(object[] arguments) => NewError(family, arguments);
         public override bool HasInstance(object value) => value is JsCaughtError error && (family == "Error" || error.Family == family);

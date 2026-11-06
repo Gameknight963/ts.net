@@ -146,7 +146,7 @@ internal static partial class CompilerFunctions
             else
             {
                 int member = field(owner, n.name, c);
-                if (member == 0 && (get_type(owner, c).element != 0 || get_type(owner,c).name != 0)) { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); return; }
+                if (member == 0 && get_type(owner, c).kind is TypeKind.Shape or TypeKind.Array) { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); return; }
                 if (member == 0) { fail(n.token, "unresolved lowered field", c); }
                 b.emit(0x74, b.interface_type(owner));
                 b.emit(0x6f, b.getter(member));
@@ -546,7 +546,7 @@ internal static partial class CompilerFunctions
             else
             {
                 int member = field(owner, n.name, c);
-                if (member == 0 && (get_type(owner, c).element != 0 || get_type(owner,c).name != 0)) { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); return; }
+                if (member == 0 && get_type(owner, c).kind is TypeKind.Shape or TypeKind.Array) { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); return; }
                 if (member == 0 || b.getter(member) == 0) { fail(n.token, "unresolved lowered getter", c); }
                 b.emit(0x74, b.interface_type(owner));
                 b.emit(0x6f, b.getter(member));
@@ -874,6 +874,14 @@ internal static partial class CompilerFunctions
         IlBackend b = IlBackend.create(c); il_prove_locals(c, b); il_prove_scalars(c, b); il_prove_reversible_arrays(c, b); il_choose_tagged_arrays(c, b); il_runtime(b); il_prepare_enumeration(c, b); il_prepare_spreads(c, b); il_prepare_key_layouts(c, b); il_shapes(c, b); il_key_layouts(c, b); il_spread_shapes(c, b); il_prepare_spread_hints(c, b); il_spread_clones(c, b);
         int object_type = b.RuntimeToken(RuntimeMember.ObjectType);
         int program = b.plan.type("Program", object_type, 0x181);
+        // Keep the constructor allocator with this assembly so its instances
+        // implement this program's structural interfaces.
+        if (b.spread_any_constructor > 0)
+        {
+            b.function_allocator=b.plan.method1(5,program,0x16,-5,-7,"AllocateFunctionInstance");
+            b.function_allocator_cache=b.plan.field(program,0x13,-5,"functionInstanceFactory");
+            b.begin(b.function_allocator);b.emit(0x73,b.spread_any_constructor);b.op(0x2a);
+        }
         il_prepare_closures(c, b); il_prepare_function_values(program, c, b);
         il_globals(program, c, b); il_infer_scalar_values(c, b); il_infer_array_values(numeric_array, c, b);
         int function = c.functions;

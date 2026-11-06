@@ -14,7 +14,9 @@ var random=new Random(4917);
 for(int i=0;i<10000;i++) {
     string key=names[random.Next(names.Length)];
     object value=i%3==0 ? Js.Undefined : i%3==1 ? null : (object)(double)i;
-    expected[key]=value;actual.Set(key,value);
+    expected[key]=value;
+    // This storage test needs a data property, including for the special setter name.
+    if(key=="__proto__")actual.DefineOwn(key,value);else actual.Set(key,value);
     if(!actual.HasOwn(key) || !ReferenceEquals(actual.Get(key),value)) throw new Exception("Property write changed its value or presence");
     if(i%31==0) {
         var ordered=expected.Keys.Where(k=>Index(k,out _)).OrderBy(k=>uint.Parse(k,CultureInfo.InvariantCulture))

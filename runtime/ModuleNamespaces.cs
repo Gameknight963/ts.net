@@ -10,7 +10,7 @@ public abstract partial class TsObject
         internal ModuleNamespaceAccessors() { }
         internal ModuleNamespaceAccessors(Dictionary<string, JsAccessor> source) : base(source) { }
     }
-    private bool IsModuleNamespace => accessors is ModuleNamespaceAccessors;
+    internal bool IsModuleNamespace => accessors is ModuleNamespaceAccessors;
     internal void SealModuleNamespace() => accessors = accessors == null
         ? new ModuleNamespaceAccessors() : new ModuleNamespaceAccessors(accessors);
     private object ModuleNamespaceKeys()

@@ -8,8 +8,7 @@ public abstract partial class TsObject
     {
         if (HasOwn(key)) return true;
         if (IsModuleNamespace) return false;
-        if (enumStates.TryGetValue(this, out var state)) return state.Prototype != null && state.Prototype.HasInProperty(key);
-        return HasProperty(key) || this is JsArray && Js.IsArrayPrototypeKey(key) || Js.IsObjectPrototypeKey(key);
+        return HasProperty(key) || PropertyPrototype is not null && PropertyPrototype.HasInProperty(key) || this is JsArray && Js.IsArrayPrototypeKey(key);
     }
 }
 
@@ -19,7 +18,15 @@ public static partial class Js
     internal static bool IsArrayPrototypeKey(string key) => key is "at" or "concat" or "copyWithin" or "fill" or "find" or "findIndex" or "findLast" or "findLastIndex" or "lastIndexOf" or "pop" or "push" or "reverse" or "shift" or "unshift" or "slice" or "sort" or "splice" or "includes" or "indexOf" or "join" or "keys" or "entries" or "values" or "forEach" or "filter" or "flat" or "flatMap" or "map" or "every" or "some" or "reduce" or "reduceRight" or "toReversed" or "toSorted" or "toSpliced" or "with";
     private sealed class ClassObjectPrototype : JsClassInstance
     {
-        internal override bool HasInProperty(string key) => IsObjectPrototypeKey(key);
+        internal ClassObjectPrototype()
+        {
+            DefineClassAccessor("__proto__",new PrototypeAccessor(0),1);
+            DefineClassAccessor("__proto__",new PrototypeAccessor(1),2);
+            DefineClassAccessor("constructor",new PrototypeAccessor(2),1);
+            DefineClassAccessor("constructor",new PrototypeAccessor(3),2);
+        }
+        internal override TsObject PropertyPrototype => null;
+        internal override bool HasInProperty(string key) => HasOwn(key) || IsObjectPrototypeKey(key);
     }
     internal static readonly JsClassInstance DefaultClassObjectPrototype = new ClassObjectPrototype();
     public static bool In(object key, object target)

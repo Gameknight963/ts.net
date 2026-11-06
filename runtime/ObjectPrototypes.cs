@@ -1,0 +1,66 @@
+using System;
+using System.Runtime.CompilerServices;
+
+public abstract partial class TsObject
+{
+    private sealed class PrototypeState { internal TsObject Value; }
+    private static readonly ConditionalWeakTable<TsObject, PrototypeState> prototypes = new();
+    internal bool TryExplicitPrototype(out TsObject value)
+    {
+        bool found = prototypes.TryGetValue(this, out var state);
+        value = found ? state.Value : null; return found;
+    }
+    internal virtual TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : IsModuleNamespace ? null : Js.DefaultClassObjectPrototype;
+    internal virtual bool IsReadOnlyOwnProperty(string key) => false;
+    internal bool CanSetPrototype(TsObject value)
+    {
+        if (ReferenceEquals(PropertyPrototype, value)) return false;
+        if (IsModuleNamespace || ReferenceEquals(this, Js.DefaultClassObjectPrototype)) throw new InvalidOperationException("Object prototype is immutable");
+        for (var ancestor = value; ancestor != null; ancestor = ancestor.PropertyPrototype)
+            if (ReferenceEquals(ancestor, this)) throw new InvalidOperationException("Cyclic prototype value");
+        return true;
+    }
+    internal virtual void SetPrototype(TsObject value)
+    {
+        if (CanSetPrototype(value)) prototypes.GetValue(this, static _ => new PrototypeState()).Value = value;
+    }
+    private object InheritedValue(string key, object receiver) => PropertyPrototype is null ? Js.Undefined : PropertyPrototype.GetWithReceiver(key, receiver);
+    private bool SetInheritedProperty(string key, object value)
+    {
+        if (HasOwn(key)) return false;
+        for (var prototype = PropertyPrototype; prototype != null; prototype = prototype.PropertyPrototype)
+        {
+            if (prototype.IsModuleNamespace) throw new InvalidOperationException("Module namespace is read-only");
+            if (prototype.TryOwnAccessor(key, out var accessor)) { accessor.Write(this, value); return true; }
+            if (prototype.HasOwn(key))
+            {
+                if (prototype.IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Inherited property is read-only");
+                return false;
+            }
+        }
+        return false;
+    }
+}
+
+public static partial class Js
+{
+    internal static bool PrototypeContains(TsObject instance, TsObject target)
+    {
+        for (var prototype = instance.PropertyPrototype; prototype != null; prototype = prototype.PropertyPrototype)
+            if (ReferenceEquals(prototype, target)) return true;
+        return false;
+    }
+    private sealed class PrototypeAccessor(int mode) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Prototype accessor requires an object")), null, "", mode % 2)
+    {
+        public override object InvokeWithReceiver(object receiver, object[] arguments)
+        {
+            if (receiver is not TsObject target) throw new InvalidOperationException("Prototype accessor requires an object");
+            if (mode == 0) return target.PropertyPrototype;
+            if (mode == 2) return GetObjectConstructor();
+            object value = FunctionArgument(arguments, 0);
+            if (mode == 1) { if (value == null || value is TsObject) target.SetPrototype(value as TsObject); }
+            else { _ = GetObjectConstructor(); target.DefineOwn("constructor", value); }
+            return Undefined;
+        }
+    }
+}

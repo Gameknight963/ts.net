@@ -5,7 +5,8 @@ public class JsClassInstance : TsObject
 {
     internal JsClassFunction Owner;
     internal JsClassInstance ParentPrototype;
-    internal JsClassInstance InheritedPrototype => Owner is null ? ParentPrototype : Owner.Prototype;
+    internal TsObject InheritedPrototype => TryExplicitPrototype(out var value) ? value : Owner is null ? ParentPrototype : Owner.Prototype;
+    internal override TsObject PropertyPrototype => InheritedPrototype;
     HashSet<string> hidden;
     internal override bool HasInProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasInProperty(key);
     public override bool HasProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasProperty(key);
@@ -45,6 +46,7 @@ public sealed class JsClassFunction : JsFunction
         Prototype.ParentPrototype = Parent?.Prototype ?? (derived ? null : Js.DefaultClassObjectPrototype);
         Prototype.DefineMethod("constructor", this);
     }
+    internal override bool IsReadOnlyOwnProperty(string key) => key == "prototype" || base.IsReadOnlyOwnProperty(key);
     public override bool HasOwn(string key) => key == "prototype" || base.HasOwn(key);
     public override bool HasProperty(string key) => HasOwn(key) || (Parent is not null ? Parent.HasProperty(key):base.HasProperty(key));
     public override object Get(string key) => GetWithReceiver(key, this);
@@ -93,13 +95,8 @@ public sealed class JsClassFunction : JsFunction
         var instance = (JsClassInstance)factory(Array.Empty<object>()); instance.Owner = this; return instance;
     }
     public override object Construct(object[] arguments) => Initialize(Allocate(), arguments);
-    public override bool HasInstance(object value)
-    {
-        if (value is not JsClassInstance instance) return false;
-        for (var prototype = instance.InheritedPrototype; prototype is not null; prototype = prototype.InheritedPrototype)
-            if (ReferenceEquals(prototype, Prototype)) return true;
-        return false;
-    }
+    public override bool HasInstance(object value) => value is TsObject instance && Js.PrototypeContains(instance, Prototype);
+
 
 }
 public static partial class Js
