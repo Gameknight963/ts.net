@@ -17,6 +17,9 @@ As of [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece331
 
 Runtime performance:
 
+<details>
+<summary>Click to expand large table</summary>
+
 | Workload | ts.net | Node | Result |
 |---|---|---|---|
 | Numeric loop, 20M iterations | 14.44 ms | 74.71 ms | 5.2x faster |
@@ -55,6 +58,8 @@ Runtime performance:
 | String indexOf, 1M searches | 10.21 ms | 17.82 ms | 1.7x faster |
 | String includes, 1M searches | 11.19 ms | 28.84 ms | 2.6x faster |
 | String lastIndexOf, 1M searches | 10.07 ms | 19.54 ms | 1.9x faster |
+
+</details>
 
 Compilation times:
 
