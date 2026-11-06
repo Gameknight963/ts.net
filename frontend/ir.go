@@ -49,6 +49,8 @@ type irBuilder struct {
 	labels                map[string]irLabel
 	enumValues            map[*ast.Node]evaluator.Result
 	enumDeclared          map[*ast.Symbol]bool
+	thisSymbol            int
+	thisScope             bool
 }
 
 func (b *irBuilder) beginControl(n *ast.Node, id int, loop bool) {
@@ -320,6 +322,19 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.left = b.lower(n.Expression())
 	case ast.KindArrowFunction, ast.KindFunctionExpression:
 		return b.functionValue(n)
+	case ast.KindThisKeyword:
+		if !b.thisScope {
+			b.unsupported(n)
+		}
+		if b.thisSymbol == 0 {
+			typ := b.typ(b.c.GetAnyType())
+			b.symbols = append(b.symbols, irSymbol{name: b.text("this"), typ: typ})
+			b.thisSymbol = len(b.symbols)
+		}
+		id = b.node(3, n, "this")
+		row = b.nodes[id-1]
+		row.symbol = b.thisSymbol
+		row.typ = b.typ(b.c.GetAnyType())
 	case ast.KindEmptyStatement:
 		id = b.node(12, n, ";")
 	case ast.KindParenthesizedExpression:
@@ -449,7 +464,10 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.left = b.lower(expr.Expression)
 		row.right = b.lower(expr.ArgumentExpression)
-	case ast.KindPropertyAssignment, ast.KindShorthandPropertyAssignment:
+	case ast.KindPropertyAssignment, ast.KindShorthandPropertyAssignment, ast.KindMethodDeclaration:
+		if n.Kind == ast.KindMethodDeclaration && n.Body() == nil {
+			return 0
+		}
 		if n.Kind == ast.KindPropertyAssignment && n.Name().Kind != ast.KindComputedPropertyName && n.Name().Text() == "__proto__" {
 			b.unsupported(n)
 		}
@@ -471,7 +489,13 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		} else {
 			row.name = b.text(staticName)
 		}
-		if n.Kind == ast.KindPropertyAssignment {
+		if n.Kind == ast.KindMethodDeclaration {
+			row.left = b.functionValue(n)
+			row.typ = b.typ(b.c.GetAnyType())
+			if dynamic {
+				row.constant = 1
+			}
+		} else if n.Kind == ast.KindPropertyAssignment {
 			if dynamic && anonymousPropertyFunction(n.Initializer()) {
 				row.constant = 1
 			}
@@ -632,6 +656,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.children = b.list(declarations)
 	case ast.KindVariableDeclaration, ast.KindParameter:
+		if n.Kind == ast.KindParameter && n.Name().Kind == ast.KindThisKeyword {
+			return 0
+		}
 		if n.Kind == ast.KindVariableDeclaration {
 			if result, ok := b.numberPredicateBindings(n); ok {
 				return result
@@ -995,8 +1022,7 @@ func exportIR(s *session) (result []byte, err error) {
 		b.file = file
 		for _, n := range file.Statements.Nodes {
 			if id := functions[n]; id != 0 {
-				children := b.list(n.Parameters())
-				body := b.lower(n.Body())
+				children, body := b.functionParts(n, id)
 				b.nodes[id-1].children = children
 				b.nodes[id-1].left = body
 			}

@@ -13,7 +13,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current feature completion
 
-54%.
+55%.
 
 <details>
 
@@ -21,8 +21,8 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 |---|---|---|
 | Values and operators | 7 / 10 | Numbers, strings, booleans, null, undefined, arithmetic, comparisons and bitwise operators. <br> BigInt, symbols and some operators are missing. |
 | Control flow | 9 / 10 | Conditions, loops, for-of, switch, labels, break and continue. For-in is missing. |
-| Functions | 8 / 10 | Closures, callbacks, overloads, default/optional/rest parameters and destructuring. General this, call/apply/bind and generators are missing. |
-| Objects and arrays | 7 / 10 | Structural objects, computed properties, spreads, destructuring and sparse arrays. Accessors and general prototype behavior are missing. |
+| Functions | 9 / 10 | Closures, callbacks, overloads, default/optional/rest parameters, destructuring, function/method receivers and arrow this capture. call/apply/bind, top-level this and generators are missing. |
+| Objects and arrays | 7 / 10 | Structural objects, object methods, computed properties, spreads, destructuring and sparse arrays. Accessors and general prototype behavior are missing. |
 | Types and generics | 5 / 10 | Microsoft's type checking, interfaces, aliases, basic generics and union/nullable storage. Runtime representations still have gaps. |
 | Modules | 4 / 5 | Imports, exports, default exports and multiple files. Dynamic import is missing. |
 | Enums | 4 / 5 | Numeric, string, mixed, computed and const enums; reverse mappings, merged enums, and imports. Namespace merging and __proto__ members are missing. |

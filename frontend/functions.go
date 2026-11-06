@@ -9,6 +9,9 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 	if ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync != 0 {
 		b.unsupported(n)
 	}
+	if n.Kind == ast.KindMethodDeclaration && n.AsMethodDeclaration().AsteriskToken != nil {
+		b.unsupported(n)
+	}
 	if n.Kind == ast.KindFunctionExpression && n.AsFunctionExpression().AsteriskToken != nil {
 		b.unsupported(n)
 	}
@@ -28,7 +31,11 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 		}
 	}
 	if n.Name() != nil {
-		name = n.Name().Text()
+		if n.Kind == ast.KindMethodDeclaration {
+			name, _ = b.literalPropertyName(n.Name())
+		} else {
+			name = n.Name().Text()
+		}
 	}
 	value := b.node(38, n, "function")
 	typ := b.typ(b.c.GetReturnTypeOfSignature(b.c.GetSignatureFromDeclaration(n)))
@@ -40,7 +47,7 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 		}
 	}
 	symbol := 0
-	if n.Name() != nil && n.Kind != ast.KindFunctionDeclaration {
+	if n.Name() != nil && n.Kind != ast.KindFunctionDeclaration && n.Kind != ast.KindMethodDeclaration {
 		symbol = b.symbol(n.Name())
 	} else {
 		b.symbols = append(b.symbols, irSymbol{name: b.text(name), typ: typ})
@@ -61,15 +68,7 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 	// Labels and jumps cannot cross a function boundary.
 	controls, labels := b.controls, b.labels
 	b.controls, b.labels = nil, map[string]irLabel{}
-	parameters := b.list(n.Parameters())
-	body := 0
-	if n.Body().Kind == ast.KindBlock {
-		body = b.lower(n.Body())
-	} else {
-		body = b.node(14, n.Body(), "return")
-		expression := b.lower(n.Body())
-		b.nodes[body-1].left = expression
-	}
+	parameters, body := b.functionParts(n, function)
 	b.controls, b.labels = controls, labels
 	b.nodes[function-1].children = parameters
 	b.nodes[function-1].left = body
@@ -186,4 +185,37 @@ func (b *irBuilder) functionIdentity(n *ast.Node, value, function, self int) int
 	b.nodes[call-1].left = factoryValue
 	b.nodes[call-1].typ = typ
 	return call
+}
+
+// Ordinary functions receive their own this binding. Arrows capture the enclosing
+// binding through the same closure machinery used for other parameters.
+func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
+	arrow := n.Kind == ast.KindArrowFunction
+	previous, scope := b.thisSymbol, b.thisScope
+	if !arrow {
+		b.thisSymbol = 0
+		b.thisScope = true
+	}
+	parameters := b.list(n.Parameters())
+	body := 0
+	if n.Body().Kind == ast.KindBlock {
+		body = b.lower(n.Body())
+	} else {
+		body = b.node(14, n.Body(), "return")
+		expression := b.lower(n.Body())
+		b.nodes[body-1].left = expression
+	}
+	if !arrow {
+		if b.thisSymbol != 0 {
+			parameter := b.node(13, n, "this")
+			b.nodes[parameter-1].symbol = b.thisSymbol
+			b.nodes[parameter-1].typ = b.typ(b.c.GetAnyType())
+			b.nodes[parameter-1].next = parameters
+			parameters = parameter
+			b.nodes[function-1].fourth = parameter
+		}
+		b.thisSymbol = previous
+		b.thisScope = scope
+	}
+	return parameters, body
 }

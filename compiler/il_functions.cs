@@ -189,10 +189,11 @@ void il_function_class(int symbol, Compiler c, IlBackend b)
         }
         il_text(get_symbol(symbol, c).name, c, b);
         int length = 0; int parameter = get_node(get_symbol(symbol, c).function, c).children;
+        if (get_node(get_symbol(symbol,c).function,c).fourth != 0) { parameter = get_node(parameter,c).next; }
         while (parameter != 0) { Node p = get_node(parameter, c); if (p.left != 0 || p.third != 0) { break; } length++; parameter = p.next; }
         b.emit(0x20, length); int constructor = b.function_constructors.at(symbol);
         if (context != 0 && constructor != 0) { b.load_context(context); }
-        b.emit(0x73, constructor != 0 ? constructor : b.RuntimeToken(RuntimeMember.FunctionConstructor));
+        b.emit(0x73, constructor != 0 ? constructor : b.RuntimeToken(get_node(get_symbol(symbol,c).function,c).fourth != 0 ? RuntimeMember.ReceiverFunctionConstructor : RuntimeMember.FunctionConstructor));
     }
     internal static void il_function_reference(int symbol, Compiler c, IlBackend b)
     {

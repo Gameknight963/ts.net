@@ -583,6 +583,7 @@ internal static partial class CompilerFunctions
                 if (get_node(n.left, c).symbol == symbol && il_flat_parameter_call(entry, c, b)) { return; }
                 int context = b.function_contexts.at(symbol); if (context != 0) { b.load_context(context); }
                 int parameter = get_node(get_symbol(symbol, c).function, c).children;
+                if (get_node(get_symbol(symbol,c).function,c).fourth != 0) { b.call(RuntimeMember.Undefined); parameter = get_node(parameter,c).next; }
                 int argument = n.children;
                 while (argument != 0)
                 {
