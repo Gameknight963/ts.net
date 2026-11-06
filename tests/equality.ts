@@ -55,3 +55,16 @@ function nullableCount(count: number,seed: number): number {
     return total;
 }
 console.log(nullableCount(100,0));
+
+function anyNarrow(value: any): void {
+    if (value == 0) console.log('any',typeof value,value);
+}
+function unknownNarrow(value: unknown): void {
+    if (value == 0) console.log('unknown',typeof value,value);
+}
+function overlap(left: string | number,right: string | boolean): void {
+    if (left == right) console.log('overlap',typeof left,typeof right,left,right);
+}
+function result(value: unknown) { if (value == 0) return value; return undefined; }
+anyNarrow('0');anyNarrow(false);unknownNarrow('0');unknownNarrow(false);overlap(0,false);overlap('x','x');
+const narrowed=result('0');console.log('result',typeof narrowed,narrowed);
