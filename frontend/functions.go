@@ -214,7 +214,7 @@ func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 		body = b.lower(n.Body())
 	} else {
 		body = b.node(14, n.Body(), "return")
-		expression := b.lower(n.Body())
+		expression := b.asyncReturnExpression(n.Body())
 		b.nodes[body-1].left = expression
 	}
 	if !arrow {

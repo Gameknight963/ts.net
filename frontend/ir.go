@@ -959,7 +959,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindReturnStatement:
 		id = b.node(14, n, "return")
 		row = b.nodes[id-1]
-		row.left = b.lower(n.Expression())
+		row.left = b.asyncReturnExpression(n.Expression())
 	case ast.KindIfStatement:
 		s := n.AsIfStatement()
 		id = b.node(15, n, "if")
