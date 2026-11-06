@@ -7,6 +7,13 @@ public static partial class Js
     public static bool NumberAtIsNullish(object receiver, int index) => receiver is NumberArray numbers
         ? numbers.IsUndefinedAt(index) : !ArrayGetNumberAt(receiver, index).HasValue;
 
+    public static bool SameValue(object left, object right)
+    {
+        if (left is double a && right is double b)
+            return double.IsNaN(a) && double.IsNaN(b) || a == b && (a != 0 || BitConverter.DoubleToInt64Bits(a) == BitConverter.DoubleToInt64Bits(b));
+        return Equal(left, right);
+    }
+
     public static bool LooseEqual(object left, object right)
     {
         if (left is double a) return LooseEqualNumberValue(a, right);

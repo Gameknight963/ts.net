@@ -76,6 +76,7 @@ public static partial class Js
         result.UseObjectPrototype(DefaultClassObjectPrototype);
         DefaultClassObjectPrototype.DefineMethod("constructor",result);
         result.Member("assign", new JsFunction((FunctionBody)ObjectAssign, null, "assign", 2));
+        result.Member("is", new JsFunction((FunctionBody)(static args => BoxBoolean(SameValue(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "is", 2));
         result.Member("keys", GetObjectKeysFunction()); result.Member("values", GetObjectValuesFunction()); result.Member("entries", GetObjectEntriesFunction());
         result.Member("hasOwn", new JsFunction((FunctionBody)(static args => BoxBoolean(HasOwn(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "hasOwn", 2));
         result.Member("getPrototypeOf", new JsFunction((FunctionBody)(static args => ToObject(FunctionArgument(args, 0)).PropertyPrototype), null, "getPrototypeOf", 1));
