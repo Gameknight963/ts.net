@@ -49,6 +49,7 @@ internal static partial class CompilerFunctions
     }
     internal static bool il_key_may_invoke(Node n, Compiler c)
     {
+        if (n.kind == NodeKind.Property && n.fourth != 0) return true;
         int key = n.kind == NodeKind.HasProperty ? n.left : n.kind == NodeKind.Property || n.kind == NodeKind.Index ? n.right : n.kind == NodeKind.Binding ? n.third : 0;
         if (key == 0) { return false; }
         TypeKind kind = get_type(get_node(key, c).type, c).kind;

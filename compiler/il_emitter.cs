@@ -114,6 +114,7 @@ internal static partial class CompilerFunctions
     internal static void il_load_target(int entry, int receiver, int index, Compiler c, IlBackend b)
     {
         Node n = get_node(entry, c);
+        if (n.kind == NodeKind.Property && n.fourth != 0) { b.emit(0xfe0c, receiver); il_boxed(n.fourth, c, b); b.call(RuntimeMember.PrivateGet); b.from_object(n.type, c); return; }
         ScalarField scalar = il_scalar_field(entry, c, b);
         if (scalar.slot >= 0) { b.emit(0xfe0c, scalar.slot); b.convert(scalar.type, n.type, c); return; }
         if (n.kind == NodeKind.Index)
@@ -162,7 +163,9 @@ internal static partial class CompilerFunctions
         int index = -1;
         if ((target.kind == NodeKind.Property || target.kind == NodeKind.Index) && scalar.slot < 0)
         {
-            il_expression(target.left, c, b); receiver = b.local(b.type(get_node(target.left, c).type, c)); b.emit(0xfe0e, receiver);
+            if (target.kind == NodeKind.Property && target.fourth != 0) { il_boxed(target.left, c, b); receiver = b.local(-5); }
+            else { il_expression(target.left, c, b); receiver = b.local(b.type(get_node(target.left, c).type, c)); }
+            b.emit(0xfe0e, receiver);
         }
         if (target.kind == NodeKind.Index)
         {
@@ -179,7 +182,8 @@ internal static partial class CompilerFunctions
         {
             // Writes use the binding's declared storage, even when the read is
             // narrowed to a number or string by TypeScript's control flow.
-            if (target.kind == NodeKind.Name) { value_type = get_symbol(target.symbol, c).type; }
+            if (target.kind == NodeKind.Property && target.fourth != 0) { value_type = get_node(target.third, c).type; }
+            else if (target.kind == NodeKind.Name) { value_type = get_symbol(target.symbol, c).type; }
             else if (scalar.slot >= 0) { value_type = scalar.type; }
             else
             {
@@ -298,7 +302,11 @@ internal static partial class CompilerFunctions
         {
             b.emit(0xfe0c, receiver);
             int owner = get_node(target.left, c).type;
-            if (get_type(owner, c).kind == TypeKind.Array && is_text(target.name, text_length, c))
+            if (target.fourth != 0)
+            {
+                il_boxed(target.fourth, c, b); b.emit(0xfe0c, value); b.box(value_type, c); b.call(RuntimeMember.PrivateSet); b.op(0x26);
+            }
+            else if (get_type(owner, c).kind == TypeKind.Array && is_text(target.name, text_length, c))
             {
                 b.emit(0xfe0c, value); b.call(RuntimeMember.NumberValue); b.call(RuntimeMember.ArraySetLength);
             }
@@ -438,6 +446,7 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.Boolean) { b.emit(0x20, is_text(get_token(n.token, c).text, text_true, c) ? 1 : 0); b.call(RuntimeMember.WrapBoolean); }
         else if (n.kind == NodeKind.HasProperty)
         {
+            if (n.constant) { il_boxed(n.left, c, b); il_boxed(n.right, c, b); b.call(RuntimeMember.PrivateHas); b.call(RuntimeMember.WrapBoolean); return; }
             bool numeric=get_type(get_node(n.left,c).type,c).kind==TypeKind.Number;
             if(numeric)il_expression(n.left,c,b);else il_boxed(n.left,c,b);
             il_boxed(n.right,c,b);b.call(numeric?RuntimeMember.InNumber:RuntimeMember.In);b.call(RuntimeMember.WrapBoolean);
@@ -515,6 +524,7 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Property)
         {
+            if (n.fourth != 0) { il_boxed(n.left, c, b); il_boxed(n.fourth, c, b); b.call(RuntimeMember.PrivateGet); b.from_object(n.type, c); return; }
             TypeKind atOwner=get_type(get_node(n.left,c).type,c).kind;
             if ((atOwner==TypeKind.Array || atOwner==TypeKind.String) && is_text(n.name,text_at_method,c)) {
                 il_expression(n.left,c,b);b.call(RuntimeMember.RelativeAtTarget);return;
@@ -841,6 +851,12 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.ClassStatic) { il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.InitializeClass); }
         else if (n.kind == NodeKind.ClassField)
         {
+            if (n.symbol != 0)
+            {
+                il_boxed(n.left, c, b); il_boxed(n.fourth, c, b); il_boxed(n.right, c, b);
+                b.emit(0x20, checked((int)number(get_token(get_node(n.third, c).token, c).text, c))); b.emit(0x20, n.constant ? 1 : 0);
+                b.call(RuntimeMember.InitializePrivateMember); return;
+            }
             if (n.fourth != 0)
             {
                 il_boxed(n.left, c, b); il_boxed(n.fourth, c, b); il_boxed(n.right, c, b); b.emit(0x20, n.constant ? 1 : 0); b.call(RuntimeMember.InitializeAutoAccessor); return;

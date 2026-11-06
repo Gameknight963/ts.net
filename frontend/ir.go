@@ -61,6 +61,7 @@ type irBuilder struct {
 	classIDs              map[*ast.Symbol]int
 	classFieldKeys        map[*ast.Node]int
 	classAutoSlots        map[*ast.Node]int
+	privateMembers        map[*ast.Symbol]int
 	classKeySuper         int
 	classKeyStatic        bool
 }
@@ -595,6 +596,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			row.left = b.lower(n.Name())
 		}
 	case ast.KindPropertyAccessExpression:
+		if n.Name().Kind == ast.KindPrivateIdentifier {
+			return b.privateProperty(n)
+		}
 		if enumeration := b.objectEnumeration(n); enumeration >= 0 {
 			if identifierWrite(n) {
 				b.unsupported(n)
@@ -691,7 +695,12 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			id = b.node(67, n, "in")
 			row = b.nodes[id-1]
 			row.typ = b.typ(b.c.GetTypeAtLocation(n))
-			row.left = b.lower(expr.Left)
+			if expr.Left.Kind == ast.KindPrivateIdentifier {
+				row.left = b.privateReference(expr.Left)
+				row.constant = 1
+			} else {
+				row.left = b.lower(expr.Left)
+			}
 			row.right = b.lower(expr.Right)
 			break
 		}

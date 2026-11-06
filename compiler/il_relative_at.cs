@@ -12,7 +12,7 @@ internal static partial class CompilerFunctions
         if(callee.kind==NodeKind.OptionalChain)return il_optional_chain(calleeId,true,c,b);
         if (callee.kind is not (NodeKind.Property or NodeKind.Index)) { il_boxed(calleeId,c,b); return -1; }
         il_boxed(callee.left,c,b); b.op(0x25); int receiver=b.local(-5); b.emit(0xfe0e,receiver);
-        if (callee.kind==NodeKind.Property) { il_text(callee.name,c,b); b.call(RuntimeMember.DynamicGet); }
+        if (callee.kind==NodeKind.Property) { if (callee.fourth != 0) { il_boxed(callee.fourth, c, b); b.call(RuntimeMember.PrivateGet); } else { il_text(callee.name,c,b); b.call(RuntimeMember.DynamicGet); } }
         else { il_boxed(callee.right,c,b); b.call(RuntimeMember.IndexGet); }
         return receiver;
     }

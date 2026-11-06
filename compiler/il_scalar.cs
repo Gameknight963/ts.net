@@ -131,6 +131,9 @@ internal static partial class CompilerFunctions
             }
             if (parent.kind == NodeKind.Property && parent.left == i)
             {
+                // Private access needs the real receiver and its lexical brand;
+                // a public string property with the same spelling is unrelated.
+                if (parent.fourth != 0) { invalid.at_mut(root) = 1; continue; }
                 int parent_id = (int)parents.at(i);
                 // Literal members share Property's representation with field reads.
                 // Storing the whole object as a literal member is an escape.
@@ -174,6 +177,7 @@ internal static partial class CompilerFunctions
     internal static ScalarField il_scalar_field(int entry, Compiler c, IlBackend b)
     {
         Node n = get_node(entry, c);
+        if (n.kind == NodeKind.Property && n.fourth != 0) return new ScalarField { slot = -1 };
         if (n.kind == NodeKind.Property && get_node(n.left, c).kind == NodeKind.Name)
         {
             int root = (int)b.scalar_roots.at(get_node(n.left, c).symbol);

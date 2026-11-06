@@ -6,6 +6,7 @@ internal static partial class CompilerFunctions
 {
     internal static bool il_chain_number_property(Node step, int receiver, Compiler c, IlBackend b)
     {
+        if (step.left != 0) return false;
         int owner = get_node(step.fourth, c).type; var kind = get_type(owner, c).kind;
         if (kind == TypeKind.Shape)
         {
@@ -38,7 +39,7 @@ internal static partial class CompilerFunctions
                 b.emit(0xfe0c, value); b.emit(0xfe0e, receiver);
                 if (typedNumber && step.kind == NodeKind.ChainProperty && il_chain_number_property(step, receiver, c, b)) { b.emit(0xfe0e, result); b.emit(0x38, done); continue; }
                 b.emit(0xfe0c, receiver);
-                if (step.kind == NodeKind.ChainProperty) { il_text(step.name, c, b); b.call(RuntimeMember.DynamicGet); } else { il_boxed(step.right, c, b); b.call(RuntimeMember.IndexGet); }
+                if (step.kind == NodeKind.ChainProperty) { if (step.left != 0) { il_boxed(step.left, c, b); b.call(RuntimeMember.PrivateGet); } else { il_text(step.name, c, b); b.call(RuntimeMember.DynamicGet); } } else { il_boxed(step.right, c, b); b.call(RuntimeMember.IndexGet); }
             }
             else
             {

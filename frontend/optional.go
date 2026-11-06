@@ -33,6 +33,10 @@ func (b *irBuilder) optionalChain(n *ast.Node) int {
 		switch node.Kind {
 		case ast.KindPropertyAccessExpression:
 			b.nodes[entry-1].name = b.text(node.Name().Text())
+			if node.Name().Kind == ast.KindPrivateIdentifier {
+				slot := b.privateReference(node.Name())
+				b.nodes[entry-1].left = slot
+			}
 			if node.AsPropertyAccessExpression().QuestionDotToken != nil {
 				b.nodes[entry-1].constant = 1
 			}

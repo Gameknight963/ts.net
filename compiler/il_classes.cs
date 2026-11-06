@@ -59,6 +59,13 @@ internal static partial class CompilerFunctions
             {
                 il_boxed(method.left, c, b); b.call(RuntimeMember.PropertyKey); b.initialize(method.symbol); continue;
             }
+            if (method.fourth != 0)
+            {
+                b.emit(0xfe0c, slot); il_text(method.name, c, b);
+                b.emit(0x20, checked((int)number(get_token(get_node(method.fourth, c).token, c).text, c)));
+                if (method.left != 0) il_boxed(method.left, c, b); else b.call(RuntimeMember.Undefined);
+                il_boxed(method.right, c, b); b.call(RuntimeMember.DefinePrivateMember); b.initialize(method.symbol); continue;
+            }
             b.emit(0xfe0c, slot);
             if (method.right != 0) { il_boxed(method.right, c, b); b.call(RuntimeMember.PropertyKey); } else il_text(method.name, c, b);
             if (method.symbol != 0 && method.left == 0)

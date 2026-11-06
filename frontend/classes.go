@@ -1,6 +1,10 @@
 package main
 
-import "github.com/microsoft/typescript-go/internal/ast"
+import (
+	"strconv"
+
+	"github.com/microsoft/typescript-go/internal/ast"
+)
 
 func (b *irBuilder) className(n *ast.Node) string {
 	if n.Name() != nil {
@@ -14,6 +18,9 @@ func (b *irBuilder) className(n *ast.Node) string {
 		parent = parent.Parent
 	}
 	if parent != nil && (parent.Kind == ast.KindVariableDeclaration || parent.Kind == ast.KindPropertyAssignment || parent.Kind == ast.KindPropertyDeclaration) {
+		if parent.Name().Kind == ast.KindPrivateIdentifier {
+			return parent.Name().Text()
+		}
 		if name, known := b.literalPropertyName(parent.Name()); known {
 			if parent.Kind == ast.KindPropertyDeclaration && ast.GetCombinedModifierFlags(parent)&ast.ModifierFlagsAccessor != 0 {
 				return "#" + name + "_accessor_storage"
@@ -60,6 +67,29 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 	body := b.node(12, n, "fields")
 	b.nodes[function-1].left = body
 	last := 0
+	brands := map[int]bool{}
+	for _, member := range n.Members() {
+		if member.Name() == nil || member.Name().Kind != ast.KindPrivateIdentifier || privateKind(member) == 0 || (ast.GetCombinedModifierFlags(member)&ast.ModifierFlagsStatic != 0) != static {
+			continue
+		}
+		if member.Kind != ast.KindPropertyDeclaration && member.Body() == nil {
+			continue
+		}
+		symbol := b.privateMembers[b.c.GetSymbolAtLocation(member.Name())]
+		if brands[symbol] {
+			continue
+		}
+		brands[symbol] = true
+		empty := b.node(20, member, "undefined")
+		b.nodes[empty-1].typ = b.typ(b.c.GetUndefinedType())
+		stamp := b.privateInitialization(member, b.thisSymbol, empty, 1)
+		if last == 0 {
+			b.nodes[body-1].children = stamp
+		} else {
+			b.nodes[last-1].next = stamp
+		}
+		last = stamp
+	}
 	for _, member := range n.Members() {
 		flags := ast.GetCombinedModifierFlags(member)
 		if flags&ast.ModifierFlagsDecorator != 0 {
@@ -88,7 +118,23 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 		}
 		name, known := b.literalPropertyName(member.Name())
 		if member.Name().Kind == ast.KindPrivateIdentifier {
-			b.unsupported(member)
+			expression := b.lower(member.Initializer())
+			if expression == 0 {
+				expression = b.node(20, member, "undefined")
+				b.nodes[expression-1].typ = b.typ(b.c.GetUndefinedType())
+			}
+			mode := 0
+			if privateKind(member) == 4 {
+				mode = 2
+			}
+			statement := b.privateInitialization(member, b.thisSymbol, expression, mode)
+			if last == 0 {
+				b.nodes[body-1].children = statement
+			} else {
+				b.nodes[last-1].next = statement
+			}
+			last = statement
+			continue
 		}
 		statement := b.node(57, member, "field")
 		if known {
@@ -187,7 +233,17 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 		keyLast = declaration
 		return symbol
 	}
+	if b.privateMembers == nil {
+		b.privateMembers = map[*ast.Symbol]int{}
+	}
 	for _, member := range n.Members() {
+		if member.Name() != nil && member.Name().Kind == ast.KindPrivateIdentifier {
+			symbol := b.c.GetSymbolAtLocation(member.Name())
+			if b.privateMembers[symbol] == 0 {
+				b.privateMembers[symbol] = declare(member, "$private", typ)
+			}
+			continue
+		}
 		if member.Kind != ast.KindPropertyDeclaration || ast.GetCombinedModifierFlags(member)&(ast.ModifierFlagsAmbient|ast.ModifierFlagsAbstract) != 0 {
 			continue
 		}
@@ -242,6 +298,31 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	staticFields := b.classInitializer(n, true)
 	last := 0
 	for _, member := range n.Members() {
+		if member.Name() != nil && member.Name().Kind == ast.KindPrivateIdentifier {
+			if member.Kind != ast.KindPropertyDeclaration && member.Body() == nil {
+				continue
+			}
+			definition := b.node(5, member, "private definition")
+			b.nodes[definition-1].name = b.text(member.Name().Text())
+			b.nodes[definition-1].symbol = b.privateMembers[b.c.GetSymbolAtLocation(member.Name())]
+			marker := b.node(0, member, strconv.Itoa(privateKind(member)))
+			b.nodes[marker-1].typ = b.typ(b.c.GetNumberType())
+			b.nodes[definition-1].fourth = marker
+			slot := b.privateReference(member.Name())
+			b.nodes[definition-1].right = slot
+			if member.Kind != ast.KindPropertyDeclaration {
+				b.superStatic = ast.GetCombinedModifierFlags(member)&ast.ModifierFlagsStatic != 0
+				fn := b.functionValue(member)
+				b.nodes[definition-1].left = fn
+			}
+			if last == 0 {
+				b.nodes[value-1].children = definition
+			} else {
+				b.nodes[last-1].next = definition
+			}
+			last = definition
+			continue
+		}
 		switch member.Kind {
 		case ast.KindConstructor:
 			if member.Body() != nil {
