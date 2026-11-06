@@ -841,6 +841,10 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.ClassStatic) { il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.InitializeClass); }
         else if (n.kind == NodeKind.ClassField)
         {
+            if (n.fourth != 0)
+            {
+                il_boxed(n.left, c, b); il_boxed(n.fourth, c, b); il_boxed(n.right, c, b); b.emit(0x20, n.constant ? 1 : 0); b.call(RuntimeMember.InitializeAutoAccessor); return;
+            }
             il_boxed(n.left, c, b);
             if (n.third != 0) { il_boxed(n.third, c, b); b.call(RuntimeMember.PropertyKey); } else { il_text(n.name, c, b); }
             int key = -1;

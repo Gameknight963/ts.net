@@ -15,6 +15,9 @@ func (b *irBuilder) className(n *ast.Node) string {
 	}
 	if parent != nil && (parent.Kind == ast.KindVariableDeclaration || parent.Kind == ast.KindPropertyAssignment || parent.Kind == ast.KindPropertyDeclaration) {
 		if name, known := b.literalPropertyName(parent.Name()); known {
+			if parent.Kind == ast.KindPropertyDeclaration && ast.GetCombinedModifierFlags(parent)&ast.ModifierFlagsAccessor != 0 {
+				return "#" + name + "_accessor_storage"
+			}
 			return name
 		}
 	}
@@ -59,7 +62,7 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 	last := 0
 	for _, member := range n.Members() {
 		flags := ast.GetCombinedModifierFlags(member)
-		if flags&(ast.ModifierFlagsDecorator|ast.ModifierFlagsAccessor) != 0 {
+		if flags&ast.ModifierFlagsDecorator != 0 {
 			b.unsupported(member)
 		}
 		if member.Kind == ast.KindClassStaticBlockDeclaration {
@@ -93,6 +96,10 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 		} else {
 			key := b.classReference(member, b.classFieldKeys[member])
 			b.nodes[statement-1].third = key
+		}
+		if slot := b.classAutoSlots[member]; slot != 0 {
+			ref := b.classReference(member, slot)
+			b.nodes[statement-1].fourth = ref
 		}
 		if anonymousPropertyFunction(member.Initializer()) {
 			b.nodes[statement-1].constant = 1
@@ -160,22 +167,15 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	// Initializers capture one stored key per class definition. Evaluate the
 	// expressions later in the member list, alongside methods and accessors.
 	keyFirst, keyLast := 0, 0
-	for _, member := range n.Members() {
-		if member.Kind != ast.KindPropertyDeclaration || ast.GetCombinedModifierFlags(member)&(ast.ModifierFlagsAmbient|ast.ModifierFlagsAbstract) != 0 {
-			continue
-		}
-		if _, known := b.literalPropertyName(member.Name()); known {
-			continue
-		}
-		if member.Name().Kind != ast.KindComputedPropertyName {
-			b.unsupported(member)
-		}
-		b.symbols = append(b.symbols, irSymbol{name: b.text("$key"), typ: b.typ(b.c.GetStringType())})
-		keySymbol := len(b.symbols)
-		b.classFieldKeys[member] = keySymbol
-		declaration := b.node(13, member, "$key")
-		b.nodes[declaration-1].symbol = keySymbol
-		b.nodes[declaration-1].typ = b.symbols[keySymbol-1].typ
+	if b.classAutoSlots == nil {
+		b.classAutoSlots = map[*ast.Node]int{}
+	}
+	declare := func(member *ast.Node, name string, typ int) int {
+		b.symbols = append(b.symbols, irSymbol{name: b.text(name), typ: typ})
+		symbol := len(b.symbols)
+		declaration := b.node(13, member, name)
+		b.nodes[declaration-1].symbol = symbol
+		b.nodes[declaration-1].typ = typ
 		empty := b.node(20, member, "undefined")
 		b.nodes[empty-1].typ = b.typ(b.c.GetUndefinedType())
 		b.nodes[declaration-1].left = empty
@@ -185,6 +185,21 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 			b.nodes[keyLast-1].next = declaration
 		}
 		keyLast = declaration
+		return symbol
+	}
+	for _, member := range n.Members() {
+		if member.Kind != ast.KindPropertyDeclaration || ast.GetCombinedModifierFlags(member)&(ast.ModifierFlagsAmbient|ast.ModifierFlagsAbstract) != 0 {
+			continue
+		}
+		if ast.GetCombinedModifierFlags(member)&ast.ModifierFlagsAccessor != 0 {
+			b.classAutoSlots[member] = declare(member, "$accessor", typ)
+		}
+		if _, known := b.literalPropertyName(member.Name()); !known {
+			if member.Name().Kind != ast.KindComputedPropertyName {
+				b.unsupported(member)
+			}
+			b.classFieldKeys[member] = declare(member, "$key", b.typ(b.c.GetStringType()))
+		}
 	}
 
 	value := b.node(55, n, name)
@@ -202,6 +217,22 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 		}
 		if key := b.classFieldKeys[owner]; key != 0 {
 			reference := b.classReference(n, key)
+			if ast.GetCombinedModifierFlags(owner)&ast.ModifierFlagsAccessor != 0 {
+				stringType := b.typ(b.c.GetStringType())
+				prefix := b.node(1, n, "#")
+				b.nodes[prefix-1].typ = stringType
+				start := b.node(7, n, "+")
+				b.nodes[start-1].left = prefix
+				b.nodes[start-1].right = reference
+				b.nodes[start-1].typ = stringType
+				suffix := b.node(1, n, "_accessor_storage")
+				b.nodes[suffix-1].typ = stringType
+				end := b.node(7, n, "+")
+				b.nodes[end-1].left = start
+				b.nodes[end-1].right = suffix
+				b.nodes[end-1].typ = stringType
+				reference = end
+			}
 			b.nodes[marker-1].left = reference
 		}
 	}
@@ -300,6 +331,27 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 					b.nodes[last-1].next = key
 				}
 				last = key
+			}
+			if symbol := b.classAutoSlots[member]; symbol != 0 {
+				accessor := b.node(5, member, "auto-accessor")
+				b.nodes[accessor-1].symbol = symbol
+				b.nodes[accessor-1].constant = 0
+				if ast.GetCombinedModifierFlags(member)&ast.ModifierFlagsStatic != 0 {
+					b.nodes[accessor-1].constant = 1
+				}
+				if key := b.classFieldKeys[member]; key != 0 {
+					ref := b.classReference(member, key)
+					b.nodes[accessor-1].right = ref
+				} else {
+					name, _ := b.literalPropertyName(member.Name())
+					b.nodes[accessor-1].name = b.text(name)
+				}
+				if last == 0 {
+					b.nodes[value-1].children = accessor
+				} else {
+					b.nodes[last-1].next = accessor
+				}
+				last = accessor
 			}
 		case ast.KindSemicolonClassElement, ast.KindClassStaticBlockDeclaration:
 		default:

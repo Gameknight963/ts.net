@@ -61,6 +61,10 @@ internal static partial class CompilerFunctions
             }
             b.emit(0xfe0c, slot);
             if (method.right != 0) { il_boxed(method.right, c, b); b.call(RuntimeMember.PropertyKey); } else il_text(method.name, c, b);
+            if (method.symbol != 0 && method.left == 0)
+            {
+                b.emit(0x20, method.constant ? 1 : 0); b.call(RuntimeMember.DefineAutoAccessor); b.initialize(method.symbol); continue;
+            }
             il_boxed(method.left, c, b); b.emit(0x20, method.constant ? 1 : 0);b.emit(0x20,method.third==0?0:get_node(method.third,c).constant?1:2); b.call(RuntimeMember.DefineClassMethod);
         }
         b.emit(0xfe0c, slot);

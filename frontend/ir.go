@@ -60,6 +60,7 @@ type irBuilder struct {
 	superStatic           bool
 	classIDs              map[*ast.Symbol]int
 	classFieldKeys        map[*ast.Node]int
+	classAutoSlots        map[*ast.Node]int
 	classKeySuper         int
 	classKeyStatic        bool
 }
