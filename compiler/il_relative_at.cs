@@ -15,15 +15,17 @@ internal static partial class CompilerFunctions
         else { il_boxed(callee.right,c,b); b.call(RuntimeMember.IndexGet); }
         return receiver;
     }
-    internal static bool il_at_call(int entry, Compiler c)
+    internal static bool il_index_method_name(int name, Compiler c) => is_text(name,text_at_method,c) ||
+        is_text(name,text_char_at,c) || is_text(name,text_char_code_at,c) || is_text(name,text_code_point_at,c);
+    internal static bool il_index_method_call(int entry, Compiler c)
     {
         Node callee=get_node(get_node(entry,c).left,c);
         while(callee.kind==NodeKind.Assert){callee=get_node(callee.left,c);}
-        return callee.kind==NodeKind.Property && is_text(callee.name,text_at_method,c) ||
+        return callee.kind==NodeKind.Property && il_index_method_name(callee.name,c) ||
             callee.kind==NodeKind.Index && get_node(callee.right,c).kind==NodeKind.String &&
-            is_text(get_token(get_node(callee.right,c).token,c).text,text_at_method,c);
+            il_index_method_name(get_token(get_node(callee.right,c).token,c).text,c);
     }
-    internal static void il_emit_at(int entry, Compiler c, IlBackend b)
+    internal static void il_emit_index_method(int entry, Compiler c, IlBackend b)
     {
         Node call=get_node(entry,c);int receiver=il_method_target(call.left,c,b);
         int target=b.local(-5);b.emit(0xfe0e,target);
@@ -31,11 +33,12 @@ internal static partial class CompilerFunctions
         if (!il_call_has_spread(entry,c) && argument!=0 && get_node(argument,c).next==0 && get_type(get_node(argument,c).type,c).kind==TypeKind.Number) {
             b.emit(0xfe0c,target);b.emit(0xfe0c,receiver);il_expression(argument,c,b);
             if (get_type(call.type,c).kind==TypeKind.Number) { b.call(RuntimeMember.CallMethodNumber1); }
-            else { b.call(RuntimeMember.CallAtIndex);b.from_object(call.type,c); }
+            else { b.call(RuntimeMember.CallMethodIndex);b.from_object(call.type,c); }
             return;
         }
         if (argument==0) {
-            b.emit(0xfe0c,target);b.emit(0xfe0c,receiver);b.call(RuntimeMember.CallMethod0);il_function_result(call.type,c,b);return;
+            b.emit(0xfe0c,target);b.emit(0xfe0c,receiver);b.call(get_type(call.type,c).kind==TypeKind.Number ? RuntimeMember.CallMethodNumber0 : RuntimeMember.CallMethod0);
+            if(get_type(call.type,c).kind!=TypeKind.Number){il_function_result(call.type,c,b);}return;
         }
         if (il_call_has_spread(entry,c)) {
             b.emit(0x20,0);b.emit(0x73,b.RuntimeToken(RuntimeMember.ArrayConstructor));int arguments=b.local(-5);b.emit(0xfe0e,arguments);

@@ -144,6 +144,7 @@ public static partial class Js
         TsObject obj => obj.Get(key),
         string text when key == "length" => (double)text.Length,
         string when key == "at" => StringAtFunction(),
+        string when key is "charAt" or "charCodeAt" or "codePointAt" => CharacterTarget(key),
         string or double or bool => Undefined,
         _ => throw new InvalidOperationException("Cannot read property of undefined")
     };

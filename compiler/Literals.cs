@@ -2,6 +2,9 @@ namespace Tsnet.Compiler;
 
 internal static partial class CompilerFunctions
 {
+    internal static readonly TextBytes text_char_at = "charAt";
+    internal static readonly TextBytes text_char_code_at = "charCodeAt";
+    internal static readonly TextBytes text_code_point_at = "codePointAt";
     internal static readonly TextBytes text_at_method = "at";
     internal static readonly TextBytes text_error_tsnet = "): error TSNET: ";
     internal static readonly TextBytes text_at = " [at '";

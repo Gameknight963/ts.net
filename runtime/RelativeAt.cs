@@ -29,7 +29,13 @@ public static partial class Js
         double value = Number(Get(receiver, "length"));
         return value > 0 ? Math.Min(Math.Truncate(value), 9007199254740991.0) : 0;
     }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static string AtString(object receiver)
+    {
+        if (receiver is string text) return text;
+        return AtStringConverted(receiver);
+    }
+    static string AtStringConverted(object receiver)
     {
         RequireAtReceiver(receiver);
         object primitive = receiver is TsObject obj ? OrdinaryPrimitive(obj, true, null) : receiver;
@@ -63,19 +69,31 @@ public static partial class Js
         return selected >= 0 && selected < length ? IndexGet(receiver, selected) : Undefined;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static object CallAtIndex(object target, object receiver, double? index) => target is RelativeAtFunction method
+    public static object CallMethodIndex(object target, object receiver, double? index) => target is CharacterFunction character
+        ? CharacterValue(AtString(receiver), index.GetValueOrDefault(), character.Kind)
+        : target is RelativeAtFunction method
         ? AtPrimitive(receiver, index.GetValueOrDefault(), method.Text) : CallFunction(target, new[] { BoxNumber(index) });
-    public static object CallMethod0(object target, object receiver) => target is RelativeAtFunction method
+    public static object CallMethod0(object target, object receiver) => target is CharacterFunction character
+        ? CharacterValue(AtString(receiver), 0, character.Kind)
+        : target is RelativeAtFunction method
         ? AtPrimitive(receiver, 0, method.Text) : CallFunction0(target);
-    public static object CallMethod(object target, object receiver, object[] arguments) => target is RelativeAtFunction method
+    public static object CallMethod(object target, object receiver, object[] arguments) => target is CharacterFunction character
+        ? CharacterConverted(character, receiver, FunctionArgument(arguments, 0))
+        : target is RelativeAtFunction method
         ? AtConverted(receiver, FunctionArgument(arguments, 0), method.Text) : CallFunction(target, arguments);
-    public static object CallMethodArguments(object target, object receiver, object arguments) => target is RelativeAtFunction method
+    public static object CallMethodArguments(object target, object receiver, object arguments) => target is CharacterFunction character
+        ? CharacterConverted(character, receiver, Iteration.Value(arguments, 0))
+        : target is RelativeAtFunction method
         ? AtConverted(receiver, Iteration.Value(arguments, 0), method.Text) : CallFunctionArguments(target, arguments);
-    public static double? CallMethodNumber0(object target, object receiver) => target is RelativeAtFunction method
+    public static double? CallMethodNumber0(object target, object receiver) => target is CharacterFunction character
+        ? CharacterNumericResult(character, receiver, 0)
+        : target is RelativeAtFunction method
         ? Cast<double?>(AtPrimitive(receiver, 0, method.Text), "Function result violates number type") : CallFunctionNumber0(target);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double? CallMethodNumber1(object target, object receiver, double? first)
     {
+        if (target is CharacterFunction character)
+            return CharacterNumericResult(character, receiver, first.GetValueOrDefault());
         if (target is RelativeAtFunction method) {
             if (!method.Text && receiver is NumberArray numbers) {
                 double length = numbers.Length(), index = AtIndex(first.GetValueOrDefault(), length);
@@ -85,6 +103,6 @@ public static partial class Js
         }
         return CallFunctionNumber1(target, first);
     }
-    public static double? CallMethodNumber2(object target, object receiver, double? first, double? second) => target is RelativeAtFunction
+    public static double? CallMethodNumber2(object target, object receiver, double? first, double? second) => target is RelativeAtFunction or CharacterFunction
         ? CallMethodNumber1(target, receiver, first) : CallFunctionNumber2(target, first, second);
 }
