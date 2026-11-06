@@ -84,11 +84,19 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 			continue
 		}
 		name, known := b.literalPropertyName(member.Name())
-		if !known || member.Name().Kind == ast.KindPrivateIdentifier {
+		if member.Name().Kind == ast.KindPrivateIdentifier {
 			b.unsupported(member)
 		}
 		statement := b.node(57, member, "field")
-		b.nodes[statement-1].name = b.text(name)
+		if known {
+			b.nodes[statement-1].name = b.text(name)
+		} else {
+			key := b.classReference(member, b.classFieldKeys[member])
+			b.nodes[statement-1].third = key
+		}
+		if anonymousPropertyFunction(member.Initializer()) {
+			b.nodes[statement-1].constant = 1
+		}
 		receiver := b.classReference(member, b.thisSymbol)
 		b.nodes[statement-1].left = receiver
 		expression := b.lower(member.Initializer())
@@ -142,8 +150,42 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	b.symbolIDs[classSymbol] = binding
 	base := b.lower(parent)
 	previousSuper, previousStatic := b.superSymbol, b.superStatic
+	previousKeySuper, previousKeyStatic := b.classKeySuper, b.classKeyStatic
+	b.classKeySuper, b.classKeyStatic = previousSuper, previousStatic
 	b.superSymbol = binding
 	b.superStatic = false
+	if b.classFieldKeys == nil {
+		b.classFieldKeys = map[*ast.Node]int{}
+	}
+	// Initializers capture one stored key per class definition. Evaluate the
+	// expressions later in the member list, alongside methods and accessors.
+	keyFirst, keyLast := 0, 0
+	for _, member := range n.Members() {
+		if member.Kind != ast.KindPropertyDeclaration || ast.GetCombinedModifierFlags(member)&(ast.ModifierFlagsAmbient|ast.ModifierFlagsAbstract) != 0 {
+			continue
+		}
+		if _, known := b.literalPropertyName(member.Name()); known {
+			continue
+		}
+		if member.Name().Kind != ast.KindComputedPropertyName {
+			b.unsupported(member)
+		}
+		b.symbols = append(b.symbols, irSymbol{name: b.text("$key"), typ: b.typ(b.c.GetStringType())})
+		keySymbol := len(b.symbols)
+		b.classFieldKeys[member] = keySymbol
+		declaration := b.node(13, member, "$key")
+		b.nodes[declaration-1].symbol = keySymbol
+		b.nodes[declaration-1].typ = b.symbols[keySymbol-1].typ
+		empty := b.node(20, member, "undefined")
+		b.nodes[empty-1].typ = b.typ(b.c.GetUndefinedType())
+		b.nodes[declaration-1].left = empty
+		if keyLast == 0 {
+			keyFirst = declaration
+		} else {
+			b.nodes[keyLast-1].next = declaration
+		}
+		keyLast = declaration
+	}
 
 	value := b.node(55, n, name)
 	b.nodes[value-1].name = b.text(name)
@@ -153,6 +195,16 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	// its structural CLR class without adding a second type field to the IR.
 	marker := b.node(20, n, "instance")
 	b.nodes[marker-1].typ = instance
+	if n.Kind == ast.KindClassExpression && n.Name() == nil {
+		owner := n.Parent
+		for owner != nil && (owner.Kind == ast.KindParenthesizedExpression || owner.Kind == ast.KindAsExpression || owner.Kind == ast.KindSatisfiesExpression || owner.Kind == ast.KindTypeAssertionExpression) {
+			owner = owner.Parent
+		}
+		if key := b.classFieldKeys[owner]; key != 0 {
+			reference := b.classReference(n, key)
+			b.nodes[marker-1].left = reference
+		}
+	}
 	b.nodes[value-1].fourth = marker
 	fields := b.classInitializer(n, false)
 	b.nodes[value-1].left = fields
@@ -233,12 +285,29 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 				b.nodes[last-1].next = method
 			}
 			last = method
-		case ast.KindPropertyDeclaration, ast.KindSemicolonClassElement, ast.KindClassStaticBlockDeclaration:
+		case ast.KindPropertyDeclaration:
+			if symbol := b.classFieldKeys[member]; symbol != 0 {
+				b.superSymbol, b.superStatic = previousSuper, previousStatic
+				expression := b.lower(member.Name().Expression())
+				b.superSymbol, b.superStatic = binding, false
+				key := b.node(13, member, "computed field key")
+				b.nodes[key-1].symbol = symbol
+				b.nodes[key-1].typ = b.symbols[symbol-1].typ
+				b.nodes[key-1].left = expression
+				if last == 0 {
+					b.nodes[value-1].children = key
+				} else {
+					b.nodes[last-1].next = key
+				}
+				last = key
+			}
+		case ast.KindSemicolonClassElement, ast.KindClassStaticBlockDeclaration:
 		default:
 			b.unsupported(member)
 		}
 	}
 	b.superSymbol, b.superStatic = previousSuper, previousStatic
+	b.classKeySuper, b.classKeyStatic = previousKeySuper, previousKeyStatic
 	if had {
 		b.symbolIDs[classSymbol] = previous
 	} else {
@@ -258,7 +327,12 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	result := b.node(14, n, "return")
 	reference = b.classReference(n, binding)
 	b.nodes[result-1].left = reference
-	b.nodes[body-1].children = variable
+	if keyLast != 0 {
+		b.nodes[body-1].children = keyFirst
+		b.nodes[keyLast-1].next = variable
+	} else {
+		b.nodes[body-1].children = variable
+	}
 	b.nodes[variable-1].next = initialize
 	b.nodes[initialize-1].next = result
 	call := b.node(6, n, "class definition")

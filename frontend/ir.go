@@ -59,6 +59,9 @@ type irBuilder struct {
 	superSymbol           int
 	superStatic           bool
 	classIDs              map[*ast.Symbol]int
+	classFieldKeys        map[*ast.Node]int
+	classKeySuper         int
+	classKeyStatic        bool
 }
 
 func (b *irBuilder) beginControl(n *ast.Node, id int, loop bool) {
@@ -556,7 +559,12 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		id = b.node(5, n, "property")
 		row = b.nodes[id-1]
 		if dynamic {
+			previousSuper, previousStatic := b.superSymbol, b.superStatic
+			if n.Parent.Kind == ast.KindClassDeclaration || n.Parent.Kind == ast.KindClassExpression {
+				b.superSymbol, b.superStatic = b.classKeySuper, b.classKeyStatic
+			}
 			row.right = b.lower(key)
+			b.superSymbol, b.superStatic = previousSuper, previousStatic
 			if !computed && name.Kind == ast.KindNumericLiteral {
 				b.nodes[row.right-1].typ = b.typ(b.c.GetNumberType())
 			}

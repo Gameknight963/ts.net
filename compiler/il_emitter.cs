@@ -839,7 +839,16 @@ internal static partial class CompilerFunctions
         }
         else if(n.kind==NodeKind.SuperInitializer){il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.SuperInitializer);}
         else if (n.kind == NodeKind.ClassStatic) { il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.InitializeClass); }
-        else if (n.kind == NodeKind.ClassField) { il_boxed(n.left,c,b);il_text(n.name,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.DefineClassField); }
+        else if (n.kind == NodeKind.ClassField)
+        {
+            il_boxed(n.left, c, b);
+            if (n.third != 0) { il_boxed(n.third, c, b); b.call(RuntimeMember.PropertyKey); } else { il_text(n.name, c, b); }
+            int key = -1;
+            if (n.constant) { key = b.local(-4); b.op(0x25); b.emit(0xfe0e, key); }
+            il_boxed(n.right, c, b);
+            if (n.constant) { b.emit(0xfe0c, key); b.call(RuntimeMember.NamePropertyFunction); }
+            b.call(RuntimeMember.DefineClassField);
+        }
         else if (n.kind == NodeKind.Return)
         {
             if (n.left != 0) { if (b.raw_function_return) { il_number(n.left, c, b); } else { il_as(n.left, return_type, c, b); } }

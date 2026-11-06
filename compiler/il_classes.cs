@@ -45,14 +45,21 @@ internal static partial class CompilerFunctions
         Node node = get_node(entry, c); int type = get_node(node.fourth, c).type;
         // A factory avoids reflection when allocating the checked CLR class.
         int factory = b.class_factories[type];
-        il_text(node.name, c, b); b.op(0x14); b.emit(0xfe06, factory); b.emit(0x73, b.RuntimeToken(RuntimeMember.FunctionBodyConstructor));
+        int inferredName = get_node(node.fourth, c).left;
+        if (inferredName != 0) { il_boxed(inferredName, c, b); b.call(RuntimeMember.PropertyKey); } else { il_text(node.name, c, b); }
+        b.op(0x14); b.emit(0xfe06, factory); b.emit(0x73, b.RuntimeToken(RuntimeMember.FunctionBodyConstructor));
         il_boxed(node.left, c, b); if (node.right != 0) il_boxed(node.right, c, b); else b.call(RuntimeMember.Undefined);
         if (node.third != 0) il_boxed(node.third, c, b); else b.call(RuntimeMember.Undefined);
         b.emit(0x20, node.third != 0 ? 1 : 0);
         b.call(RuntimeMember.CreateClass); int slot = b.local(-5); b.emit(0xfe0e, slot);
         for (int member = node.children; member != 0; member = get_node(member, c).next)
         {
-            Node method = get_node(member, c); b.emit(0xfe0c, slot);
+            Node method = get_node(member, c);
+            if (method.kind == NodeKind.Variable)
+            {
+                il_boxed(method.left, c, b); b.call(RuntimeMember.PropertyKey); b.initialize(method.symbol); continue;
+            }
+            b.emit(0xfe0c, slot);
             if (method.right != 0) { il_boxed(method.right, c, b); b.call(RuntimeMember.PropertyKey); } else il_text(method.name, c, b);
             il_boxed(method.left, c, b); b.emit(0x20, method.constant ? 1 : 0);b.emit(0x20,method.third==0?0:get_node(method.third,c).constant?1:2); b.call(RuntimeMember.DefineClassMethod);
         }

@@ -13,7 +13,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current feature completion
 
-72%.
+73%.
 
 <details>
 
@@ -26,7 +26,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Types and generics | 5 / 10 | Microsoft's type checking, interfaces, aliases, basic generics and union/nullable storage. Runtime representations still have gaps. |
 | Modules | 4 / 5 | Imports, exports, default exports, namespace values, live bindings and multiple files. Dynamic import is missing. |
 | Enums | 5 / 5 | Numeric, string, mixed, computed and const enums; reverse mappings, merged enums, and imports. Namespace merging supports nested/dotted namespaces, exported destructuring, functions, classes and enums; __proto__ members follow object prototype assignment. Import aliases (`import Alias = E.Nested`) retain their original namespace object. |
-| Classes and inheritance | 12 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, generics, structural interfaces, inheritance (including ordinary and bound constructor functions), super and getters/setters. Built-in base classes, auto-accessors, #private fields, dynamic field keys and decorators are missing. Base constructors returning replacement objects still have gaps. |
+| Classes and inheritance | 13 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, computed member names, generics, structural interfaces, inheritance (including ordinary and bound constructor functions), super and getters/setters. Built-in base classes, auto-accessors, #private fields and decorators are missing. Base constructors returning replacement objects still have gaps. |
 | Exceptions | 8 / 10 | throw, try/catch/finally, standard error objects, cause, and instanceof. Error prototypes and TypeScript source locations in stack traces are missing. |
 | Async | 0 / 10 | Not implemented |
 | Standard library | 2 / 5 | Selected Number/Object helpers and array/string methods. Many built-ins are missing. |
