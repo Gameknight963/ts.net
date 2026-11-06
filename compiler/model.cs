@@ -64,7 +64,7 @@ internal enum NodeKind
     ObjectKeysFunction,
     ObjectValuesFunction,
     ObjectEntriesFunction,
-    Throw, Try, CatchValue, BuiltinError, Construct, ClassValue, ClassStatic, ClassField
+    Throw, Try, CatchValue, BuiltinError, Construct, ClassValue, ClassStatic, ClassField, ResolveThis, SuperBase, SuperCall, SuperInitializer
 }
 
 internal struct Token

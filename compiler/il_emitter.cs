@@ -426,6 +426,13 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Number) { b.plan.number(b.method, number(get_token(n.token, c).text, c)); b.call(RuntimeMember.WrapNumber); }
         else if (n.kind == NodeKind.Boolean) { b.emit(0x20, is_text(get_token(n.token, c).text, text_true, c) ? 1 : 0); b.call(RuntimeMember.WrapBoolean); }
+        else if(n.kind==NodeKind.ResolveThis){il_boxed(n.left,c,b);b.call(RuntimeMember.ResolveThis);}
+        else if(n.kind==NodeKind.SuperBase){il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.emit(0x20,n.constant?1:0);b.call(RuntimeMember.SuperBase);}
+        else if(n.kind==NodeKind.SuperCall){
+            il_boxed(n.left,c,b);b.emit(0x20,0);b.emit(0x73,b.RuntimeToken(RuntimeMember.ArrayConstructor));int args=b.local(-5);b.emit(0xfe0e,args);
+            int child=n.children;while(child!=0){il_append_call_argument(child,args,0,c,b);child=get_node(child,c).next;}
+            b.emit(0xfe0c,args);b.call(RuntimeMember.SuperCall);
+        }
         else if(n.kind==NodeKind.ClassValue){il_class_value(entry,c,b);}
         else if(n.kind==NodeKind.BuiltinError){il_text(get_token(n.token,c).text,c,b);b.call(RuntimeMember.GetErrorConstructor);}
         else if(n.kind==NodeKind.Construct){
@@ -812,6 +819,7 @@ internal static partial class CompilerFunctions
             if (raw == -6) { il_integer(n.left, c, b); b.store_storage(n.symbol); }
             else { il_as(n.left, n.type, c, b); b.store(n.symbol); }
         }
+        else if(n.kind==NodeKind.SuperInitializer){il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.SuperInitializer);}
         else if (n.kind == NodeKind.ClassStatic) { il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.InitializeClass); }
         else if (n.kind == NodeKind.ClassField) { il_boxed(n.left,c,b);il_text(n.name,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.DefineClassField); }
         else if (n.kind == NodeKind.Return)

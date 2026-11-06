@@ -44,6 +44,8 @@ func (b *irBuilder) classReference(n *ast.Node, symbol int) int {
 func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 	function, value := b.newFunction(n, "")
 	previous, scope := b.thisSymbol, b.thisScope
+	previousStatic := b.superStatic
+	b.superStatic = static
 	b.symbols = append(b.symbols, irSymbol{name: b.text("this"), typ: b.typ(b.c.GetAnyType())})
 	b.thisSymbol = len(b.symbols)
 	b.thisScope = true
@@ -103,6 +105,7 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 		last = statement
 	}
 	b.thisSymbol, b.thisScope = previous, scope
+	b.superStatic = previousStatic
 	return value
 }
 func (b *irBuilder) classValue(n *ast.Node) int {
@@ -112,10 +115,11 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	if ast.HasAmbientModifier(n) {
 		return 0
 	}
+	var parent *ast.Node
 	if n.ClassLikeData().HeritageClauses != nil {
 		for _, clause := range n.ClassLikeData().HeritageClauses.Nodes {
 			if clause.AsHeritageClause().Token == ast.KindExtendsKeyword {
-				b.unsupported(clause)
+				parent = clause.AsHeritageClause().Types.Nodes[0].Expression()
 			}
 		}
 	}
@@ -136,9 +140,15 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	binding := len(b.symbols)
 	previous, had := b.symbolIDs[classSymbol]
 	b.symbolIDs[classSymbol] = binding
+	base := b.lower(parent)
+	previousSuper, previousStatic := b.superSymbol, b.superStatic
+	b.superSymbol = binding
+	b.superStatic = false
+
 	value := b.node(55, n, name)
 	b.nodes[value-1].name = b.text(name)
 	b.nodes[value-1].typ = typ
+	b.nodes[value-1].third = base
 	// The instance type is carried by a marker node so the compiler can select
 	// its structural CLR class without adding a second type field to the IR.
 	marker := b.node(20, n, "instance")
@@ -152,6 +162,7 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 		switch member.Kind {
 		case ast.KindConstructor:
 			if member.Body() != nil {
+				b.superStatic = false
 				ctor := b.functionValue(member)
 				b.nodes[value-1].right = ctor
 				// Parameter properties initialize after defaults and fields.
@@ -189,14 +200,27 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 				}
 				if first != 0 {
 					body := b.nodes[function-1].left
-					b.nodes[tail-1].next = b.nodes[body-1].children
-					b.nodes[body-1].children = first
+					if parent != nil {
+						callback, callbackValue := b.newFunction(member, "")
+						callbackBody := b.node(12, member, "parameter properties")
+						b.nodes[callbackBody-1].children = first
+						b.nodes[callback-1].left = callbackBody
+						setup := b.node(61, member, "parameter properties")
+						b.nodes[setup-1].left = b.classReference(member, b.nodes[b.nodes[function-1].fourth-1].symbol)
+						b.nodes[setup-1].right = callbackValue
+						b.nodes[setup-1].next = b.nodes[body-1].children
+						b.nodes[body-1].children = setup
+					} else {
+						b.nodes[tail-1].next = b.nodes[body-1].children
+						b.nodes[body-1].children = first
+					}
 				}
 			}
 		case ast.KindMethodDeclaration:
 			if member.Body() == nil {
 				continue
 			}
+			b.superStatic = ast.GetCombinedModifierFlags(member)&ast.ModifierFlagsStatic != 0
 			method := b.lower(member)
 			if ast.GetCombinedModifierFlags(member)&ast.ModifierFlagsStatic != 0 {
 				b.nodes[method-1].constant = 1
@@ -214,6 +238,7 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 			b.unsupported(member)
 		}
 	}
+	b.superSymbol, b.superStatic = previousSuper, previousStatic
 	if had {
 		b.symbolIDs[classSymbol] = previous
 	} else {
@@ -247,4 +272,12 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	b.nodes[declaration-1].typ = typ
 	b.nodes[declaration-1].left = call
 	return declaration
+}
+
+func (b *irBuilder) rawThis(n *ast.Node) int {
+	if b.thisSymbol == 0 {
+		b.symbols = append(b.symbols, irSymbol{name: b.text("this"), typ: b.typ(b.c.GetAnyType())})
+		b.thisSymbol = len(b.symbols)
+	}
+	return b.classReference(n, b.thisSymbol)
 }

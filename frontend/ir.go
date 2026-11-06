@@ -51,6 +51,8 @@ type irBuilder struct {
 	enumDeclared          map[*ast.Symbol]bool
 	thisSymbol            int
 	thisScope             bool
+	superSymbol           int
+	superStatic           bool
 	classIDs              map[*ast.Symbol]int
 }
 
@@ -343,15 +345,22 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		if !b.thisScope {
 			b.unsupported(n)
 		}
-		if b.thisSymbol == 0 {
-			typ := b.typ(b.c.GetAnyType())
-			b.symbols = append(b.symbols, irSymbol{name: b.text("this"), typ: typ})
-			b.thisSymbol = len(b.symbols)
-		}
-		id = b.node(3, n, "this")
+		id = b.node(58, n, "this")
 		row = b.nodes[id-1]
-		row.symbol = b.thisSymbol
+		row.left = b.rawThis(n)
 		row.typ = b.typ(b.c.GetAnyType())
+	case ast.KindSuperKeyword:
+		if b.superSymbol == 0 {
+			b.unsupported(n)
+		}
+		id = b.node(59, n, "super")
+		row = b.nodes[id-1]
+		row.left = b.classReference(n, b.superSymbol)
+		row.right = b.rawThis(n)
+		row.typ = b.typ(b.c.GetAnyType())
+		if b.superStatic {
+			row.constant = 1
+		}
 	case ast.KindEmptyStatement:
 		id = b.node(12, n, ";")
 	case ast.KindParenthesizedExpression:
@@ -560,6 +569,15 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		}
 	case ast.KindCallExpression:
 		call := n.AsCallExpression()
+		if call.Expression.Kind == ast.KindSuperKeyword {
+			id = b.node(60, n, "super call")
+			row = b.nodes[id-1]
+			row.left = b.rawThis(n)
+			row.children = b.list(call.Arguments.Nodes)
+			row.typ = b.typ(b.c.GetAnyType())
+			break
+		}
+
 		if mode := b.numberPredicate(call.Expression); mode >= 0 {
 			id = b.node(39+mode, n, "number predicate")
 			row = b.nodes[id-1]

@@ -13,7 +13,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current feature completion
 
-63%.
+66%.
 
 <details>
 
@@ -26,7 +26,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Types and generics | 5 / 10 | Microsoft's type checking, interfaces, aliases, basic generics and union/nullable storage. Runtime representations still have gaps. |
 | Modules | 4 / 5 | Imports, exports, default exports and multiple files. Dynamic import is missing. |
 | Enums | 4 / 5 | Numeric, string, mixed, computed and const enums; reverse mappings, merged enums, and imports. Namespace merging and __proto__ members are missing. |
-| Classes and inheritance | 8 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, generics and structural interfaces. Inheritance, accessors, #private fields, dynamic field keys and decorators are missing. |
+| Classes and inheritance | 11 / 15 | Constructors, fields, methods, static blocks, parameter properties, class expressions, generics, structural interfaces, inheritance and super. Built-in base classes, accessors, #private fields, dynamic field keys and decorators are missing. Base constructors returning replacement objects still have gaps. |
 | Exceptions | 8 / 10 | throw, try/catch/finally, standard error objects, cause, and instanceof. Error prototypes and TypeScript source locations in stack traces are missing. |
 | Async | 0 / 10 | Not implemented |
 | Standard library | 2 / 5 | Selected Number/Object helpers and array/string methods. Many built-ins are missing. |
