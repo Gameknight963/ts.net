@@ -105,6 +105,7 @@ public static partial class Js
             FunctionArgument(args, 0) is JsRegExp regex && IsUndefined(FunctionArgument(args, 1)) && ReferenceEquals(regex.Get("constructor"), RuntimeNamespaces.RegExp)
                 ? regex : CreateRegExp(FunctionArgument(args, 0), FunctionArgument(args, 1)), 2)
         {
+            Member("escape", new JsFunction((FunctionBody)(static args => EscapeRegExp(FunctionArgument(args, 0))), null, "escape", 1));
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
             UseObjectPrototype(prototype); prototype.DefineMethod("constructor", this);
             foreach (bool test in new[] { false, true })
