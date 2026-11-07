@@ -57,11 +57,11 @@ public static partial class Js
         foreach (char flag in requested)
             if ("dgimsuvy".IndexOf(flag) < 0 || !seen.Add(flag)) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid regular-expression flags"));
         if (seen.Contains('u') && seen.Contains('v')) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid regular-expression flags"));
-        foreach (char flag in "duv") if (seen.Contains(flag)) throw new NotSupportedException("Regular-expression flags d, u and v are not supported");
+        foreach (char flag in "uv") if (seen.Contains(flag)) throw new NotSupportedException("Regular-expression flags u and v are not supported");
         var options = RegexOptions.ECMAScript | RegexOptions.CultureInvariant | RegexOptions.Compiled;
         if (seen.Contains('i')) options |= RegexOptions.IgnoreCase;
         if (seen.Contains('m')) options |= RegexOptions.Multiline;
-        string canonical = ""; foreach (char flag in "gimsy") if (seen.Contains(flag)) canonical += flag;
+        string canonical = ""; foreach (char flag in "dgimsy") if (seen.Contains(flag)) canonical += flag;
         return new JsRegExp(text, canonical, RegExpEngine(text, options, seen.Contains('s')));
     }
     static string RegExpSource(string pattern)
@@ -98,6 +98,14 @@ public static partial class Js
         var result = new JsArray(0);
         foreach (Group group in match.Groups) result.Append(group.Success ? group.Value : Undefined);
         result.DefineOwn("index", (double)match.Index); result.DefineOwn("input", text); result.DefineOwn("groups", Undefined);
+        if (regex.Flags.Contains('d'))
+        {
+            var indices = new JsArray(0);
+            foreach (Group group in match.Groups)
+                indices.Append(group.Success ? new JsArray(new object[] { (double)group.Index, (double)(group.Index + group.Length) }) : Undefined);
+            indices.DefineOwn("groups", Undefined);
+            result.DefineOwn("indices", indices);
+        }
         return result;
     }
     sealed class RegExpConstructor : NativeNamespaceFunction
