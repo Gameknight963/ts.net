@@ -33,8 +33,9 @@ public static partial class Js
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
-            string text = AtString(receiver);
             object separator = FunctionArgument(arguments, 0), limitValue = FunctionArgument(arguments, 1);
+            if (TryStringProtocol(receiver, separator, SplitSymbol, limitValue, true, out var custom)) return custom;
+            string text = AtString(receiver);
             uint limit = IsUndefined(limitValue) ? uint.MaxValue : unchecked((uint)ToInt32(Number(limitValue)));
             if (separator is JsRegExp regex) return SplitRegExp(text, regex, limit);
             string pattern = StringValue(separator);

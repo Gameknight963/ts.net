@@ -36,8 +36,10 @@ public static partial class Js
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
-            string text = AtString(receiver);
             object pattern = FunctionArgument(arguments, 0);
+            if (pattern is JsRegExp checkedRegex && !checkedRegex.Flags.Contains('g')) throw new InvalidOperationException("matchAll requires a global regular expression");
+            if (TryStringProtocol(receiver, pattern, MatchAllSymbol, Undefined, false, out var custom)) return custom;
+            string text = AtString(receiver);
             JsRegExp copy;
             if (pattern is JsRegExp regex)
             {

@@ -99,8 +99,10 @@ public static partial class Js
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
-            string text = AtString(receiver);
             object searchValue = FunctionArgument(arguments, 0);
+            if (all && searchValue is JsRegExp checkedRegex && !checkedRegex.Flags.Contains('g')) throw new InvalidOperationException("replaceAll requires a global regular expression");
+            if (TryStringProtocol(receiver, searchValue, ReplaceSymbol, FunctionArgument(arguments, 1), true, out var custom)) return custom;
+            string text = AtString(receiver);
             if (searchValue is JsRegExp regex) return ReplaceRegExp(text, regex, FunctionArgument(arguments, 1), all);
             string search = StringValue(searchValue);
             object replacement = FunctionArgument(arguments, 1);

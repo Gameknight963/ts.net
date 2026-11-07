@@ -6,8 +6,9 @@ public static partial class Js
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
-            string text = AtString(receiver);
             object pattern = FunctionArgument(arguments, 0);
+            if (TryStringProtocol(receiver, pattern, search ? SearchSymbol : MatchSymbol, Undefined, false, out var custom)) return custom;
+            string text = AtString(receiver);
             var regex = pattern as JsRegExp ?? CreateRegExp(pattern, Undefined);
             bool sticky = regex.Flags.Contains('y');
             if (search)
