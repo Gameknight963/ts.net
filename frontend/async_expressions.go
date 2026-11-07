@@ -284,6 +284,9 @@ func (a *asyncExpressionLowering) expression(id int, next asyncExpressionContinu
 			return a.returned(await)
 		})
 	case 8, 9, 23: // unary, assertion, typeof
+		if n.kind == 8 && a.b.texts[a.b.tokens[n.token-1].text-1] == "delete" {
+			return a.target(n.left, func(target func() int) int { n.left = target(); return next(a.operation(n)) })
+		}
 		return a.expression(n.left, func(value int) int { n.left = value; return next(a.operation(n)) })
 	case 31: // comma
 		return a.expression(n.left, func(value int) int {
@@ -596,6 +599,10 @@ func (a *asyncExpressionLowering) chain(n irNode, next func(int, int) int) int {
 					child := a.operation(step)
 					root := a.node(62, "await chain property")
 					a.b.nodes[root-1].typ = step.typ
+					if n.constant != 0 && index == len(steps)-1 {
+						a.b.nodes[root-1].constant = 1
+						a.b.nodes[root-1].typ = n.typ
+					}
 					a.b.nodes[root-1].left = a.reference(value)
 					a.b.nodes[root-1].children = child
 					return a.bind(root, func(result int) int { return walk(index+1, result, value) })
@@ -606,7 +613,12 @@ func (a *asyncExpressionLowering) chain(n irNode, next func(int, int) int) int {
 				return get(0)
 			}
 			if step.constant != 0 {
-				return a.branch(a.nullish(value), finish(a.node(20, "undefined"), a.node(20, "undefined")), advance())
+				missing := a.node(20, "undefined")
+				if n.constant != 0 {
+					missing = a.node(2, "true")
+					a.b.nodes[missing-1].typ = n.typ
+				}
+				return a.branch(a.nullish(value), finish(missing, a.node(20, "undefined")), advance())
 			}
 			return advance()
 		}

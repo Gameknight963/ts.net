@@ -68,6 +68,7 @@ internal static partial class CompilerFunctions
     internal static readonly TextBytes text_false = "false";
     internal static readonly TextBytes text_lparen = "(";
     internal static readonly TextBytes text_rparen = ")";
+    internal static readonly TextBytes text_delete = "delete";
     internal static readonly TextBytes text_not = "!";
     internal static readonly TextBytes text_expected_expression_syntax_may_be_unsupported = "expected expression (syntax may be unsupported)";
     internal static readonly TextBytes text_dot = ".";

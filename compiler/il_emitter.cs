@@ -627,7 +627,19 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.Unary)
         {
             int op = get_token(n.token, c).text;
-            if (is_text(op, text_not, c)) { il_condition(n.left, c, b); il_invert(b); b.call(RuntimeMember.WrapBoolean); }
+            if (is_text(op, text_delete, c))
+            {
+                Node target = get_node(n.left, c);
+                if (target.kind == NodeKind.Property || target.kind == NodeKind.Index)
+                {
+                    il_boxed(target.left, c, b);
+                    if (target.kind == NodeKind.Property) il_text(target.name, c, b); else il_boxed(target.right, c, b);
+                    b.call(RuntimeMember.DeleteProperty);
+                }
+                else { il_boxed(n.left, c, b); b.op(0x26); b.emit(0x20, 1); }
+                b.call(RuntimeMember.WrapBoolean);
+            }
+            else if (is_text(op, text_not, c)) { il_condition(n.left, c, b); il_invert(b); b.call(RuntimeMember.WrapBoolean); }
             else if (is_text(op, text_bit_not, c))
             {
                 il_integer(n.left, c, b); b.op(0x66); b.op(0x6c); b.call(RuntimeMember.WrapNumber);

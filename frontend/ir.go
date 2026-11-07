@@ -48,6 +48,8 @@ type irBuilder struct {
 	controls              []irControl
 	controlIDs            map[*ast.Node]int
 	labels                map[string]irLabel
+	deletedNames          map[string]bool
+	deleteAnyName         bool
 	enumValues            map[*ast.Node]evaluator.Result
 	enumDeclared          map[*ast.Symbol]bool
 	namespaceExports      map[*ast.Symbol]*ast.Node
@@ -513,6 +515,21 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.left = b.lower(expr.Condition)
 		row.right = b.lower(expr.WhenTrue)
 		row.third = b.lower(expr.WhenFalse)
+	case ast.KindDeleteExpression:
+		operand := n.Expression()
+		for operand.Kind == ast.KindParenthesizedExpression {
+			operand = operand.Expression()
+		}
+		if chainNode(operand) {
+			id = b.optionalChain(operand)
+			row = b.nodes[id-1]
+			row.constant = 1
+			row.typ = b.typ(b.c.GetBooleanType())
+		} else {
+			id = b.node(8, n, "delete")
+			row = b.nodes[id-1]
+			row.left = b.lower(operand)
+		}
 	case ast.KindTypeOfExpression:
 		id = b.node(23, n, "typeof")
 		row = b.nodes[id-1]
@@ -1137,6 +1154,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	}
 	b.contextualObject(n, &row)
 	b.preserveDynamicType(n, &row)
+	b.deletableLiteral(n, &row)
 
 	b.nodes[id-1] = row
 	return id
@@ -1155,6 +1173,7 @@ func exportIR(s *session) (result []byte, err error) {
 	b.controlIDs = map[*ast.Node]int{}
 	b.labels = map[string]irLabel{}
 	files := b.moduleFiles(s)
+	b.prepareDeletion(files)
 	b.prepareEnums(files)
 	c, release = s.program.GetTypeCheckerForFileExclusive(context.Background(), s.file)
 	defer release()

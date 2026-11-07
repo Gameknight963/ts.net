@@ -10,3 +10,14 @@ public abstract partial class TsObject
         return true;
     }
 }
+
+public static partial class Js
+{
+    public static bool DeleteProperty(object receiver, object key)
+    {
+        RequireObject(receiver);
+        string name = PropertyKey(key);
+        if (!ToObject(receiver).DeleteOwn(name)) throw new InvalidOperationException("Property is not configurable");
+        return true;
+    }
+}

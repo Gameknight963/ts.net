@@ -33,13 +33,19 @@ internal static partial class CompilerFunctions
         int result = b.local(reference ? -5 : b.type(root.type, c)), missing = b.label(), done = b.label();
         for (int child = root.children; child != 0; child = get_node(child, c).next)
         {
-            Node step = get_node(child, c); bool final = step.next == 0; bool typedNumber = final && !reference && get_type(root.type, c).kind == TypeKind.Number;
+            Node step = get_node(child, c); bool final = step.next == 0; bool typedNumber = final && !root.constant && !reference && get_type(root.type, c).kind == TypeKind.Number;
             if (step.constant) { b.emit(0xfe0c, value); b.call(RuntimeMember.IsNullish); b.emit(0x3a, missing); }
             if (step.kind == NodeKind.ChainProperty || step.kind == NodeKind.ChainIndex)
             {
                 b.emit(0xfe0c, value); b.emit(0xfe0e, receiver);
                 if (typedNumber && step.kind == NodeKind.ChainProperty && il_chain_number_property(step, receiver, c, b)) { b.emit(0xfe0e, result); b.emit(0x38, done); continue; }
                 b.emit(0xfe0c, receiver);
+                if (final && root.constant)
+                {
+                    if (step.kind == NodeKind.ChainProperty) il_text(step.name, c, b); else il_boxed(step.right, c, b);
+                    b.call(RuntimeMember.DeleteProperty); b.call(RuntimeMember.WrapBoolean); b.box(root.type, c);
+                    b.emit(0xfe0e, value); continue;
+                }
                 if (step.kind == NodeKind.ChainProperty) { if (step.left != 0) { il_boxed(step.left, c, b); b.call(RuntimeMember.PrivateGet); } else { il_text(step.name, c, b); b.call(RuntimeMember.DynamicGet); } } else { il_boxed(step.right, c, b); b.call(RuntimeMember.IndexGet); }
             }
             else
@@ -71,7 +77,7 @@ internal static partial class CompilerFunctions
             b.emit(0xfe0e, value);
         }
         b.emit(0xfe0c, value); if (!reference) b.from_object(root.type, c); b.emit(0xfe0e, result); b.emit(0x38, done);
-        b.mark(missing); if (reference) b.call(RuntimeMember.Undefined); else b.empty(root.type, c); b.emit(0xfe0e, result);
+        b.mark(missing); if (root.constant) { b.emit(0x20, 1); b.call(RuntimeMember.WrapBoolean); } else if (reference) b.call(RuntimeMember.Undefined); else b.empty(root.type, c); b.emit(0xfe0e, result);
         b.mark(done); b.emit(0xfe0c, result); return receiver;
     }
 }
