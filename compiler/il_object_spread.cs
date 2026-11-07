@@ -168,7 +168,7 @@ void il_spread_shapes(Compiler c, IlBackend b)
         {
             Node p = get_node(property, c); b.emit(0xfe0c, destination);
             if (p.kind == NodeKind.Spread) { if (cached >= 0) { b.emit(0xfe0c, cached); } else { il_boxed(p.left, c, b); } b.call(RuntimeMember.ObjectSpread); }
-            else if (p.fourth != 0)
+            else if (p.fourth != 0 && get_node(p.fourth, c).kind == NodeKind.Undefined)
             {
                 il_boxed(p.left, c, b); b.call(RuntimeMember.SetLiteralPrototype);
             }
@@ -177,6 +177,7 @@ void il_spread_shapes(Compiler c, IlBackend b)
                 if (p.right != 0) { il_boxed(p.right, c, b); b.call(RuntimeMember.PropertyKey); } else { il_text(p.name, c, b); }
                 int key = -1; if (p.constant) { key = b.local(-4); b.op(0x25); b.emit(0xfe0e, key); }
                 il_boxed(p.left, c, b);
+                if (p.fourth != 0) { b.emit(0xfe0c, destination); b.call(RuntimeMember.MarkObjectHome); }
                 if (p.constant) { b.emit(0xfe0c, key); b.call(RuntimeMember.NamePropertyFunction); }
                 if(p.third!=0){b.emit(0x20,get_node(p.third,c).constant?1:2);b.call(RuntimeMember.DefineAccessor);}else b.call(RuntimeMember.DefineOwn);
             }

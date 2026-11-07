@@ -17,10 +17,15 @@ internal sealed class JsConstructorFrame(JsClassFunction home, object allocated,
     internal int Calls;
     internal JsFunction AfterSuper;
 }
-internal sealed class JsSuperReference(JsClassFunction home, object receiver, bool isStatic) : TsObject
+internal sealed class JsObjectMethodReceiver(TsObject home, object receiver)
+{
+    internal readonly TsObject Home = home;
+    internal readonly object Receiver = receiver;
+}
+internal sealed class JsSuperReference(TsObject home, object receiver, bool isStatic) : TsObject
 {
     internal readonly object Receiver = Js.ResolveThis(receiver);
-    TsObject Target => isStatic ? home.Parent : home.Prototype.ParentPrototype;
+    TsObject Target => home is JsClassFunction klass ? isStatic ? klass.Parent : klass.Prototype.ParentPrototype : home.PropertyPrototype;
     public override object Get(string key) => Target is null ? throw new InvalidOperationException("Cannot read super property of null") : Target.GetWithReceiver(key,Receiver);
     public override object Set(string key, object value) => Target is null ? throw new InvalidOperationException("Cannot set super property of null") : Target.SetWithReceiver(key,value,Receiver);
 }
@@ -30,6 +35,7 @@ public static partial class Js
     public static object ResolveThis(object receiver)
     {
         receiver = ArgumentsReceiver(receiver);
+        if (receiver is JsObjectMethodReceiver method) return ResolveThis(method.Receiver);
         if (receiver is JsConstructionReceiver construction) return ResolveThis(construction.Receiver);
         if (receiver is not JsConstructorFrame frame) return receiver;
         return frame.Initialized ? frame.Value : throw MakeThrown(new JsCaughtError("ReferenceError", "Must call super constructor before accessing this"));
@@ -41,7 +47,12 @@ public static partial class Js
     }
     public static object EnableNewTarget(object value) { ((JsFunction)value).UsesNewTarget = true; return value; }
     internal static object SuperReceiver(object receiver) => receiver is JsSuperReference reference ? reference.Receiver : receiver;
-    public static object SuperBase(object home, object receiver, bool isStatic) => new JsSuperReference((JsClassFunction)home, receiver, isStatic);
+    public static object SuperBase(object home, object receiver, bool isStatic)
+    {
+        home = ArgumentsReceiver(home);
+        return new JsSuperReference(home is JsObjectMethodReceiver method ? method.Home : (TsObject)home, receiver, isStatic);
+    }
+    public static object MarkObjectHome(object function, object home) { ((JsFunction)function).SetObjectHome((TsObject)home); return function; }
     public static void SuperInitializer(object receiver, object callback) => ((JsConstructorFrame)ArgumentsReceiver(receiver)).AfterSuper = (JsFunction)callback;
     public static object SuperCall(object receiver, object arguments)
     {

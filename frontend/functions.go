@@ -210,6 +210,9 @@ func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 	previousSuper, previousStatic := b.superSymbol, b.superStatic
 	if !arrow && (n.Parent == nil || !ast.IsClassLike(n.Parent)) {
 		b.superSymbol = 0
+		if objectMethodHasSuper(n) {
+			b.superSymbol = -1
+		}
 	}
 	if !arrow {
 		b.thisSymbol = 0

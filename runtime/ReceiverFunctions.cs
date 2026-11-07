@@ -8,15 +8,18 @@ public sealed class JsReceiverFunction : JsFunction
     sealed class Invocation(FunctionBody body)
     {
         internal bool UsesArguments;
+        internal TsObject Home;
+        object WrapReceiver(object receiver) => Home == null ? receiver : new JsObjectMethodReceiver(Home, receiver);
         internal object Invoke(object receiver, object[] arguments)
         {
             var values = new object[arguments.Length + 1];
             Array.Copy(arguments, 0, values, 1, arguments.Length);
+            receiver = WrapReceiver(receiver);
             if (UsesArguments) receiver = new JsArgumentsReceiver(receiver, values);
             values[0] = receiver;
             return body(values);
         }
-        internal object InvokeValues(object[] values) => body(values);
+        internal object InvokeValues(object[] values) { values[0] = WrapReceiver(values[0]); return body(values); }
     }
     public JsReceiverFunction(object body, object numeric, string name, int length)
         : this(new Invocation((FunctionBody)body), numeric, name, length) { }
@@ -25,6 +28,7 @@ public sealed class JsReceiverFunction : JsFunction
     {
         this.invocation = invocation;
     }
+    internal override void SetObjectHome(TsObject home) => invocation.Home = home;
     internal void EnableArguments() => invocation.UsesArguments = true;
     public override object InvokeWithReceiver(object receiver, object[] arguments) => invocation.Invoke(receiver, arguments);
     public override double? InvokeMethodNumber0(object receiver) => Js.Cast<double?>(invocation.UsesArguments ? invocation.Invoke(receiver, Array.Empty<object>()) : invocation.InvokeValues(new[] { receiver }), "Function result violates number type");

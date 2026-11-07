@@ -450,7 +450,11 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		}
 		id = b.node(59, n, "super")
 		row = b.nodes[id-1]
-		row.left = b.classReference(n, b.superSymbol)
+		if b.superSymbol == -1 {
+			row.left = b.rawThis(n)
+		} else {
+			row.left = b.classReference(n, b.superSymbol)
+		}
 		row.right = b.rawThis(n)
 		row.typ = b.typ(b.c.GetAnyType())
 		if b.superStatic {
@@ -631,7 +635,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.children = b.list(n.AsObjectLiteralExpression().Properties.Nodes)
 		for _, property := range n.AsObjectLiteralExpression().Properties.Nodes {
-			if property.Kind == ast.KindGetAccessor || property.Kind == ast.KindSetAccessor || property.Kind == ast.KindPropertyAssignment && property.Name().Kind != ast.KindComputedPropertyName && property.Name().Text() == "__proto__" {
+			if objectMethodHasSuper(property) || property.Kind == ast.KindGetAccessor || property.Kind == ast.KindSetAccessor || property.Kind == ast.KindPropertyAssignment && property.Name().Kind != ast.KindComputedPropertyName && property.Name().Text() == "__proto__" {
 				row.typ = b.typ(b.c.GetAnyType())
 				break
 			}
@@ -693,6 +697,8 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		if n.Kind == ast.KindPropertyAssignment && !computed && staticName == "__proto__" {
 			// A marker distinguishes prototype setters from ordinary named data.
 			row.fourth = b.node(20, n, "prototype setter")
+		} else if objectMethodHasSuper(n) {
+			row.fourth = b.node(21, n, "object method home")
 		}
 		if dynamic {
 			previousSuper, previousStatic := b.superSymbol, b.superStatic

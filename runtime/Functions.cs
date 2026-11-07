@@ -41,6 +41,7 @@ public partial class JsFunction : TsObject
         raw2 = numeric as RawNumberFunction2;
         this.name = name;this.length = length;
     }
+    internal virtual void SetObjectHome(TsObject home) { }
     public virtual object InvokeWithReceiver(object receiver,object[] arguments)=>Invoke(arguments);
     public virtual double? InvokeMethodNumber0(object receiver)=>InvokeNumber0();
     public virtual double? InvokeMethodNumber1(object receiver,double? first)=>InvokeNumber1(first);
