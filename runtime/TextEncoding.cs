@@ -102,7 +102,7 @@ public static partial class Js
             "utf-16" or "utf-16le" or "ucs-2" or "unicode" or "unicodefeff" or "csunicode" or "iso-10646-ucs-2" => "utf-16le",
             "utf-16be" or "unicodefffe" => "utf-16be",
             "ansi_x3.4-1968" or "cp819" or "csisolatin1" or "ibm819" or "iso-ir-100" or "iso88591" or "iso_8859-1" or "iso_8859-1:1987" or "l1" or "x-cp1252" or "windows-1252" or "cp1252" or "latin1" or "iso-8859-1" or "iso8859-1" or "ascii" or "us-ascii" => "windows-1252",
-            _ => throw new ArgumentOutOfRangeException(null, "TextDecoder encoding is unsupported")
+            _ => LegacyDecoderEncoding(label).Name
         };
         object options = FunctionArgument(args, 1);
         if (!IsNullish(options) && options is not TsObject) throw new InvalidOperationException("TextDecoder options must be an object");
@@ -114,8 +114,11 @@ public static partial class Js
         else if (name is "utf-16le" or "utf-16be") encoding = new UnicodeEncoding(name == "utf-16be", false, fatal);
         else
         {
-            encoding = CodePagesEncodingProvider.Instance.GetEncoding(1252);
-            if (fatal) { encoding = (Encoding)encoding.Clone(); encoding.DecoderFallback = DecoderFallback.ExceptionFallback; }
+            encoding = CodePagesEncodingProvider.Instance.GetEncoding(name == "windows-1252" ? 1252 : LegacyDecoderEncoding(name).CodePage)
+                ?? throw new ArgumentOutOfRangeException(null, "TextDecoder encoding is unavailable on this platform");
+            // Legacy mapping tables and malformed-sequence grouping follow the CLR provider.
+            encoding = (Encoding)encoding.Clone();
+            encoding.DecoderFallback = fatal ? DecoderFallback.ExceptionFallback : new DecoderReplacementFallback("\ufffd");
         }
         return new TextDecoderValue(name, encoding, fatal, ignoreBom);
     }
