@@ -26,12 +26,24 @@ public static partial class Js
     {
         internal NumberNamespace() : base("Number", static args => args.Length == 0 ? 0d : Number(FunctionArgument(args, 0)), 1, (RawNumberFunction1)(static value => value))
         {
-            MarkOrdinaryPrototype();
+            var prototype = new JsBoxedPrimitive(0d, true);
+            prototype.DefineHidden("constructor", this);
+            prototype.DefineHidden("valueOf", PrimitiveMethod(0d, false));
+            prototype.DefineHidden("toString", PrimitiveMethod(0d, true));
+            prototype.DefineHidden("toFixed", new NumberFixedFunction());
+            UseObjectPrototype(prototype);
             Member("parseInt", NumberParsers.Integer); Member("parseFloat", NumberParsers.Float);
             Member("isNaN", NumberPredicateFunction(0)); Member("isFinite", NumberPredicateFunction(1)); Member("isInteger", NumberPredicateFunction(2)); Member("isSafeInteger", NumberPredicateFunction(3));
             Member("NaN", double.NaN); Member("POSITIVE_INFINITY", double.PositiveInfinity); Member("NEGATIVE_INFINITY", double.NegativeInfinity); Member("MAX_SAFE_INTEGER", 9007199254740991d); Member("MIN_SAFE_INTEGER", -9007199254740991d); Member("EPSILON", Math.Pow(2, -52)); Member("MAX_VALUE", double.MaxValue); Member("MIN_VALUE", double.Epsilon);
         }
         public override double? InvokeNumber0() => 0d;
+        public override object Construct(object[] arguments) => new JsBoxedPrimitive(arguments.Length == 0 ? 0d : Number(arguments[0]));
+        internal override bool CanInitializeDerived => true;
+        internal override object InitializeDerived(object instance, object[] arguments)
+        {
+            var result = (TsObject)Construct(arguments);
+            result.SetPrototype(((TsObject)instance).PropertyPrototype); return result;
+        }
     }
     static object ObjectValue(object value) => IsNullish(value) ? new JsDynamicObject() : ToObject(value);
     sealed class ObjectConstructorFunction() : NativeNamespaceFunction("Object", static args => ObjectValue(FunctionArgument(args, 0)), 1)
