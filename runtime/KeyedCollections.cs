@@ -178,6 +178,7 @@ public static partial class Js
                 finally { cursor.Finish(); }
                 return Undefined;
             }));
+            if (!set) Member("groupBy", new JsFunction((FunctionBody)(args => MapGroupBy(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "groupBy", 2));
             UseObjectPrototype(prototype);
         }
         object Create(object[] arguments, TsObject prototype)
