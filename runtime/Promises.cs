@@ -8,7 +8,9 @@ public static partial class Js
     static void EnqueuePromiseJob(Action job) => (promiseJobs ??= new()).Enqueue(job);
     static void DrainPromiseJobs()
     {
-        while (promiseJobs != null && promiseJobs.TryDequeue(out var job)) job();
+        ClearKeptWeakTargets();
+        while (promiseJobs != null && promiseJobs.TryDequeue(out var job))
+            try { job(); } finally { ClearKeptWeakTargets(); }
         if (unhandledPromises != null)
             foreach (var promise in unhandledPromises)
                 if (!promise.Handled) throw MakeThrown(promise.Result);
