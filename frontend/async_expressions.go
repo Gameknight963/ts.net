@@ -10,8 +10,11 @@ import (
 const rawAsyncAwait = -1
 
 func expressionHasAwait(n *ast.Node) bool {
-	if n == nil || ast.IsFunctionLike(n) {
+	if n == nil {
 		return false
+	}
+	if ast.IsFunctionLike(n) {
+		return expressionHasAwait(n.Name())
 	}
 	if n.Kind == ast.KindAwaitExpression {
 		return true
@@ -354,6 +357,8 @@ func (a *asyncExpressionLowering) expression(id int, next asyncExpressionContinu
 		})
 	case 6:
 		return a.call(n, next)
+	case 55:
+		return a.classExpression(n, next)
 	case 54: // constructor
 		return a.expression(n.left, func(value int) int {
 			return a.bind(value, func(target int) int {

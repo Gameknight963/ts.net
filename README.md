@@ -29,7 +29,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Types and generics | 5 / 10 | Missing some runtime type representations. |
 | Modules | 4 / 5 | Missing dynamic imports of uncompiled modules and import attributes. |
 | Enums | 5 / 5 | Missing nothing. |
-| Classes and inheritance | 14 / 15 | Missing decorators, await in class keys or base classes, some built-in base classes, and complete constructor replacement-object support. |
+| Classes and inheritance | 14 / 15 | Missing decorators, some built-in base classes, and complete constructor replacement-object support. |
 | Exceptions | 9 / 10 | Missing TypeScript source locations in stack traces. |
 | Async | 8 / 10 | Missing generators and custom promise species. |
 | Standard library | 3 / 5 | Missing some Symbol protocols, Reflect methods, RegExp features, custom array species, and built-ins. |

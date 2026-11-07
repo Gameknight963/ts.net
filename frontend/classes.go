@@ -477,6 +477,17 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	call := b.node(6, n, "class definition")
 	b.nodes[call-1].left = factoryValue
 	b.nodes[call-1].typ = typ
+	lowering := asyncExpressionLowering{b: b, source: n, any: typ}
+	if lowering.hasAwait(body) {
+		marker := b.node(20, n, "async class definition")
+		b.nodes[marker-1].typ = typ
+		b.nodes[factory-1].right = marker
+		b.nodes[factory-1].left = lowering.body(body, factory)
+		awaited := b.node(rawAsyncAwait, n, "await class definition")
+		b.nodes[awaited-1].typ = typ
+		b.nodes[awaited-1].left = call
+		call = awaited
+	}
 	if n.Kind == ast.KindClassExpression {
 		return call
 	}

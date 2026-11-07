@@ -77,7 +77,7 @@ try {
     }
 
     # Namespace semantics need native ES modules as the reference.
-    foreach ($name in @('top-level-await', 'top-level-await-cycle', 'top-level-await-siblings', 'top-level-await-errors', 'top-level-await-var', 'dynamic-import', 'dynamic-import-bindings', 'disposable-stack-modules', 'await-using-modules', 'namespace-merge-modules', 'namespace-modules', 'using-modules', 'import-meta', 'module-this', 'tagged-templates-modules', 'reflect-delete-modules', 'property-descriptors-modules', 'for-in-modules', 'for-in-cycle', 'module-namespace-order', 'in-operator-modules', 'function-constructor-modules')) {
+    foreach ($name in @('await-class-definitions', 'await-class-context', 'top-level-await', 'top-level-await-cycle', 'top-level-await-siblings', 'top-level-await-errors', 'top-level-await-var', 'dynamic-import', 'dynamic-import-bindings', 'disposable-stack-modules', 'await-using-modules', 'namespace-merge-modules', 'namespace-modules', 'using-modules', 'import-meta', 'module-this', 'tagged-templates-modules', 'reflect-delete-modules', 'property-descriptors-modules', 'for-in-modules', 'for-in-cycle', 'module-namespace-order', 'in-operator-modules', 'function-constructor-modules')) {
         & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module es2022 --outDir "$testRoot/node/$name" "tests/$name.ts"
         if ($LASTEXITCODE) { throw "ES module reference compilation failed: $name" }
