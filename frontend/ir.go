@@ -471,6 +471,14 @@ func (b *irBuilder) lower(n *ast.Node) int {
 				return b.moduleNamespaceReference(n, target)
 			}
 		}
+		// Enum and namespace bodies capture their object like TypeScript's IIFE
+		// parameter. References inside nested closures must use that same object.
+		if binding := b.namespaceOwners[b.c.GetSymbolAtLocation(n)]; binding != 0 {
+			id = b.node(3, n, n.Text())
+			b.nodes[id-1].symbol = binding
+			b.nodes[id-1].typ = b.symbols[binding-1].typ
+			return id
+		}
 		if owner := b.namespaceExports[b.c.GetSymbolAtLocation(n)]; owner != nil && !namespaceLocalFunction(n, owner, b.c.GetSymbolAtLocation(n)) {
 			return b.namespaceReference(n, owner)
 		}
