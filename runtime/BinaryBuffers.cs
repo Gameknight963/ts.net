@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Buffers.Binary;
 
 public static partial class Js
 {
@@ -42,7 +43,7 @@ public static partial class Js
                 source.Bytes.AsSpan(start, result.Bytes.Length).CopyTo(result.Bytes);
                 return result;
             }));
-            Member("isView", new JsFunction((FunctionBody)(static args => BoxBoolean(FunctionArgument(args, 0) is BinaryView)), null, "isView", 1));
+            Member("isView", new JsFunction((FunctionBody)(static args => BoxBoolean(FunctionArgument(args, 0) is BinaryView or TypedArrayValue)), null, "isView", 1));
         }
         public override object Construct(object[] args)
         {
@@ -98,17 +99,32 @@ public static partial class Js
         BigInteger integer = write && bigint ? BigIntValue(FunctionArgument(args, 1), false) : default;
         double value = write && !bigint ? Number(FunctionArgument(args, 1)) : 0;
         bool little = Truthy(FunctionArgument(args, write ? 2 : 1));
-        int size = type.EndsWith("8", StringComparison.Ordinal) ? 1 : type.EndsWith("16", StringComparison.Ordinal) ? 2 : type.EndsWith("32", StringComparison.Ordinal) ? 4 : 8;
+        int size = BinarySize(type);
         if (offset > view.Length - size) throw new ArgumentOutOfRangeException(null, "DataView access is out of range");
         var bytes = view.Buffer.Bytes.AsSpan(view.Offset + offset, size);
-        if (write)
+        if (write) { WriteBinary(bytes, type, little, value, integer); return Undefined; }
+        return ReadBinary(bytes, type, little);
+    }
+    static int BinarySize(string type) => type.EndsWith("8", StringComparison.Ordinal) ? 1 : type.EndsWith("16", StringComparison.Ordinal) ? 2 : type.EndsWith("32", StringComparison.Ordinal) ? 4 : 8;
+    static void WriteBinary(Span<byte> bytes, string type, bool little, double value, BigInteger integer)
+    {
+        ulong bits = type.StartsWith("Big", StringComparison.Ordinal) ? (ulong)(integer & ulong.MaxValue) : type == "Float16" ? BitConverter.HalfToUInt16Bits((Half)value) : type == "Float64" ? unchecked((ulong)BitConverter.DoubleToInt64Bits(value)) : type == "Float32" ? BitConverter.SingleToUInt32Bits((float)value) : unchecked((uint)ToInt32(value));
+        if (bytes.Length == 1) bytes[0] = (byte)bits;
+        else if (bytes.Length == 2) { if (little) BinaryPrimitives.WriteUInt16LittleEndian(bytes, (ushort)bits); else BinaryPrimitives.WriteUInt16BigEndian(bytes, (ushort)bits); }
+        else if (bytes.Length == 4) { if (little) BinaryPrimitives.WriteUInt32LittleEndian(bytes, (uint)bits); else BinaryPrimitives.WriteUInt32BigEndian(bytes, (uint)bits); }
+        else { if (little) BinaryPrimitives.WriteUInt64LittleEndian(bytes, bits); else BinaryPrimitives.WriteUInt64BigEndian(bytes, bits); }
+    }
+    static object ReadBinary(ReadOnlySpan<byte> bytes, string type, bool little)
+    {
+        int size = bytes.Length;
+        bool bigint = type.StartsWith("Big", StringComparison.Ordinal);
+        ulong raw = size switch
         {
-            ulong bits = bigint ? (ulong)(integer & ulong.MaxValue) : type == "Float16" ? BitConverter.HalfToUInt16Bits((Half)value) : type == "Float64" ? unchecked((ulong)BitConverter.DoubleToInt64Bits(value)) : type == "Float32" ? BitConverter.SingleToUInt32Bits((float)value) : unchecked((uint)ToInt32(value));
-            for (int i = 0; i < size; i++) bytes[little ? i : size - 1 - i] = (byte)(bits >> (i * 8));
-            return Undefined;
-        }
-        ulong raw = 0;
-        for (int i = 0; i < size; i++) raw |= (ulong)bytes[little ? i : size - 1 - i] << (i * 8);
+            1 => bytes[0],
+            2 => little ? BinaryPrimitives.ReadUInt16LittleEndian(bytes) : BinaryPrimitives.ReadUInt16BigEndian(bytes),
+            4 => little ? BinaryPrimitives.ReadUInt32LittleEndian(bytes) : BinaryPrimitives.ReadUInt32BigEndian(bytes),
+            _ => little ? BinaryPrimitives.ReadUInt64LittleEndian(bytes) : BinaryPrimitives.ReadUInt64BigEndian(bytes)
+        };
         if (bigint) return type == "BigInt64" ? new BigInteger(unchecked((long)raw)) : new BigInteger(raw);
         return type switch
         {

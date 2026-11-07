@@ -38,6 +38,14 @@ func (b *irBuilder) preserveDynamicType(n *ast.Node, row *irNode) {
 		if row.kind != 33 {
 			return
 		}
+		// Built-in typed arrays convert every stored element. Their indexed
+		// values retain the checker's number/bigint type, including undefined
+		// through the normal nullable storage for out-of-range reads.
+		if source := b.c.GetTypeAtLocation(n.Expression()); source != nil && row.right != 0 && b.types[b.nodes[row.right-1].typ-1].kind == 0 {
+			if symbol := source.Symbol(); symbol != nil && binaryBuiltinName(symbol.Name) {
+				return
+			}
+		}
 		owner := b.nodes[row.left-1].typ
 		if owner != 0 {
 			typ := b.types[owner-1]

@@ -207,6 +207,7 @@ public static partial class Js
     {
         if (IsNullish(receiver)) throw new InvalidOperationException("Cannot read property of null or undefined");
         if (receiver is JsArray array) return array.GetIndex(key);
+        if (receiver is TypedArrayValue typed && key is double number) return typed.ReadIndex(number);
         string text = PropertyKey(key);
         if (receiver is string value && JsArray.Index(text, out uint index) && index < value.Length)
             return Iteration.CodeUnit(value[(int)index]);
@@ -216,6 +217,7 @@ public static partial class Js
     {
         if (IsNullish(receiver)) throw new InvalidOperationException("Cannot write property of null or undefined");
         if (receiver is JsArray array) array.SetIndex(key, value);
+        else if (receiver is TypedArrayValue typed && key is double number) typed.WriteIndex(number, value);
         else Set(receiver, PropertyKey(key), value);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
