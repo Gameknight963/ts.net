@@ -23,6 +23,13 @@ try {
     & dotnet tests/inspect-timers/bin/Release/net10.0/Inspect.dll
     if ($LASTEXITCODE) { throw 'Timer checks failed' }
 
+    & dotnet $compiler tests/function-source-exact.ts "$testRoot/function-source-exact.dll"
+    if ($LASTEXITCODE) { throw 'Exact function source compilation failed' }
+    & dotnet build tests/inspect-function-source/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Function source inspector build failed' }
+    & dotnet tests/inspect-function-source/bin/Release/net10.0/Inspect.dll "$testRoot/function-source-exact.dll" tests/function-source-exact.ts
+    if ($LASTEXITCODE) { throw 'Exact function source checks failed' }
+
     & dotnet build tests/inspect-symbol-keys/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Symbol key inspector build failed' }
     & dotnet tests/inspect-symbol-keys/bin/Release/net10.0/Inspect.dll

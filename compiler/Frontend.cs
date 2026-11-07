@@ -36,7 +36,7 @@ internal static partial class CompilerFunctions
     internal static void import_frontend(TextBytes path, Compiler c, bool experimentalDecorators = false)
     {
         IrReader r = IrReader.create(NativeFrontend.Read(path.Decode(), experimentalDecorators));
-        if (r.integer() != 0x34524954) { print("tsnetc: unsupported frontend IR version"); exit(1); }
+        if (r.integer() != 0x35524954) { print("tsnetc: unsupported frontend IR version"); exit(1); }
         int count = r.id();
         for (int i = 0; i < count; i++) { r.text(c); }
         count = r.id(); c.next_type = (int)count; c.types = count == 0 ? 0 : 1;
@@ -74,6 +74,13 @@ internal static partial class CompilerFunctions
             Symbol record = new Symbol { name = name, type = type, function = function, id = (int)i, scope = 0, constant = false, next = 0 }; c.symbol_store.add(record);
         }
         c.functions = r.id(); c.statements = r.id();
+        count = r.id();
+        for (int i = 0; i < count; i++)
+        {
+            int node = r.id(), source = r.id();
+            c.function_sources.Add(node, source);
+            if (get_node(node,c).kind == NodeKind.ClassValue) c.class_sources[get_node(get_node(node,c).fourth,c).type] = source;
+        }
         if (r.position != r.bytes.count()) { print("tsnetc: trailing frontend IR data"); exit(1); }
     }
 }

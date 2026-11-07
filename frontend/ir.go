@@ -13,6 +13,7 @@ import (
 	"github.com/microsoft/typescript-go/internal/ast"
 	"github.com/microsoft/typescript-go/internal/checker"
 	"github.com/microsoft/typescript-go/internal/evaluator"
+	"github.com/microsoft/typescript-go/internal/scanner"
 )
 
 // Versioned, pointer-free typed IR. Display strings are never used as types.
@@ -30,6 +31,7 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
+	sourceTexts           map[int]int
 	legacyDecorators      bool
 	jsonModules           map[*ast.SourceFile]int
 	jsonExports           map[*ast.SourceFile]*ast.Symbol
@@ -322,7 +324,24 @@ func (b *irBuilder) token(n *ast.Node, text string) int {
 }
 func (b *irBuilder) node(kind int, n *ast.Node, text string) int {
 	b.nodes = append(b.nodes, irNode{kind: kind, token: b.token(n, text)})
-	return len(b.nodes)
+	id := len(b.nodes)
+	if kind == 19 && ast.IsFunctionLike(n) || kind == 55 && (n.Kind == ast.KindClassDeclaration || n.Kind == ast.KindClassExpression) {
+		if file := ast.GetSourceFileOfNode(n); file != nil && n.Pos() >= 0 && n.End() <= len(file.Text()) {
+			if b.sourceTexts == nil {
+				b.sourceTexts = map[int]int{}
+			}
+			source := scanner.GetSourceTextOfNodeFromSourceFile(file, n, false)
+			flags := ast.GetCombinedModifierFlags(n)
+			if flags&ast.ModifierFlagsExport != 0 && strings.HasPrefix(source, "export") {
+				source = source[scanner.SkipTrivia(source, len("export")):]
+			}
+			if flags&ast.ModifierFlagsDefault != 0 && strings.HasPrefix(source, "default") {
+				source = source[scanner.SkipTrivia(source, len("default")):]
+			}
+			b.sourceTexts[id] = b.text(source)
+		}
+	}
+	return id
 }
 func (b *irBuilder) unsupported(n *ast.Node) {
 	id := b.token(n, n.Kind.String())
@@ -1399,7 +1418,7 @@ func exportIR(s *session) (result []byte, err error) {
 	b.normalizeDynamicBindings()
 	var data bytes.Buffer
 	put := func(v int) { _ = binary.Write(&data, binary.LittleEndian, int32(v)) }
-	put(0x34524954)
+	put(0x35524954)
 	put(len(b.texts))
 	for _, text := range b.texts {
 		put(len(text))
@@ -1439,5 +1458,12 @@ func exportIR(s *session) (result []byte, err error) {
 	}
 	put(b.functions)
 	put(b.statements)
+	put(len(b.sourceTexts))
+	for id := 1; id <= len(b.nodes); id++ {
+		if source := b.sourceTexts[id]; source != 0 {
+			put(id)
+			put(source)
+		}
+	}
 	return data.Bytes(), nil
 }

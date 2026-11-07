@@ -16,6 +16,7 @@ internal static partial class CompilerFunctions
         int constructor = b.plan.method0(5, klass, 0x1886, -1, ".ctor"); b.constructors.at_mut(type) = constructor;
         b.begin(constructor); b.emit(0xfe09, 0); b.call(RuntimeMember.ClassInstanceConstructor); b.op(0x2a);
         int factory = b.plan.method1(5, klass, 0x16, -5, -7, "CreateInstance"); b.class_factories[type] = factory;
+        if(c.class_sources.TryGetValue(type,out int source)) il_function_source(factory,source,c,b);
         b.plan.instruction(factory, 0x73, constructor); b.plan.instruction(factory, 0x2a, 0);
 
         var family = new List<int>();

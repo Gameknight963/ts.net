@@ -1022,6 +1022,11 @@ internal static partial class CompilerFunctions
             b.methods.at_mut(n.symbol) = b.plan.method(5, owner, attributes, result_type, parameters.view(), name.view());
             Vector<byte> adapter = numbered_name('a', get_symbol(n.symbol, c).id);
             b.function_adapters.at_mut(n.symbol) = b.plan.method1(5, owner, attributes, -5, -7, adapter.view());
+            if(c.function_sources.TryGetValue(function,out int source))
+            {
+                il_function_source(b.methods.at(n.symbol),source,c,b);
+                il_function_source(b.function_adapters.at(n.symbol),source,c,b);
+            }
             if (il_raw_numeric_function(function, c, b))
             {
                 Vector<int> raw_parameters = new Vector<int>(); int p = n.children;

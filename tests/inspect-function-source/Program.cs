@@ -1,0 +1,11 @@
+using System.Reflection;
+using System.Runtime.Loader;
+var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.GetFullPath(args[0]));
+var sources = assembly.GetTypes().SelectMany(type => type.GetMethods(BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static|BindingFlags.Instance|BindingFlags.DeclaredOnly)).Select(method => method.GetCustomAttribute<FunctionSourceAttribute>()?.Text).Where(text => text != null).ToHashSet();
+string[] expected = ["function typed( value: number ): number {\n    /* exact comment */ return value + 1;\n}", "(value: string): string => value + \"\\u96ea\"", "class SourceClass { method( value: number ): number { return value; } }", "method( value: number ): number { return value; }"];
+string fixture = File.ReadAllText(args[1]);
+int start = fixture.IndexOf("function typed", StringComparison.Ordinal);
+expected[0] = fixture[start..(fixture.IndexOf('}',start)+1)];
+if (!sources.Contains("function \u96ea(value: number): string { return \"\U0001F980\"; }")) throw new Exception("Unicode source was not preserved");
+foreach (var source in expected) if (!sources.Contains(source)) throw new Exception("Missing exact source: " + source + "\nFound: " + string.Join("\n", sources));
+Console.WriteLine("PASS exact TypeScript annotations, comments, spacing and class source in metadata");

@@ -28,6 +28,7 @@ sealed class AssemblyPlan
         public List<int> Locals = [];
         public List<Instruction> Instructions = [];
     }
+    readonly List<(int Method,int Constructor,string Source)> functionSources = [];
     readonly List<ExternalType> references = [];
     readonly List<TypeRow> types = [];
     readonly List<MethodRow> members = [];
@@ -102,6 +103,7 @@ sealed class AssemblyPlan
                     entry = id;
                     if (reader.BaseStream.Position != reader.BaseStream.Length) throw new InvalidDataException("Trailing IL plan data");
                     return;
+                case 14: functionSources.Add((id,reader.ReadInt32(),Text(reader))); break;
                 case 13: methodRows[id].Catches.Add(new(reader.ReadInt32(),reader.ReadInt32(),reader.ReadInt32(),reader.ReadInt32(),reader.ReadInt32())); break;
                 case 12: specifications.Add((id, reader.ReadInt32(), reader.ReadInt32())); break;
                 default: throw new InvalidDataException("Unknown IL plan command");
@@ -345,6 +347,11 @@ sealed class AssemblyPlan
                     Signature(method, false), Body(method, bodies), MetadataTokens.ParameterHandle(1));
                 methodIndex++;
             }
+        }
+        foreach(var source in functionSources)
+        {
+            var blob = new BlobBuilder(); blob.WriteUInt16(1); blob.WriteSerializedString(source.Source); blob.WriteUInt16(0);
+            metadata.AddCustomAttribute(Handle(source.Method),Handle(source.Constructor),metadata.GetOrAddBlob(blob));
         }
         var pe = new ManagedPEBuilder(new PEHeaderBuilder(imageCharacteristics: Characteristics.ExecutableImage), new MetadataRootBuilder(metadata), il,
             entryPoint: (MethodDefinitionHandle)Handle(entry), flags: CorFlags.ILOnly);

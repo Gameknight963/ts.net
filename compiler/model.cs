@@ -125,6 +125,8 @@ internal struct Symbol
 
 internal sealed class Compiler
 {
+    internal readonly Dictionary<int,int> function_sources = [];
+    internal readonly Dictionary<int,int> class_sources = [];
     public Source source;
     public Vector<byte> path;
     public Store<TextRange> text_store;

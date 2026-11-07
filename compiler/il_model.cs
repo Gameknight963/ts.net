@@ -74,6 +74,7 @@ internal sealed partial class IlBackend
     public Vector<int> capture_scopes;
     public Vector<int> capture_types;
     public Vector<int> capture_vars;
+    internal int source_constructor;
     public Vector<int> function_contexts;
     public Vector<int> context_types;
     public Vector<int> context_constructors;
@@ -594,6 +595,8 @@ bool il_logical_assignment(int op, Compiler c)
         int[] tagged_parameters = { -5, -6, -10 };
         b.ref_set(RuntimeMember.ArraySetTaggedNumberAt, b.plan.method(6, js, 0, -1, tagged_parameters, "ArraySetTaggedNumberAt"));
 
+        int source_attribute = b.plan.reference("Tsnet.Runtime", "", "FunctionSourceAttribute");
+        b.source_constructor = b.plan.method1(6, source_attribute, 1, -1, -4, ".ctor");
         int function_body = b.plan.reference("Tsnet.Runtime", "", "FunctionBody");
         int function_type = b.plan.reference("Tsnet.Runtime", "", "JsFunction");
         b.ref_set(RuntimeMember.FunctionType, function_type);
@@ -785,6 +788,12 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.ActionType, action_type);
         b.ref_set(RuntimeMember.ActionConstructor, b.plan.method2(6, action_type, 1, -1, -5, -9, ".ctor"));
         b.ref_set(RuntimeMember.Run, b.plan.method1(6, js, 0, -6, action_type, "Run"));
+    }
+    internal static void il_function_source(int method, int text, Compiler c, IlBackend b)
+    {
+        Vector<byte> bytes = new();
+        for(int i=0;i<text_size(text,c);i++) bytes.push(text_byte(text,i,c));
+        b.plan.function_source(method,b.source_constructor,bytes.view());
     }
     internal static void il_text(int text, Compiler c, IlBackend b)
     {
