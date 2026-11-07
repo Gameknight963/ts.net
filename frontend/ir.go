@@ -819,6 +819,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.left = b.lower(n.Expression())
 	case ast.KindFunctionDeclaration:
 		return b.localFunction(n)
+	case ast.KindDebuggerStatement:
+		id = b.node(91, n, "debugger")
+		row = b.nodes[id-1]
 	case ast.KindBlock:
 		id = b.node(12, n, "{")
 		row = b.nodes[id-1]

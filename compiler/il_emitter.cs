@@ -835,7 +835,8 @@ internal static partial class CompilerFunctions
     {
         if (get_node(entry, c).kind == NodeKind.AsyncBindingScope) { return; }
         Node n = get_node(entry, c);
-        if (n.kind == NodeKind.Break || n.kind == NodeKind.Continue)
+        if (n.kind == NodeKind.Debugger) { b.call(RuntimeMember.DebugStatement); }
+        else if (n.kind == NodeKind.Break || n.kind == NodeKind.Continue)
         {
             int target = n.kind == NodeKind.Break ? b.break_target(n.left) : b.continue_target(n.left);
             if (target == 0) { fail(n.token, "missing control-flow target", c); }
