@@ -6,7 +6,7 @@ public static partial class Js
     {
         object Execute(object receiver, object[] args)
         {
-            if (receiver is not JsArray) throw new InvalidOperationException("Array method requires an array");
+            if (mode > 1 && receiver is not JsArray) throw new InvalidOperationException("Array method requires an array");
             return mode switch
             {
                 0 => ArrayPush(receiver, args),

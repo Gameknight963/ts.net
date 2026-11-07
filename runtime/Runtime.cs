@@ -227,8 +227,16 @@ public static partial class Js
             array.ReserveCapacity((int)Math.Ceiling(hint));
         return ArrayPushOne(receiver, value);
     }
-    public static double ArrayPush(object receiver, object[] values) =>
-        receiver is JsArray array ? array.PushMany(values) : throw new InvalidOperationException("push requires an array");
+    public static double ArrayPush(object receiver, object[] values)
+    {
+        if (receiver is JsArray array) return array.PushMany(values);
+        var source = ToObject(receiver);
+        long length = IndexedLength(source);
+        if (length > 9007199254740991L - values.Length) throw new InvalidOperationException("Array-like length exceeds the safe integer limit");
+        foreach (object value in values) source.SetWithReceiver((length++).ToString(CultureInfo.InvariantCulture), value, source);
+        source.SetWithReceiver("length", (double)length, source);
+        return length;
+    }
     public static bool ArrayReverseBuiltin(object receiver)
     {
         if (IsNullish(receiver)) throw new InvalidOperationException("Cannot read reverse of null or undefined");
@@ -307,8 +315,20 @@ public static partial class Js
         for (int i = 0; i < values.Length; i++) values[i] = source.ElementAt((uint)i);
         ConsoleLog(values);
     }
-    public static object ArrayPop(object receiver) =>
-        receiver is JsArray array ? array.Pop() : throw new InvalidOperationException("pop requires an array");
+    public static object ArrayPop(object receiver)
+    {
+        if (receiver is JsArray array) return array.Pop();
+        var source = ToObject(receiver);
+        long length = IndexedLength(source);
+        object result = Undefined;
+        if (length > 0)
+        {
+            length--; result = IndexedValue(source, length);
+            if (!source.DeleteOwn(length.ToString(CultureInfo.InvariantCulture))) throw new InvalidOperationException("Cannot delete array-like property");
+        }
+        source.SetWithReceiver("length", (double)length, source);
+        return result;
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double? ArrayGetNumber(object receiver, double index) => receiver is NumberArray numbers ? numbers.GetNumber(index) :
         Cast<double?>(IndexGet(receiver, index), "Array element is not a number");
