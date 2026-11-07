@@ -65,7 +65,7 @@ public static partial class Js
         // unlike a direct Object(value) call, it does not return the argument.
         internal override object InitializeDerived(object instance, object[] arguments) => instance;
     }
-    static object PrimitiveConstructorValue(object[] arguments, bool text) => text ? arguments.Length == 0 ? "" : StringValue(arguments[0]) : BoxBoolean(Truthy(FunctionArgument(arguments, 0)));
+    static object PrimitiveConstructorValue(object[] arguments, bool text) => text ? arguments.Length == 0 ? "" : arguments[0] is JsSymbol symbol ? symbol.Display : StringValue(arguments[0]) : BoxBoolean(Truthy(FunctionArgument(arguments, 0)));
     sealed class PrimitiveConstructorFunction : NativeNamespaceFunction
     {
         readonly bool text;
@@ -85,7 +85,11 @@ public static partial class Js
             prototype.DefineHidden("toString", PrimitiveMethod(prototype.Value, true));
             UseObjectPrototype(prototype);
         }
-        public override object Construct(object[] arguments) => new JsBoxedPrimitive(PrimitiveConstructorValue(arguments, text));
+        public override object Construct(object[] arguments)
+        {
+            if (text && FunctionArgument(arguments, 0) is JsSymbol) throw new InvalidOperationException("Cannot convert a symbol to a string");
+            return new JsBoxedPrimitive(PrimitiveConstructorValue(arguments, text));
+        }
         internal override bool CanInitializeDerived => true;
         internal override object InitializeDerived(object instance, object[] arguments)
         {
@@ -140,6 +144,7 @@ public static partial class Js
         internal static readonly JsFunction RegExp = new RegExpConstructor();
         internal static readonly JsFunction Map = new CollectionConstructor(false);
         internal static readonly JsFunction Set = new CollectionConstructor(true);
+        internal static readonly JsFunction Symbol = new SymbolFunction();
         internal static readonly JsFunction Iterator = new IteratorConstructor();
         internal static readonly JsFunction WeakRef = new WeakRefConstructor();
         internal static readonly JsFunction WeakMap = new WeakCollectionConstructor(false);
@@ -149,5 +154,5 @@ public static partial class Js
     internal static JsFunction GetObjectConstructor() => RuntimeNamespaces.Object;
     public static void ConsoleLog(object[] args) => CallMethod(RuntimeNamespaces.Console.Get("log"), RuntimeNamespaces.Console, args);
     public static double PerformanceNow() => CallMethodNumber0(RuntimeNamespaces.Performance.Get("now"), RuntimeNamespaces.Performance).GetValueOrDefault(double.NaN);
-    public static object BuiltinNamespace(string name) => name == "Iterator" ? RuntimeNamespaces.Iterator : name == "__importMeta" ? ImportMetaFunction.Value : name == "WeakRef" ? RuntimeNamespaces.WeakRef : name == "__templateObject" ? TemplateObjectFunction.Value : name == "Date" ? RuntimeNamespaces.Date : name == "RegExp" ? RuntimeNamespaces.RegExp : name == "Reflect" ? RuntimeNamespaces.Reflect : name == "JSON" ? RuntimeNamespaces.Json : name == "escape" ? LegacyEscapes.Escape : name == "unescape" ? LegacyEscapes.Unescape : name == "encodeURI" ? UriFunctions.Encode : name == "encodeURIComponent" ? UriFunctions.EncodeComponent : name == "decodeURI" ? UriFunctions.Decode : name == "decodeURIComponent" ? UriFunctions.DecodeComponent : name == "isNaN" ? GlobalNumberPredicates.IsNaN : name == "isFinite" ? GlobalNumberPredicates.IsFinite : name == "parseInt" ? NumberParsers.Integer : name == "parseFloat" ? NumberParsers.Float : name == "WeakMap" ? RuntimeNamespaces.WeakMap : name == "WeakSet" ? RuntimeNamespaces.WeakSet : name == "Map" ? RuntimeNamespaces.Map : name == "Set" ? RuntimeNamespaces.Set : name == "Promise" ? RuntimeNamespaces.Promise : name == "queueMicrotask" ? RuntimeNamespaces.QueueMicrotask : name == "Array" ? RuntimeNamespaces.Array : name == "Math" ? RuntimeNamespaces.Math : name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : name == "String" ? RuntimeNamespaces.String : name == "Boolean" ? RuntimeNamespaces.Boolean : Undefined;
+    public static object BuiltinNamespace(string name) => name == "Symbol" ? RuntimeNamespaces.Symbol : name == "Iterator" ? RuntimeNamespaces.Iterator : name == "__importMeta" ? ImportMetaFunction.Value : name == "WeakRef" ? RuntimeNamespaces.WeakRef : name == "__templateObject" ? TemplateObjectFunction.Value : name == "Date" ? RuntimeNamespaces.Date : name == "RegExp" ? RuntimeNamespaces.RegExp : name == "Reflect" ? RuntimeNamespaces.Reflect : name == "JSON" ? RuntimeNamespaces.Json : name == "escape" ? LegacyEscapes.Escape : name == "unescape" ? LegacyEscapes.Unescape : name == "encodeURI" ? UriFunctions.Encode : name == "encodeURIComponent" ? UriFunctions.EncodeComponent : name == "decodeURI" ? UriFunctions.Decode : name == "decodeURIComponent" ? UriFunctions.DecodeComponent : name == "isNaN" ? GlobalNumberPredicates.IsNaN : name == "isFinite" ? GlobalNumberPredicates.IsFinite : name == "parseInt" ? NumberParsers.Integer : name == "parseFloat" ? NumberParsers.Float : name == "WeakMap" ? RuntimeNamespaces.WeakMap : name == "WeakSet" ? RuntimeNamespaces.WeakSet : name == "Map" ? RuntimeNamespaces.Map : name == "Set" ? RuntimeNamespaces.Set : name == "Promise" ? RuntimeNamespaces.Promise : name == "queueMicrotask" ? RuntimeNamespaces.QueueMicrotask : name == "Array" ? RuntimeNamespaces.Array : name == "Math" ? RuntimeNamespaces.Math : name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : name == "String" ? RuntimeNamespaces.String : name == "Boolean" ? RuntimeNamespaces.Boolean : Undefined;
 }

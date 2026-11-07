@@ -4,16 +4,18 @@ using System.Globalization;
 public static partial class Js
 {
     static bool KeyPrimitive(object value) => value == null || ReferenceEquals(value, Undefined) ||
-        value is string || value is double || value is bool;
+        value is string || value is double || value is bool || value is JsSymbol;
 
     public static string PropertyKey(object value)
     {
         if (value is TsObject obj) value = OrdinaryPrimitive(obj, true);
+        if (value is JsSymbol) throw new NotSupportedException("Symbol property keys are not supported yet");
         return value is double number ? NumberKeyString(number) : Text(value);
     }
 
     static object OrdinaryPrimitive(TsObject obj, bool stringHint)
     {
+        if (obj is JsBoxedPrimitive { Value: JsSymbol symbol }) return symbol;
         object primitive = obj;
         for (int step = 0; step < 2; step++) {
             string name = (step == 0) == stringHint ? "toString" : "valueOf";

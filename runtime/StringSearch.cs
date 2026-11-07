@@ -25,6 +25,7 @@ public static partial class Js
     static string StringValueConverted(object value)
     {
         object primitive = value is TsObject obj ? OrdinaryPrimitive(obj, true) : value;
+        if (primitive is JsSymbol) throw new InvalidOperationException("Cannot convert a symbol to a string");
         return primitive is double number ? NumberKeyString(number) : Text(primitive);
     }
     static int StringSearchCore(string text, string needle, double position, StringSearchKind kind)

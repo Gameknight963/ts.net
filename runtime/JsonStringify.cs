@@ -69,10 +69,10 @@ public static partial class Js
             object value = holder.Get(key);
             if (value is TsObject obj && obj.Get("toJSON") is JsFunction method) value = method.InvokeWithReceiver(obj, new object[] { key });
             if (replacer != null) value = replacer.InvokeWithReceiver(holder, new[] { key, value });
-            if (value is JsBoxedPrimitive boxed) value = boxed.Value is double ? Number(value) : boxed.Value is string ? StringValue(value) : boxed.Value;
+            if (value is JsBoxedPrimitive boxed && boxed.Value is not JsSymbol) value = boxed.Value is double ? Number(value) : boxed.Value is string ? StringValue(value) : boxed.Value;
             return value;
         }
-        static bool Omitted(object value) => IsUndefined(value) || value is JsFunction;
+        static bool Omitted(object value) => IsUndefined(value) || value is JsFunction or JsSymbol;
         void Indent(int depth) { for (int i = 0; i < depth; i++) output.Append(gap); }
         void WriteValue(object value)
         {

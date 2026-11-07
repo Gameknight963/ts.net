@@ -58,6 +58,7 @@ public static partial class Js
     {
         null => "object",
         bool => "boolean",
+        JsSymbol => "symbol",
         double => "number",
         string => "string",
         JsFunction => "function",
@@ -128,6 +129,7 @@ public static partial class Js
     public static double Number(object value) => value switch
     {
         double n => n,
+        JsSymbol => throw new InvalidOperationException("Cannot convert a symbol to a number"),
         null => 0,
         bool b => b ? 1 : 0,
         string s => StringNumber(s),
@@ -153,7 +155,7 @@ public static partial class Js
         string when key is "indexOf" or "includes" or "lastIndexOf" => StringSearchTarget(key),
         string when key is "slice" or "substring" => StringRangeTarget(key),
         string when key is "charAt" or "charCodeAt" or "codePointAt" => CharacterTarget(key),
-        string or double or bool => PrimitivePrototype(receiver).GetWithReceiver(key, receiver),
+        string or double or bool or JsSymbol => PrimitivePrototype(receiver).GetWithReceiver(key, receiver),
         _ => throw new InvalidOperationException("Cannot read property of undefined")
     };
 
@@ -378,6 +380,7 @@ public static partial class Js
     {
         if (left is TsObject first) left = OrdinaryPrimitive(first, first is JsDate);
         if (right is TsObject second) right = OrdinaryPrimitive(second, second is JsDate);
+        if (left is JsSymbol || right is JsSymbol) throw new InvalidOperationException("Cannot convert a symbol to a number or string");
         if (left is string || right is string) return Text(left) + Text(right);
         return Number(left) + Number(right);
     }
@@ -447,6 +450,7 @@ public static partial class Js
         double n => NumberKeyString(n),
         bool b => b ? "true" : "false",
         string s => s,
+        JsSymbol symbol => symbol.Display,
         TsObject => "[object Object]",
         _ when ReferenceEquals(value, Undefined) => "undefined",
         null => "null",

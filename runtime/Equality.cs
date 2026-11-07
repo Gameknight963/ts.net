@@ -22,6 +22,8 @@ public static partial class Js
         if (right is bool y) return LooseEqualNumberValue(y ? 1 : 0, left);
         if (IsNullish(left)) return IsNullish(right);
         if (IsNullish(right)) return false;
+        if (left is JsSymbol) return right is TsObject symbolObject ? ReferenceEquals(left, OrdinaryPrimitive(symbolObject, false)) : ReferenceEquals(left, right);
+        if (right is JsSymbol && left is TsObject boxedSymbol) return ReferenceEquals(OrdinaryPrimitive(boxedSymbol, false), right);
         if (left is string text) {
             if (right is string other) return text == other;
             return right is TsObject obj && LooseEqual(left, OrdinaryPrimitive(obj, obj is JsDate));

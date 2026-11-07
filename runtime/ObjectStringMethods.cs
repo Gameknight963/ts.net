@@ -9,7 +9,7 @@ public static partial class Js
         TsObject original = receiver as TsObject;
         if (receiver is JsBoxedPrimitive boxed) receiver = boxed.Value;
         string tag = receiver switch {
-            string => "String", double => "Number", bool => "Boolean", JsArray => "Array",
+            JsSymbol => "Symbol", string => "String", double => "Number", bool => "Boolean", JsArray => "Array",
             JsWeakRef => "WeakRef", JsDate => "Date", JsRegExp => "RegExp", JsFunction => "Function", JsArguments => "Arguments", JsCaughtError => "Error",
             _ => "Object"
         };
