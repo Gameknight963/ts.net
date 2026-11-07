@@ -111,7 +111,19 @@ public static partial class Js
         for (int i = 0; i < length; i++) values[i] = Iteration.Value(arguments, i);
         return Construct(target, values);
     }
-    public static bool InstanceOf(object value, object target) => target is JsFunction function ? function.HasInstance(value) : throw new InvalidOperationException("Right operand of instanceof is not callable");
+    public static bool InstanceOf(object value, object target)
+    {
+        if (target is not TsObject obj) throw new InvalidOperationException("Right operand of instanceof is not an object");
+        object method = obj.Get(PropertyKey(HasInstanceSymbol));
+        if (ReferenceEquals(method, OrdinaryInstanceCheck.Method))
+            return target is JsFunction ordinary && ordinary.HasInstance(value);
+        if (!IsNullish(method)) {
+            if (method is not JsFunction custom) throw new InvalidOperationException("Symbol.hasInstance is not callable");
+            return Truthy(custom.InvokeWithReceiver(obj, new[] { value }));
+        }
+        return target is JsFunction function ? function.HasInstance(value)
+            : throw new InvalidOperationException("Right operand of instanceof is not callable");
+    }
     public static Exception MakeThrown(object value) => new JsThrownException(value);
     public static object CaughtValue(Exception error)
     {

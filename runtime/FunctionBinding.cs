@@ -86,7 +86,7 @@ internal sealed class JsBoundFunction : JsFunction
     internal override object InitializeDerived(object instance, object[] arguments) => target.InitializeDerived(instance, Combine(prefix, arguments));
     internal override object InitializeDerived(object instance, object[] arguments, JsFunction newTarget) => target.InitializeDerived(instance, Combine(prefix, arguments), newTarget);
     internal override object ConstructWithNewTarget(object[] arguments, JsFunction newTarget) => target.ConstructWithNewTarget(Combine(prefix, arguments), ReferenceEquals(newTarget, this) ? target : newTarget);
-    public override bool HasInstance(object value) => target.HasInstance(value);
+    public override bool HasInstance(object value) => Js.InstanceOf(value, target);
 }
 public static partial class Js
 {
