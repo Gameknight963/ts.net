@@ -22,6 +22,9 @@ internal sealed class JsArguments : JsDynamicObject
         values = new object[source.Length - 1];
         Array.Copy(source, 1, values, 0, values.Length);
     }
+    static readonly JsFunction CalleeThrower = new((FunctionBody)(static _ => throw CalleeError()), null, "", 0);
+    internal override object OwnPropertyDescriptor(string key) => key == "callee"
+        ? Js.AccessorDescriptor(CalleeThrower, CalleeThrower, false, false) : base.OwnPropertyDescriptor(key);
     static Exception CalleeError() => new InvalidOperationException("Strict arguments.callee cannot be accessed");
     internal override bool IsReadOnlyOwnProperty(string key) => key == "callee" || base.IsReadOnlyOwnProperty(key);
     public override bool HasOwn(string key) => key is "length" or "callee" || JsArray.Index(key, out uint index) && index < values.Length || base.HasOwn(key);

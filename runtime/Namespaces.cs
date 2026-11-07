@@ -39,6 +39,8 @@ public static partial class Js
             Member("isNaN", NumberPredicateFunction(0)); Member("isFinite", NumberPredicateFunction(1)); Member("isInteger", NumberPredicateFunction(2)); Member("isSafeInteger", NumberPredicateFunction(3));
             Member("NaN", double.NaN); Member("POSITIVE_INFINITY", double.PositiveInfinity); Member("NEGATIVE_INFINITY", double.NegativeInfinity); Member("MAX_SAFE_INTEGER", 9007199254740991d); Member("MIN_SAFE_INTEGER", -9007199254740991d); Member("EPSILON", Math.Pow(2, -52)); Member("MAX_VALUE", double.MaxValue); Member("MIN_VALUE", double.Epsilon);
         }
+        internal override bool IsReadOnlyOwnProperty(string key) => key is "NaN" or "POSITIVE_INFINITY" or "NEGATIVE_INFINITY" or "MAX_SAFE_INTEGER" or "MIN_SAFE_INTEGER" or "EPSILON" or "MAX_VALUE" or "MIN_VALUE" || base.IsReadOnlyOwnProperty(key);
+        internal override bool OwnPropertyConfigurable(string key) => key is not ("NaN" or "POSITIVE_INFINITY" or "NEGATIVE_INFINITY" or "MAX_SAFE_INTEGER" or "MIN_SAFE_INTEGER" or "EPSILON" or "MAX_VALUE" or "MIN_VALUE") && base.OwnPropertyConfigurable(key);
         public override double? InvokeNumber0() => 0d;
         public override object Construct(object[] arguments) => new JsBoxedPrimitive(arguments.Length == 0 ? 0d : Number(arguments[0]));
         internal override bool CanInitializeDerived => true;
@@ -102,6 +104,8 @@ public static partial class Js
         result.Member("groupBy", new JsFunction((FunctionBody)(static args => ObjectGroupBy(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "groupBy", 2));
         result.Member("assign", new JsFunction((FunctionBody)ObjectAssign, null, "assign", 2));
         result.Member("is", new JsFunction((FunctionBody)(static args => BoxBoolean(SameValue(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "is", 2));
+        result.Member("getOwnPropertyDescriptor", new JsFunction((FunctionBody)(static args => ObjectOwnDescriptor(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "getOwnPropertyDescriptor", 2));
+        result.Member("getOwnPropertyDescriptors", new JsFunction((FunctionBody)(static args => ObjectOwnDescriptors(FunctionArgument(args, 0))), null, "getOwnPropertyDescriptors", 1));
         result.Member("getOwnPropertyNames", new JsFunction((FunctionBody)(static args => ToObject(FunctionArgument(args, 0)).OwnPropertyNames()), null, "getOwnPropertyNames", 1));
         result.Member("keys", GetObjectKeysFunction()); result.Member("values", GetObjectValuesFunction()); result.Member("entries", GetObjectEntriesFunction());
         result.Member("hasOwn", new JsFunction((FunctionBody)(static args => BoxBoolean(HasOwn(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "hasOwn", 2));

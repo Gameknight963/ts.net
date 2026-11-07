@@ -14,6 +14,13 @@ internal sealed class JsCreatedObject : JsDynamicObject
     }
     internal override bool IsReadOnlyOwnProperty(string key) => descriptors.TryGetValue(key, out var descriptor) &&
         (descriptor.Accessor ? descriptor.Setter == null : !descriptor.Writable);
+    internal override object OwnPropertyDescriptor(string key)
+    {
+        if (!descriptors.TryGetValue(key, out var descriptor)) return base.OwnPropertyDescriptor(key);
+        return descriptor.Accessor
+            ? Js.AccessorDescriptor(descriptor.Getter, descriptor.Setter, descriptor.Enumerable, descriptor.Configurable)
+            : Js.DataDescriptor(Get(key), descriptor.Writable, descriptor.Enumerable, descriptor.Configurable);
+    }
     public override object Set(string key, object value)
     {
         if (IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Property is read-only");
