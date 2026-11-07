@@ -14,8 +14,8 @@ public static partial class Js
             if (!IsUndefined(optionValue))
             {
                 var options = ToObject(optionValue);
-                foreach (string key in new[] { "numeric", "caseFirst", "ignorePunctuation", "usage", "collation", "localeMatcher" })
-                    if (!IsUndefined(options.Get(key))) throw new NotSupportedException("localeCompare options other than sensitivity are not supported");
+                foreach (string key in new[] { "caseFirst", "ignorePunctuation", "usage", "collation", "localeMatcher" })
+                    if (!IsUndefined(options.Get(key))) throw new NotSupportedException("localeCompare option " + key + " is not supported");
                 object sensitivity = options.Get("sensitivity");
                 if (!IsUndefined(sensitivity)) flags = StringValue(sensitivity) switch
                 {
@@ -25,6 +25,7 @@ public static partial class Js
                     "variant" => CompareOptions.None,
                     _ => throw new ArgumentOutOfRangeException(nameof(arguments), "Invalid comparison sensitivity")
                 };
+                if (Truthy(options.Get("numeric"))) flags |= CompareOptions.NumericOrdering;
             }
             return Math.Sign(culture.CompareInfo.Compare(text, other, flags));
         }

@@ -1,1 +1,1 @@
-console.log("a".localeCompare("b","en",{numeric:true}));
+console.log("a".localeCompare("b","en",{caseFirst:"upper"}));
