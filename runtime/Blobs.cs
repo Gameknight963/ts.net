@@ -4,7 +4,7 @@ using System.Text;
 
 public static partial class Js
 {
-    sealed class BlobValue(byte[] bytes, string type) : TsObject
+    class BlobValue(byte[] bytes, string type) : TsObject
     {
         internal readonly byte[] Bytes = bytes;
         internal readonly string Type = type;
