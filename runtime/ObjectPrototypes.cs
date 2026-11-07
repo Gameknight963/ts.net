@@ -50,7 +50,7 @@ public static partial class Js
             if (ReferenceEquals(prototype, target)) return true;
         return false;
     }
-    private sealed class PrototypeAccessor(int mode) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Prototype accessor requires an object")), null, "", mode % 2)
+    private sealed class PrototypeAccessor(int mode) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Prototype accessor requires an object")), null, mode == 0 ? "get __proto__" : mode == 1 ? "set __proto__" : mode == 2 ? "get constructor" : "set constructor", mode % 2)
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {

@@ -32,14 +32,8 @@ public static partial class Js
     }
     static string FunctionDisplayText(JsFunction function)
     {
-        string name = function.DisplayName;
-        bool identifier = name.Length != 0;
-        for (int i = 0; i < name.Length; i++)
-        {
-            char ch = name[i];
-            if (!(ch is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_' or '$' || i != 0 && ch is >= '0' and <= '9')) identifier = false;
-        }
-        return "function " + (identifier ? name : "") + "() { [native code] }";
+        string name = function is JsBoundFunction ? "" : function.DisplayName;
+        return "function " + name + "() { [native code] }";
     }
     sealed class ObjectStringFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("toString requires a receiver")), null, "toString", 0)
     {

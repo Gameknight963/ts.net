@@ -31,14 +31,8 @@ public static partial class Js
                     } else primitive = ArrayJoin(array, Undefined);
                 } else if (obj is JsCaughtError error) {
                     primitive = ErrorText(error);
-                } else if (obj is JsFunction) {
-                    string functionName = obj.Get("name") as string ?? "";
-                    bool identifier = functionName.Length != 0;
-                    for (int i = 0; i < functionName.Length; i++) {
-                        char ch = functionName[i];
-                        if (!(ch is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_' or '$' || i != 0 && ch is >= '0' and <= '9')) identifier = false;
-                    }
-                    primitive = "function " + (identifier ? functionName : "") + "() { [native code] }";
+                } else if (obj is JsFunction function) {
+                    primitive = FunctionDisplayText(function);
                 }
                 else primitive = obj is JsArguments ? "[object Arguments]" : "[object Object]";
                 if (KeyPrimitive(primitive)) break;
