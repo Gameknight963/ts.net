@@ -25,7 +25,16 @@ public static partial class Js
             if (mode == "d" && timeStyle != null || mode == "T" && dateStyle != null)
                 throw new InvalidOperationException("This date method does not accept the requested style");
             string calendar = Option("calendar"), numberingSystem = Option("numberingSystem");
-            if (calendar != null && calendar != NativeCalendarName(culture)) throw new NotSupportedException("Date locale formatting option calendar is not supported");
+            if (calendar != null && calendar != NativeCalendarName(culture))
+            {
+                Calendar selected = null;
+                foreach (var candidate in culture.OptionalCalendars)
+                    if (NativeCalendarName(candidate) == calendar) { selected = candidate; break; }
+                if (selected == null) throw new NotSupportedException("Date locale formatting option calendar is not supported for this culture");
+                culture = (CultureInfo)culture.Clone();
+                culture.DateTimeFormat.Calendar = selected;
+                Culture = culture;
+            }
             if (numberingSystem != null && numberingSystem != "latn") throw new NotSupportedException("Date locale formatting option numberingSystem is not supported");
             dateFields = new DateLocaleFields(options);
             timeFields = new DateLocaleTimeFields(options);
@@ -43,10 +52,11 @@ public static partial class Js
             if (mode == "intl" && dateStyle == null && timeStyle == null && !dateFields.HasDateRequest && !timeFields.HasClockFields)
                 dateFields.UseDateDefaults(culture);
         }
-        static string NativeCalendarName(CultureInfo culture) => culture.DateTimeFormat.Calendar switch {
+        static string NativeCalendarName(CultureInfo culture) => NativeCalendarName(culture.DateTimeFormat.Calendar) ?? throw new NotSupportedException("Native calendar identification is not supported");
+        static string NativeCalendarName(Calendar calendar) => calendar switch {
             GregorianCalendar => "gregory", JapaneseCalendar => "japanese", ThaiBuddhistCalendar => "buddhist",
-            HebrewCalendar => "hebrew", PersianCalendar => "persian", UmAlQuraCalendar => "islamic-umalqura", HijriCalendar => "islamic",
-            _ => throw new NotSupportedException("Native calendar identification is not supported")
+            HebrewCalendar => "hebrew", TaiwanCalendar => "roc", PersianCalendar => "persian", UmAlQuraCalendar => "islamic-umalqura", HijriCalendar => "islamic",
+            _ => null
         };
         internal TsObject Options()
         {

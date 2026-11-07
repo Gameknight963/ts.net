@@ -33,3 +33,15 @@ foreach(string zoneName in new[]{"UTC","America/New_York","Asia/Tokyo"}) {
  if(Format(formatter)!=local.ToString("HH:mm:ss",CultureInfo.GetCultureInfo("en-GB")))throw new Exception("Cached time zone changed: "+zoneName);
 }
 Console.WriteLine("PASS 75 native default/style/time-zone formats and resolved native padding");
+foreach(var selection in new[]{("ja-JP","japanese"),("th-TH","gregory"),("he-IL","hebrew"),("ar-SA","gregory"),("fa-IR","gregory")}) {
+ var culture=(CultureInfo)CultureInfo.GetCultureInfo(selection.Item1).Clone();
+ culture.DateTimeFormat.Calendar=selection.Item2 switch {
+  "japanese"=>new JapaneseCalendar(),"hebrew"=>new HebrewCalendar(),_=>new GregorianCalendar()
+ };
+ foreach(string style in new[]{"short","long"}) {
+  var formatter=Formatter(selection.Item1,("calendar",selection.Item2),("dateStyle",style));
+  var expected=instant.ToString(style=="short"?"d":"D",culture);
+  if(Format(formatter)!=expected)throw new Exception("Selected calendar mismatch: "+selection);
+ }
+}
+Console.WriteLine("PASS 10 native calendar formats");
