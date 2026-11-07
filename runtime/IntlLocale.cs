@@ -5,18 +5,24 @@ public static partial class Js
 {
     sealed class LocaleValue : TsObject
     {
-        internal readonly string Name, Language, Script, Region;
+        internal readonly string Name, BaseName, Language, Script, Region;
+        readonly SortedDictionary<string, string> keywords;
+        internal object Keyword(string key) => keywords.TryGetValue(key, out var value) ? value.Length == 0 ? "true" : value : Undefined;
+        internal bool Numeric => keywords.TryGetValue("kn", out var value) && value.Length == 0;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)IntlLocale.Constructor.Get("prototype");
         internal LocaleValue(object tag, object optionValue)
         {
-            string name = LocaleIdentifier(tag);
+            if (tag is not string && tag is not TsObject) throw new InvalidOperationException("Locale must be a string or object");
+            string name = tag is LocaleValue locale ? locale.Name : StringValue(tag);
+            _ = LocaleCulture(name);
             var parts = name.Split('-');
+            int baseEnd = 1;
+            while (baseEnd < parts.Length && parts[baseEnd].Length != 1) baseEnd++;
+            var extensions = new LocaleExtensions(parts, baseEnd);
             int next = 1;
             string language = parts[0], script = null, region = null;
-            if (next < parts.Length && parts[next].Length == 4) script = parts[next++];
-            if (next < parts.Length && parts[next].Length is 2 or 3) region = parts[next++];
-            for (int i = next; i < parts.Length; i++)
-                if (parts[i].Length == 1) throw new NotSupportedException("Locale extensions are not supported");
+            if (next < baseEnd && parts[next].Length == 4) script = parts[next++];
+            if (next < baseEnd && parts[next].Length is 2 or 3) region = parts[next++];
             if (!IsUndefined(optionValue))
             {
                 var options = ToObject(optionValue);
@@ -36,18 +42,25 @@ public static partial class Js
                     if (!(requested.Length == 2 && AsciiLetters(requested) || requested.Length == 3 && AsciiDigits(requested))) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale region");
                     region = requested;
                 }
-                foreach (string key in new[] { "calendar", "collation", "hourCycle", "caseFirst", "numeric", "numberingSystem" })
-                    if (!IsUndefined(options.Get(key))) throw new NotSupportedException("Locale option " + key + " is not supported");
+                extensions.Option(options, "calendar", "ca");
+                extensions.Option(options, "collation", "co");
+                extensions.Option(options, "hourCycle", "hc", new[] { "h11", "h12", "h23", "h24" });
+                extensions.Option(options, "caseFirst", "kf", new[] { "upper", "lower", "false" });
+                object numeric = options.Get("numeric");
+                if (!IsUndefined(numeric)) extensions.Keywords["kn"] = Truthy(numeric) ? "" : "false";
+                extensions.Option(options, "numberingSystem", "nu");
             }
             var selected = new List<string> { language };
             if (script != null) selected.Add(script);
             if (region != null) selected.Add(region);
-            for (int i = next; i < parts.Length; i++) selected.Add(parts[i]);
-            Name = LocaleIdentifier(string.Join('-', selected));
-            parts = Name.Split('-'); next = 1;
+            for (int i = next; i < baseEnd; i++) selected.Add(parts[i]);
+            BaseName = LocaleIdentifier(string.Join('-', selected));
+            Name = BaseName + extensions.Suffix();
+            keywords = extensions.Keywords;
+            parts = BaseName.Split('-'); next = 1; baseEnd = parts.Length;
             Language = parts[0];
-            if (next < parts.Length && parts[next].Length == 4) Script = parts[next++];
-            if (next < parts.Length && parts[next].Length is 2 or 3) Region = parts[next];
+            if (next < baseEnd && parts[next].Length == 4) Script = parts[next++];
+            if (next < baseEnd && parts[next].Length is 2 or 3) Region = parts[next];
         }
     }
     static bool AsciiLetters(string text) { foreach (char value in text) if (!char.IsAsciiLetter(value)) return false; return true; }
@@ -61,10 +74,10 @@ public static partial class Js
             prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.Locale");
             prototype.DefineMethod("toString", new CollectionMethod("toString", 0, static (receiver, _) => RequireLocale(receiver).Name));
             void Getter(string key, Func<LocaleValue, object> read) => prototype.DefineClassAccessor(key, new CollectionMethod("get " + key, 0, (receiver, _) => read(RequireLocale(receiver))), 1);
-            Getter("baseName", value => value.Name); Getter("language", value => value.Language);
+            Getter("baseName", value => value.BaseName); Getter("language", value => value.Language);
             Getter("script", value => value.Script ?? Undefined); Getter("region", value => value.Region ?? Undefined);
-            foreach (string key in new[] { "calendar", "collation", "hourCycle", "caseFirst", "numberingSystem" }) Getter(key, static _ => Undefined);
-            Getter("numeric", static _ => BoxBoolean(false));
+            foreach (var pair in new[] { ("calendar", "ca"), ("collation", "co"), ("hourCycle", "hc"), ("caseFirst", "kf"), ("numberingSystem", "nu") }) Getter(pair.Item1, value => value.Keyword(pair.Item2));
+            Getter("numeric", static value => BoxBoolean(value.Numeric));
         }
         public override object Construct(object[] args) => new LocaleValue(FunctionArgument(args, 0), FunctionArgument(args, 1));
         internal override bool CanInitializeDerived => true;

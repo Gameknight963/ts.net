@@ -5,6 +5,7 @@ public static partial class Js
 {
     static string LocaleIdentifier(object value)
     {
+        if (value is LocaleValue locale) return locale.Name;
         string name = LocaleCulture(value).Name;
         return name.Length == 0 ? "und" : name;
     }
@@ -14,7 +15,7 @@ public static partial class Js
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         void Add(object value)
         {
-            string name = LocaleIdentifier(value);
+            string name = value is LocaleValue locale ? locale.Name : new LocaleValue(value, Undefined).Name;
             if (seen.Add(name)) result.Append(name);
         }
         if (IsUndefined(locales)) return result;
