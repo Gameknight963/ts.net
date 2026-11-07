@@ -33,20 +33,32 @@ func (b *irBuilder) jsonModuleInitializer(file *ast.SourceFile) int {
 	return variable
 }
 
-func (b *irBuilder) jsonNamespaceImport(symbol *ast.Symbol) *ast.SourceFile {
-	for _, declaration := range symbol.Declarations {
-		if declaration.Kind != ast.KindNamespaceImport {
-			continue
-		}
-		for parent := declaration.Parent; parent != nil; parent = parent.Parent {
-			if parent.Kind == ast.KindImportDeclaration {
-				target := b.moduleAliases[b.file][parent.ModuleSpecifier().Text()]
-				if target != nil && ast.IsJsonSourceFile(target) {
-					return target
+func (b *irBuilder) jsonNamespaceAlias(symbol *ast.Symbol) *ast.SourceFile {
+	if len(b.jsonModules) == 0 {
+		return nil
+	}
+	seen := map[*ast.Symbol]bool{}
+	for symbol != nil && !seen[symbol] {
+		seen[symbol] = true
+		for _, declaration := range symbol.Declarations {
+			if declaration.Kind != ast.KindNamespaceImport && declaration.Kind != ast.KindNamespaceExport {
+				continue
+			}
+			for parent := declaration.Parent; parent != nil; parent = parent.Parent {
+				if parent.Kind == ast.KindImportDeclaration || parent.Kind == ast.KindExportDeclaration {
+					file := ast.GetSourceFileOfNode(declaration)
+					target := b.moduleAliases[file][parent.ModuleSpecifier().Text()]
+					if target != nil && ast.IsJsonSourceFile(target) {
+						return target
+					}
+					break
 				}
-				break
 			}
 		}
+		if symbol.Flags&ast.SymbolFlagsAlias == 0 {
+			break
+		}
+		symbol = b.c.GetImmediateAliasedSymbol(symbol)
 	}
 	return nil
 }
@@ -76,8 +88,8 @@ func validateModuleAttributes(specifier *ast.Node, target *ast.SourceFile) {
 			}
 		}
 	}
-	if bindings != nil && bindings.Kind == ast.KindNamespaceExport && ast.IsJsonSourceFile(target) {
-		panic("JSON namespace re-exports are not supported")
+	if bindings != nil && bindings.Kind == ast.KindNamespaceExport {
+		return
 	}
 	if ast.IsJsonSourceFile(target) && (bindings == nil && !importing || bindings != nil && bindings.Kind != ast.KindNamespaceImport) {
 		if bindings == nil {

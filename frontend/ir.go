@@ -552,7 +552,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			break
 		}
 		if symbol := b.c.GetSymbolAtLocation(n); symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
-			if module := b.jsonNamespaceImport(symbol); module != nil {
+			if module := b.jsonNamespaceAlias(symbol); module != nil {
 				return b.moduleNamespaceReference(n, module.AsNode().Symbol())
 			}
 			if target := b.c.GetAliasedSymbol(symbol); target.IsExternalModule() {

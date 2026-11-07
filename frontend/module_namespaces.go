@@ -81,7 +81,9 @@ func (b *irBuilder) initializeModuleNamespaces() {
 				continue
 			}
 			reference := 0
-			if target.IsExternalModule() {
+			if json := b.jsonNamespaceAlias(export); json != nil {
+				reference = b.moduleNamespaceReference(n, json.AsNode().Symbol())
+			} else if target.IsExternalModule() {
 				reference = b.moduleNamespaceReference(n, target)
 			} else {
 				symbol := b.symbolFor(export, ast.SymbolName(export))

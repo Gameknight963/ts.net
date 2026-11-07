@@ -6,6 +6,7 @@ console.log("namespace",Object.keys(ns).join("|"),(ns as any).default===data,con
 async function main():Promise<void>{
  const loaded=await import("./json-module-data.json",{with:{type:"json"}});
  console.log("dynamic",loaded.default===data,Object.keys(loaded).join("|"));
+ const barrel=await import("./json-module-namespace.js");console.log("dynamic namespace",barrel.data===jsonNamespace);
  data.count=9;console.log("shared",loaded.default.count,config.count);
 }
 
@@ -23,3 +24,8 @@ main().then(options).catch(error=>console.log("failure",String(error)));
 
 interface Config {name:string;count:number;nested:{valid:boolean};values:number[];}
 const typed:Config=data;console.log("typed",typed.name,typed.count,typed.nested.valid,typed.values.join("|"));
+
+import {data as jsonNamespace} from "./json-module-namespace.js";
+import {forwarded} from "./json-module-namespace-forward.js";
+import * as barrel from "./json-module-namespace.js";
+console.log("namespace re-export",Object.keys(jsonNamespace).join("|"),(jsonNamespace as any).default===data,jsonNamespace===forwarded,barrel.data===jsonNamespace);
