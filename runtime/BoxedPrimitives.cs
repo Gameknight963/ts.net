@@ -64,7 +64,7 @@ public static partial class Js
     static class PrimitiveMethods
     {
         internal static readonly JsFunction StringValue = new PrimitiveValueFunction(typeof(string), false), StringText = new PrimitiveValueFunction(typeof(string), true);
-        internal static readonly JsFunction NumberValue = new PrimitiveValueFunction(typeof(double), false), NumberText = new PrimitiveValueFunction(typeof(double), true);
+        internal static readonly JsFunction NumberValue = new PrimitiveValueFunction(typeof(double), false), NumberText = new NumberRadixFunction();
         internal static readonly JsFunction BooleanValue = new PrimitiveValueFunction(typeof(bool), false), BooleanText = new PrimitiveValueFunction(typeof(bool), true);
     }
     internal static object PrimitiveMethod(object value, bool text) => value is string ? text ? PrimitiveMethods.StringText : PrimitiveMethods.StringValue : value is double ? text ? PrimitiveMethods.NumberText : PrimitiveMethods.NumberValue : text ? PrimitiveMethods.BooleanText : PrimitiveMethods.BooleanValue;
