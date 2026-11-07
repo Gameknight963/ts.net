@@ -52,6 +52,7 @@ public static partial class Js
             if (text)
             {
                 DefineStringFormatting(prototype); DefineStringBoundaries(prototype);
+                Member("raw", new JsFunction((FunctionBody)StringRaw, null, "raw", 1));
                 Member("fromCharCode", new JsFunction((FunctionBody)StringFromCharCode, null, "fromCharCode", 1));
                 Member("fromCodePoint", new JsFunction((FunctionBody)StringFromCodePoint, null, "fromCodePoint", 1));
             }
