@@ -440,7 +440,7 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 				}
 				last = accessor
 			}
-		case ast.KindSemicolonClassElement, ast.KindClassStaticBlockDeclaration:
+		case ast.KindSemicolonClassElement, ast.KindClassStaticBlockDeclaration, ast.KindIndexSignature:
 		default:
 			b.unsupported(member)
 		}
