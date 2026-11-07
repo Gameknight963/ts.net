@@ -474,7 +474,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		if owner := b.namespaceExports[b.c.GetSymbolAtLocation(n)]; owner != nil && !namespaceLocalFunction(n, owner, b.c.GetSymbolAtLocation(n)) {
 			return b.namespaceReference(n, owner)
 		}
-		if (n.Text() == "parseInt" || n.Text() == "parseFloat" || n.Text() == "Map" || n.Text() == "Set" || n.Text() == "Promise" || n.Text() == "queueMicrotask" || n.Text() == "Array" || n.Text() == "Math" || n.Text() == "console" || n.Text() == "performance" || n.Text() == "Object" || n.Text() == "Number" || n.Text() == "String" || n.Text() == "Boolean") && b.isBuiltinIdentifier(n) {
+		if (n.Text() == "isNaN" || n.Text() == "isFinite" || n.Text() == "parseInt" || n.Text() == "parseFloat" || n.Text() == "Map" || n.Text() == "Set" || n.Text() == "Promise" || n.Text() == "queueMicrotask" || n.Text() == "Array" || n.Text() == "Math" || n.Text() == "console" || n.Text() == "performance" || n.Text() == "Object" || n.Text() == "Number" || n.Text() == "String" || n.Text() == "Boolean") && b.isBuiltinIdentifier(n) {
 			id = b.node(66, n, n.Text())
 			b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
 			return id

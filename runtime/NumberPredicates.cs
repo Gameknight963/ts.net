@@ -19,6 +19,11 @@ public static partial class Js
             _ => throw new ArgumentOutOfRangeException(nameof(mode))
         };
     }
+    static class GlobalNumberPredicates
+    {
+        internal static readonly JsFunction IsNaN = new((FunctionBody)(static args => BoxBoolean(double.IsNaN(Number(FunctionArgument(args, 0))))), null, "isNaN", 1);
+        internal static readonly JsFunction IsFinite = new((FunctionBody)(static args => BoxBoolean(double.IsFinite(Number(FunctionArgument(args, 0))))), null, "isFinite", 1);
+    }
     static class NumberPredicateValues
     {
         internal static readonly JsFunction[] Functions = {
