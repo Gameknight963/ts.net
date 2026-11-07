@@ -30,6 +30,7 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
+	usingFor              *ast.Node
 	usingStack            int
 	dynamicNumericReturns map[*ast.Node]bool
 	awaitReturnOwner      *ast.Node
@@ -342,6 +343,12 @@ var operators = map[ast.Kind]string{
 func (b *irBuilder) lower(n *ast.Node) int {
 	if n == nil {
 		return 0
+	}
+	if n.Kind == ast.KindForStatement && b.usingFor != n {
+		initializer := n.AsForStatement().Initializer
+		if initializer != nil && initializer.Kind == ast.KindVariableDeclarationList && ast.GetCombinedNodeFlags(initializer)&ast.NodeFlagsUsing != 0 {
+			return b.lowerUsingFor(n)
+		}
 	}
 	if chainNode(n) {
 		if n.Kind == ast.KindPropertyAccessExpression || n.Kind == ast.KindElementAccessExpression {

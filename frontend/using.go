@@ -58,12 +58,17 @@ func (b *irBuilder) registerUsingBinding(n *ast.Node, row *irNode) {
 		b.unsupported(n)
 	}
 	parent := n.Parent
-	if parent == nil || parent.Parent == nil || parent.Parent.Kind != ast.KindVariableStatement {
+	if parent == nil || parent.Parent == nil || b.usingStack == 0 {
 		b.unsupported(n)
 	}
-	scope := parent.Parent.Parent
-	if scope == nil || (scope.Kind != ast.KindBlock && scope.Kind != ast.KindSourceFile) || b.usingStack == 0 {
-		b.unsupported(n)
+	if b.usingFor == nil || parent.Parent != b.usingFor {
+		if parent.Parent.Kind != ast.KindVariableStatement {
+			b.unsupported(n)
+		}
+		scope := parent.Parent.Parent
+		if scope == nil || (scope.Kind != ast.KindBlock && scope.Kind != ast.KindSourceFile) {
+			b.unsupported(n)
+		}
 	}
 	row.left = b.usingCall(n, "__usingAdd", b.usingReference(n, b.usingStack), row.left)
 	row.constant = 1
@@ -97,4 +102,12 @@ func (b *irBuilder) wrapUsing(n *ast.Node, stack, body int) int {
 	b.nodes[protected-1].third = b.usingBlock(n, dispose)
 	b.nodes[declaration-1].next = protected
 	return declaration
+}
+
+func (b *irBuilder) lowerUsingFor(n *ast.Node) int {
+	previousStack, previousLoop := b.usingStack, b.usingFor
+	b.usingStack, b.usingFor = b.newUsingStack(), n
+	defer func() { b.usingStack, b.usingFor = previousStack, previousLoop }()
+	body := b.lower(n)
+	return b.usingBlock(n, b.wrapUsing(n, b.usingStack, body))
 }
