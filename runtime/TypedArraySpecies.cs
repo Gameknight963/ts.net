@@ -2,7 +2,7 @@ using System;
 
 public static partial class Js
 {
-    static TypedArrayValue TypedArraySpeciesCreate(TypedArrayValue source, int length, BinaryBuffer buffer = null, int offset = 0)
+    static TypedArrayValue TypedArraySpeciesCreate(TypedArrayValue source, int length, BinaryBuffer buffer = null, int offset = 0, bool tracking = false)
     {
         JsFunction intrinsic = GetTypedArrayConstructor(source.Name), constructor = intrinsic;
         object candidate = source.Get("constructor");
@@ -16,8 +16,8 @@ public static partial class Js
                 constructor = function;
             }
         }
-        if (ReferenceEquals(constructor, intrinsic)) return buffer == null ? AllocateTypedArray(source.Name, length) : new TypedArrayValue(source.Name, buffer, offset, length);
-        object[] arguments = buffer == null ? new object[] { (double)length } : new object[] { buffer, (double)offset, (double)length };
+        if (ReferenceEquals(constructor, intrinsic)) return buffer == null ? AllocateTypedArray(source.Name, length) : new TypedArrayValue(source.Name, buffer, offset, length, tracking);
+        object[] arguments = buffer == null ? new object[] { (double)length } : tracking ? new object[] { buffer, (double)offset } : new object[] { buffer, (double)offset, (double)length };
         if (constructor.Construct(arguments) is not TypedArrayValue result || buffer == null && result.Count < length)
             throw new InvalidOperationException("Typed array species returned an invalid or short result");
         return result;

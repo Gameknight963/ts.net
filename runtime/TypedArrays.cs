@@ -15,15 +15,18 @@ public static partial class Js
     sealed class TypedArrayValue : TsObject
     {
         internal readonly BinaryBuffer Buffer;
-        internal readonly int Offset, Count, Size;
+        internal readonly int Offset, FixedCount, Size;
+        internal readonly bool Tracking;
+        internal bool OutOfBounds => Buffer.Resizable && (Offset > Buffer.Bytes.Length || !Tracking && FixedCount > (Buffer.Bytes.Length - Offset) / Size);
+        internal int Count => !Buffer.Resizable ? FixedCount : OutOfBounds ? 0 : Tracking ? (Buffer.Bytes.Length - Offset) / Size : FixedCount;
         internal readonly string Name, Kind;
-        internal TypedArrayValue(string name, BinaryBuffer buffer, int offset, int count)
+        internal TypedArrayValue(string name, BinaryBuffer buffer, int offset, int count, bool tracking = false)
         {
             Name = name; Kind = name == "Uint8ClampedArray" ? "Uint8" : name[..^5];
-            Size = BinarySize(Kind); Buffer = buffer; Offset = offset; Count = count;
+            Size = BinarySize(Kind); Buffer = buffer; Offset = offset; FixedCount = count; Tracking = tracking;
         }
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)GetTypedArrayConstructor(Name).Get("prototype");
-        internal object Read(int index) => ReadBinary(Buffer.Bytes.AsSpan(Offset + index * Size, Size), Kind, BitConverter.IsLittleEndian);
+        internal object Read(int index) => Buffer.Resizable && (uint)index >= (uint)Count ? Undefined : ReadBinary(Buffer.Bytes.AsSpan(Offset + index * Size, Size), Kind, BitConverter.IsLittleEndian);
         internal void Write(int index, object value)
         {
             bool bigint = Kind.StartsWith("Big", StringComparison.Ordinal);
@@ -69,6 +72,12 @@ public static partial class Js
         internal override object ForInOwnKeys() => OwnKeys();
     }
     static TypedArrayValue RequireTypedArray(object value) => value as TypedArrayValue ?? throw new InvalidOperationException("Typed array receiver required");
+    static TypedArrayValue RequireTypedArrayMethod(object value)
+    {
+        var array = RequireTypedArray(value);
+        if (array.OutOfBounds) throw new InvalidOperationException("Typed array is out of bounds");
+        return array;
+    }
     static TypedArrayValue AllocateTypedArray(string name, int count)
     {
         int size = BinarySize(name == "Uint8ClampedArray" ? "Uint8" : name[..^5]);
@@ -119,18 +128,20 @@ public static partial class Js
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), name);
             void Getter(string key, Func<TypedArrayValue, object> read) => prototype.DefineClassAccessor(key, new TypedArrayGetter(key, read), 1);
             Getter("length", a => (double)a.Count); Getter("byteLength", a => (double)(a.Count * a.Size));
-            Getter("byteOffset", a => (double)a.Offset); Getter("buffer", a => a.Buffer);
+            Getter("byteOffset", a => (double)(a.OutOfBounds ? 0 : a.Offset)); Getter("buffer", a => a.Buffer);
             foreach (string method in new[] { "at", "join", "indexOf", "lastIndexOf", "includes", "forEach", "every", "some", "find", "findIndex", "findLast", "findLastIndex", "reduce", "reduceRight", "fill", "copyWithin", "reverse", "keys", "values", "entries" })
                 prototype.DefineMethod(method, new CollectionMethod(method, ((JsFunction)ArrayMethodValue(method)).Get("length") is double length ? (int)length : 0, (receiver, args) =>
                 {
-                    var array = RequireTypedArray(receiver);
-                    object result = CallMethod(ArrayMethodValue(method), array, args);
+                    var array = RequireTypedArrayMethod(receiver);
+                    if (method is "keys" or "values" or "entries") return new TypedArrayIterator(array, method);
+                    object result = method is "forEach" or "every" or "some" or "find" or "findIndex" or "findLast" or "findLastIndex" or "reduce" or "reduceRight"
+                        ? TypedArrayCallback(array, method, args) : CallMethod(ArrayMethodValue(method), array, args);
                     return method is "fill" or "copyWithin" or "reverse" ? array : result;
                 }));
             prototype.DefineMethod(PropertyKey(IteratorSymbol), prototype.Get("values"));
-            prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) => ArrayJoin(RequireTypedArray(receiver), Undefined)));
+            prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) => ArrayJoin(RequireTypedArrayMethod(receiver), Undefined)));
             foreach (string method in new[] { "slice", "subarray", "set", "map", "filter", "toReversed", "with", "sort", "toSorted", "toLocaleString" })
-                prototype.DefineMethod(method, new CollectionMethod(method, method is "slice" or "subarray" or "with" ? 2 : method is "toLocaleString" or "toReversed" ? 0 : 1, (receiver, args) => TypedArrayMethod(RequireTypedArray(receiver), method, args)));
+                prototype.DefineMethod(method, new CollectionMethod(method, method is "slice" or "subarray" or "with" ? 2 : method is "toLocaleString" or "toReversed" ? 0 : 1, (receiver, args) => TypedArrayMethod(RequireTypedArrayMethod(receiver), method, args)));
             Member("of", new CollectionMethod("of", 0, (receiver, args) => TypedArrayFromValues(receiver, args)));
             Member("from", new CollectionMethod("from", 1, (receiver, args) =>
             {
@@ -153,12 +164,12 @@ public static partial class Js
                 int length;
                 if (IsUndefined(FunctionArgument(args, 2)))
                 {
-                    if ((buffer.Bytes.Length - offset) % size != 0) throw new ArgumentOutOfRangeException(null, "Buffer length is not aligned");
+                    if (!buffer.Resizable && (buffer.Bytes.Length - offset) % size != 0) throw new ArgumentOutOfRangeException(null, "Buffer length is not aligned");
                     length = (buffer.Bytes.Length - offset) / size;
                 }
                 else length = BinaryIndex(args[2]);
                 if (length > (buffer.Bytes.Length - offset) / size) throw new ArgumentOutOfRangeException(null, "Typed array length is invalid");
-                return new TypedArrayValue(name, buffer, offset, length);
+                return new TypedArrayValue(name, buffer, offset, length, buffer.Resizable && IsUndefined(FunctionArgument(args, 2)));
             }
             if (input is not TsObject) return AllocateTypedArray(name, BinaryIndex(input));
             var values = TypedArrayInput(input);
@@ -197,28 +208,33 @@ public static partial class Js
     {
         if (method is "slice" or "subarray")
         {
-            int first = BufferSliceIndex(FunctionArgument(args, 0), array.Count);
-            int end = IsUndefined(FunctionArgument(args, 1)) ? array.Count : BufferSliceIndex(args[1], array.Count);
+            int originalLength = array.Count;
+            int first = BufferSliceIndex(FunctionArgument(args, 0), originalLength);
+            int end = IsUndefined(FunctionArgument(args, 1)) ? originalLength : BufferSliceIndex(args[1], originalLength);
             int count = Math.Max(end - first, 0);
-            if (method == "subarray") return TypedArraySpeciesCreate(array, count, array.Buffer, array.Offset + first * array.Size);
+            if (method == "subarray") return TypedArraySpeciesCreate(array, count, array.Buffer, array.Offset + first * array.Size, array.Tracking && IsUndefined(FunctionArgument(args, 1)));
             var result = TypedArraySpeciesCreate(array, count);
             if (count == 0) return result;
+            if (array.OutOfBounds) throw new InvalidOperationException("Typed array is out of bounds");
+            int available = Math.Min(count, Math.Max(array.Count - first, 0));
             if (array.Kind.StartsWith("Big", StringComparison.Ordinal) != result.Kind.StartsWith("Big", StringComparison.Ordinal)) throw new InvalidOperationException("Typed array content types do not match");
             if (array.Name == result.Name)
             {
-                var sourceBytes = array.Buffer.Bytes.AsSpan(array.Offset + first * array.Size, count * array.Size);
+                var sourceBytes = array.Buffer.Bytes.AsSpan(array.Offset + Math.Min(first, array.Count) * array.Size, available * array.Size);
                 var targetBytes = result.Buffer.Bytes.AsSpan(result.Offset, count * result.Size);
                 if (ReferenceEquals(array.Buffer, result.Buffer))
                     for (int i = 0; i < sourceBytes.Length; i++) targetBytes[i] = sourceBytes[i];
                 else sourceBytes.CopyTo(targetBytes);
             }
-            else for (int i = 0; i < count; i++) result.Write(i, array.Read(first + i));
+            else for (int i = 0; i < available; i++) result.Write(i, array.Read(first + i));
             return result;
         }
         if (method == "set")
         {
             int offset = BinaryIndex(FunctionArgument(args, 1));
-            var source = ToObject(FunctionArgument(args, 0)); long length = IndexedLength(source);
+            var source = ToObject(FunctionArgument(args, 0));
+            if (source is TypedArrayValue invalid && invalid.OutOfBounds) throw new InvalidOperationException("Source typed array is out of bounds");
+            long length = IndexedLength(source);
             if (length > array.Count - offset) throw new ArgumentOutOfRangeException(null, "Typed array set exceeds target length");
             if (source is TypedArrayValue typed)
             {
@@ -245,9 +261,10 @@ public static partial class Js
         {
             object callback = FunctionArgument(args, 0);
             if (callback is not JsFunction) throw new InvalidOperationException("Typed array callback must be callable");
-            var result = method == "map" ? TypedArraySpeciesCreate(array, array.Count) : null;
+            int length = array.Count;
+            var result = method == "map" ? TypedArraySpeciesCreate(array, length) : null;
             var selected = method == "filter" ? new List<object>() : null;
-            for (int i = 0; i < array.Count; i++)
+            for (int i = 0; i < length; i++)
             {
                 object value = array.Read(i), mapped = CallMethod(callback, FunctionArgument(args, 1), new object[] { value, (double)i, array });
                 if (result != null) result.Write(i, mapped); else if (Truthy(mapped)) selected.Add(value);

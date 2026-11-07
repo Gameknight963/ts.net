@@ -40,12 +40,14 @@ public static partial class Js
             switch (source)
             {
                 case BinaryBuffer buffer:
-                    var bytes = new BinaryBuffer(buffer.Bytes.Length);
+                    var bytes = new BinaryBuffer(buffer.Bytes.Length, buffer.Maximum);
                     buffer.Bytes.CopyTo(bytes.Bytes, 0); result = bytes; break;
                 case BinaryView view:
-                    result = new BinaryView((BinaryBuffer)Copy(view.Buffer), view.Offset, view.Length); break;
+                    if (view.OutOfBounds) throw Uncloneable();
+                    result = new BinaryView((BinaryBuffer)Copy(view.Buffer), view.Offset, view.FixedLength, view.Tracking); break;
                 case TypedArrayValue array:
-                    result = new TypedArrayValue(array.Name, (BinaryBuffer)Copy(array.Buffer), array.Offset, array.Count); break;
+                    if (array.OutOfBounds) throw Uncloneable();
+                    result = new TypedArrayValue(array.Name, (BinaryBuffer)Copy(array.Buffer), array.Offset, array.FixedCount, array.Tracking); break;
                 case JsDate date: result = new JsDate(date.Timestamp); break;
                 case JsRegExp regex:
                     result = new JsRegExp(regex.Pattern, regex.Flags, regex.Engine, regex.NamedGroups); break;

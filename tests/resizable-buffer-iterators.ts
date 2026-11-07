@@ -1,0 +1,1 @@
+const buffer=new ArrayBuffer(4,{maxByteLength:8});const view=new Uint8Array(buffer,1,2);const iterator=view.values();console.log(iterator.next().value);buffer.resize(0);try{console.log(iterator.next().done);}catch(error){console.log((error as Error).name);}buffer.resize(4);console.log(iterator.next().value);
