@@ -529,6 +529,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			id = b.node(8, n, "delete")
 			row = b.nodes[id-1]
 			row.left = b.lower(operand)
+			if (operand.Kind == ast.KindPropertyAccessExpression || operand.Kind == ast.KindElementAccessExpression) && operand.Expression().Kind == ast.KindSuperKeyword {
+				row.constant = 1
+			}
 		}
 	case ast.KindTypeOfExpression:
 		id = b.node(23, n, "typeof")

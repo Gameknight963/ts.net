@@ -632,9 +632,9 @@ internal static partial class CompilerFunctions
                 Node target = get_node(n.left, c);
                 if (target.kind == NodeKind.Property || target.kind == NodeKind.Index)
                 {
-                    il_boxed(target.left, c, b);
+                    if (!n.constant) il_boxed(target.left, c, b);
                     if (target.kind == NodeKind.Property) il_text(target.name, c, b); else il_boxed(target.right, c, b);
-                    b.call(RuntimeMember.DeleteProperty);
+                    b.call(n.constant ? RuntimeMember.DeleteSuperProperty : RuntimeMember.DeleteProperty);
                 }
                 else { il_boxed(n.left, c, b); b.op(0x26); b.emit(0x20, 1); }
                 b.call(RuntimeMember.WrapBoolean);

@@ -285,6 +285,11 @@ func (a *asyncExpressionLowering) expression(id int, next asyncExpressionContinu
 		})
 	case 8, 9, 23: // unary, assertion, typeof
 		if n.kind == 8 && a.b.texts[a.b.tokens[n.token-1].text-1] == "delete" {
+			if n.constant != 0 {
+				target := a.b.nodes[n.left-1]
+				a.discard(n.left)
+				return a.expression(target.right, func(key int) int { target.right = key; n.left = a.operation(target); return next(a.operation(n)) })
+			}
 			return a.target(n.left, func(target func() int) int { n.left = target(); return next(a.operation(n)) })
 		}
 		return a.expression(n.left, func(value int) int { n.left = value; return next(a.operation(n)) })
