@@ -58,6 +58,7 @@ try {
         $moduleKind = if ($name -eq 'delete-modules') { 'es2022' } else { 'commonjs' }
         & tsc.cmd --strict --target es2022 --module $moduleKind --outDir "$testRoot/node/$name" $fixture
         if ($moduleKind -eq 'es2022') { '{"type":"module"}' | Set-Content "$testRoot/node/$name/package.json" }
+        else { '{"type":"commonjs"}' | Set-Content "$testRoot/node/$name/package.json" }
         if ($LASTEXITCODE) { throw "Reference TypeScript compilation failed: $name" }
         $reference = "$testRoot/node/$name/$name.js"
         $expected = @(& node $reference)
@@ -71,7 +72,7 @@ try {
     }
 
     # Namespace semantics need native ES modules as the reference.
-    foreach ($name in @('tagged-templates-modules', 'reflect-delete-modules', 'property-descriptors-modules', 'for-in-modules', 'for-in-cycle', 'module-namespace-order', 'in-operator-modules', 'function-constructor-modules')) {
+    foreach ($name in @('module-this', 'tagged-templates-modules', 'reflect-delete-modules', 'property-descriptors-modules', 'for-in-modules', 'for-in-cycle', 'module-namespace-order', 'in-operator-modules', 'function-constructor-modules')) {
         & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module es2022 --outDir "$testRoot/node/$name" "tests/$name.ts"
         if ($LASTEXITCODE) { throw "ES module reference compilation failed: $name" }

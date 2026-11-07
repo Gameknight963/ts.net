@@ -399,7 +399,12 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.typ = b.typ(b.c.GetAnyType())
 	case ast.KindThisKeyword:
 		if !b.thisScope {
-			b.unsupported(n)
+			if b.file.ExternalModuleIndicator == nil {
+				b.unsupported(n)
+			}
+			id = b.node(20, n, "undefined")
+			b.nodes[id-1].typ = b.typ(b.c.GetUndefinedType())
+			break
 		}
 		id = b.node(58, n, "this")
 		row = b.nodes[id-1]
