@@ -46,7 +46,7 @@ public static partial class Js
         static TsObject CreateCommon()
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
-            prototype.DefineMethod(PropertyKey(RuntimeNamespaces.Symbol.Get("iterator")), Self);
+            prototype.DefineMethod(PropertyKey(IteratorSymbol), Self);
             return prototype;
         }
         internal static readonly TsObject Array = Create(false), String = Create(true);

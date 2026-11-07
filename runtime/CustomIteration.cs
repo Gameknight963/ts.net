@@ -6,7 +6,7 @@ public static partial class Js
     {
         iterator = null;
         if (value is not TsObject source) return false;
-        string key = PropertyKey(RuntimeNamespaces.Symbol.Get("iterator"));
+        string key = PropertyKey(IteratorSymbol);
         object method = source.Get(key);
         if (IsNullish(method) || ReferenceEquals(method, NativeIteratorPrototypes.Self) && IsIteratorObject(source)) return false;
         if (method is not JsFunction function) throw new InvalidOperationException("Symbol.iterator is not callable");
