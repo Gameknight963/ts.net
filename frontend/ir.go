@@ -462,6 +462,8 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		}
 	case ast.KindEmptyStatement:
 		id = b.node(12, n, ";")
+	case ast.KindExpressionWithTypeArguments:
+		return b.lower(n.Expression())
 	case ast.KindParenthesizedExpression:
 		return b.lower(n.Expression())
 	case ast.KindBigIntLiteral:
