@@ -111,7 +111,17 @@ func (a *asyncExpressionLowering) functionParameters(count int, body func([]int)
 	symbol := a.symbol(a.any)
 	a.b.symbols[symbol-1].function = function
 	a.b.nodes[function-1].symbol = symbol
-	a.b.nodes[function-1].name = a.b.text("")
+	debugName := "resume"
+	owner := enclosingAsyncFunction(a.source)
+	if ast.IsFunctionLike(a.source) {
+		owner = a.source
+	}
+	if owner != nil {
+		if name := a.b.functionDebugName(owner); name != "" {
+			debugName = name + "_resume"
+		}
+	}
+	a.b.nodes[function-1].name = a.b.text(debugName)
 	a.b.nodes[function-1].next = a.b.functions
 	a.b.functions = function
 	arguments := make([]int, count)

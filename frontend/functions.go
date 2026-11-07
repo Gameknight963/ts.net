@@ -5,7 +5,7 @@ import (
 	"github.com/microsoft/typescript-go/internal/checker"
 )
 
-func (b *irBuilder) functionValue(n *ast.Node) int {
+func (b *irBuilder) functionName(n *ast.Node) string {
 	name := ""
 	parent := n.Parent
 	for parent != nil && (parent.Kind == ast.KindParenthesizedExpression || parent.Kind == ast.KindAsExpression || parent.Kind == ast.KindTypeAssertionExpression || parent.Kind == ast.KindSatisfiesExpression) {
@@ -28,6 +28,28 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 			name = n.Name().Text()
 		}
 	}
+	return name
+}
+
+func (b *irBuilder) functionDebugName(n *ast.Node) string {
+	name := b.functionName(n)
+	if n.Kind == ast.KindConstructor {
+		name = "constructor"
+	}
+	if n.Kind == ast.KindGetAccessor {
+		name = "get_" + name
+	}
+	if n.Kind == ast.KindSetAccessor {
+		name = "set_" + name
+	}
+	if owner := n.Parent; owner != nil && (owner.Kind == ast.KindClassDeclaration || owner.Kind == ast.KindClassExpression) && owner.Name() != nil {
+		name = owner.Name().Text() + "_" + name
+	}
+	return name
+}
+
+func (b *irBuilder) functionValue(n *ast.Node) int {
+	name := b.functionName(n)
 	value := b.node(38, n, "function")
 	typ := b.typ(b.c.GetAnyType())
 	if n.Kind != ast.KindConstructor {
@@ -58,7 +80,7 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 	if !suspending && (n.Kind == ast.KindFunctionDeclaration || n.Kind == ast.KindFunctionExpression) {
 		b.markFunctionPrototype(function, n)
 	}
-	b.nodes[function-1].name = b.text(name)
+	b.nodes[function-1].name = b.text(b.functionDebugName(n))
 	b.nodes[function-1].symbol = symbol
 	b.nodes[function-1].typ = typ
 	b.nodes[function-1].next = b.functions

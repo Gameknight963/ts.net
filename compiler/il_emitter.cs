@@ -1022,11 +1022,11 @@ internal static partial class CompilerFunctions
         {
             Node n = get_node(function, c); Vector<int> parameters = new Vector<int>(); int parameter = n.children;
             while (parameter != 0) { parameters.push(b.type(get_node(parameter, c).type, c)); parameter = get_node(parameter, c).next; }
-            Vector<byte> name = numbered_name('f', get_symbol(n.symbol, c).id);
+            Vector<byte> name = il_method_name(n, 'f', c);
             int result_type = b.type(n.type, c);
             int context = b.function_contexts.at(n.symbol); int owner = context == 0 ? program : b.context_types.at((int)context); int attributes = context == 0 ? 0x16 : 6;
             b.methods.at_mut(n.symbol) = b.plan.method(5, owner, attributes, result_type, parameters.view(), name.view());
-            Vector<byte> adapter = numbered_name('a', get_symbol(n.symbol, c).id);
+            Vector<byte> adapter = il_method_name(n, 'a', c);
             b.function_adapters.at_mut(n.symbol) = b.plan.method1(5, owner, attributes, -5, -7, adapter.view());
             if(c.function_sources.TryGetValue(function,out int source))
             {
@@ -1037,7 +1037,7 @@ internal static partial class CompilerFunctions
             {
                 Vector<int> raw_parameters = new Vector<int>(); int p = n.children;
                 while (p != 0) { raw_parameters.push(-3); p = get_node(p, c).next; }
-                Vector<byte> raw_name = numbered_name('r', get_symbol(n.symbol, c).id);
+                Vector<byte> raw_name = il_method_name(n, 'r', c);
                 b.raw_functions.at_mut(n.symbol) = b.plan.method(5, program, 0x16, -3, raw_parameters.view(), raw_name.view());
             }
             int pattern = il_flat_parameter(function, c);
@@ -1045,7 +1045,7 @@ internal static partial class CompilerFunctions
             {
                 Vector<int> fields = new Vector<int>(); int child = get_node(pattern, c).children;
                 while (child != 0) { fields.push(b.type(get_node(child, c).type, c)); child = get_node(child, c).next; }
-                Vector<byte> flat_name = numbered_name('g', get_symbol(n.symbol, c).id);
+                Vector<byte> flat_name = il_method_name(n, 'g', c);
                 b.binding_methods.at_mut(n.symbol) = b.plan.method(5, program, 0x16, result_type, fields.view(), flat_name.view());
             }
             function = n.next;

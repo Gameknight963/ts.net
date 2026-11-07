@@ -30,7 +30,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Modules | 4 / 5 | Missing dynamic imports of uncompiled modules. |
 | Enums | 5 / 5 | Missing nothing. |
 | Classes and inheritance | 14 / 15 | Missing some legacy decorator descriptor changes, some built-in base classes, and complete constructor replacement-object support. |
-| Exceptions | 9 / 10 | Stack traces use generated CLR method names; inlining can omit frames. |
+| Exceptions | 9 / 10 | Stack traces keep CLR formatting and may omit inlined frames. |
 | Async | 10 / 10 | Missing nothing. |
 | Standard library | 3 / 5 | Missing some Symbol protocols, Reflect methods, RegExp features, and built-ins. |
 
