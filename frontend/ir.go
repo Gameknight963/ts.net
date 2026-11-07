@@ -30,6 +30,7 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
+	usingStack            int
 	dynamicNumericReturns map[*ast.Node]bool
 	awaitReturnOwner      *ast.Node
 	c                     *checker.Checker
@@ -1216,6 +1217,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	if row.kind == 20 {
 		row.typ = b.typ(b.c.GetUndefinedType())
 	}
+	b.registerUsingBinding(n, &row)
 	b.contextualObject(n, &row)
 	b.preserveDynamicType(n, &row)
 	b.deletableLiteral(n, &row)
@@ -1299,6 +1301,10 @@ func exportIR(s *session) (result []byte, err error) {
 			b.nodes[last-1].next = block
 		}
 		last = block
+		previousUsing := b.usingStack
+		if b.hasUsingDeclarations(file.Statements.Nodes) {
+			b.usingStack = b.newUsingStack()
+		}
 		child := 0
 		for _, n := range file.Statements.Nodes {
 			if n.Kind == ast.KindFunctionDeclaration {
@@ -1315,6 +1321,10 @@ func exportIR(s *session) (result []byte, err error) {
 			}
 			child = id
 		}
+		if b.usingStack != previousUsing {
+			b.nodes[block-1].children = b.wrapUsing(file.AsNode(), b.usingStack, b.nodes[block-1].children)
+		}
+		b.usingStack = previousUsing
 	}
 	b.initializeModuleNamespaces()
 	b.dynamicNamespaces()

@@ -12,6 +12,7 @@ internal sealed class JsSymbol(object description, string registryKey = null)
 public static partial class Js
 {
     static readonly JsSymbol IteratorSymbol = new("Symbol.iterator");
+    static readonly JsSymbol DisposeSymbol = new("Symbol.dispose");
     static readonly JsSymbol ConcatSpreadableSymbol = new("Symbol.isConcatSpreadable");
     static readonly JsSymbol HasInstanceSymbol = new("Symbol.hasInstance");
     static readonly JsSymbol ToPrimitiveSymbol = new("Symbol.toPrimitive");
@@ -36,7 +37,7 @@ public static partial class Js
             return new JsSymbol(IsUndefined(description) ? Undefined : StringValue(description));
         }, 0)
         {
-            foreach (string name in wellKnown) Member(name, name == "iterator" ? IteratorSymbol : name == "asyncIterator" ? AsyncIteratorSymbol : name == "toStringTag" ? ToStringTagSymbol : name == "toPrimitive" ? ToPrimitiveSymbol : name == "hasInstance" ? HasInstanceSymbol : name == "isConcatSpreadable" ? ConcatSpreadableSymbol : new JsSymbol("Symbol." + name));
+            foreach (string name in wellKnown) Member(name, name == "iterator" ? IteratorSymbol : name == "asyncIterator" ? AsyncIteratorSymbol : name == "toStringTag" ? ToStringTagSymbol : name == "toPrimitive" ? ToPrimitiveSymbol : name == "hasInstance" ? HasInstanceSymbol : name == "isConcatSpreadable" ? ConcatSpreadableSymbol : name == "dispose" ? DisposeSymbol : new JsSymbol("Symbol." + name));
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
             prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) => RequireSymbol(receiver).Display));

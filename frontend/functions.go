@@ -98,6 +98,14 @@ func (b *irBuilder) blockStatements(statements []*ast.Node) int {
 			ordered = append(ordered, statement)
 		}
 	}
+	if b.hasUsingDeclarations(ordered) {
+		previous := b.usingStack
+		b.usingStack = b.newUsingStack()
+		body := b.list(ordered)
+		result := b.wrapUsing(ordered[0], b.usingStack, body)
+		b.usingStack = previous
+		return result
+	}
 	return b.list(ordered)
 }
 
