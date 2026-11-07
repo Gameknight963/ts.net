@@ -96,12 +96,15 @@ public static partial class Js
                 {
                     if (currency == null) throw new InvalidOperationException("Currency code is required");
                     if (currencyDisplay == "name") throw new NotSupportedException("Currency display names are not supported");
-                    if (currencySign == "accounting") throw new NotSupportedException("Accounting currency patterns are not supported");
                     var metadata = CurrencyFor(currency, culture, currencyDisplay);
                     currencyDigits = metadata.Digits;
                     culture = (CultureInfo)culture.Clone();
                     var info = culture.NumberFormat;
                     info.CurrencySymbol = metadata.Symbol;
+                    // Keep native symbol placement and spacing inside parentheses.
+                    if (currencySign == "accounting") info.CurrencyNegativePattern = info.CurrencyPositivePattern switch {
+                        0 => 0, 1 => 4, 2 => 14, _ => 15
+                    };
                     info.NumberDecimalSeparator = info.CurrencyDecimalSeparator;
                     info.NumberGroupSeparator = info.CurrencyGroupSeparator;
                     info.NumberGroupSizes = info.CurrencyGroupSizes;
