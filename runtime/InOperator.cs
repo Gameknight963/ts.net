@@ -20,6 +20,9 @@ public static partial class Js
     {
         internal ClassObjectPrototype()
         {
+            DefineMethod("isPrototypeOf", new ObjectPrototypeQuery("isPrototypeOf", 0));
+            DefineMethod("hasOwnProperty", new ObjectPrototypeQuery("hasOwnProperty", 1));
+            DefineMethod("propertyIsEnumerable", new ObjectPrototypeQuery("propertyIsEnumerable", 2));
             DefineClassAccessor("__proto__",new PrototypeAccessor(0),1);
             DefineClassAccessor("__proto__",new PrototypeAccessor(1),2);
             DefineClassAccessor("constructor",new PrototypeAccessor(2),1);
