@@ -6,7 +6,7 @@ public sealed class JsThrownException(object value) : Exception("JavaScript exce
     public object Value { get; } = value;
     public override string ToString() => Value is JsCaughtError error ? Js.ErrorText(error) : Js.Text(Value);
 }
-public sealed class JsCaughtError : TsObject
+public class JsCaughtError : TsObject
 {
     readonly TsObject prototype;
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : prototype;

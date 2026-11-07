@@ -16,9 +16,7 @@ public static partial class Js
     }
     static Exception InvalidBase64() 
     {
-        var error = new JsCaughtError("Error", "Invalid base64 input");
-        error.DefineHidden("name", "InvalidCharacterError");
-        return MakeThrown(error);
+        return MakeThrown(new DomExceptionValue("Invalid base64 input", "InvalidCharacterError"));
     }
     static string EncodeBase64(string text)
     {
