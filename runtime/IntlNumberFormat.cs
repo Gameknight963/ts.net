@@ -57,7 +57,15 @@ public static partial class Js
                 result.DefineOwn("currency", settings.currency); result.DefineOwn("currencyDisplay", settings.currencyDisplay); result.DefineOwn("currencySign", settings.currencySign);
             }
             result.DefineOwn("minimumIntegerDigits", (double)settings.integerDigits);
-            result.DefineOwn("minimumFractionDigits", (double)settings.minimum); result.DefineOwn("maximumFractionDigits", (double)settings.maximum);
+            if (settings.maximumSignificant != 0)
+            {
+                result.DefineOwn("minimumSignificantDigits", (double)settings.minimumSignificant);
+                result.DefineOwn("maximumSignificantDigits", (double)settings.maximumSignificant);
+            }
+            else
+            {
+                result.DefineOwn("minimumFractionDigits", (double)settings.minimum); result.DefineOwn("maximumFractionDigits", (double)settings.maximum);
+            }
             result.DefineOwn("useGrouping", settings.groupingOption); result.DefineOwn("notation", "standard");
             result.DefineOwn("signDisplay", settings.signDisplay);
             result.DefineOwn("roundingIncrement", (double)settings.roundingIncrement); result.DefineOwn("roundingMode", settings.roundingMode);

@@ -48,6 +48,7 @@ public static partial class Js
         internal readonly CultureInfo culture;
         internal readonly int minimum, maximum, integerDigits;
         internal readonly int roundingIncrement;
+        internal readonly int minimumSignificant, maximumSignificant;
         readonly int minimumGroupingWidth;
         internal readonly bool grouping;
         internal readonly object groupingOption;
@@ -60,6 +61,7 @@ public static partial class Js
         internal NumberLocaleSettings(object locales, object optionValue)
         {
             culture = CaseCulture(locales);
+            minimumSignificant = maximumSignificant = 0;
             roundingIncrement = 1; roundingMode = "halfExpand"; trailingZeroDisplay = "auto";
             style = "decimal"; positivePattern = negativePattern = null;
             currency = null; currencyDisplay = "symbol"; currencySign = "standard";
@@ -106,7 +108,7 @@ public static partial class Js
                     positivePattern = SpaceCurrencyTemplate(1d.ToString("C0", culture));
                     negativePattern = SpaceCurrencyTemplate((-1d).ToString("C0", culture));
                 }
-                foreach (string key in new[] { "minimumSignificantDigits", "maximumSignificantDigits", "compactDisplay", "unit", "numberingSystem" })
+                foreach (string key in new[] { "compactDisplay", "unit", "numberingSystem" })
                     if (!IsUndefined(options.Get(key))) throw new NotSupportedException("Number locale formatting option " + key + " is not supported");
                 foreach (var item in new[] { ("notation", "standard"), ("roundingPriority", "auto") })
                 {
@@ -154,12 +156,23 @@ public static partial class Js
                 }
                 integerDigits = Digits("minimumIntegerDigits", 1, 1, 21);
                 object minimumSetting = options.Get("minimumFractionDigits"), maximumSetting = options.Get("maximumFractionDigits");
-                minimum = DigitValue(minimumSetting, style == "currency" ? currencyDigits : 0);
-                maximum = DigitValue(maximumSetting, Math.Max(style == "currency" ? currencyDigits : style == "percent" ? 0 : 3, minimum));
-                if (minimum > maximum && IsUndefined(minimumSetting)) minimum = maximum;
-                if (minimum > maximum) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid digit count");
-                if (roundingIncrement != 1 && minimum != maximum)
-                    throw new ArgumentOutOfRangeException(nameof(optionValue), "Rounding increments require equal minimum and maximum fraction digits");
+                object minimumSignificantSetting = options.Get("minimumSignificantDigits"), maximumSignificantSetting = options.Get("maximumSignificantDigits");
+                if (!IsUndefined(minimumSignificantSetting) || !IsUndefined(maximumSignificantSetting))
+                {
+                    minimumSignificant = DigitValue(minimumSignificantSetting, 1, 1, 21);
+                    maximumSignificant = DigitValue(maximumSignificantSetting, 21, 1, 21);
+                    if (minimumSignificant > maximumSignificant) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid significant digit count");
+                    if (roundingIncrement != 1) throw new InvalidOperationException("Significant digits cannot be combined with rounding increments");
+                }
+                else
+                {
+                    minimum = DigitValue(minimumSetting, style == "currency" ? currencyDigits : 0);
+                    maximum = DigitValue(maximumSetting, Math.Max(style == "currency" ? currencyDigits : style == "percent" ? 0 : 3, minimum));
+                    if (minimum > maximum && IsUndefined(minimumSetting)) minimum = maximum;
+                    if (minimum > maximum) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid digit count");
+                    if (roundingIncrement != 1 && minimum != maximum)
+                        throw new ArgumentOutOfRangeException(nameof(optionValue), "Rounding increments require equal minimum and maximum fraction digits");
+                }
                 object group = options.Get("useGrouping");
                 if (!IsUndefined(group))
                 {
@@ -212,10 +225,11 @@ public static partial class Js
                 _ => true
             };
         }
-        string FiniteNumber(double value)
+        string FiniteNumber(double value, out int fractionMinimum, out int fractionMaximum)
         {
+            fractionMinimum = minimum; fractionMaximum = maximum;
             // Safe integers need no decimal rounding and retain native formatting.
-            if (groupingOption is not "min2" && roundingIncrement == 1 && style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
+            if (maximumSignificant == 0 && groupingOption is not "min2" && roundingIncrement == 1 && style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
             string raw = Math.Abs(value).ToString("R", CultureInfo.InvariantCulture);
             int split = raw.IndexOf('E');
             int exponent = split < 0 ? 0 : int.Parse(raw.AsSpan(split + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
@@ -223,9 +237,22 @@ public static partial class Js
             int point = coefficient.IndexOf('.');
             int scale = point < 0 ? 0 : coefficient.Length - point - 1;
             BigInteger digits = BigInteger.Parse(coefficient.Replace(".", ""), CultureInfo.InvariantCulture);
+            if (maximumSignificant != 0)
+                return SignificantText(digits, exponent - scale + (style == "percent" ? 2 : 0), double.IsNegative(value), out fractionMinimum, out fractionMaximum);
             int shift = exponent - scale + maximum + (style == "percent" ? 2 : 0);
             digits = Quantize(digits, shift, double.IsNegative(value));
             return QuantizedText(digits, double.IsNegative(value));
+        }
+        string SignificantText(BigInteger digits, int exponent, bool negative, out int fractionMinimum, out int fractionMaximum)
+        {
+            int width = digits.IsZero ? 1 : digits.ToString(CultureInfo.InvariantCulture).Length;
+            int places = digits.IsZero ? maximumSignificant - 1 : maximumSignificant - width - exponent;
+            BigInteger rounded = Quantize(digits, exponent + places, negative);
+            int magnitude = rounded.IsZero ? 0 : rounded.ToString(CultureInfo.InvariantCulture).Length - places - 1;
+            fractionMinimum = Math.Max(0, minimumSignificant - magnitude - 1);
+            fractionMaximum = Math.Max(0, places);
+            if (places < 0) rounded *= BigInteger.Pow(10, -places);
+            return QuantizedText(rounded, negative, fractionMaximum);
         }
         BigInteger Quantize(BigInteger digits, int shift, bool negative)
         {
@@ -241,19 +268,23 @@ public static partial class Js
         {
             return Math.Max(width, integerDigits) >= minimumGroupingWidth;
         }
-        string QuantizedText(BigInteger digits, bool negative)
+        string QuantizedText(BigInteger digits, bool negative) => QuantizedText(digits, negative, maximum);
+        string QuantizedText(BigInteger digits, bool negative, int fractionDigits)
         {
-            BigInteger whole = BigInteger.DivRem(digits, BigInteger.Pow(10, maximum), out var fraction);
+            BigInteger whole = BigInteger.DivRem(digits, BigInteger.Pow(10, fractionDigits), out var fraction);
             bool useGroups = grouping;
             if (groupingOption is "min2")
                 useGroups = UseMinimumGrouping(whole.ToString(CultureInfo.InvariantCulture).Length);
             string result = whole.ToString(useGroups ? "N0" : "F0", culture);
-            if (maximum != 0) result += culture.NumberFormat.NumberDecimalSeparator + fraction.ToString(CultureInfo.InvariantCulture).PadLeft(maximum, '0');
+            if (fractionDigits != 0) result += culture.NumberFormat.NumberDecimalSeparator + fraction.ToString(CultureInfo.InvariantCulture).PadLeft(fractionDigits, '0');
             return negative ? culture.NumberFormat.NegativeSign + result : result;
         }
         internal string Format<T>(T value, bool finite) where T : struct, IFormattable
         {
-            string result = finite && value is double numberValue ? FiniteNumber(numberValue)
+            int fractionMinimum = minimum, fractionMaximum = maximum;
+            string result = finite && value is double numberValue ? FiniteNumber(numberValue, out fractionMinimum, out fractionMaximum)
+                : maximumSignificant != 0 && value is BigInteger significantInteger
+                    ? SignificantText(BigInteger.Abs(significantInteger), style == "percent" ? 2 : 0, significantInteger.Sign < 0, out fractionMinimum, out fractionMaximum)
                 : (roundingIncrement != 1 || groupingOption is "min2") && value is BigInteger quantizedInteger
                     ? QuantizedText(Quantize(BigInteger.Abs(quantizedInteger), maximum + (style == "percent" ? 2 : 0), quantizedInteger.Sign < 0), quantizedInteger.Sign < 0)
                 : style == "percent" && value is BigInteger integerValue ? (integerValue * 100).ToString(format, culture) : value.ToString(format, culture);
@@ -284,11 +315,11 @@ public static partial class Js
                 if (negative && !show && result.StartsWith(minus, StringComparison.Ordinal)) result = result[minus.Length..];
                 else if (!negative && show) result = culture.NumberFormat.PositiveSign + result;
             }
-            if (finite && maximum > 0)
+            if (finite && fractionMaximum > 0)
             {
                 int trim = 0;
-                while (trim < maximum - minimum && result[result.Length - trim - 1] == '0') trim++;
-                if (trim == maximum) trim += culture.NumberFormat.NumberDecimalSeparator.Length;
+                while (trim < fractionMaximum - fractionMinimum && result[result.Length - trim - 1] == '0') trim++;
+                if (trim == fractionMaximum) trim += culture.NumberFormat.NumberDecimalSeparator.Length;
                 if (trim != 0) result = result[..^trim];
             }
             if (finite && trailingZeroDisplay == "stripIfInteger")
