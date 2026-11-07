@@ -8,6 +8,11 @@ func (b *irBuilder) preserveDynamicType(n *ast.Node, row *irNode) {
 	any := b.typ(b.c.GetAnyType())
 	dynamic := func(id int) bool { return id != 0 && b.nodes[id-1].typ == any }
 	switch n.Kind {
+	case ast.KindCallExpression:
+		if signature := b.c.GetResolvedSignature(n); signature != nil && b.dynamicNumericReturn(signature.Declaration(), map[*ast.Node]bool{}) {
+			row.typ = any
+		}
+
 	case ast.KindVariableDeclaration:
 		if n.Initializer() != nil && n.Type() == nil && dynamic(row.left) && row.typ != 0 && b.types[row.typ-1].kind == 0 {
 			row.typ = any

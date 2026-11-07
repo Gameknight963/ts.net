@@ -30,6 +30,7 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
+	dynamicNumericReturns map[*ast.Node]bool
 	awaitReturnOwner      *ast.Node
 	c                     *checker.Checker
 	file                  *ast.SourceFile
@@ -1259,7 +1260,7 @@ func exportIR(s *session) (result []byte, err error) {
 				symbol = b.symbol(n.Name())
 			}
 			id := b.node(19, n, name)
-			typ := b.typ(c.GetReturnTypeOfSignature(c.GetSignatureFromDeclaration(n)))
+			typ := b.functionResultType(n)
 			b.nodes[id-1].name = b.text(name)
 			b.nodes[id-1].symbol = symbol
 			b.nodes[id-1].typ = typ
@@ -1317,6 +1318,7 @@ func exportIR(s *session) (result []byte, err error) {
 	}
 	b.initializeModuleNamespaces()
 	b.dynamicNamespaces()
+	b.normalizeDynamicBindings()
 	var data bytes.Buffer
 	put := func(v int) { _ = binary.Write(&data, binary.LittleEndian, int32(v)) }
 	put(0x34524954)

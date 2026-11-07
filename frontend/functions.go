@@ -37,9 +37,9 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 	value := b.node(38, n, "function")
 	typ := b.typ(b.c.GetAnyType())
 	if n.Kind != ast.KindConstructor {
-		typ = b.typ(b.c.GetReturnTypeOfSignature(b.c.GetSignatureFromDeclaration(n)))
+		typ = b.functionResultType(n)
 	}
-	if n.Type() == nil && n.Kind != ast.KindFunctionDeclaration && n.Kind != ast.KindConstructor && ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync == 0 {
+	if n.Type() == nil && !b.dynamicNumericReturn(n, map[*ast.Node]bool{}) && n.Kind != ast.KindFunctionDeclaration && n.Kind != ast.KindConstructor && ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync == 0 {
 		if context := b.c.GetContextualType(n, checker.ContextFlagsNone); context != nil {
 			if signatures := b.c.GetSignaturesOfType(context, checker.SignatureKindCall); len(signatures) == 1 {
 				typ = b.typ(b.c.GetReturnTypeOfSignature(signatures[0]))
