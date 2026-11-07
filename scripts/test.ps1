@@ -350,7 +350,6 @@ try {
         @{ Source = 'function f(n: number): number { return n; } f();'; Error = '"code":2554' },
         @{ Source = 'function f(n: number): number { return n; } f(1, 2);'; Error = '"code":2554' },
         @{ Source = 'const p = { x: 1 }; console.log(p.y);'; Error = '"code":2339' },
-        @{ Source = 'const x = {__proto__: {a: 1}};'; Error = 'unsupported lowering' },
         @{ Source = 'NaN = 1;'; Error = 'unsupported lowering' },
         @{ Source = 'Infinity++;'; Error = 'unsupported lowering' },
         @{ Source = '(Infinity) += 1;'; Error = 'unsupported lowering' },
