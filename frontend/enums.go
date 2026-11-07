@@ -82,6 +82,9 @@ func (b *irBuilder) enumOwner(n *ast.Node, declaration *ast.Node) int {
 	b.nodes[id-1].name = b.text(name.Text())
 	b.nodes[id-1].symbol = symbol
 	b.nodes[id-1].typ = b.symbols[symbol-1].typ
+	if s := b.c.GetSymbolAtLocation(name); s != nil && s.Flags&(ast.SymbolFlagsClass|ast.SymbolFlagsFunction) != 0 {
+		b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
+	}
 	return id
 }
 func (b *irBuilder) enumMemberReference(n *ast.Node, symbol *ast.Symbol) int {
@@ -107,6 +110,10 @@ func (b *irBuilder) enumInitialization(n *ast.Node) int {
 		return 0
 	}
 	symbol := b.c.GetSymbolAtLocation(n.Name())
+	if n.Kind == ast.KindModuleDeclaration && symbol.Flags&(ast.SymbolFlagsClass|ast.SymbolFlagsFunction) != 0 {
+		// The function or class declaration already created the namespace owner.
+		return b.node(12, n, "namespace")
+	}
 	binding := b.symbol(n.Name())
 	typ := b.symbols[binding-1].typ
 	if b.types[typ-1].kind != 6 {

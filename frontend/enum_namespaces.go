@@ -199,7 +199,7 @@ func (b *irBuilder) enumNamespace(n *ast.Node) int {
 	}
 	block := b.enumInitialization(n)
 	last := b.nodes[block-1].children
-	for b.nodes[last-1].next != 0 {
+	for last != 0 && b.nodes[last-1].next != 0 {
 		last = b.nodes[last-1].next
 	}
 	function, value := b.newFunction(n, "")
@@ -239,7 +239,9 @@ func (b *irBuilder) enumNamespace(n *ast.Node) int {
 			b.nodes[i].fourth = b.namespaceReference(name, n)
 			continue
 		}
-		if node.kind != 13 || name == nil || name.Parent.Kind == ast.KindFunctionDeclaration {
+		// A merged namespace can supply this name for a function symbol.
+		// Keep its local binding; the declaration separately publishes it.
+		if node.kind != 13 || name == nil || namespaceLocalFunction(name, n, b.c.GetSymbolAtLocation(name)) {
 			continue
 		}
 		if node.left == 0 {
@@ -260,6 +262,10 @@ func (b *irBuilder) enumNamespace(n *ast.Node) int {
 	b.nodes[call-1].typ = b.typ(b.c.GetAnyType())
 	statement := b.node(18, n, ";")
 	b.nodes[statement-1].left = call
-	b.nodes[last-1].next = statement
+	if last == 0 {
+		b.nodes[block-1].children = statement
+	} else {
+		b.nodes[last-1].next = statement
+	}
 	return block
 }
