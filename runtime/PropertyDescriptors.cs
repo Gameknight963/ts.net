@@ -6,7 +6,7 @@ public abstract partial class TsObject
     internal virtual object OwnPropertyDescriptor(string key)
     {
         if (!HasOwn(key)) return Js.Undefined;
-        if (IsModuleNamespace) return Js.DataDescriptor(Get(key), true, true, false);
+        if (IsModuleNamespace) return Js.DataDescriptor(Get(key), !Js.IsSymbolKey(key), !Js.IsSymbolKey(key), false);
         bool enumerable = ForInEnumerable(key), configurable = OwnPropertyConfigurable(key);
         if (TryOwnAccessor(key, out var accessor))
             return Js.AccessorDescriptor(accessor.Getter, accessor.Setter, enumerable, configurable);
