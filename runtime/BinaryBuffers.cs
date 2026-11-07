@@ -39,10 +39,13 @@ public static partial class Js
                 int size = source.Bytes.Length;
                 int start = BufferSliceIndex(FunctionArgument(args, 0), size);
                 int end = args.Length < 2 || IsUndefined(args[1]) ? size : BufferSliceIndex(args[1], size);
-                var result = new BinaryBuffer(Math.Max(end - start, 0));
-                source.Bytes.AsSpan(start, result.Bytes.Length).CopyTo(result.Bytes);
+                int length = Math.Max(end - start, 0);
+                var result = BufferSpeciesCreate(source, length);
+                source.Bytes.AsSpan(start, length).CopyTo(result.Bytes);
                 return result;
             }));
+            string speciesKey = PropertyKey(SpeciesSymbol); var speciesGetter = new ConstructorSpeciesGetter();
+            Member(speciesKey, Undefined); DefineAccessor(speciesKey, speciesGetter, 1); speciesGetter.InferPropertyName("get [Symbol.species]");
             Member("isView", new JsFunction((FunctionBody)(static args => BoxBoolean(FunctionArgument(args, 0) is BinaryView or TypedArrayValue)), null, "isView", 1));
         }
         public override object Construct(object[] args)
