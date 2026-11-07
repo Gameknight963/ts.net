@@ -43,12 +43,13 @@ public static partial class Js
     static class ErrorStringMethod { internal static readonly JsFunction Value = new ErrorStringFunction(); }
     public static object GetErrorToString() => ErrorStringMethod.Value;
     static string ErrorStringValue(object receiver) => receiver is TsObject value ? ErrorText(value) : throw new InvalidOperationException("Error toString requires an object");
-    sealed class ErrorConstructor : JsFunction
+    sealed class ErrorConstructor : NativeNamespaceFunction
     {
         readonly string family;
-        internal ErrorConstructor(string name, ErrorConstructor parent) : base((FunctionBody)(arguments => NewError(name, arguments)), null, name, name == "AggregateError" ? 2 : 1)
+        internal ErrorConstructor(string name, ErrorConstructor parent) : base(name, (FunctionBody)(arguments => NewError(name, arguments)), name == "AggregateError" ? 2 : 1)
         {
             family = name;
+            if (parent is null) Member("isError", new JsFunction((FunctionBody)(static args => BoxBoolean(FunctionArgument(args, 0) is JsCaughtError)), null, "isError", 1));
             var prototype = new JsClassInstance { ParentPrototype = parent is null ? DefaultClassObjectPrototype : (TsObject)parent.Get("prototype") };
             prototype.DefineMethod("constructor", this);
             prototype.DefineMethod("name", name);
