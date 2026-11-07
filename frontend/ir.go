@@ -104,6 +104,10 @@ func (b *irBuilder) text(s string) int {
 	return id
 }
 func (b *irBuilder) typ(t *checker.Type) int {
+	if t != nil && t.Symbol() != nil && t.Symbol().Name == "globalThis" && len(t.Symbol().Declarations) == 0 {
+		return b.typ(b.c.GetAnyType())
+	}
+
 	if t == nil {
 		t = b.c.GetAnyType()
 	}
@@ -456,7 +460,10 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindThisKeyword:
 		if !b.thisScope {
 			if b.file.ExternalModuleIndicator == nil {
-				b.unsupported(n)
+				id = b.node(66, n, "globalThis")
+				b.nodes[id-1].name = b.text("globalThis")
+				b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
+				break
 			}
 			id = b.node(20, n, "undefined")
 			b.nodes[id-1].typ = b.typ(b.c.GetUndefinedType())
@@ -563,6 +570,12 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindTrueKeyword, ast.KindFalseKeyword:
 		id = b.node(2, n, map[bool]string{true: "true", false: "false"}[n.Kind == ast.KindTrueKeyword])
 	case ast.KindIdentifier:
+		if symbol := b.c.GetSymbolAtLocation(n); n.Text() == "globalThis" && symbol != nil && len(symbol.Declarations) == 0 {
+			id = b.node(66, n, "globalThis")
+			b.nodes[id-1].name = b.text("globalThis")
+			b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
+			break
+		}
 		if b.c.GetSymbolAtLocation(n) == b.c.GetArgumentsSymbol() {
 			b.argumentsUsed = true
 			id = b.node(69, n, "arguments")
