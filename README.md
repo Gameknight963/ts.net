@@ -143,15 +143,28 @@ Promises, measured on 2026-11-06:
 
 These include promise/chain construction and all queued handlers, excluding startup and compilation. The for-await input array is prepared before timing. Warmup, fresh-process counts and .NET settings match the array-method measurements above; every chain returned 10,000, the 10K-promise result summed to 49,995,000, and the async-call result summed to 500,500. The plain and for-await loop checksums were 499,500; the try/finally and rare-await loops returned 500,500 and 4,999,950,000 respectively.
 
-Compilation times:
+Regression check after BigInt support, measured on 2026-11-07 ([38760ba](https://github.com/Gameknight963/ts.net/commit/38760ba39d9647602c255fbffaa3b01a14ae7d54) against [b8e2f28](https://github.com/Gameknight963/ts.net/commit/b8e2f28aed78af458e7ec080fea08dba7c989f73), before BigInt support):
+
+| Workload | Before BigInt | Current | Node |
+|---|---|---|---|
+| Numeric loop, 20M iterations | 19.20 ms | 18.96 ms | 74.79 ms |
+| Typed-object loop, 500K iterations | 0.52 ms | 0.35 ms | 0.65 ms |
+| `any` property loop, 350K iterations | 0.25 ms | 0.25 ms | 0.43 ms |
+| Object valueOf, 1M numeric conversions | 120.54 ms | 121.66 ms | 23.46 ms |
+
+The same source ran in five fresh processes per engine, with at least 100 warmup calls and 500 ms of warmup; these are medians of 35 timed kernel samples. Startup and compilation are excluded, results matched, and .NET used `DOTNET_TieredCompilation=0`. Raw timings and checksums are under `artifacts/benchmarks/bigint-guard-after-2026-11-07`; allocation measurements are under `artifacts/bigint-dispatch-allocation`.
+
+The object-conversion loop returned near its pre-BigInt time and now allocates 48 bytes per iteration, down from 192 during the regression. It is still about five times slower than Node here.
+
+Compilation times, measured on 2026-11-07 (medians of seven fresh compiler processes with warm filesystem caches):
 
 | Source | tsnetc | tsc |
 |---|---|---|
-| Small numeric benchmark | 497.09 ms | 338.65 ms |
-| 5,000 variables | 678.81 ms | 375.20 ms |
+| Small numeric benchmark | 519.18 ms | 340.84 ms |
+| 5,000 variables | 726.64 ms | 388.73 ms |
 
 The packed copyWithin result is encouraging; [V8?s published per-property implementation](https://chromium.googlesource.com/v8/v8/+/refs/heads/main/src/builtins/array-copywithin.tq) is consistent with the large gap against our guarded bulk copy. Split and JSON parsing are about twice as slow as Node; serialization is about thirteen times slower, and Map, joins, callbacks, object copies and Promise workloads also need substantial work. These microbenchmarks do not establish overall application performance.
 
-The compiler used to be written in [crust](https://github.com/Gameknight963/crust), my C-like memory safe language. It was ported to C# for various reasons. The point is, compilation is slower after the C# port. The larger source takes 1.8x as long as Microsoft’s Go-based TypeScript compiler. It used to be more or less on par.
+The compiler used to be written in [crust](https://github.com/Gameknight963/crust), my C-like memory safe language. It was ported to C# for various reasons. The point is, compilation is slower after the C# port. The larger source takes 1.9x as long as Microsoft’s Go-based TypeScript compiler. It used to be more or less on par.
 
 Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
