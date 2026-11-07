@@ -159,6 +159,7 @@ public static partial class Js
             Member("escape", new JsFunction((FunctionBody)(static args => EscapeRegExp(FunctionArgument(args, 0))), null, "escape", 1));
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
             UseObjectPrototype(prototype); prototype.DefineMethod("constructor", this);
+            DefineRegExpProtocols(prototype);
             foreach (bool test in new[] { false, true })
                 prototype.DefineMethod(test ? "test" : "exec", new CollectionMethod(test ? "test" : "exec", 1, (receiver, args) => receiver is JsRegExp regex ? RegExpMatch(regex, FunctionArgument(args, 0), test) : throw new InvalidOperationException("RegExp method requires a regular expression")));
             prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) =>

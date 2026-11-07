@@ -9,6 +9,11 @@ public static partial class Js
         if (IsNullish(pattern)) return false;
         object method = Get(pattern, PropertyKey(symbol));
         if (IsNullish(method)) return false;
+        if (method is RegExpProtocolFunction native)
+        {
+            result = native.Execute(pattern, receiver, second);
+            return true;
+        }
         if (method is not JsFunction function) throw new InvalidOperationException("String Symbol method is not callable");
         result = function.InvokeWithReceiver(pattern, twoArguments ? new[] { receiver, second } : new[] { receiver });
         return true;

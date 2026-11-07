@@ -10,25 +10,30 @@ public static partial class Js
             if (TryStringProtocol(receiver, pattern, search ? SearchSymbol : MatchSymbol, Undefined, false, out var custom)) return custom;
             string text = AtString(receiver);
             var regex = pattern as JsRegExp ?? CreateRegExp(pattern, Undefined);
-            bool sticky = regex.Flags.Contains('y');
-            if (search)
-            {
-                // Searching starts at zero without changing the caller's lastIndex.
-                var match = regex.Engine.Match(text);
-                return match.Success && (!sticky || match.Index == 0) ? (double)match.Index : -1d;
-            }
-            if (!regex.Flags.Contains('g')) return RegExpMatch(regex, text, false);
-            regex.LastIndex = 0d;
-            var result = new JsArray(0);
-            int position = 0;
-            while (position <= text.Length)
-            {
-                var match = regex.Engine.Match(text, position);
-                if (!match.Success || sticky && match.Index != position) break;
-                result.Append(match.Value);
-                position = match.Index + Math.Max(1, match.Length);
-            }
-            return result.Length() == 0 ? null : result;
+            return MatchRegExp(text, regex, search);
         }
     }
+    static object MatchRegExp(string text, JsRegExp regex, bool search)
+    {
+        bool sticky = regex.Flags.Contains('y');
+        if (search)
+        {
+            // Searching starts at zero without changing the caller's lastIndex.
+            var match = regex.Engine.Match(text);
+            return match.Success && (!sticky || match.Index == 0) ? (double)match.Index : -1d;
+        }
+        if (!regex.Flags.Contains('g')) return RegExpMatch(regex, text, false);
+        regex.LastIndex = 0d;
+        var result = new JsArray(0);
+        int position = 0;
+        while (position <= text.Length)
+        {
+            var match = regex.Engine.Match(text, position);
+            if (!match.Success || sticky && match.Index != position) break;
+            result.Append(match.Value);
+            position = match.Index + Math.Max(1, match.Length);
+        }
+        return result.Length() == 0 ? null : result;
+    }
+
 }

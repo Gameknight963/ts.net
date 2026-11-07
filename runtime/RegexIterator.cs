@@ -9,6 +9,7 @@ internal sealed class JsRegexIterator(JsRegExp regex, string text) : TsObject
         if (Done) return Js.IteratorResult(Js.Undefined, true);
         object value = Js.RegExpMatch(regex, text, false);
         if (value == null) { Done = true; regex = null; text = null; return Js.IteratorResult(Js.Undefined, true); }
+        if (!regex.Flags.Contains('g')) Done = true;
         if (((string)Js.Get(value, "0")).Length == 0) regex.LastIndex = Js.Number(regex.LastIndex) + 1;
         return Js.IteratorResult(value, false);
     }
@@ -40,16 +41,15 @@ public static partial class Js
             if (pattern is JsRegExp checkedRegex && !checkedRegex.Flags.Contains('g')) throw new InvalidOperationException("matchAll requires a global regular expression");
             if (TryStringProtocol(receiver, pattern, MatchAllSymbol, Undefined, false, out var custom)) return custom;
             string text = AtString(receiver);
-            JsRegExp copy;
-            if (pattern is JsRegExp regex)
-            {
-                if (!regex.Flags.Contains('g')) throw new InvalidOperationException("matchAll requires a global regular expression");
-                copy = new JsRegExp(regex.Pattern, regex.Flags, regex.Engine, regex.NamedGroups);
-                double position = Number(regex.LastIndex);
-                copy.LastIndex = double.IsNaN(position) || position <= 0 ? 0d : Math.Min(Math.Truncate(position), 9007199254740991d);
-            }
-            else copy = CreateRegExp(pattern, "g");
-            return new JsRegexIterator(copy, text);
+            return MatchAllRegExp(text, pattern as JsRegExp ?? CreateRegExp(pattern, "g"));
         }
     }
+    static object MatchAllRegExp(string text, JsRegExp regex)
+    {
+        var copy = new JsRegExp(regex.Pattern, regex.Flags, regex.Engine, regex.NamedGroups);
+        double position = Number(regex.LastIndex);
+        copy.LastIndex = double.IsNaN(position) || position <= 0 ? 0d : Math.Min(Math.Truncate(position), 9007199254740991d);
+        return new JsRegexIterator(copy, text);
+    }
+
 }
