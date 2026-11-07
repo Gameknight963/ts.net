@@ -1196,7 +1196,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		}
 		if s.Initializer.Kind == ast.KindVariableDeclarationList {
 			flags := ast.GetCombinedNodeFlags(s.Initializer)
-			if flags&ast.NodeFlagsUsing != 0 {
+			if flags&ast.NodeFlagsAwaitUsing == ast.NodeFlagsAwaitUsing {
 				b.unsupported(n)
 			}
 			if flags&ast.NodeFlagsBlockScoped != 0 {
@@ -1206,7 +1206,11 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.left = b.lower(s.Initializer)
 		row.right = b.lower(s.Expression)
 		b.beginControl(n, id, true)
-		row.fourth = b.lower(s.Statement)
+		if s.Initializer.Kind == ast.KindVariableDeclarationList && ast.GetCombinedNodeFlags(s.Initializer)&ast.NodeFlagsUsing != 0 {
+			row.fourth = b.lowerUsingIteration(n, row.left)
+		} else {
+			row.fourth = b.lower(s.Statement)
+		}
 		b.endControl()
 	case ast.KindExpressionStatement:
 		id = b.node(18, n, ";")

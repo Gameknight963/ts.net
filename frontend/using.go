@@ -58,6 +58,11 @@ func (b *irBuilder) registerUsingBinding(n *ast.Node, row *irNode) {
 		b.unsupported(n)
 	}
 	parent := n.Parent
+	// Iteration binds the value before entering its per-iteration cleanup scope.
+	if parent != nil && parent.Parent != nil && parent.Parent.Kind == ast.KindForOfStatement {
+		row.constant = 1
+		return
+	}
 	if parent == nil || parent.Parent == nil || b.usingStack == 0 {
 		b.unsupported(n)
 	}
@@ -110,4 +115,19 @@ func (b *irBuilder) lowerUsingFor(n *ast.Node) int {
 	defer func() { b.usingStack, b.usingFor = previousStack, previousLoop }()
 	body := b.lower(n)
 	return b.usingBlock(n, b.wrapUsing(n, b.usingStack, body))
+}
+
+func (b *irBuilder) lowerUsingIteration(n *ast.Node, binding int) int {
+	previous := b.usingStack
+	b.usingStack = b.newUsingStack()
+	defer func() { b.usingStack = previous }()
+	if binding == 0 || b.nodes[binding-1].kind != 13 || b.nodes[binding-1].symbol == 0 {
+		b.unsupported(n)
+	}
+	// The loop has already assigned this iteration's value to the binding.
+	reference := b.usingReference(n, b.nodes[binding-1].symbol)
+	add := b.usingStatement(n, b.usingCall(n, "__usingAdd", b.usingReference(n, b.usingStack), reference))
+	body := b.lower(n.AsForInOrOfStatement().Statement)
+	b.nodes[add-1].next = body
+	return b.usingBlock(n, b.wrapUsing(n, b.usingStack, add))
 }
