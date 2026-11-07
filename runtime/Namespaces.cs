@@ -6,7 +6,20 @@ public static partial class Js
 {
     sealed class ConsoleNamespace : TsObject
     {
-        internal ConsoleNamespace() { DefineOwn("log", new JsFunction((FunctionBody)(static args => { Log(args); return Undefined; }), null, "log", 0)); }
+        internal ConsoleNamespace()
+        {
+            foreach (string name in new[] { "log", "info", "debug" })
+                DefineOwn(name, new JsFunction((FunctionBody)(static args => { Log(args); return Undefined; }), null, name, 0));
+            foreach (string name in new[] { "warn", "error" })
+                DefineOwn(name, new JsFunction((FunctionBody)(static args => { Console.Error.WriteLine(ConsoleMessage(args)); return Undefined; }), null, name, 0));
+            DefineOwn("assert", new JsFunction((FunctionBody)(static args => {
+                if (!Truthy(FunctionArgument(args, 0))) {
+                    string message = args.Length > 1 ? ": " + ConsoleMessage(args[1..]) : "";
+                    Console.Error.WriteLine("Assertion failed" + message);
+                }
+                return Undefined;
+            }), null, "assert", 0));
+        }
     }
     sealed class PerformanceNamespace : TsObject
     {

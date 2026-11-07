@@ -855,7 +855,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		own := b.isBuiltinHasOwn(call.Expression)
 		if call.Expression.Kind == ast.KindPropertyAccessExpression && call.Expression.Expression().Kind == ast.KindIdentifier &&
-			(own || b.isBuiltinIdentifier(call.Expression.Expression()) && (call.Expression.Expression().Text() == "console" || call.Expression.Expression().Text() == "performance")) {
+			(own || b.isBuiltinIdentifier(call.Expression.Expression()) && (call.Expression.Expression().Text() == "console" && call.Expression.Name().Text() == "log" || call.Expression.Expression().Text() == "performance" && call.Expression.Name().Text() == "now")) {
 			owner := b.node(3, call.Expression.Expression(), call.Expression.Expression().Text())
 			b.nodes[owner-1].name = b.text(call.Expression.Expression().Text())
 			property := b.node(5, call.Expression, call.Expression.Name().Text())

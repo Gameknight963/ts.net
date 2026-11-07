@@ -475,8 +475,8 @@ public static partial class Js
         value is BigInteger integer ? integer.ToString(CultureInfo.InvariantCulture) + "n" :
         value is double n && n == 0 && BitConverter.DoubleToInt64Bits(n) < 0 ? "-0" : Text(value);
 
-    public static void Log(params object[] values) =>
-        Console.WriteLine(string.Join(" ", Array.ConvertAll(values, Inspect)));
+    static string ConsoleMessage(object[] values) => string.Join(" ", Array.ConvertAll(values, Inspect));
+    public static void Log(params object[] values) => Console.WriteLine(ConsoleMessage(values));
 
     public static void Discard(object value) { }
 }
