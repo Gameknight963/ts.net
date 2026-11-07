@@ -1,0 +1,3 @@
+for(const value of [0,-1,951827696789,1710054000000,1730613600000,1893456000000,NaN]){const date=new Date(value);console.log(date.toDateString(),date.toTimeString(),date.toString(),String(date));console.log("combine",date.toString()===(Number.isNaN(value)?"Invalid Date":date.toDateString()+" "+date.toTimeString()));}
+for(const method of [Date.prototype.toDateString,Date.prototype.toTimeString,Date.prototype.toString]){console.log("metadata",method.name,method.length);try{method.call({});}catch(error){console.log("invalid",(error as Error).name);}}
+const date=new Date(0);console.log("coercion",(date as any)+1===date.toString()+"1",(date as any)==date.toString(),Number(date));

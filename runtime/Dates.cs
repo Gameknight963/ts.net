@@ -41,7 +41,7 @@ public static partial class Js
     }
     sealed class DateConstructor : NativeNamespaceFunction
     {
-        internal DateConstructor() : base("Date", static _ => DateTimeOffset.UtcNow.ToString("r", CultureInfo.InvariantCulture), 7)
+        internal DateConstructor() : base("Date", static _ => LocalDateText(new JsDate(DateNow()), 2), 7)
         {
             Member("now", new JsFunction((FunctionBody)(static _ => DateNow()), (RawNumberFunction0)DateNow, "now", 0));
             Member("UTC", new JsFunction((FunctionBody)(static args => DateFromParts(args, true)), null, "UTC", 7));
@@ -55,7 +55,9 @@ public static partial class Js
             prototype.DefineMethod("valueOf", new CollectionMethod("valueOf", 0, (receiver, _) => RequireDate(receiver).Timestamp));
             prototype.DefineMethod("setTime", new CollectionMethod("setTime", 1, (receiver, args) => RequireDate(receiver).Timestamp = ClipDate(Number(FunctionArgument(args, 0)))));
             prototype.DefineMethod("toISOString", new CollectionMethod("toISOString", 0, (receiver, _) => DateIso(receiver)));
-            prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) => DateText(receiver)));
+            prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) => LocalDateText(receiver, 2)));
+            prototype.DefineMethod("toDateString", new CollectionMethod("toDateString", 0, (receiver, _) => LocalDateText(receiver, 0)));
+            prototype.DefineMethod("toTimeString", new CollectionMethod("toTimeString", 0, (receiver, _) => LocalDateText(receiver, 1)));
             var utc = new CollectionMethod("toUTCString", 0, (receiver, _) => DateText(receiver)); prototype.DefineMethod("toUTCString", utc); prototype.DefineMethod("toGMTString", utc);
             prototype.DefineMethod("toJSON", new CollectionMethod("toJSON", 1, (receiver, _) =>
             {
