@@ -22,3 +22,9 @@ for (const operation of [() => 1n / 0n, () => 1n % 0n, () => 2n ** -1n, () => (1
 console.log("large power", 0n ** 999999999999999999n, 1n ** 999999999999999999n, (-1n) ** 999999999999999999n);
 const derived = dynamic * 3n; console.log("inferred any", derived);
 const other: any = 3n; const inferred = dynamic * other; console.log("both any", inferred);
+let mixedEffects = "";
+const mixedOperand: any = {[Symbol.toPrimitive](hint: string) {mixedEffects += "P"; return 4n; }};
+function knownNumber(): number {mixedEffects += "N"; return 2;}
+try {mixedOperand * knownNumber();} catch (error) {console.log("mixed order", mixedEffects, (error as Error).name);}
+mixedEffects = "";
+try {knownNumber() * mixedOperand;} catch (error) {console.log("reverse mixed order", mixedEffects, (error as Error).name);}

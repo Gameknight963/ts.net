@@ -118,10 +118,14 @@ void il_choose_tagged_arrays(Compiler c, IlBackend b)
             int op = get_token(n.token, c).text;
             bool numericOperator = is_text(op, text_plus, c) || is_text(op, text_minus, c) || is_text(op, text_star, c) ||
                 is_text(op, text_slash, c) || is_text(op, text_modulo, c) || is_text(op, text_power, c) || il_bitwise_code(op, c) != 0;
-            if (n.kind == NodeKind.Binary && numericOperator &&
-                get_type(get_node(n.left, c).type, c).kind == TypeKind.Number && get_type(get_node(n.right, c).type, c).kind == TypeKind.Number)
+            if (n.kind == NodeKind.Binary && numericOperator)
             {
-                set_node_type(i, get_node(n.left, c).type, c);
+                bool leftNumber = get_type(get_node(n.left, c).type, c).kind == TypeKind.Number;
+                bool rightNumber = get_type(get_node(n.right, c).type, c).kind == TypeKind.Number;
+                // Mixed bigint/number arithmetic throws. A known number operand
+                // therefore proves a numeric result, except for string addition.
+                if (leftNumber && rightNumber || !is_text(op, text_plus, c) && (leftNumber || rightNumber))
+                    set_node_type(i, get_node(leftNumber ? n.left : n.right, c).type, c);
             }
             if (n.kind == NodeKind.Unary && (is_text(op, text_plus, c) || is_text(op, text_minus, c) || is_text(op, text_bit_not, c)) &&
                 get_type(get_node(n.left, c).type, c).kind == TypeKind.Number)
