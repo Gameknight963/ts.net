@@ -35,8 +35,9 @@ public static partial class Js
                 continue;
             }
             if (ch == '[') inClass = true; else if (ch == ']') inClass = false;
-            if (!inClass && ch == '(' && i + 2 < pattern.Length && pattern[i + 1] == '?' && pattern[i + 2] is not (':' or '=' or '!'))
-                throw new NotSupportedException("Named, lookbehind and engine-specific regex groups are not supported");
+            bool lookbehind = i + 3 < pattern.Length && pattern[i + 2] == '<' && pattern[i + 3] is '=' or '!';
+            if (!inClass && ch == '(' && i + 2 < pattern.Length && pattern[i + 1] == '?' && pattern[i + 2] is not (':' or '=' or '!') && !lookbehind)
+                throw new NotSupportedException("Named and engine-specific regex groups are not supported");
         }
         if (dotAll) pattern = "(?s:" + pattern + ")";
         lock (regexEngines)
