@@ -39,7 +39,7 @@ internal sealed class JsCreatedObject : JsDynamicObject
         }
         return result;
     }
-    public override double OwnKeyCount() => ((JsArray)OwnKeys()).Length();
+    public override double OwnKeyCount() => Js.StringPropertyKeyCount(OwnKeys());
     public override object CloneForSpread()
     {
         var result = new JsDynamicObject(); Js.ObjectSpread(result, this); return result;

@@ -121,7 +121,8 @@ public static partial class Js
         result.Member("is", new JsFunction((FunctionBody)(static args => BoxBoolean(SameValue(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "is", 2));
         result.Member("getOwnPropertyDescriptor", new JsFunction((FunctionBody)(static args => ObjectOwnDescriptor(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "getOwnPropertyDescriptor", 2));
         result.Member("getOwnPropertyDescriptors", new JsFunction((FunctionBody)(static args => ObjectOwnDescriptors(FunctionArgument(args, 0))), null, "getOwnPropertyDescriptors", 1));
-        result.Member("getOwnPropertyNames", new JsFunction((FunctionBody)(static args => ToObject(FunctionArgument(args, 0)).OwnPropertyNames()), null, "getOwnPropertyNames", 1));
+        result.Member("getOwnPropertySymbols", new JsFunction((FunctionBody)(static args => SymbolPropertyKeys(ToObject(FunctionArgument(args, 0)).OwnPropertyNames())), null, "getOwnPropertySymbols", 1));
+        result.Member("getOwnPropertyNames", new JsFunction((FunctionBody)(static args => StringPropertyKeys(ToObject(FunctionArgument(args, 0)).OwnPropertyNames())), null, "getOwnPropertyNames", 1));
         result.Member("keys", GetObjectKeysFunction()); result.Member("values", GetObjectValuesFunction()); result.Member("entries", GetObjectEntriesFunction());
         result.Member("hasOwn", new JsFunction((FunctionBody)(static args => BoxBoolean(HasOwn(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "hasOwn", 2));
         result.Member("getPrototypeOf", new JsFunction((FunctionBody)(static args => ToObject(FunctionArgument(args, 0)).PropertyPrototype), null, "getPrototypeOf", 1));

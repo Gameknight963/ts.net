@@ -9,7 +9,7 @@ public static partial class Js
     public static string PropertyKey(object value)
     {
         if (value is TsObject obj) value = OrdinaryPrimitive(obj, true);
-        if (value is JsSymbol) throw new NotSupportedException("Symbol property keys are not supported yet");
+        if (value is JsSymbol symbol) return SymbolPropertyKey(symbol);
         return value is double number ? NumberKeyString(number) : Text(value);
     }
 

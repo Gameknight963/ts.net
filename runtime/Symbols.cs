@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 internal sealed class JsSymbol(object description, string registryKey = null)
 {
+    internal string PropertyKey;
     internal readonly object Description = description;
     internal readonly string RegistryKey = registryKey;
     internal string Display => "Symbol(" + (Js.IsUndefined(Description) ? "" : (string)Description) + ")";

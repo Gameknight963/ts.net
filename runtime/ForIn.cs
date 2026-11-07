@@ -48,7 +48,7 @@ internal sealed class JsForIn
             while (position < keys.Length())
             {
                 string key = (string)keys.ElementAt(position++);
-                if (!current.HasOwn(key) || !visited.Add(key)) continue;
+                if (Js.IsSymbolKey(key) || !current.HasOwn(key) || !visited.Add(key)) continue;
                 if (current.ForInEnumerable(key)) return key;
             }
             current = current.PropertyPrototype; keys = null;

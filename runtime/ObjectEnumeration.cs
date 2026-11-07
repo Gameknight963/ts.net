@@ -22,7 +22,7 @@ public static partial class Js
         var values = new object[(int)keys.Length()];int count=0;
         for (uint i = 0; i < values.Length; i++) {
             string key = (string)keys.ElementAt(i);
-            if (!obj.HasOwn(key)) continue;
+            if (IsSymbolKey(key) || !obj.HasOwn(key)) continue;
             object value = obj.Get(key);
             values[count++] = entries ? new JsArray(new object[] {key, value}) : value;
         }
@@ -42,7 +42,7 @@ public static partial class Js
         var keys = (JsArray)obj.OwnKeys();result.ReservePushes(keys.Length());
         for (uint i = 0; i < keys.Length(); i++) {
             string key = (string)keys.ElementAt(i);
-            if (obj.HasOwn(key)) result.PushNumber(Cast<double?>(obj.Get(key), "Object value is not a number"));
+            if (!IsSymbolKey(key) && obj.HasOwn(key)) result.PushNumber(Cast<double?>(obj.Get(key), "Object value is not a number"));
         }
         return result;
     }

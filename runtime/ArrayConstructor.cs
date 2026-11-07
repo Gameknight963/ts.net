@@ -21,7 +21,7 @@ public static partial class Js
         internal override bool ForInEnumerable(string key) => !hidden.Contains(key) && base.ForInEnumerable(key);
         internal override object ForInOwnKeys() => ForInNames(base.OwnKeys(), "length");
         internal override object OwnPropertyNames() => MergeOwnNames(this, base.OwnKeys(), "length");
-        public override double OwnKeyCount() => ((JsArray)OwnKeys()).Length();
+        public override double OwnKeyCount() => Js.StringPropertyKeyCount(OwnKeys());
         public override object OwnKeys()
         {
             var keys = (JsArray)base.OwnKeys(); var result = new JsArray(0);

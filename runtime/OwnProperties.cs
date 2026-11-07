@@ -9,7 +9,7 @@ sealed class OwnProperties
 {
     string key0, key1, key2, key3;
     object value0, value1, value2, value3;
-    int inlineCount, version;
+    int inlineCount, version, symbolCount;
     Dictionary<string, object> tail;
     List<string> tailOrder;
     public OwnProperties() { }
@@ -17,11 +17,12 @@ sealed class OwnProperties
     {
         key0=source.key0;key1=source.key1;key2=source.key2;key3=source.key3;
         value0=source.value0;value1=source.value1;value2=source.value2;value3=source.value3;
-        inlineCount=source.inlineCount;version=source.version;
+        inlineCount=source.inlineCount;version=source.version;symbolCount=source.symbolCount;
         if (source.tail != null) tail = new Dictionary<string, object>(source.tail);
         if (source.tailOrder != null) tailOrder = new List<string>(source.tailOrder);
     }
     public int Count => inlineCount + (tail?.Count ?? 0);
+    public int StringCount => Count - symbolCount;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(string key, out object value)
     {
@@ -49,12 +50,13 @@ sealed class OwnProperties
                     case 2: key2=key;value2=value;break;
                     default: key3=key;value3=value;break;
                 }
+                if (Js.IsSymbolKey(key)) symbolCount++;
                 version++;
             } else {
                 tail ??= new Dictionary<string, object>();
                 ref object slot = ref CollectionsMarshal.GetValueRefOrAddDefault(tail, key, out bool present);
                 slot=value;
-                if (!present) { tailOrder?.Add(key); version++; }
+                if (!present) { if (Js.IsSymbolKey(key)) symbolCount++; tailOrder?.Add(key); version++; }
             }
         }
     }
@@ -80,13 +82,14 @@ sealed class OwnProperties
                 string first=tailOrder[0];InlineSet(inlineCount++,first,tail[first]);
                 tail.Remove(first);tailOrder.RemoveAt(0);
             }
+            if (Js.IsSymbolKey(key)) symbolCount--;
             version++;return true;
         }
         if(tail is null || !tail.ContainsKey(key))return false;
         // Dictionary slots can be reused after removal. Keep explicit order only
         // once deletion makes its enumeration order unsuitable.
         tailOrder ??= new List<string>(tail.Keys);
-        tail.Remove(key);tailOrder.Remove(key);version++;return true;
+        tail.Remove(key);tailOrder.Remove(key);if (Js.IsSymbolKey(key)) symbolCount--;version++;return true;
     }
     string InlineKey(int index) => index switch {0=>key0,1=>key1,2=>key2,_=>key3};
     public KeyCollection Keys => new KeyCollection(this);

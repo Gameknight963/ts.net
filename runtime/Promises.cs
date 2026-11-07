@@ -169,7 +169,7 @@ public static partial class Js
             for (uint i = 0; i < keys.Length(); i++) { string key = (string)keys.ElementAt(i); if (!hidden.Contains(key)) result.Append(key); }
             return result;
         }
-        public override double OwnKeyCount() => ((JsArray)OwnKeys()).Length();
+        public override double OwnKeyCount() => Js.StringPropertyKeyCount(OwnKeys());
     }
     static JsPromise CreatePromise(object[] arguments, TsObject prototype = null)
     {

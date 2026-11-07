@@ -31,7 +31,7 @@ public static partial class Js
         });
         Method("deleteProperty", 2, static arguments => BoxBoolean(ReflectTarget(FunctionArgument(arguments, 0)).DeleteOwn(PropertyKey(FunctionArgument(arguments, 1)))));
         Method("has", 2, static arguments => BoxBoolean(ReflectTarget(FunctionArgument(arguments, 0)).HasInProperty(PropertyKey(FunctionArgument(arguments, 1)))));
-        Method("ownKeys", 1, static arguments => ReflectTarget(FunctionArgument(arguments, 0)).OwnPropertyNames());
+        Method("ownKeys", 1, static arguments => ReflectPropertyKeys(ReflectTarget(FunctionArgument(arguments, 0)).OwnPropertyNames()));
         Method("getPrototypeOf", 1, static arguments => ReflectTarget(FunctionArgument(arguments, 0)).PropertyPrototype);
         Method("setPrototypeOf", 2, static arguments =>
         {

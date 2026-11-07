@@ -5,10 +5,10 @@ using System.Globalization;
 public abstract partial class TsObject
 {
     public virtual object OwnKeys() => IsModuleNamespace ? ModuleNamespaceKeys() : KeysFromFixed(Array.Empty<object>());
-    protected double ExtraKeyCount => extra?.Count ?? 0;
+    protected double ExtraKeyCount => extra?.StringCount ?? 0;
     // Unknown subclasses retain their enumeration behavior; generated shapes
     // and array representations override this with allocation-free counts.
-    public virtual double OwnKeyCount() => ((JsArray)OwnKeys()).Length();
+    public virtual double OwnKeyCount() => Js.StringPropertyKeyCount(OwnKeys());
     public double KeyCountWithFixed(int count) => count + ExtraKeyCount;
     // Generated callers prove that none of the fixed names are array indices.
     // Extras may introduce indices, so they still need the general ordering path.
@@ -105,9 +105,11 @@ public static partial class Js
 {
     internal static object OrderOwnKeys(object[] names)
     {
-        bool text = false, unordered = false, haveIndex = false;
+        bool text = false, unordered = false, haveIndex = false, symbol = false;
         uint previous = 0;
         foreach (string name in names) {
+            if (IsSymbolKey(name)) { symbol = true; continue; }
+            if (symbol) unordered = true;
             if (JsArray.Index(name, out uint index)) {
                 if (text || haveIndex && index < previous) unordered = true;
                 haveIndex = true; previous = index;
@@ -116,19 +118,22 @@ public static partial class Js
         if (!unordered) return new JsArray(names);
         var indices = new List<KeyValuePair<uint, object>>();
         var strings = new List<object>();
+        var symbols = new List<object>();
         foreach (string name in names)
-            if (JsArray.Index(name, out uint index)) indices.Add(new KeyValuePair<uint, object>(index, name));
+            if (IsSymbolKey(name)) symbols.Add(name);
+            else if (JsArray.Index(name, out uint index)) indices.Add(new KeyValuePair<uint, object>(index, name));
             else strings.Add(name);
         indices.Sort(static (a, b) => a.Key.CompareTo(b.Key));
         int position = 0;
         foreach (var item in indices) names[position++] = item.Value;
         foreach (var name in strings) names[position++] = name;
+        foreach (var name in symbols) names[position++] = name;
         return new JsArray(names);
     }
     public static object ObjectKeys(object source)
     {
         if (source == null || ReferenceEquals(source, Undefined)) throw new InvalidOperationException("Cannot convert null or undefined to object");
-        if (source is TsObject value) return value.OwnKeys();
+        if (source is TsObject value) return StringPropertyKeys(value.OwnKeys());
         if (source is string text) {
             var names = new object[text.Length];
             for (int i = 0; i < names.Length; i++) names[i] = i.ToString(CultureInfo.InvariantCulture);

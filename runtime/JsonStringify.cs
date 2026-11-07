@@ -32,7 +32,7 @@ public static partial class Js
         {
             Value = value; Array = value is JsArray;
             if (Array) Length = IndexedLength(value);
-            else { Keys = propertyList ?? (JsArray)value.OwnKeys(); Length = (long)Keys.Length(); }
+            else { Keys = propertyList ?? StringPropertyKeys(value.OwnKeys()); Length = (long)Keys.Length(); }
         }
     }
     sealed class JsonWriter
