@@ -47,6 +47,7 @@ public static partial class Js
     {
         internal readonly CultureInfo culture;
         internal readonly int minimum, maximum, integerDigits;
+        internal readonly int roundingIncrement;
         internal readonly bool grouping;
         internal readonly object groupingOption;
         internal readonly string signDisplay;
@@ -58,7 +59,7 @@ public static partial class Js
         internal NumberLocaleSettings(object locales, object optionValue)
         {
             culture = CaseCulture(locales);
-            roundingMode = "halfExpand"; trailingZeroDisplay = "auto";
+            roundingIncrement = 1; roundingMode = "halfExpand"; trailingZeroDisplay = "auto";
             style = "decimal"; positivePattern = negativePattern = null;
             currency = null; currencyDisplay = "symbol"; currencySign = "standard";
             int currencyDigits = 2;
@@ -106,11 +107,20 @@ public static partial class Js
                 }
                 foreach (string key in new[] { "minimumSignificantDigits", "maximumSignificantDigits", "compactDisplay", "unit", "numberingSystem" })
                     if (!IsUndefined(options.Get(key))) throw new NotSupportedException("Number locale formatting option " + key + " is not supported");
-                foreach (var item in new[] { ("notation", "standard"), ("roundingPriority", "auto"), ("roundingIncrement", "1") })
+                foreach (var item in new[] { ("notation", "standard"), ("roundingPriority", "auto") })
                 {
                     object setting = options.Get(item.Item1);
                     if (!IsUndefined(setting) && StringValue(setting) != item.Item2)
                         throw new NotSupportedException("Number locale formatting option " + item.Item1 + " is not supported");
+                }
+                object increment = options.Get("roundingIncrement");
+                if (!IsUndefined(increment))
+                {
+                    double count = Number(increment);
+                    if (!double.IsFinite(count) || count < 1 || count > 5000) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid rounding increment");
+                    roundingIncrement = (int)Math.Floor(count);
+                    if (roundingIncrement is not (1 or 2 or 5 or 10 or 20 or 25 or 50 or 100 or 200 or 250 or 500 or 1000 or 2000 or 2500 or 5000))
+                        throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid rounding increment");
                 }
                 object requestedRounding = options.Get("roundingMode");
                 if (!IsUndefined(requestedRounding)) roundingMode = StringValue(requestedRounding);
@@ -147,6 +157,8 @@ public static partial class Js
                 maximum = DigitValue(maximumSetting, Math.Max(style == "currency" ? currencyDigits : style == "percent" ? 0 : 3, minimum));
                 if (minimum > maximum && IsUndefined(minimumSetting)) minimum = maximum;
                 if (minimum > maximum) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid digit count");
+                if (roundingIncrement != 1 && minimum != maximum)
+                    throw new ArgumentOutOfRangeException(nameof(optionValue), "Rounding increments require equal minimum and maximum fraction digits");
                 object group = options.Get("useGrouping");
                 if (!IsUndefined(group))
                 {
@@ -196,7 +208,7 @@ public static partial class Js
         string FiniteNumber(double value)
         {
             // Safe integers need no decimal rounding and retain native formatting.
-            if (style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
+            if (roundingIncrement == 1 && style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
             string raw = Math.Abs(value).ToString("R", CultureInfo.InvariantCulture);
             int split = raw.IndexOf('E');
             int exponent = split < 0 ? 0 : int.Parse(raw.AsSpan(split + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
@@ -205,21 +217,31 @@ public static partial class Js
             int scale = point < 0 ? 0 : coefficient.Length - point - 1;
             BigInteger digits = BigInteger.Parse(coefficient.Replace(".", ""), CultureInfo.InvariantCulture);
             int shift = exponent - scale + maximum + (style == "percent" ? 2 : 0);
+            digits = Quantize(digits, shift, double.IsNegative(value));
+            return QuantizedText(digits, double.IsNegative(value));
+        }
+        BigInteger Quantize(BigInteger digits, int shift, bool negative)
+        {
+            BigInteger denominator = roundingIncrement;
             if (shift >= 0) digits *= BigInteger.Pow(10, shift);
-            else
-            {
-                BigInteger denominator = BigInteger.Pow(10, -shift);
-                digits = BigInteger.DivRem(digits, denominator, out var remainder);
-                if (RoundUp(digits, remainder, denominator, double.IsNegative(value))) digits++;
-            }
+            else denominator *= BigInteger.Pow(10, -shift);
+            if (denominator.IsOne) return digits;
+            BigInteger quotient = BigInteger.DivRem(digits, denominator, out var remainder);
+            if (RoundUp(quotient, remainder, denominator, negative)) quotient++;
+            return quotient * roundingIncrement;
+        }
+        string QuantizedText(BigInteger digits, bool negative)
+        {
             BigInteger whole = BigInteger.DivRem(digits, BigInteger.Pow(10, maximum), out var fraction);
             string result = whole.ToString(grouping ? "N0" : "F0", culture);
             if (maximum != 0) result += culture.NumberFormat.NumberDecimalSeparator + fraction.ToString(CultureInfo.InvariantCulture).PadLeft(maximum, '0');
-            return double.IsNegative(value) ? culture.NumberFormat.NegativeSign + result : result;
+            return negative ? culture.NumberFormat.NegativeSign + result : result;
         }
         internal string Format<T>(T value, bool finite) where T : struct, IFormattable
         {
             string result = finite && value is double numberValue ? FiniteNumber(numberValue)
+                : roundingIncrement != 1 && value is BigInteger quantizedInteger
+                    ? QuantizedText(Quantize(BigInteger.Abs(quantizedInteger), maximum + (style == "percent" ? 2 : 0), quantizedInteger.Sign < 0), quantizedInteger.Sign < 0)
                 : style == "percent" && value is BigInteger integerValue ? (integerValue * 100).ToString(format, culture) : value.ToString(format, culture);
             if (finite && integerDigits > 1) result = PadLocaleInteger(result, integerDigits, grouping, culture.NumberFormat);
             if (signDisplay != "auto")

@@ -60,7 +60,7 @@ public static partial class Js
             result.DefineOwn("minimumFractionDigits", (double)settings.minimum); result.DefineOwn("maximumFractionDigits", (double)settings.maximum);
             result.DefineOwn("useGrouping", settings.groupingOption); result.DefineOwn("notation", "standard");
             result.DefineOwn("signDisplay", settings.signDisplay);
-            result.DefineOwn("roundingIncrement", 1d); result.DefineOwn("roundingMode", settings.roundingMode);
+            result.DefineOwn("roundingIncrement", (double)settings.roundingIncrement); result.DefineOwn("roundingMode", settings.roundingMode);
             result.DefineOwn("roundingPriority", "auto"); result.DefineOwn("trailingZeroDisplay", settings.trailingZeroDisplay);
             return result;
         }
