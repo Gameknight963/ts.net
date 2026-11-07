@@ -63,7 +63,14 @@ public static partial class Js
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), subtle ? "SubtleCrypto" : "Crypto");
-            if (subtle) prototype.DefineOwn("digest", new CollectionMethod("digest", 2, CryptoDigest));
+            if (subtle) {
+                prototype.DefineOwn("digest", new CollectionMethod("digest", 2, CryptoDigest));
+                prototype.DefineOwn("importKey", new CollectionMethod("importKey", 5, static (receiver, args) => CryptoKeyOperation(receiver, () => HmacImport(args))));
+                prototype.DefineOwn("generateKey", new CollectionMethod("generateKey", 3, static (receiver, args) => CryptoKeyOperation(receiver, () => HmacGenerate(args))));
+                prototype.DefineOwn("exportKey", new CollectionMethod("exportKey", 2, static (receiver, args) => CryptoKeyOperation(receiver, () => CryptoExport(args))));
+                prototype.DefineOwn("sign", new CollectionMethod("sign", 3, static (receiver, args) => CryptoKeyOperation(receiver, () => HmacSign(args, false))));
+                prototype.DefineOwn("verify", new CollectionMethod("verify", 4, static (receiver, args) => CryptoKeyOperation(receiver, () => HmacSign(args, true))));
+            }
             else
             {
                 prototype.DefineOwn("getRandomValues", new CollectionMethod("getRandomValues", 1, static (receiver, args) => CryptoRandomValues(receiver, FunctionArgument(args, 0))));

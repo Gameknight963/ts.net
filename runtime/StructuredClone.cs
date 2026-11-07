@@ -68,6 +68,8 @@ public static partial class Js
             TsObject result;
             switch (source)
             {
+                case CryptoKeyValue key:
+                    result = new CryptoKeyValue(key.Bytes, key.Hash, key.Extractable, key.Usages); break;
                 case SharedBuffer shared:
                     result = new SharedBuffer(shared.Storage); break;
                 case BinaryBuffer buffer:
