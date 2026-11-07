@@ -19,6 +19,7 @@ public partial class JsFunction : TsObject
     readonly RawNumberFunction1 raw1;
     readonly RawNumberFunction2 raw2;
     string name;
+    internal string DisplayName => name;
     readonly int length;
     bool deletedName, deletedLength;
     bool nameSlotDeleted, lengthSlotDeleted;

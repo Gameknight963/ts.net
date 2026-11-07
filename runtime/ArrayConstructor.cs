@@ -34,7 +34,7 @@ public static partial class Js
         internal ArrayConstructorFunction() : base("Array", static args => CreateArray(args), 1)
         {
             var prototype = new ArrayPrototypeObject();
-            UseObjectPrototype(prototype); prototype.Member("constructor", this);
+            UseObjectPrototype(prototype); prototype.Member("constructor", this); prototype.Member("toString", new ArrayStringFunction());
             foreach (string name in new[] { "at", "push", "pop", "slice", "reverse", "indexOf", "includes", "join", "map", "filter", "forEach", "every", "some", "reduce", "reduceRight", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "lastIndexOf", "toReversed", "toSorted", "toSpliced", "with", "fill", "copyWithin" })
                 prototype.Member(name, ArrayMethodValue(name));
             Member("isArray", new JsFunction((FunctionBody)(static args => BoxBoolean(FunctionArgument(args, 0) is JsArray)), null, "isArray", 1));

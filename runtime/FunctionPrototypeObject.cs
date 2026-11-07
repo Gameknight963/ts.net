@@ -10,10 +10,10 @@ public static partial class Js
     internal static TsObject SharedFunctionPrototype => FunctionPrototypeState.Value;
     sealed class FunctionPrototypeValue : JsFunction
     {
-        readonly HashSet<string> hidden = new() {"call", "apply", "bind"};
+        readonly HashSet<string> hidden = new() {"call", "apply", "bind", "toString"};
         internal FunctionPrototypeValue() : base((FunctionBody)(static _ => Undefined), null, "", 0)
         {
-            foreach (string key in hidden) DefineOwn(key, FunctionMethod(key));
+            foreach (string key in hidden) DefineOwn(key, key == "toString" ? new FunctionStringFunction() : FunctionMethod(key));
         }
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : DefaultClassObjectPrototype;
         internal override bool ForInEnumerable(string key) => !hidden.Contains(key) && base.ForInEnumerable(key);

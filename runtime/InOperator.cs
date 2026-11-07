@@ -14,12 +14,14 @@ public abstract partial class TsObject
 
 public static partial class Js
 {
-    internal static bool IsObjectPrototypeKey(string key) => key is "constructor" or "toString" or "valueOf" or "toLocaleString" or "hasOwnProperty" or "isPrototypeOf" or "propertyIsEnumerable" or "__proto__" or "__defineGetter__" or "__defineSetter__" or "__lookupGetter__" or "__lookupSetter__";
+    internal static bool IsObjectPrototypeKey(string key) => key is "__defineGetter__" or "__defineSetter__";
     internal static bool IsArrayPrototypeKey(string key) => key is "at" or "concat" or "copyWithin" or "fill" or "find" or "findIndex" or "findLast" or "findLastIndex" or "lastIndexOf" or "pop" or "push" or "reverse" or "shift" or "unshift" or "slice" or "sort" or "splice" or "includes" or "indexOf" or "join" or "keys" or "entries" or "values" or "forEach" or "filter" or "flat" or "flatMap" or "map" or "every" or "some" or "reduce" or "reduceRight" or "toReversed" or "toSorted" or "toSpliced" or "with";
     private sealed class ClassObjectPrototype : JsClassInstance
     {
         internal ClassObjectPrototype()
         {
+            DefineMethod("toString", new ObjectStringFunction());
+            DefineMethod("toLocaleString", new ObjectLocaleStringFunction());
             DefineMethod("valueOf", new ObjectValueOfFunction());
             DefineMethod("__lookupGetter__", new LookupAccessorFunction(false));
             DefineMethod("__lookupSetter__", new LookupAccessorFunction(true));
