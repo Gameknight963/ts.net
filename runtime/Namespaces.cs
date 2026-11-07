@@ -31,6 +31,7 @@ public static partial class Js
             prototype.DefineHidden("constructor", this);
             prototype.DefineHidden("valueOf", PrimitiveMethod(0d, false));
             prototype.DefineHidden("toString", PrimitiveMethod(0d, true));
+            prototype.DefineHidden("toLocaleString", new NumberLocaleFunction());
             prototype.DefineHidden("toFixed", new NumberFixedFunction());
             prototype.DefineHidden("toExponential", new NumberPrecisionFunction(false));
             prototype.DefineHidden("toPrecision", new NumberPrecisionFunction(true));
