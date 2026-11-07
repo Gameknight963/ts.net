@@ -376,8 +376,8 @@ public static partial class Js
 
     public static object Add(object left, object right)
     {
-        if (left is TsObject first) left = OrdinaryPrimitive(first, false);
-        if (right is TsObject second) right = OrdinaryPrimitive(second, false);
+        if (left is TsObject first) left = OrdinaryPrimitive(first, first is JsDate);
+        if (right is TsObject second) right = OrdinaryPrimitive(second, second is JsDate);
         if (left is string || right is string) return Text(left) + Text(right);
         return Number(left) + Number(right);
     }
