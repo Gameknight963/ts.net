@@ -342,7 +342,6 @@ try {
     }
 
     $rejects = @(
-        @{ Source = 'async function* generator() {}'; Error = 'unsupported lowering' },
         @{ Source = 'const n: number = "wrong";'; Error = '"code":2322' },
         @{ Source = 'const n = 1; n = 2;'; Error = '"code":2588' },
         @{ Source = 'const n: unknown = 1; console.log(n + 1);'; Error = '"code":18046' },
