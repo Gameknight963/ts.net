@@ -50,17 +50,22 @@ public static partial class Js
         internal readonly bool grouping;
         internal readonly object groupingOption;
         internal readonly string signDisplay;
+        internal readonly string style;
+        readonly string percentPositive, percentNegative;
         readonly string format;
         internal NumberLocaleSettings(object locales, object optionValue)
         {
             culture = CaseCulture(locales);
+            style = "decimal"; percentPositive = percentNegative = null;
             minimum = 0; maximum = 3; integerDigits = 1; grouping = true; groupingOption = "auto"; signDisplay = "auto";
 
             if (!IsUndefined(optionValue))
             {
                 var options = ToObject(optionValue);
-                object style = options.Get("style");
-                if (!IsUndefined(style) && StringValue(style) != "decimal") throw new NotSupportedException("Number locale formatting option style is not supported");
+                object requestedStyle = options.Get("style");
+                if (!IsUndefined(requestedStyle)) style = StringValue(requestedStyle);
+                if (style is "currency" or "unit") throw new NotSupportedException("Number locale formatting option style is not supported");
+                if (style is not ("decimal" or "percent")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number formatting style");
                 foreach (string key in new[] { "currency", "minimumSignificantDigits", "maximumSignificantDigits", "compactDisplay", "unit", "numberingSystem" })
                     if (!IsUndefined(options.Get(key))) throw new NotSupportedException("Number locale formatting option " + key + " is not supported");
                 foreach (var item in new[] { ("notation", "standard"), ("roundingMode", "halfExpand"), ("roundingPriority", "auto"), ("roundingIncrement", "1"), ("trailingZeroDisplay", "auto") })
@@ -88,7 +93,7 @@ public static partial class Js
                 }
                 integerDigits = Digits("minimumIntegerDigits", 1, 1, 21);
                 minimum = Digits("minimumFractionDigits", 0);
-                maximum = Digits("maximumFractionDigits", Math.Max(3, minimum));
+                maximum = Digits("maximumFractionDigits", Math.Max(style == "percent" ? 0 : 3, minimum));
                 if (minimum > maximum) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid digit count");
                 object group = options.Get("useGrouping");
                 if (!IsUndefined(group))
@@ -103,12 +108,22 @@ public static partial class Js
                     } : "always";
                 }
             }
+            if (style == "percent")
+            {
+                culture = (CultureInfo)culture.Clone();
+                var info = culture.NumberFormat;
+                info.NumberDecimalSeparator = info.PercentDecimalSeparator;
+                info.NumberGroupSeparator = info.PercentGroupSeparator;
+                info.NumberGroupSizes = info.PercentGroupSizes;
+                percentPositive = (0.01d).ToString("P0", culture);
+                percentNegative = (-0.01d).ToString("P0", culture);
+            }
             format = (grouping ? "N" : "F") + maximum.ToString(CultureInfo.InvariantCulture);
         }
         string FiniteNumber(double value)
         {
             // Safe integers need no decimal rounding and retain native formatting.
-            if (double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
+            if (style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
             string raw = Math.Abs(value).ToString("R", CultureInfo.InvariantCulture);
             int split = raw.IndexOf('E');
             int exponent = split < 0 ? 0 : int.Parse(raw.AsSpan(split + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
@@ -116,7 +131,7 @@ public static partial class Js
             int point = coefficient.IndexOf('.');
             int scale = point < 0 ? 0 : coefficient.Length - point - 1;
             BigInteger digits = BigInteger.Parse(coefficient.Replace(".", ""), CultureInfo.InvariantCulture);
-            int shift = exponent - scale + maximum;
+            int shift = exponent - scale + maximum + (style == "percent" ? 2 : 0);
             if (shift >= 0) digits *= BigInteger.Pow(10, shift);
             else
             {
@@ -131,7 +146,8 @@ public static partial class Js
         }
         internal string Format<T>(T value, bool finite) where T : struct, IFormattable
         {
-            string result = finite && value is double numberValue ? FiniteNumber(numberValue) : value.ToString(format, culture);
+            string result = finite && value is double numberValue ? FiniteNumber(numberValue)
+                : style == "percent" && value is BigInteger integerValue ? (integerValue * 100).ToString(format, culture) : value.ToString(format, culture);
             if (finite && integerDigits > 1) result = PadLocaleInteger(result, integerDigits, grouping, culture.NumberFormat);
             if (signDisplay != "auto")
             {
@@ -148,11 +164,26 @@ public static partial class Js
                 if (negative && !show && result.StartsWith(minus, StringComparison.Ordinal)) result = result[minus.Length..];
                 else if (!negative && show) result = culture.NumberFormat.PositiveSign + result;
             }
-            if (!finite || maximum == 0) return result;
-            int trim = 0;
-            while (trim < maximum - minimum && result[result.Length - trim - 1] == '0') trim++;
-            if (trim == maximum) trim += culture.NumberFormat.NumberDecimalSeparator.Length;
-            return trim == 0 ? result : result[..^trim];
+            if (finite && maximum > 0)
+            {
+                int trim = 0;
+                while (trim < maximum - minimum && result[result.Length - trim - 1] == '0') trim++;
+                if (trim == maximum) trim += culture.NumberFormat.NumberDecimalSeparator.Length;
+                if (trim != 0) result = result[..^trim];
+            }
+            if (style != "percent") return result;
+            var info = culture.NumberFormat;
+            bool negativeSign = result.StartsWith(info.NegativeSign, StringComparison.Ordinal);
+            bool positiveSign = !negativeSign && result.StartsWith(info.PositiveSign, StringComparison.Ordinal);
+            string template = negativeSign || positiveSign ? percentNegative : percentPositive;
+            if (negativeSign) result = result[info.NegativeSign.Length..];
+            if (positiveSign)
+            {
+                result = result[info.PositiveSign.Length..];
+                template = template.Replace(info.NegativeSign, info.PositiveSign, StringComparison.Ordinal);
+            }
+            int placeholder = template.IndexOf('1');
+            return template[..placeholder] + result + template[(placeholder + 1)..];
         }
     }
 }
