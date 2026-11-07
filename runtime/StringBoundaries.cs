@@ -29,6 +29,8 @@ public static partial class Js
     }
     static void DefineStringBoundaries(JsBoxedPrimitive prototype)
     {
+        prototype.DefineHidden("isWellFormed", new StringWellFormedFunction(false));
+        prototype.DefineHidden("toWellFormed", new StringWellFormedFunction(true));
         prototype.DefineHidden("split", new StringSplitFunction());
         prototype.DefineHidden("startsWith", new StringBoundaryFunction("startsWith", false));
         prototype.DefineHidden("endsWith", new StringBoundaryFunction("endsWith", true));
