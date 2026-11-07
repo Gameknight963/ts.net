@@ -11,7 +11,11 @@ public static partial class Js
             foreach (string name in new[] { "log", "info", "debug" })
                 DefineOwn(name, new JsFunction((FunctionBody)(static args => { Log(args); return Undefined; }), null, name, 0));
             foreach (string name in new[] { "warn", "error" })
-                DefineOwn(name, new JsFunction((FunctionBody)(static args => { Console.Error.WriteLine(ConsoleMessage(args)); return Undefined; }), null, name, 0));
+                DefineOwn(name, new JsFunction((FunctionBody)(static args => { WriteConsole(ConsoleMessage(args), true); return Undefined; }), null, name, 0));
+            foreach (string name in new[] { "group", "groupCollapsed" })
+                DefineOwn(name, new JsFunction((FunctionBody)ConsoleGroup, null, name, 0));
+            DefineOwn("groupEnd", new JsFunction((FunctionBody)ConsoleGroupEnd, null, "groupEnd", 0));
+            DefineOwn("clear", new JsFunction((FunctionBody)ConsoleClear, null, "clear", 0));
             var labels = new ConsoleLabels();
             DefineOwn("count", new JsFunction((FunctionBody)labels.Count, null, "count", 0));
             DefineOwn("countReset", new JsFunction((FunctionBody)labels.Reset, null, "countReset", 0));
@@ -21,7 +25,7 @@ public static partial class Js
             DefineOwn("assert", new JsFunction((FunctionBody)(static args => {
                 if (!Truthy(FunctionArgument(args, 0))) {
                     string message = args.Length > 1 ? ": " + ConsoleMessage(args[1..]) : "";
-                    Console.Error.WriteLine("Assertion failed" + message);
+                    WriteConsole("Assertion failed" + message, true);
                 }
                 return Undefined;
             }), null, "assert", 0));

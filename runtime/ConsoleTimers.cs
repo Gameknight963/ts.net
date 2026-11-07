@@ -15,13 +15,13 @@ public static partial class Js
             counters ??= new(StringComparer.Ordinal);
             counters.TryGetValue(label, out long count);
             counters[label] = ++count;
-            Console.WriteLine(label + ": " + count.ToString(CultureInfo.InvariantCulture));
+            WriteConsole(label + ": " + count.ToString(CultureInfo.InvariantCulture));
             return Undefined;
         }
         internal object Reset(object[] args)
         {
             string label = Label(args);
-            if (counters == null || !counters.ContainsKey(label)) Console.Error.WriteLine("Count for '" + label + "' does not exist");
+            if (counters == null || !counters.ContainsKey(label)) WriteConsole("Count for '" + label + "' does not exist", true);
             else counters[label] = 0;
             return Undefined;
         }
@@ -29,21 +29,21 @@ public static partial class Js
         {
             string label = Label(args);
             timers ??= new(StringComparer.Ordinal);
-            if (!timers.TryAdd(label, Stopwatch.GetTimestamp())) Console.Error.WriteLine("Timer '" + label + "' already exists");
+            if (!timers.TryAdd(label, Stopwatch.GetTimestamp())) WriteConsole("Timer '" + label + "' already exists", true);
             return Undefined;
         }
         internal object Elapsed(object[] args, bool end)
         {
             string label = Label(args);
             if (timers == null || !timers.TryGetValue(label, out long start)) {
-                Console.Error.WriteLine("Timer '" + label + "' does not exist");
+                WriteConsole("Timer '" + label + "' does not exist", true);
                 return Undefined;
             }
             double elapsed = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
             if (end) timers.Remove(label);
             string text = label + ": " + elapsed.ToString("F3", CultureInfo.InvariantCulture) + "ms";
             if (!end && args.Length > 1) text += " " + ConsoleMessage(args[1..]);
-            Console.WriteLine(text);
+            WriteConsole(text);
             return Undefined;
         }
     }

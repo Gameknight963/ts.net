@@ -53,3 +53,14 @@ if(args.Length!=0) {
  if(normalized!="default: elapsed default-data\ndefault: elapsed\nwork: elapsed payload 42\nwork: elapsed\nasync: elapsed awaited\nasync: elapsed\n" || errors.ToString()!="")throw new Exception("Compiled timer calls produced unexpected output: "+text+errors);
  Console.WriteLine("PASS compiled timer calls, detached methods, and awaited arguments");
 }
+
+output.GetStringBuilder().Clear();errors.GetStringBuilder().Clear();
+try {
+ Console.SetOut(output);Console.SetError(errors);
+ Call("group","parent");Call("log","child");Call("clear");Call("log","cleared");
+ int status=Js.Run(()=>{Call("group","leaked");throw new InvalidOperationException("group failure");});
+ if(status!=1)throw new Exception("Grouped entry-point failure did not fail");
+ Call("log","resumed");
+} finally {Console.SetOut(previousOut);Console.SetError(previousError);}
+if(output.ToString().Replace("\r\n","\n")!="parent\n  child\ncleared\nleaked\nresumed\n" || !errors.ToString().Contains("group failure"))throw new Exception("Console groups survived clear or entry-point cleanup");
+Console.WriteLine("PASS console clear and failed entry points reset grouping");

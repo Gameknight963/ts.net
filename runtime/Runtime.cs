@@ -38,7 +38,7 @@ public static partial class Js
             CheckModuleEvaluations(); return 0;
         }
         catch (Exception error) { Console.Error.WriteLine(error); return 1; }
-        finally { ClearTimers(); promiseJobs?.Clear(); unhandledPromises?.Clear(); ClearKeptWeakTargets(); ClearModuleEvaluations(); }
+        finally { consoleGroupDepth = 0; ClearTimers(); promiseJobs?.Clear(); unhandledPromises?.Clear(); ClearKeptWeakTargets(); ClearModuleEvaluations(); }
     }
     private sealed class UndefinedValue { }
     public static readonly object Undefined = new UndefinedValue();
@@ -476,7 +476,7 @@ public static partial class Js
         value is double n && n == 0 && BitConverter.DoubleToInt64Bits(n) < 0 ? "-0" : Text(value);
 
     static string ConsoleMessage(object[] values) => string.Join(" ", Array.ConvertAll(values, Inspect));
-    public static void Log(params object[] values) => Console.WriteLine(ConsoleMessage(values));
+    public static void Log(params object[] values) => WriteConsole(ConsoleMessage(values));
 
     public static void Discard(object value) { }
 }
