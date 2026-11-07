@@ -42,7 +42,9 @@ public abstract partial class TsObject
     public virtual object SetOwnValue(string key, object value)
     {
         if (TryOwnAccessor(key, out _)) throw new InvalidOperationException("Cannot replace accessor through assignment");
-        return Set(key, value);
+        if (IsModuleNamespace || IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Property is read-only");
+        DefineOwn(key, value);
+        return value;
     }
 }
 public static partial class Js

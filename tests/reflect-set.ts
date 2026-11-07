@@ -1,0 +1,30 @@
+const object: any = {};
+console.log("write", Reflect.set(object, "value", 3), object.value);
+const symbol = Symbol("key");
+console.log("symbol", Reflect.set(object, symbol, 7), object[symbol]);
+const receiver: any = {};
+console.log("receiver", Reflect.set(object, "value", 4, receiver), object.value, receiver.value);
+let calls = 0;
+const setter = {set value(value: number) {calls++; (this as any).stored = value; }};
+console.log("setter", Reflect.set(setter, "value", 9, receiver), receiver.stored, calls);
+const getter = {get value() {throw "wrong getter"; }};
+console.log("getter", Reflect.set(getter, "value", 1));
+const readonly = Object.create(null, {value: {value: 1, writable: false}});
+console.log("readonly", Reflect.set(readonly, "value", 2), readonly.value);
+const inherited = Object.create(readonly);
+console.log("inherited readonly", Reflect.set(inherited, "value", 2));
+console.log("primitive receiver", Reflect.set(object, "value", 1, 3));
+console.log("receiver accessor", Reflect.set(object, "value", 1, getter));
+try { console.log("unexpected", Reflect.set({set value(value: number) {throw "setter failure";}}, "value", 1)); } catch (error) {console.log("throw", error);}
+const array: any[] = [1];
+console.log("array", Reflect.set(array, "2", 3), array.length, JSON.stringify(array));
+console.log("length", Reflect.set(array, "length", 1), JSON.stringify(array));
+const text = Object("abc");
+console.log("string", Reflect.set(text, "0", "x"), String(text));
+for (const value of [null, undefined, 1, "text"]) try {Reflect.set(value as any, "value", 1);} catch (error) {console.log("target", (error as Error).name);}
+console.log("metadata", Reflect.set.name, Reflect.set.length);
+const receiverPrototype = {set field(value: number) {throw "wrong receiver setter";}};
+const alternate: any = Object.create(receiverPrototype);
+console.log("define receiver", Reflect.set({}, "field", 6, alternate), alternate.field, Object.hasOwn(alternate, "field"));
+const optional: {value?: number} = {};
+console.log("optional", Reflect.set(optional, "value", 5), optional.value, Object.keys(optional).length);

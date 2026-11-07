@@ -35,6 +35,7 @@ internal sealed class JsArguments : JsDynamicObject
         if (key == "length") return lengthAssigned ? assignedLength : (double)values.Length;
         return JsArray.Index(key, out uint index) && index < values.Length ? values[index] : base.Get(key);
     }
+    public override object SetOwnValue(string key, object value) => key is "length" or "callee" || JsArray.Index(key, out uint index) && index < values.Length ? Set(key, value) : base.SetOwnValue(key, value);
     public override object Set(string key, object value)
     {
         if (key == "callee") throw CalleeError();

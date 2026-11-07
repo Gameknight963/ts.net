@@ -29,6 +29,12 @@ public static partial class Js
             string key = PropertyKey(FunctionArgument(arguments, 1));
             return target.GetWithReceiver(key, arguments.Length < 3 ? target : arguments[2]);
         });
+        Method("set", 3, static arguments =>
+        {
+            var target = ReflectTarget(FunctionArgument(arguments, 0));
+            string key = PropertyKey(FunctionArgument(arguments, 1));
+            return BoxBoolean(ReflectSet(target, key, FunctionArgument(arguments, 2), arguments.Length < 4 ? target : arguments[3]));
+        });
         Method("deleteProperty", 2, static arguments => BoxBoolean(ReflectTarget(FunctionArgument(arguments, 0)).DeleteOwn(PropertyKey(FunctionArgument(arguments, 1)))));
         Method("has", 2, static arguments => BoxBoolean(ReflectTarget(FunctionArgument(arguments, 0)).HasInProperty(PropertyKey(FunctionArgument(arguments, 1)))));
         Method("ownKeys", 1, static arguments => ReflectPropertyKeys(ReflectTarget(FunctionArgument(arguments, 0)).OwnPropertyNames()));

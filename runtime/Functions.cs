@@ -52,6 +52,11 @@ public partial class JsFunction : TsObject
     public override bool HasOwn(string key) => key == "name" && !deletedName || key == "length" && !deletedLength || key == "prototype" && ordinaryPrototype != null || base.HasOwn(key);
     public override bool HasProperty(string key)=>HasOwn(key) || base.HasProperty(key);
     public override object Get(string key) => key == "prototype" && ordinaryPrototype != null ? ReadOrdinaryPrototype() : base.HasOwn(key)?base.Get(key):key == "name" && !deletedName ? name : key == "length" && !deletedLength ? (double)length : base.Get(key);
+    public override object SetOwnValue(string key, object value)
+    {
+        if (key == "prototype" && ordinaryPrototype != null) return Set(key, value);
+        return base.SetOwnValue(key, value);
+    }
     public override object Set(string key, object value)
     {
         if (key == "prototype" && ordinaryPrototype != null) { ordinaryPrototype = value ?? NullPrototypeValue; return value; }

@@ -170,6 +170,11 @@ public partial class JsArray : TsObject
     public override bool HasOwn(string key) => key == "length" || (Index(key, out uint index) ? HasElement(index) : base.HasOwn(key));
     public override object Get(string key) => key == "length" ? (double)Count : Index(key, out uint index) ? Read(index) :
         base.Get(key);
+    public override object SetOwnValue(string key, object value)
+    {
+        if (TryOwnAccessor(key, out _)) throw new InvalidOperationException("Cannot replace accessor through assignment");
+        return Set(key, value);
+    }
     public override object Set(string key, object value)
     {
         if (key == "length") SetLength(Js.Number(value));

@@ -7,7 +7,7 @@ internal enum RuntimeMember
     IterationStart, CloseIteration, CloseIterationAt, SequenceIteratorHasReturn, CloseAsyncIteration, CloseDestructuring,
     ForAwaitNext, ForAwaitAccept, ForAwaitNeedsClose, ForAwaitClose, RequireIteratorResult, AsyncIteratorTry,
     BeginDestructuring, ReadDestructuring, RestDestructuring, AsyncResume, BeginAsyncIteration, NextAsyncIteration, AsyncIterationValue, AsyncTry, AsyncTryEnd,
-    DynamicObjectType, DynamicObjectConstructor, AsyncFunction, AsyncAwait, AsyncAwaitContinue, MarkFunctionPrototype, In, InNumber, SealModuleNamespace, InitializeEnum, BuiltinNamespace, CopyObjectRest, DebugStatement, DeleteSuperProperty, DeleteProperty, DeleteOwn, DefineAccessor, ResolveThis, NewTarget, EnableNewTarget, Arguments, EnableArguments, SuperBase, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, DefineAutoAccessor, InitializeAutoAccessor, DefinePrivateMember, InitializePrivateMember, PrivateGet, PrivateSet, PrivateHas, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    SetOwnValueBase, DynamicObjectType, DynamicObjectConstructor, AsyncFunction, AsyncAwait, AsyncAwaitContinue, MarkFunctionPrototype, In, InNumber, SealModuleNamespace, InitializeEnum, BuiltinNamespace, CopyObjectRest, DebugStatement, DeleteSuperProperty, DeleteProperty, DeleteOwn, DefineAccessor, ResolveThis, NewTarget, EnableNewTarget, Arguments, EnableArguments, SuperBase, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, DefineAutoAccessor, InitializeAutoAccessor, DefinePrivateMember, InitializePrivateMember, PrivateGet, PrivateSet, PrivateHas, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, NumberAtIsNullish, LooseEqual, LooseEqualNumber, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
@@ -665,6 +665,7 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.NumberTruthy, b.plan.method1(6, js, 0, -2, -10, "NumberTruthy"));
         b.ref_set(RuntimeMember.Constructor, b.plan.method0(6, obj, 1, -1, ".ctor"));
         b.ref_set(RuntimeMember.Get, b.plan.method1(6, obj, 1, -5, -4, "Get"));
+        b.ref_set(RuntimeMember.SetOwnValueBase, b.plan.method2(6, obj, 1, -5, -4, -5, "SetOwnValue"));
         b.ref_set(RuntimeMember.Set, b.plan.method2(6, obj, 1, -5, -4, -5, "Set"));
         b.ref_set(RuntimeMember.Cast, b.plan.method2(6, js, 2, -8, -5, -4, "Cast"));
         b.ref_set(RuntimeMember.Check, b.plan.method2(6, js, 2, -5, -5, -4, "Check"));
@@ -949,24 +950,27 @@ bool il_logical_assignment(int op, Compiler c)
                     member = record.next;
                 }
                 b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.call(RuntimeMember.Get); b.op(0x2a);
-                b.begin(b.plan.method2(5, klass, 0xc6, -5, -4, -5, "Set"));
-                member = get_type(type, c).fields;
-                while (member != 0)
+                foreach (bool ownWrite in new[] { false, true })
                 {
-                    Field record = get_field(member, c); int next = b.label();
-                    b.emit(0xfe09, 1); il_text(record.name, c, b); b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
-                    b.emit(0xfe09, 0); b.emit(0xfe09, 2);
-                    TypeKind value_kind = get_type(record.type, c).kind;
-                    if (b.type(record.type, c) != -5 || value_kind == TypeKind.String || value_kind == TypeKind.Shape || value_kind == TypeKind.Array)
+                    b.begin(b.plan.method2(5, klass, 0xc6, -5, -4, -5, ownWrite ? "SetOwnValue" : "Set"));
+                    member = get_type(type, c).fields;
+                    while (member != 0)
                     {
-                        b.plan.StringLiteral(b.method, "property write violates static field type"); b.emit(0x28, (int)b.cast(record.type));
+                        Field record = get_field(member, c); int next = b.label();
+                        b.emit(0xfe09, 1); il_text(record.name, c, b); b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
+                        b.emit(0xfe09, 0); b.emit(0xfe09, 2);
+                        TypeKind value_kind = get_type(record.type, c).kind;
+                        if (b.type(record.type, c) != -5 || value_kind == TypeKind.String || value_kind == TypeKind.Shape || value_kind == TypeKind.Array)
+                        {
+                            b.plan.StringLiteral(b.method, "property write violates static field type"); b.emit(0x28, (int)b.cast(record.type));
+                        }
+                        b.store_field(member, c);
+                        if (b.spread_types.at(type) != 0 && !il_dynamic_index_field(member,c)) { b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0x6f, b.RuntimeToken(RuntimeMember.MarkPresent)); }
+                        b.emit(0xfe09, 2); b.op(0x2a); b.mark(next);
+                        member = record.next;
                     }
-                    b.store_field(member, c);
-                    if (b.spread_types.at(type) != 0 && !il_dynamic_index_field(member,c)) { b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0x6f, b.RuntimeToken(RuntimeMember.MarkPresent)); }
-                    b.emit(0xfe09, 2); b.op(0x2a); b.mark(next);
-                    member = record.next;
+                    b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 2); b.call(ownWrite ? RuntimeMember.SetOwnValueBase : RuntimeMember.Set); b.op(0x2a);
                 }
-                b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 2); b.call(RuntimeMember.Set); b.op(0x2a);
                 il_optional_members(type, klass, c, b); il_enumeration_shape(type, klass, 0, c, b);
             }
             type = get_type(type, c).next;
