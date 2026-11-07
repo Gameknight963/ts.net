@@ -867,9 +867,10 @@ bool il_logical_assignment(int op, Compiler c)
                     // Its fields must not require the allocated CLR class layout.
                     signature_type = kind == TypeKind.String ? b.RuntimeToken(RuntimeMember.StringType) : kind == TypeKind.Shape ? get_type(type, c).name != 0 ? b.RuntimeToken(RuntimeMember.TsObjectType) : b.interfaces.at(type) : b.RuntimeToken(RuntimeMember.ArrayType);
                     // An empty structural type ({}, or an empty interface) also
-                    // accepts non-null primitive values in TypeScript.
+                    // accepts non-null primitive values in TypeScript. Index-only
+                    // shapes can also accept primitives, e.g. string as {[n:number]:string}.
                     Type shape = get_type(type, c);
-                    if (kind == TypeKind.Shape && shape.fields == 0 && shape.element == 0)
+                    if (kind == TypeKind.Shape && shape.fields == 0)
                         signature_type = b.RuntimeToken(RuntimeMember.ObjectType);
                 }
                 b.casts.at_mut(type) = b.plan.specialize(cast, signature_type);

@@ -26,3 +26,6 @@ const instance = new EmptyClass();
 console.log('class', instance instanceof EmptyClass);
 const emptyClassValues: EmptyClass[] = [10, 'class-compatible', instance];
 for (const item of emptyClassValues) console.log('class type', typeof item, item instanceof EmptyClass);
+const indexed: {[index:number]:string} = 'abc';
+function readIndexed(value: {[index:number]:string}): string {return value[1];}
+console.log('indexed string', indexed[0], readIndexed(indexed), readIndexed(['x', 'y']));
