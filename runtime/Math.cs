@@ -96,6 +96,7 @@ public static partial class Js
         static object MathHypotBody(object[] arguments) => MathHypot(arguments);
         internal override bool IsReadOnlyOwnProperty(string key) => constants.Contains(key);
         public override object Set(string key, object value) => constants.Contains(key) ? throw new InvalidOperationException("Math constant is read-only") : base.Set(key, value);
+        public override bool DeleteOwn(string key) { bool removed = base.DeleteOwn(key); if (removed) hidden.Remove(key); return removed; }
         internal override bool ForInEnumerable(string key) => !hidden.Contains(key) && base.ForInEnumerable(key);
         internal override object ForInOwnKeys() => base.OwnKeys();
         internal override object OwnPropertyNames() => base.OwnKeys();
