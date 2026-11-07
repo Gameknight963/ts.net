@@ -64,6 +64,9 @@ func (b *irBuilder) initializeModuleNamespaces() {
 		b.nodes[object-1].fourth = marker
 		previous := 0
 		exports := b.c.GetExportsOfModule(module)
+		if export := b.jsonExports[b.file]; export != nil {
+			exports = []*ast.Symbol{export}
+		}
 		keys := map[*ast.Symbol][]uint16{}
 		for _, export := range exports {
 			keys[export] = moduleExportUnits(ast.SymbolName(export))

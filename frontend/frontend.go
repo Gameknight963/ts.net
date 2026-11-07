@@ -54,8 +54,9 @@ func load(path string) (*session, string, int) {
 	options := &core.CompilerOptions{
 		Strict: core.TSTrue, NoEmit: core.TSTrue,
 		Target: core.ScriptTargetESNext, Module: core.ModuleKindESNext,
-		ModuleResolution: core.ModuleResolutionKindBundler,
-		Types:            []string{},
+		ModuleResolution:  core.ModuleResolutionKindBundler,
+		Types:             []string{},
+		ResolveJsonModule: core.TSTrue,
 	}
 	config := &tsoptions.ParsedCommandLine{ParsedConfig: &core.ParsedOptions{
 		FileNames: []string{absolute}, CompilerOptions: options,

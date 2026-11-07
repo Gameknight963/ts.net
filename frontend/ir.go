@@ -30,6 +30,8 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
+	jsonModules           map[*ast.SourceFile]int
+	jsonExports           map[*ast.SourceFile]*ast.Symbol
 	classDecorations      map[*ast.Node]*classDecoration
 	moduleAsync           map[*ast.SourceFile]bool
 	moduleLoader          bool
@@ -550,6 +552,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			break
 		}
 		if symbol := b.c.GetSymbolAtLocation(n); symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
+			if module := b.jsonNamespaceImport(symbol); module != nil {
+				return b.moduleNamespaceReference(n, module.AsNode().Symbol())
+			}
 			if target := b.c.GetAliasedSymbol(symbol); target.IsExternalModule() {
 				return b.moduleNamespaceReference(n, target)
 			}
@@ -637,7 +642,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.children = b.list(n.AsObjectLiteralExpression().Properties.Nodes)
 		for _, property := range n.AsObjectLiteralExpression().Properties.Nodes {
-			if objectMethodHasSuper(property) || property.Kind == ast.KindGetAccessor || property.Kind == ast.KindSetAccessor || property.Kind == ast.KindPropertyAssignment && property.Name().Kind != ast.KindComputedPropertyName && property.Name().Text() == "__proto__" {
+			if objectMethodHasSuper(property) || property.Kind == ast.KindGetAccessor || property.Kind == ast.KindSetAccessor || property.Kind == ast.KindPropertyAssignment && property.Name().Kind != ast.KindComputedPropertyName && property.Name().Text() == "__proto__" && !ast.IsInJsonFile(property) {
 				row.typ = b.typ(b.c.GetAnyType())
 				break
 			}
@@ -696,7 +701,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		dynamic := !known
 		id = b.node(5, n, "property")
 		row = b.nodes[id-1]
-		if n.Kind == ast.KindPropertyAssignment && !computed && staticName == "__proto__" {
+		if n.Kind == ast.KindPropertyAssignment && !computed && staticName == "__proto__" && !ast.IsInJsonFile(n) {
 			// A marker distinguishes prototype setters from ordinary named data.
 			row.fourth = b.node(20, n, "prototype setter")
 		} else if objectMethodHasSuper(n) {
@@ -1293,6 +1298,7 @@ func exportIR(s *session) (result []byte, err error) {
 	c, release = s.program.GetTypeCheckerForFileExclusive(context.Background(), s.file)
 	defer release()
 	b.c = c
+	b.prepareJSONModules(files)
 	b.prepareDeletion(files)
 	b.prepareEnumNamespaces(files)
 	b.prepareDynamicModules(files)
@@ -1352,6 +1358,10 @@ func exportIR(s *session) (result []byte, err error) {
 			b.nodes[last-1].next = block
 		}
 		last = block
+		if ast.IsJsonSourceFile(file) {
+			b.nodes[block-1].children = b.jsonModuleInitializer(file)
+			continue
+		}
 		previousAwait := b.awaitReturnOwner
 		if b.moduleAsync[file] {
 			b.awaitReturnOwner = file.AsNode()

@@ -29,6 +29,7 @@ public static partial class Js
     }
     sealed class CompiledModule(TsObject exports, JsFunction initialize, CompiledModules registry)
     {
+        internal bool IsJson;
         internal readonly TsObject Exports = exports;
         internal readonly List<CompiledModule> Dependencies = new();
         internal ModuleEvaluationGroup Group;
@@ -140,6 +141,24 @@ public static partial class Js
         }
     }
     static void ClearModuleEvaluations() => moduleRoots?.Clear();
+    static object ImportType(object options)
+    {
+        if (IsUndefined(options)) return Undefined;
+        if (options is not TsObject obj) throw new InvalidOperationException("Import options must be an object");
+        object value = obj.Get("with");
+        if (IsUndefined(value)) return Undefined;
+        if (value is not TsObject attributes) throw new InvalidOperationException("Import attributes must be an object");
+        var keys = (JsArray)attributes.OwnKeys(); object type = Undefined;
+        for (uint index = 0; index < keys.Length(); index++)
+        {
+            string key = (string)keys.ElementAt(index);
+            if (IsSymbolKey(key)) continue;
+            object setting = attributes.Get(key);
+            if (setting is not string || key != "type") throw new InvalidOperationException("Unsupported import attribute");
+            type = setting;
+        }
+        return type;
+    }
     static class DynamicModuleFunctions
     {
         internal static readonly JsFunction Registry = new((FunctionBody)(static _ => new CompiledModules()), null, "", 0);
@@ -148,7 +167,9 @@ public static partial class Js
             var exports = FunctionArgument(args, 2) as TsObject;
             if (exports == null) {exports = new JsDynamicObject(); SealModuleNamespace(exports);}
             var module = new CompiledModule(exports, (JsFunction)FunctionArgument(args, 3), registry);
-            registry.Files.Add(new Uri(StringValue(FunctionArgument(args, 1)), UriKind.Absolute).AbsoluteUri, module); return module;
+            var url = new Uri(StringValue(FunctionArgument(args, 1)), UriKind.Absolute);
+            module.IsJson = url.AbsolutePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
+            registry.Files.Add(url.AbsoluteUri, module); return module;
         }), null, "", 4);
         internal static readonly JsFunction Depend = new((FunctionBody)(static args => {((CompiledModule)FunctionArgument(args, 0)).Dependencies.Add((CompiledModule)FunctionArgument(args, 1));return Undefined;}), null, "", 2);
         internal static readonly JsFunction Alias = new((FunctionBody)(static args => {
@@ -169,10 +190,15 @@ public static partial class Js
             var promise = new JsPromise();
             var registry = (CompiledModules)FunctionArgument(args, 0);
             string issuer = StringValue(FunctionArgument(args, 1)), specifier;
-            try {specifier = StringValue(FunctionArgument(args, 2));}
+            object type;
+            try {specifier = StringValue(FunctionArgument(args, 2)); type = ImportType(FunctionArgument(args, 3));}
             catch (Exception error) {promise.Settle(CaughtValue(error), true);return promise;}
             EnqueuePromiseJob(() => {
-                try {promise.ResolveValue(registry.Resolve(issuer, specifier).Evaluate());}
+                try {
+                    var module = registry.Resolve(issuer, specifier);
+                    if (!IsUndefined(type) && (!module.IsJson || (string)type != "json")) throw new InvalidOperationException("Import type does not match the compiled module");
+                    promise.ResolveValue(module.Evaluate());
+                }
                 catch (Exception error) {promise.Settle(CaughtValue(error), true);}
             });
             return promise;

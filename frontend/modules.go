@@ -69,6 +69,7 @@ func (b *irBuilder) moduleFiles(s *session) []*ast.SourceFile {
 			if target == nil || target.IsDeclarationFile {
 				panic("runtime module requires TypeScript source: " + specifier.Text())
 			}
+			validateModuleAttributes(specifier, target)
 			if b.moduleAliases[file] == nil {
 				b.moduleAliases[file] = map[string]*ast.SourceFile{}
 			}

@@ -32,10 +32,17 @@ func (b *irBuilder) prepareDynamicModules(files []*ast.SourceFile) {
 }
 func (b *irBuilder) dynamicImport(n *ast.Node) int {
 	args := n.AsCallExpression().Arguments.Nodes
-	if len(args) != 1 || b.moduleRegistry == 0 {
+	if len(args) < 1 || len(args) > 2 || b.moduleRegistry == 0 {
 		b.unsupported(n)
 	}
-	return b.builtinCall(n, "__moduleImport", b.moduleRef(n, b.moduleRegistry), b.moduleText(n, sourceFileURL(b.file)), b.lower(args[0]))
+	options := 0
+	if len(args) == 2 {
+		options = b.lower(args[1])
+	} else {
+		options = b.node(20, n, "undefined")
+		b.nodes[options-1].typ = b.typ(b.c.GetAnyType())
+	}
+	return b.builtinCall(n, "__moduleImport", b.moduleRef(n, b.moduleRegistry), b.moduleText(n, sourceFileURL(b.file)), b.lower(args[0]), options)
 }
 func (b *irBuilder) initializeDynamicModules(files []*ast.SourceFile, entry *ast.SourceFile) {
 	if !b.moduleLoader {
