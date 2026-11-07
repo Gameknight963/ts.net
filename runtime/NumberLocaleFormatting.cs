@@ -51,12 +51,15 @@ public static partial class Js
         internal readonly object groupingOption;
         internal readonly string signDisplay;
         internal readonly string style;
-        readonly string percentPositive, percentNegative;
+        internal readonly string currency, currencyDisplay, currencySign;
+        readonly string positivePattern, negativePattern;
         readonly string format;
         internal NumberLocaleSettings(object locales, object optionValue)
         {
             culture = CaseCulture(locales);
-            style = "decimal"; percentPositive = percentNegative = null;
+            style = "decimal"; positivePattern = negativePattern = null;
+            currency = null; currencyDisplay = "symbol"; currencySign = "standard";
+            int currencyDigits = 2;
             minimum = 0; maximum = 3; integerDigits = 1; grouping = true; groupingOption = "auto"; signDisplay = "auto";
 
             if (!IsUndefined(optionValue))
@@ -64,9 +67,42 @@ public static partial class Js
                 var options = ToObject(optionValue);
                 object requestedStyle = options.Get("style");
                 if (!IsUndefined(requestedStyle)) style = StringValue(requestedStyle);
-                if (style is "currency" or "unit") throw new NotSupportedException("Number locale formatting option style is not supported");
-                if (style is not ("decimal" or "percent")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number formatting style");
-                foreach (string key in new[] { "currency", "minimumSignificantDigits", "maximumSignificantDigits", "compactDisplay", "unit", "numberingSystem" })
+                if (style == "unit") throw new NotSupportedException("Number locale formatting option style is not supported");
+                if (style is not ("decimal" or "percent" or "currency")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number formatting style");
+                object requestedCurrency = options.Get("currency");
+                if (!IsUndefined(requestedCurrency))
+                {
+                    currency = StringValue(requestedCurrency);
+                    if (currency.Length != 3 || !char.IsAsciiLetter(currency[0]) || !char.IsAsciiLetter(currency[1]) || !char.IsAsciiLetter(currency[2]))
+                        throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid currency code");
+                    currency = currency.ToUpperInvariant();
+                }
+                string CurrencyOption(string key, string fallback)
+                {
+                    object setting = options.Get(key); return IsUndefined(setting) ? fallback : StringValue(setting);
+                }
+                currencyDisplay = CurrencyOption("currencyDisplay", "symbol");
+                currencySign = CurrencyOption("currencySign", "standard");
+                if (currencyDisplay is not ("symbol" or "narrowSymbol" or "code" or "name")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid currency display");
+                if (currencySign is not ("standard" or "accounting")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid currency sign");
+                if (style == "currency")
+                {
+                    if (currency == null) throw new InvalidOperationException("Currency code is required");
+                    if (currencyDisplay == "name") throw new NotSupportedException("Currency display names are not supported");
+                    if (currencySign == "accounting") throw new NotSupportedException("Accounting currency patterns are not supported");
+                    var metadata = CurrencyFor(currency, culture, currencyDisplay);
+                    currencyDigits = metadata.Digits;
+                    culture = (CultureInfo)culture.Clone();
+                    var info = culture.NumberFormat;
+                    info.CurrencySymbol = metadata.Symbol;
+                    info.NumberDecimalSeparator = info.CurrencyDecimalSeparator;
+                    info.NumberGroupSeparator = info.CurrencyGroupSeparator;
+                    info.NumberGroupSizes = info.CurrencyGroupSizes;
+                    info.NumberNegativePattern = 1;
+                    positivePattern = SpaceCurrencyTemplate(1d.ToString("C0", culture));
+                    negativePattern = SpaceCurrencyTemplate((-1d).ToString("C0", culture));
+                }
+                foreach (string key in new[] { "minimumSignificantDigits", "maximumSignificantDigits", "compactDisplay", "unit", "numberingSystem" })
                     if (!IsUndefined(options.Get(key))) throw new NotSupportedException("Number locale formatting option " + key + " is not supported");
                 foreach (var item in new[] { ("notation", "standard"), ("roundingMode", "halfExpand"), ("roundingPriority", "auto"), ("roundingIncrement", "1"), ("trailingZeroDisplay", "auto") })
                 {
@@ -79,7 +115,11 @@ public static partial class Js
                     throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
                 int Digits(string key, int fallback, int lower = 0, int upper = 100)
                 {
-                    object setting = options.Get(key); if (IsUndefined(setting)) return fallback;
+                    return DigitValue(options.Get(key), fallback, lower, upper);
+                }
+                int DigitValue(object setting, int fallback, int lower = 0, int upper = 100)
+                {
+                    if (IsUndefined(setting)) return fallback;
                     double count = Number(setting);
                     if (!double.IsFinite(count) || count < lower || count > upper) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid digit count");
                     return (int)Math.Floor(count);
@@ -92,8 +132,10 @@ public static partial class Js
                         throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid sign display");
                 }
                 integerDigits = Digits("minimumIntegerDigits", 1, 1, 21);
-                minimum = Digits("minimumFractionDigits", 0);
-                maximum = Digits("maximumFractionDigits", Math.Max(style == "percent" ? 0 : 3, minimum));
+                object minimumSetting = options.Get("minimumFractionDigits"), maximumSetting = options.Get("maximumFractionDigits");
+                minimum = DigitValue(minimumSetting, style == "currency" ? currencyDigits : 0);
+                maximum = DigitValue(maximumSetting, Math.Max(style == "currency" ? currencyDigits : style == "percent" ? 0 : 3, minimum));
+                if (minimum > maximum && IsUndefined(minimumSetting)) minimum = maximum;
                 if (minimum > maximum) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid digit count");
                 object group = options.Get("useGrouping");
                 if (!IsUndefined(group))
@@ -115,8 +157,8 @@ public static partial class Js
                 info.NumberDecimalSeparator = info.PercentDecimalSeparator;
                 info.NumberGroupSeparator = info.PercentGroupSeparator;
                 info.NumberGroupSizes = info.PercentGroupSizes;
-                percentPositive = (0.01d).ToString("P0", culture);
-                percentNegative = (-0.01d).ToString("P0", culture);
+                positivePattern = (0.01d).ToString("P0", culture);
+                negativePattern = (-0.01d).ToString("P0", culture);
             }
             format = (grouping ? "N" : "F") + maximum.ToString(CultureInfo.InvariantCulture);
         }
@@ -171,16 +213,17 @@ public static partial class Js
                 if (trim == maximum) trim += culture.NumberFormat.NumberDecimalSeparator.Length;
                 if (trim != 0) result = result[..^trim];
             }
-            if (style != "percent") return result;
+            if (style == "decimal") return result;
             var info = culture.NumberFormat;
             bool negativeSign = result.StartsWith(info.NegativeSign, StringComparison.Ordinal);
             bool positiveSign = !negativeSign && result.StartsWith(info.PositiveSign, StringComparison.Ordinal);
-            string template = negativeSign || positiveSign ? percentNegative : percentPositive;
+            string template = negativeSign || positiveSign ? negativePattern : positivePattern;
             if (negativeSign) result = result[info.NegativeSign.Length..];
             if (positiveSign)
             {
                 result = result[info.PositiveSign.Length..];
-                template = template.Replace(info.NegativeSign, info.PositiveSign, StringComparison.Ordinal);
+                template = template.Contains(info.NegativeSign, StringComparison.Ordinal)
+                    ? template.Replace(info.NegativeSign, info.PositiveSign, StringComparison.Ordinal) : info.PositiveSign + positivePattern;
             }
             int placeholder = template.IndexOf('1');
             return template[..placeholder] + result + template[(placeholder + 1)..];

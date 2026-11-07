@@ -33,6 +33,7 @@ public static partial class Js
                     Part(type, token); position += token.Length; return true;
                 }
                 if (Token(info.NumberDecimalSeparator, "decimal")) { fraction = true; continue; }
+                if (settings.style == "currency" && Token(info.CurrencySymbol, "currency")) continue;
                 if (settings.style == "percent" && Token(info.PercentSymbol, "percentSign")) continue;
                 if (Token(info.NumberGroupSeparator, "group") || Token(info.NegativeSign, "minusSign") || Token(info.PositiveSign, "plusSign")
                     || Token(info.NaNSymbol, "nan") || Token(info.PositiveInfinitySymbol, "infinity")) continue;
@@ -51,6 +52,10 @@ public static partial class Js
             var result = new JsDynamicObject();
             result.DefineOwn("locale", settings.culture.Name); result.DefineOwn("numberingSystem", "latn");
             result.DefineOwn("style", settings.style);
+            if (settings.style == "currency")
+            {
+                result.DefineOwn("currency", settings.currency); result.DefineOwn("currencyDisplay", settings.currencyDisplay); result.DefineOwn("currencySign", settings.currencySign);
+            }
             result.DefineOwn("minimumIntegerDigits", (double)settings.integerDigits);
             result.DefineOwn("minimumFractionDigits", (double)settings.minimum); result.DefineOwn("maximumFractionDigits", (double)settings.maximum);
             result.DefineOwn("useGrouping", settings.groupingOption); result.DefineOwn("notation", "standard");
