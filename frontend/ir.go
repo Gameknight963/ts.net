@@ -469,6 +469,17 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		for _, part := range t.TemplateSpans.Nodes {
 			span := part.AsTemplateSpan()
 			value := b.lower(span.Expression)
+			// Primitive scalar additions already perform the right string conversion.
+			// Objects need the string hint, rather than addition's default hint.
+			if b.types[b.nodes[value-1].typ-1].kind >= 4 {
+				helper := b.node(66, part, "__templateText")
+				b.nodes[helper-1].typ = b.typ(b.c.GetAnyType())
+				call := b.node(6, part, "(")
+				b.nodes[call-1].left = helper
+				b.nodes[call-1].children = value
+				b.nodes[call-1].typ = b.typ(b.c.GetStringType())
+				value = call
+			}
 			add := b.node(7, part, "+")
 			b.nodes[add-1].typ = b.typ(b.c.GetStringType())
 			b.nodes[add-1].left = result

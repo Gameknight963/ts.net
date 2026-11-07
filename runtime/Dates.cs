@@ -36,7 +36,7 @@ public static partial class Js
         if (arguments.Length == 0) return new JsDate(DateNow());
         object value = arguments[0];
         if (value is JsDate date) return new JsDate(date.Timestamp);
-        if (value is TsObject obj) value = OrdinaryPrimitive(obj, false);
+        if (value is TsObject obj) value = ToPrimitive(obj, "default");
         return new JsDate(value is string text ? ParseDate(text) : ClipDate(Number(value)));
     }
     sealed class DateConstructor : NativeNamespaceFunction
@@ -62,7 +62,7 @@ public static partial class Js
             var utc = new CollectionMethod("toUTCString", 0, (receiver, _) => DateText(receiver)); prototype.DefineMethod("toUTCString", utc); prototype.DefineMethod("toGMTString", utc);
             prototype.DefineMethod("toJSON", new CollectionMethod("toJSON", 1, (receiver, _) =>
             {
-                var source = ToObject(receiver); object value = OrdinaryPrimitive(source, false);
+                var source = ToObject(receiver); object value = ToPrimitive(source, "number");
                 return value is double number && !double.IsFinite(number) ? null : CallMethod0(source.Get("toISOString"), source);
             }));
         }

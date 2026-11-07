@@ -8,9 +8,26 @@ public static partial class Js
 
     public static string PropertyKey(object value)
     {
-        if (value is TsObject obj) value = OrdinaryPrimitive(obj, true);
+        if (value is TsObject obj) value = ToPrimitive(obj, "string");
         if (value is JsSymbol symbol) return SymbolPropertyKey(symbol);
         return value is double number ? NumberKeyString(number) : Text(value);
+    }
+
+    static class TemplateTextFunction
+    {
+        internal static readonly JsFunction Value = new((FunctionBody)(static args => StringValue(FunctionArgument(args, 0))), null, "", 1);
+    }
+
+    static object ToPrimitive(TsObject obj, string hint)
+    {
+        object method = obj.Get(PropertyKey(ToPrimitiveSymbol));
+        if (!IsNullish(method)) {
+            if (method is not JsFunction function) throw new InvalidOperationException("Symbol.toPrimitive is not callable");
+            object result = function.InvokeWithReceiver(obj, new object[] { hint });
+            if (!KeyPrimitive(result)) throw new InvalidOperationException("Symbol.toPrimitive must return a primitive value");
+            return result;
+        }
+        return OrdinaryPrimitive(obj, hint == "string" || hint == "default" && obj is JsDate);
     }
 
     static object OrdinaryPrimitive(TsObject obj, bool stringHint)

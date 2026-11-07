@@ -12,6 +12,7 @@ internal sealed class JsSymbol(object description, string registryKey = null)
 public static partial class Js
 {
     static readonly JsSymbol IteratorSymbol = new("Symbol.iterator");
+    static readonly JsSymbol ToPrimitiveSymbol = new("Symbol.toPrimitive");
     static readonly JsSymbol ToStringTagSymbol = new("Symbol.toStringTag");
     static readonly JsSymbol AsyncIteratorSymbol = new("Symbol.asyncIterator");
     static readonly Dictionary<string, JsSymbol> globalSymbols = new(StringComparer.Ordinal);
@@ -33,7 +34,7 @@ public static partial class Js
             return new JsSymbol(IsUndefined(description) ? Undefined : StringValue(description));
         }, 0)
         {
-            foreach (string name in wellKnown) Member(name, name == "iterator" ? IteratorSymbol : name == "asyncIterator" ? AsyncIteratorSymbol : name == "toStringTag" ? ToStringTagSymbol : new JsSymbol("Symbol." + name));
+            foreach (string name in wellKnown) Member(name, name == "iterator" ? IteratorSymbol : name == "asyncIterator" ? AsyncIteratorSymbol : name == "toStringTag" ? ToStringTagSymbol : name == "toPrimitive" ? ToPrimitiveSymbol : new JsSymbol("Symbol." + name));
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
             prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) => RequireSymbol(receiver).Display));

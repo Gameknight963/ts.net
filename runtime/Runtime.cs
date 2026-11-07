@@ -133,7 +133,7 @@ public static partial class Js
         null => 0,
         bool b => b ? 1 : 0,
         string s => StringNumber(s),
-        TsObject obj => Number(OrdinaryPrimitive(obj, false)),
+        TsObject obj => Number(ToPrimitive(obj, "number")),
         _ => double.NaN
     };
     public static bool Boolean(object value) => Cast<bool>(value, "Expected boolean");
@@ -378,8 +378,8 @@ public static partial class Js
 
     public static object Add(object left, object right)
     {
-        if (left is TsObject first) left = OrdinaryPrimitive(first, first is JsDate);
-        if (right is TsObject second) right = OrdinaryPrimitive(second, second is JsDate);
+        if (left is TsObject first) left = ToPrimitive(first, "default");
+        if (right is TsObject second) right = ToPrimitive(second, "default");
         if (left is JsSymbol || right is JsSymbol) throw new InvalidOperationException("Cannot convert a symbol to a number or string");
         if (left is string || right is string) return Text(left) + Text(right);
         return Number(left) + Number(right);

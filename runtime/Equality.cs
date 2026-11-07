@@ -22,14 +22,14 @@ public static partial class Js
         if (right is bool y) return LooseEqualNumberValue(y ? 1 : 0, left);
         if (IsNullish(left)) return IsNullish(right);
         if (IsNullish(right)) return false;
-        if (left is JsSymbol) return right is TsObject symbolObject ? ReferenceEquals(left, OrdinaryPrimitive(symbolObject, false)) : ReferenceEquals(left, right);
-        if (right is JsSymbol && left is TsObject boxedSymbol) return ReferenceEquals(OrdinaryPrimitive(boxedSymbol, false), right);
+        if (left is JsSymbol) return right is TsObject symbolObject ? ReferenceEquals(left, ToPrimitive(symbolObject, "default")) : ReferenceEquals(left, right);
+        if (right is JsSymbol && left is TsObject boxedSymbol) return ReferenceEquals(ToPrimitive(boxedSymbol, "default"), right);
         if (left is string text) {
             if (right is string other) return text == other;
-            return right is TsObject obj && LooseEqual(left, OrdinaryPrimitive(obj, obj is JsDate));
+            return right is TsObject obj && LooseEqual(left, ToPrimitive(obj, "default"));
         }
         if (right is string && left is TsObject value)
-            return LooseEqual(OrdinaryPrimitive(value, value is JsDate), right);
+            return LooseEqual(ToPrimitive(value, "default"), right);
         return ReferenceEquals(left, right);
     }
 
@@ -41,7 +41,7 @@ public static partial class Js
         double other => number == other,
         string text => number == StringNumber(text),
         bool boolean => number == (boolean ? 1 : 0),
-        TsObject obj => LooseEqualNumberValue(number, OrdinaryPrimitive(obj, obj is JsDate)),
+        TsObject obj => LooseEqualNumberValue(number, ToPrimitive(obj, "default")),
         _ => false
     };
 }

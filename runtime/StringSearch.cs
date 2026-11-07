@@ -24,7 +24,7 @@ public static partial class Js
     static string StringValue(object value) => value is string text ? text : StringValueConverted(value);
     static string StringValueConverted(object value)
     {
-        object primitive = value is TsObject obj ? OrdinaryPrimitive(obj, true) : value;
+        object primitive = value is TsObject obj ? ToPrimitive(obj, "string") : value;
         if (primitive is JsSymbol) throw new InvalidOperationException("Cannot convert a symbol to a string");
         return primitive is double number ? NumberKeyString(number) : Text(primitive);
     }
