@@ -9,8 +9,24 @@ public static partial class Js
         {
             string text = AtString(receiver), other = StringValue(FunctionArgument(arguments, 0));
             var culture = CaseCulture(FunctionArgument(arguments, 1));
-            if (!IsUndefined(FunctionArgument(arguments, 2))) throw new NotSupportedException("localeCompare options are not supported");
-            return Math.Sign(culture.CompareInfo.Compare(text, other, CompareOptions.None));
+            CompareOptions flags = CompareOptions.None;
+            object optionValue = FunctionArgument(arguments, 2);
+            if (!IsUndefined(optionValue))
+            {
+                var options = ToObject(optionValue);
+                foreach (string key in new[] { "numeric", "caseFirst", "ignorePunctuation", "usage", "collation", "localeMatcher" })
+                    if (!IsUndefined(options.Get(key))) throw new NotSupportedException("localeCompare options other than sensitivity are not supported");
+                object sensitivity = options.Get("sensitivity");
+                if (!IsUndefined(sensitivity)) flags = StringValue(sensitivity) switch
+                {
+                    "base" => CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace,
+                    "accent" => CompareOptions.IgnoreCase,
+                    "case" => CompareOptions.IgnoreNonSpace,
+                    "variant" => CompareOptions.None,
+                    _ => throw new ArgumentOutOfRangeException(nameof(arguments), "Invalid comparison sensitivity")
+                };
+            }
+            return Math.Sign(culture.CompareInfo.Compare(text, other, flags));
         }
         public override object InvokeWithReceiver(object receiver, object[] arguments) => Execute(receiver, arguments);
         public override double? InvokeMethodNumber0(object receiver) => Execute(receiver, Array.Empty<object>());

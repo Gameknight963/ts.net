@@ -1,1 +1,1 @@
-console.log("a".localeCompare("b","en",{sensitivity:"base"}));
+console.log("a".localeCompare("b","en",{numeric:true}));
