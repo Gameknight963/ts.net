@@ -33,11 +33,11 @@ func namespaceBindingNames(n *ast.Node, register func(*ast.Node)) {
 	}
 }
 
-func (b *irBuilder) isEnumNamespace(n *ast.Node) bool {
+func (b *irBuilder) isRuntimeNamespace(n *ast.Node) bool {
 	for current := n; current != nil; current = current.Parent {
 		if current.Kind == ast.KindModuleDeclaration {
 			symbol := b.c.GetSymbolAtLocation(current.Name())
-			if symbol != nil && symbol.Flags&ast.SymbolFlagsRegularEnum != 0 {
+			if symbol != nil && symbol.Flags&(ast.SymbolFlagsRegularEnum|ast.SymbolFlagsValueModule) != 0 {
 				return true
 			}
 		}
@@ -66,7 +66,7 @@ func (b *irBuilder) prepareEnumNamespaces(files []*ast.SourceFile) {
 	}
 	visit = func(n *ast.Node) {
 		if n.Kind == ast.KindModuleDeclaration {
-			if b.isEnumNamespace(n) {
+			if b.isRuntimeNamespace(n) {
 				for _, statement := range enumNamespaceBody(n) {
 					if !namespaceExported(statement) {
 						continue
@@ -160,12 +160,12 @@ func (b *irBuilder) enumNamespaceStatements(statements []*ast.Node, owner *ast.N
 }
 
 // Each namespace body gets its own closure for private declarations. Exported
-// bindings live on the enum object, so writes remain visible through aliases.
+// bindings live on the namespace object, so writes remain visible through aliases.
 func (b *irBuilder) enumNamespace(n *ast.Node) int {
-	if ast.HasAmbientModifier(n) {
+	if ast.HasAmbientModifier(n) || !ast.IsInstantiatedModule(n, false) {
 		return 0
 	}
-	if !b.isEnumNamespace(n) || n.Body() == nil || (n.Body().Kind != ast.KindModuleBlock && n.Body().Kind != ast.KindModuleDeclaration) {
+	if !b.isRuntimeNamespace(n) || n.Body() == nil || (n.Body().Kind != ast.KindModuleBlock && n.Body().Kind != ast.KindModuleDeclaration) {
 		b.unsupported(n)
 	}
 	if b.namespaceExports == nil {
@@ -220,7 +220,15 @@ func (b *irBuilder) enumNamespace(n *ast.Node) int {
 	body := b.node(12, n, "namespace scope")
 	b.nodes[body-1].name = b.text("scope")
 	b.nodes[body-1].children = local
+	previousUsing := b.usingStack
+	if b.hasUsingDeclarations(statements) {
+		b.usingStack = b.newUsingStack()
+	}
 	statementsBody := b.enumNamespaceStatements(statements, n)
+	if b.usingStack != previousUsing {
+		statementsBody = b.wrapUsing(n, b.usingStack, statementsBody)
+	}
+	b.usingStack = previousUsing
 	b.nodes[local-1].next = statementsBody
 	b.nodes[function-1].left = body
 	end := len(b.nodes)

@@ -71,7 +71,7 @@ func (b *irBuilder) registerUsingBinding(n *ast.Node, row *irNode) {
 			b.unsupported(n)
 		}
 		scope := parent.Parent.Parent
-		if scope == nil || (scope.Kind != ast.KindBlock && scope.Kind != ast.KindSourceFile) {
+		if scope == nil || (scope.Kind != ast.KindBlock && scope.Kind != ast.KindSourceFile && scope.Kind != ast.KindModuleBlock) {
 			b.unsupported(n)
 		}
 	}
