@@ -111,6 +111,7 @@ public static partial class Js
     {
         var result = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
         result.DefineMethod("getCanonicalLocales", new JsFunction((FunctionBody)(static args => CanonicalLocales(FunctionArgument(args, 0))), null, "getCanonicalLocales", 1));
+        result.DefineMethod("Locale", IntlLocale.Constructor);
         result.DefineMethod("Collator", IntlCollator.Constructor);
         result.DefineMethod("NumberFormat", IntlNumberFormat.Constructor);
         result.DefineMethod("DateTimeFormat", IntlDateTimeFormat.Constructor);
