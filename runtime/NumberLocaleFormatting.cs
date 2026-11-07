@@ -53,7 +53,7 @@ public static partial class Js
         internal readonly bool grouping;
         internal readonly object groupingOption;
         internal readonly string signDisplay;
-        internal readonly string roundingMode, trailingZeroDisplay;
+        internal readonly string roundingMode, trailingZeroDisplay, roundingPriority;
         internal readonly string style;
         internal readonly string currency, currencyDisplay, currencySign;
         readonly string positivePattern, negativePattern;
@@ -61,6 +61,7 @@ public static partial class Js
         internal NumberLocaleSettings(object locales, object optionValue)
         {
             culture = CaseCulture(locales);
+            roundingPriority = "auto";
             minimumSignificant = maximumSignificant = 0;
             roundingIncrement = 1; roundingMode = "halfExpand"; trailingZeroDisplay = "auto";
             style = "decimal"; positivePattern = negativePattern = null;
@@ -110,12 +111,16 @@ public static partial class Js
                 }
                 foreach (string key in new[] { "compactDisplay", "unit", "numberingSystem" })
                     if (!IsUndefined(options.Get(key))) throw new NotSupportedException("Number locale formatting option " + key + " is not supported");
-                foreach (var item in new[] { ("notation", "standard"), ("roundingPriority", "auto") })
+                foreach (var item in new[] { ("notation", "standard") })
                 {
                     object setting = options.Get(item.Item1);
                     if (!IsUndefined(setting) && StringValue(setting) != item.Item2)
                         throw new NotSupportedException("Number locale formatting option " + item.Item1 + " is not supported");
                 }
+                object priority = options.Get("roundingPriority");
+                if (!IsUndefined(priority)) roundingPriority = StringValue(priority);
+                if (roundingPriority is not ("auto" or "morePrecision" or "lessPrecision"))
+                    throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid rounding priority");
                 object increment = options.Get("roundingIncrement");
                 if (!IsUndefined(increment))
                 {
@@ -157,14 +162,14 @@ public static partial class Js
                 integerDigits = Digits("minimumIntegerDigits", 1, 1, 21);
                 object minimumSetting = options.Get("minimumFractionDigits"), maximumSetting = options.Get("maximumFractionDigits");
                 object minimumSignificantSetting = options.Get("minimumSignificantDigits"), maximumSignificantSetting = options.Get("maximumSignificantDigits");
-                if (!IsUndefined(minimumSignificantSetting) || !IsUndefined(maximumSignificantSetting))
+                if (roundingPriority != "auto" || !IsUndefined(minimumSignificantSetting) || !IsUndefined(maximumSignificantSetting))
                 {
                     minimumSignificant = DigitValue(minimumSignificantSetting, 1, 1, 21);
                     maximumSignificant = DigitValue(maximumSignificantSetting, 21, 1, 21);
                     if (minimumSignificant > maximumSignificant) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid significant digit count");
                     if (roundingIncrement != 1) throw new InvalidOperationException("Significant digits cannot be combined with rounding increments");
                 }
-                else
+                if (maximumSignificant == 0 || roundingPriority != "auto")
                 {
                     minimum = DigitValue(minimumSetting, style == "currency" ? currencyDigits : 0);
                     maximum = DigitValue(maximumSetting, Math.Max(style == "currency" ? currencyDigits : style == "percent" ? 0 : 3, minimum));
@@ -238,17 +243,24 @@ public static partial class Js
             int scale = point < 0 ? 0 : coefficient.Length - point - 1;
             BigInteger digits = BigInteger.Parse(coefficient.Replace(".", ""), CultureInfo.InvariantCulture);
             if (maximumSignificant != 0)
-                return SignificantText(digits, exponent - scale + (style == "percent" ? 2 : 0), double.IsNegative(value), out fractionMinimum, out fractionMaximum);
+                return PrecisionText(digits, exponent - scale + (style == "percent" ? 2 : 0), double.IsNegative(value), out fractionMinimum, out fractionMaximum);
             int shift = exponent - scale + maximum + (style == "percent" ? 2 : 0);
             digits = Quantize(digits, shift, double.IsNegative(value));
             return QuantizedText(digits, double.IsNegative(value));
         }
-        string SignificantText(BigInteger digits, int exponent, bool negative, out int fractionMinimum, out int fractionMaximum)
+        string PrecisionText(BigInteger digits, int exponent, bool negative, out int fractionMinimum, out int fractionMaximum)
         {
             int width = digits.IsZero ? 1 : digits.ToString(CultureInfo.InvariantCulture).Length;
             int places = digits.IsZero ? maximumSignificant - 1 : maximumSignificant - width - exponent;
             BigInteger rounded = Quantize(digits, exponent + places, negative);
             int magnitude = rounded.IsZero ? 0 : rounded.ToString(CultureInfo.InvariantCulture).Length - places - 1;
+            int roundingMagnitude = magnitude - maximumSignificant + 1;
+            bool useSignificant = roundingPriority == "auto" || (roundingPriority == "morePrecision" ? roundingMagnitude <= -maximum : roundingMagnitude > -maximum);
+            if (!useSignificant)
+            {
+                fractionMinimum = minimum; fractionMaximum = maximum;
+                return QuantizedText(Quantize(digits, exponent + maximum, negative), negative);
+            }
             fractionMinimum = Math.Max(0, minimumSignificant - magnitude - 1);
             fractionMaximum = Math.Max(0, places);
             if (places < 0) rounded *= BigInteger.Pow(10, -places);
@@ -284,7 +296,7 @@ public static partial class Js
             int fractionMinimum = minimum, fractionMaximum = maximum;
             string result = finite && value is double numberValue ? FiniteNumber(numberValue, out fractionMinimum, out fractionMaximum)
                 : maximumSignificant != 0 && value is BigInteger significantInteger
-                    ? SignificantText(BigInteger.Abs(significantInteger), style == "percent" ? 2 : 0, significantInteger.Sign < 0, out fractionMinimum, out fractionMaximum)
+                    ? PrecisionText(BigInteger.Abs(significantInteger), style == "percent" ? 2 : 0, significantInteger.Sign < 0, out fractionMinimum, out fractionMaximum)
                 : (roundingIncrement != 1 || groupingOption is "min2") && value is BigInteger quantizedInteger
                     ? QuantizedText(Quantize(BigInteger.Abs(quantizedInteger), maximum + (style == "percent" ? 2 : 0), quantizedInteger.Sign < 0), quantizedInteger.Sign < 0)
                 : style == "percent" && value is BigInteger integerValue ? (integerValue * 100).ToString(format, culture) : value.ToString(format, culture);
