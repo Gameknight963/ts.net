@@ -18,6 +18,7 @@ public static partial class Js
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : DefaultClassObjectPrototype;
         internal void Member(string key, object value) { DefineOwn(key, value); hidden.Add(key); }
         internal override bool ForInEnumerable(string key) => !hidden.Contains(key) && base.ForInEnumerable(key);
+        internal override object ForInOwnKeys() => ForInNames(base.OwnKeys(), "length");
         internal override object OwnPropertyNames() => MergeOwnNames(this, base.OwnKeys(), "length");
         public override double OwnKeyCount() => ((JsArray)OwnKeys()).Length();
         public override object OwnKeys()

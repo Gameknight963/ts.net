@@ -158,6 +158,7 @@ public static partial class Js
         readonly HashSet<string> hidden = new();
         internal void Member(string name, object value) { DefineOwn(name, value); hidden.Add(name); }
         internal override bool ForInEnumerable(string key) => !hidden.Contains(key) && base.ForInEnumerable(key);
+        internal override object ForInOwnKeys() => base.OwnKeys();
         internal override object OwnPropertyNames() => base.OwnKeys();
         public override object OwnKeys()
         {
