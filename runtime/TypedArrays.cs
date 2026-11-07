@@ -108,6 +108,8 @@ public static partial class Js
         internal TypedArrayConstructor(string name) : base(name, static _ => throw new InvalidOperationException("Typed array requires new"), 3)
         {
             this.name = name;
+            string speciesKey = PropertyKey(SpeciesSymbol); var speciesGetter = new ConstructorSpeciesGetter();
+            Member(speciesKey, Undefined); DefineAccessor(speciesKey, speciesGetter, 1); speciesGetter.InferPropertyName("get [Symbol.species]");
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             int size = BinarySize(name == "Uint8ClampedArray" ? "Uint8" : name[..^5]);
             Member("BYTES_PER_ELEMENT", (double)size);
@@ -198,9 +200,19 @@ public static partial class Js
             int first = BufferSliceIndex(FunctionArgument(args, 0), array.Count);
             int end = IsUndefined(FunctionArgument(args, 1)) ? array.Count : BufferSliceIndex(args[1], array.Count);
             int count = Math.Max(end - first, 0);
-            if (method == "subarray") return new TypedArrayValue(array.Name, array.Buffer, array.Offset + first * array.Size, count);
-            var result = AllocateTypedArray(array.Name, count);
-            array.Buffer.Bytes.AsSpan(array.Offset + first * array.Size, count * array.Size).CopyTo(result.Buffer.Bytes);
+            if (method == "subarray") return TypedArraySpeciesCreate(array, count, array.Buffer, array.Offset + first * array.Size);
+            var result = TypedArraySpeciesCreate(array, count);
+            if (count == 0) return result;
+            if (array.Kind.StartsWith("Big", StringComparison.Ordinal) != result.Kind.StartsWith("Big", StringComparison.Ordinal)) throw new InvalidOperationException("Typed array content types do not match");
+            if (array.Name == result.Name)
+            {
+                var sourceBytes = array.Buffer.Bytes.AsSpan(array.Offset + first * array.Size, count * array.Size);
+                var targetBytes = result.Buffer.Bytes.AsSpan(result.Offset, count * result.Size);
+                if (ReferenceEquals(array.Buffer, result.Buffer))
+                    for (int i = 0; i < sourceBytes.Length; i++) targetBytes[i] = sourceBytes[i];
+                else sourceBytes.CopyTo(targetBytes);
+            }
+            else for (int i = 0; i < count; i++) result.Write(i, array.Read(first + i));
             return result;
         }
         if (method == "set")
@@ -233,7 +245,7 @@ public static partial class Js
         {
             object callback = FunctionArgument(args, 0);
             if (callback is not JsFunction) throw new InvalidOperationException("Typed array callback must be callable");
-            var result = method == "map" ? AllocateTypedArray(array.Name, array.Count) : null;
+            var result = method == "map" ? TypedArraySpeciesCreate(array, array.Count) : null;
             var selected = method == "filter" ? new List<object>() : null;
             for (int i = 0; i < array.Count; i++)
             {
@@ -241,7 +253,7 @@ public static partial class Js
                 if (result != null) result.Write(i, mapped); else if (Truthy(mapped)) selected.Add(value);
             }
             if (result != null) return result;
-            result = AllocateTypedArray(array.Name, selected.Count);
+            result = TypedArraySpeciesCreate(array, selected.Count);
             for (int i = 0; i < selected.Count; i++) result.Write(i, selected[i]);
             return result;
         }

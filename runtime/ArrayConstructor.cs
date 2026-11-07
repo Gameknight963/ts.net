@@ -33,7 +33,7 @@ public static partial class Js
     {
         internal ArrayConstructorFunction() : base("Array", static args => CreateArray(args), 1)
         {
-            string speciesKey = PropertyKey(SpeciesSymbol); var getter = new ArraySpeciesGetter();
+            string speciesKey = PropertyKey(SpeciesSymbol); var getter = new ConstructorSpeciesGetter();
             Member(speciesKey, Undefined); DefineAccessor(speciesKey, getter, 1); getter.InferPropertyName("get [Symbol.species]");
             var prototype = new ArrayPrototypeObject();
             UseObjectPrototype(prototype); prototype.Member("constructor", this); prototype.Member("toString", new ArrayStringFunction());

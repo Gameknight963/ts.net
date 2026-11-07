@@ -3,7 +3,7 @@ using System.Globalization;
 
 public static partial class Js
 {
-    sealed class ArraySpeciesGetter() : JsFunction((FunctionBody)(static _ => Undefined), null, "get [Symbol.species]", 0)
+    sealed class ConstructorSpeciesGetter() : JsFunction((FunctionBody)(static _ => Undefined), null, "get [Symbol.species]", 0)
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments) => receiver;
     }
@@ -25,7 +25,7 @@ public static partial class Js
         // This guard avoids calling user code on the existing array-copy path.
         if (!source.HasOwn("constructor") && ReferenceEquals(source.PropertyPrototype, ArrayPrototype) &&
             !ArrayPrototype.TryOwnAccessor("constructor", out _) && ReferenceEquals(ArrayPrototype.Get("constructor"), RuntimeNamespaces.Array) &&
-            RuntimeNamespaces.Array.TryOwnAccessor(key, out var accessor) && accessor.Getter is ArraySpeciesGetter)
+            RuntimeNamespaces.Array.TryOwnAccessor(key, out var accessor) && accessor.Getter is ConstructorSpeciesGetter)
         { native = true; return null; }
         object constructor = source.Get("constructor");
         if (IsUndefined(constructor)) return null;

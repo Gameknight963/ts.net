@@ -32,7 +32,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Classes and inheritance | 14 / 15 | Missing legacy decorators, some built-in base classes, and complete constructor replacement-object support. |
 | Exceptions | 9 / 10 | Missing TypeScript source locations in stack traces. |
 | Async | 10 / 10 | Missing nothing. |
-| Standard library | 3 / 5 | Missing some Symbol protocols, Reflect methods, RegExp features, custom species for typed arrays, and built-ins. |
+| Standard library | 3 / 5 | Missing some Symbol protocols, Reflect methods, RegExp features, and built-ins. |
 
 </details>
 
