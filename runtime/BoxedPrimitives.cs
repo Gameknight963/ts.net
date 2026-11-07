@@ -39,6 +39,7 @@ internal sealed class JsBoxedPrimitive(object value, bool intrinsicPrototype = f
         for (uint i = 0; i < keys.Length(); i++) { var key = keys.ElementAt(i); if (!hidden.Contains((string)key)) result.Append(key); }
         return result;
     }
+    internal override object OwnPropertyNames() => Value is string ? Js.MergeOwnNames(this, AllKeys(), "length") : AllKeys();
     internal override object ForInOwnKeys() => Value is string ? Js.ForInNames(AllKeys(), "length") : AllKeys();
     internal override bool ForInEnumerable(string key) => (Value is not string || key != "length") && hidden?.Contains(key) != true;
 }

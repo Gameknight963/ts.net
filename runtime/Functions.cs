@@ -21,6 +21,7 @@ public partial class JsFunction : TsObject
     string name;
     readonly int length;
     bool deletedName, deletedLength;
+    bool nameSlotDeleted, lengthSlotDeleted;
     protected bool HasIntrinsicLength => !deletedLength;
     internal void ReplaceIntrinsicMetadata(string key)
     {
@@ -58,10 +59,13 @@ public partial class JsFunction : TsObject
     }
     public override bool DeleteOwn(string key)
     {
-        if (key == "name" && !deletedName) { deletedName = true; return !base.HasOwn(key) || base.DeleteOwn(key); }
-        if (key == "length" && !deletedLength) { deletedLength = true; return !base.HasOwn(key) || base.DeleteOwn(key); }
         if (key == "prototype" && ordinaryPrototype != null) return false;
-        return base.DeleteOwn(key);
+        bool removed;
+        if (key == "name" && !deletedName) { deletedName = true; removed = !base.HasOwn(key) || base.DeleteOwn(key); }
+        else if (key == "length" && !deletedLength) { deletedLength = true; removed = !base.HasOwn(key) || base.DeleteOwn(key); }
+        else removed = base.DeleteOwn(key);
+        if (removed) { if (key == "name") nameSlotDeleted = true; else if (key == "length") lengthSlotDeleted = true; }
+        return removed;
     }
     public object Invoke(object[] arguments) => body(arguments);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

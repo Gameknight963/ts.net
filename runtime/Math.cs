@@ -97,6 +97,7 @@ public static partial class Js
         internal override bool IsReadOnlyOwnProperty(string key) => constants.Contains(key);
         public override object Set(string key, object value) => constants.Contains(key) ? throw new InvalidOperationException("Math constant is read-only") : base.Set(key, value);
         internal override bool ForInEnumerable(string key) => !hidden.Contains(key) && base.ForInEnumerable(key);
+        internal override object OwnPropertyNames() => base.OwnKeys();
         public override object OwnKeys()
         {
             var keys = (JsArray)base.OwnKeys(); var result = new JsArray(0);

@@ -39,6 +39,7 @@ internal sealed class JsArguments : JsDynamicObject
         return base.Set(key, value);
     }
     public override object SetWithReceiver(string key, object value, object receiver) => key == "callee" ? throw CalleeError() : base.SetWithReceiver(key, value, receiver);
+    internal override object OwnPropertyNames() => Js.MergeOwnNames(this, OwnKeys(), "length", "callee");
     internal override object ForInOwnKeys() => Js.ForInNames(OwnKeys(), "length", "callee");
     internal override bool ForInEnumerable(string key) => key is not ("length" or "callee");
     public override double OwnKeyCount() => values.Length + ExtraKeyCount;

@@ -12,6 +12,7 @@ public sealed class JsCaughtError : TsObject
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : prototype;
     readonly string stack = Environment.StackTrace;
     readonly HashSet<string> hidden = ["stack"];
+    internal override object OwnPropertyNames() => Js.MergeOwnNames(this, base.OwnKeys(), "stack");
     internal override object ForInOwnKeys() => Js.ForInNames(base.OwnKeys(), "stack");
     internal override bool ForInEnumerable(string key) => !hidden.Contains(key);
     public JsCaughtError(string name, string message, bool hasMessage = true, object cause = null, bool hasCause = false)
