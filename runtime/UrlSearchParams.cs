@@ -9,6 +9,8 @@ public static partial class Js
     sealed class SearchParamsValue : TsObject
     {
         internal readonly List<KeyValuePair<string, string>> Pairs = new();
+        internal Action Changed;
+        internal void Notify() => Changed?.Invoke();
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)RuntimeNamespaces.URLSearchParams.Get("prototype");
         internal string Serialize()
         {
@@ -139,13 +141,13 @@ public static partial class Js
             prototype.DefineMethod("constructor", this);
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "URLSearchParams");
             prototype.DefineClassAccessor("size", new CollectionMethod("get size", 0, (receiver, _) => (double)RequireSearchParams(receiver).Pairs.Count), 1);
-            prototype.DefineMethod("append", new CollectionMethod("append", 2, (receiver, args) => { var target = RequireSearchParams(receiver); string key = QueryArgument(args, 0), value = QueryArgument(args, 1); target.Pairs.Add(new(key, value)); return Undefined; }));
-            prototype.DefineMethod("set", new CollectionMethod("set", 2, (receiver, args) => { var target = RequireSearchParams(receiver); string key = QueryArgument(args, 0), value = QueryArgument(args, 1); target.SetPair(key, value); return Undefined; }));
+            prototype.DefineMethod("append", new CollectionMethod("append", 2, (receiver, args) => { var target = RequireSearchParams(receiver); string key = QueryArgument(args, 0), value = QueryArgument(args, 1); target.Pairs.Add(new(key, value)); target.Notify(); return Undefined; }));
+            prototype.DefineMethod("set", new CollectionMethod("set", 2, (receiver, args) => { var target = RequireSearchParams(receiver); string key = QueryArgument(args, 0), value = QueryArgument(args, 1); target.SetPair(key, value); target.Notify(); return Undefined; }));
             prototype.DefineMethod("delete", new CollectionMethod("delete", 1, (receiver, args) =>
             {
                 var target = RequireSearchParams(receiver); string key = QueryArgument(args, 0);
                 bool filter = !IsUndefined(FunctionArgument(args, 1)); string value = filter ? QueryText(args[1]) : null;
-                target.Pairs.RemoveAll(pair => pair.Key == key && (!filter || pair.Value == value)); return Undefined;
+                target.Pairs.RemoveAll(pair => pair.Key == key && (!filter || pair.Value == value)); target.Notify(); return Undefined;
             }));
             prototype.DefineMethod("has", new CollectionMethod("has", 1, (receiver, args) =>
             {
@@ -169,7 +171,7 @@ public static partial class Js
             {
                 var target = RequireSearchParams(receiver);
                 var sorted = target.Pairs.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToArray();
-                target.Pairs.Clear(); target.Pairs.AddRange(sorted); return Undefined;
+                target.Pairs.Clear(); target.Pairs.AddRange(sorted); target.Notify(); return Undefined;
             }));
             prototype.DefineMethod("forEach", new CollectionMethod("forEach", 1, (receiver, args) =>
             {
