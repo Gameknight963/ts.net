@@ -104,6 +104,14 @@ Map, measured on 2026-11-06:
 
 Includes construction and allocation, excluding startup and compilation. The same warmup, fresh-process counts and .NET settings apply; all samples returned the checksum 50,010,000.
 
+String splitting, measured on 2026-11-06:
+
+| Workload | ts.net | Node |
+|---|---|---|
+| Split 10K comma-separated strings, keep three parts, and sum lengths | 4.20 ms | 2.11 ms |
+
+Two four-field input strings alternate between iterations. Includes output arrays and substring allocation, excluding startup and compilation; inputs are prepared before timing. The same warmup, fresh-process counts and .NET settings apply, and every sample returned 120,000. Source and raw results are under `artifacts/string-split-benchmark`.
+
 Promises, measured on 2026-11-06:
 
 | Workload | ts.net | Node |
@@ -125,7 +133,7 @@ Compilation times:
 | Small numeric benchmark | 497.09 ms | 338.65 ms |
 | 5,000 variables | 678.81 ms | 375.20 ms |
 
-The packed copyWithin result is encouraging; [V8?s published per-property implementation](https://chromium.googlesource.com/v8/v8/+/refs/heads/main/src/builtins/array-copywithin.tq) is consistent with the large gap against our guarded bulk copy. The Map workload and the loop that rarely awaits are disappointing too; callbacks, joins, object copying and Promise workloads remain substantially slower. These microbenchmarks do not establish overall application performance.
+The packed copyWithin result is encouraging; [V8?s published per-property implementation](https://chromium.googlesource.com/v8/v8/+/refs/heads/main/src/builtins/array-copywithin.tq) is consistent with the large gap against our guarded bulk copy. Split is about twice as slow as Node; the much larger gaps for Map, joins, callbacks, object copies and Promise workloads are more disappointing. These microbenchmarks do not establish overall application performance.
 
 The compiler used to be written in [crust](https://github.com/Gameknight963/crust), my C-like memory safe language. It was ported to C# for various reasons. The point is, compilation is slower after the C# port. The larger source takes 1.8x as long as Microsoft’s Go-based TypeScript compiler. It used to be more or less on par.
 
