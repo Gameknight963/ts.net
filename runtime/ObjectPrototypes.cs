@@ -20,6 +20,14 @@ public abstract partial class TsObject
             if (ReferenceEquals(ancestor, this)) throw new InvalidOperationException("Cyclic prototype value");
         return true;
     }
+    internal virtual bool TrySetPrototype(TsObject value)
+    {
+        if (ReferenceEquals(PropertyPrototype, value)) return true;
+        if (IsModuleNamespace || ReferenceEquals(this, Js.DefaultClassObjectPrototype)) return false;
+        for (var ancestor = value; ancestor != null; ancestor = ancestor.PropertyPrototype)
+            if (ReferenceEquals(ancestor, this)) return false;
+        SetPrototype(value); return true;
+    }
     internal virtual void SetPrototype(TsObject value)
     {
         if (CanSetPrototype(value)) prototypes.GetValue(this, static _ => new PrototypeState()).Value = value;

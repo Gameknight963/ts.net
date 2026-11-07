@@ -4,6 +4,7 @@ internal sealed class JsRawJson(string text) : TsObject
 {
     internal readonly string Text = text;
     internal override TsObject PropertyPrototype => null;
+    internal override bool TrySetPrototype(TsObject value) => value == null;
     internal override void SetPrototype(TsObject value) { if (value != null) throw new InvalidOperationException("Raw JSON object is not extensible"); }
     internal override bool IsReadOnlyOwnProperty(string key) => key == "rawJSON";
     public override bool HasOwn(string key) => key == "rawJSON";
