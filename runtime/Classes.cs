@@ -32,6 +32,7 @@ public class JsClassInstance : TsObject
 public sealed class JsClassFunction : JsFunction
 {
     readonly FunctionBody factory;
+    internal override string SourceText => Js.SourceOf(factory);
     readonly JsFunction fields;
     readonly JsFunction constructor;
     readonly HashSet<string> hidden = new();

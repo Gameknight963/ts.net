@@ -24,7 +24,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 |---|---:|---|
 | Values and operators | 9 / 10 | Missing some Symbol protocols and operators. |
 | Control flow | 10 / 10 | Missing nothing. |
-| Functions | 9 / 10 | Missing script-global `this` and source-preserving `Function.toString`. |
+| Functions | 9 / 10 | Missing script-global `this`. |
 | Objects and arrays | 9 / 10 | Missing complete general prototype behavior. |
 | Types and generics | 5 / 10 | Missing some runtime type representations. |
 | Modules | 4 / 5 | Missing dynamic imports of uncompiled modules. |

@@ -7,6 +7,7 @@ public sealed class JsReceiverFunction : JsFunction
     readonly Invocation invocation;
     sealed class Invocation(FunctionBody body)
     {
+        internal string SourceText => Js.SourceOf(body);
         internal bool UsesArguments;
         internal TsObject Home;
         object WrapReceiver(object receiver) => Home == null ? receiver : new JsObjectMethodReceiver(Home, receiver);
@@ -28,6 +29,7 @@ public sealed class JsReceiverFunction : JsFunction
     {
         this.invocation = invocation;
     }
+    internal override string SourceText => invocation.SourceText;
     internal override void SetObjectHome(TsObject home) => invocation.Home = home;
     internal void EnableArguments() => invocation.UsesArguments = true;
     public override object InvokeWithReceiver(object receiver, object[] arguments) => invocation.Invoke(receiver, arguments);

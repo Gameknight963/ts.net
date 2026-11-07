@@ -40,6 +40,7 @@ public static partial class Js
     }
     static string FunctionDisplayText(JsFunction function)
     {
+        if (function is not JsBoundFunction && function.SourceText is string source) return source;
         string name = function is JsBoundFunction ? "" : function.DisplayName;
         return "function " + name + "() { [native code] }";
     }

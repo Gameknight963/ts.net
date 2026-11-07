@@ -77,6 +77,7 @@ public static partial class Js
     sealed class AsyncFunctionObject : JsFunction
     {
         readonly JsFunction function;
+        internal override string SourceText => function.SourceText;
         internal override void SetObjectHome(TsObject home) => function.SetObjectHome(home);
         internal AsyncFunctionObject(JsFunction function) : base((FunctionBody)(args => InvokeAsyncFunction(function, Undefined, args)), null, (string)function.Get("name"), (int)(double)function.Get("length")) { this.function = function; }
         public override object InvokeWithReceiver(object receiver, object[] arguments) => InvokeAsyncFunction(function, receiver, arguments);

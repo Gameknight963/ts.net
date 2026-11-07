@@ -183,6 +183,7 @@ public static partial class Js
         sealed class Invocation(JsFunction function, bool asynchronous)
         {
             internal GeneratorFunctionObject Owner;
+            internal string SourceText => function.SourceText;
             internal void SetObjectHome(TsObject home) => function.SetObjectHome(home);
             internal object Invoke(object receiver, object[] args)
             {
@@ -197,6 +198,7 @@ public static partial class Js
             this.invocation = invocation; invocation.Owner = this;
             UseObjectPrototype(new JsClassInstance { ParentPrototype = asynchronous ? AsyncGeneratorPrototype : GeneratorPrototype });
         }
+        internal override string SourceText => invocation.SourceText;
         internal override void SetObjectHome(TsObject home) => invocation.SetObjectHome(home);
         public override object InvokeWithReceiver(object receiver, object[] args) => invocation.Invoke(receiver, args);
     }
