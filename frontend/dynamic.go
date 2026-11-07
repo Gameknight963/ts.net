@@ -9,7 +9,7 @@ func (b *irBuilder) preserveDynamicType(n *ast.Node, row *irNode) {
 	dynamic := func(id int) bool { return id != 0 && b.nodes[id-1].typ == any }
 	switch n.Kind {
 	case ast.KindVariableDeclaration:
-		if n.Type() == nil && dynamic(row.left) && row.typ != 0 && b.types[row.typ-1].kind == 0 {
+		if n.Initializer() != nil && n.Type() == nil && dynamic(row.left) && row.typ != 0 && b.types[row.typ-1].kind == 0 {
 			row.typ = any
 			b.symbols[row.symbol-1].typ = any
 		}
