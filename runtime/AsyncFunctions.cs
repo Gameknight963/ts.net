@@ -35,6 +35,16 @@ public static partial class Js
     public static object AsyncResumeRegion(object continuation, int region) => new AsyncResumeRecord((JsFunction)continuation, region);
     sealed class AsyncAwaitRecord(JsPromise awaited, JsFunction continuation = null)
     {
+        internal void AttachGenerator(Action<object> run)
+        {
+            awaited.Then(new PromiseReaction(null, null, null, (value, rejected) =>
+            {
+                object result;
+                try { result = rejected ? new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)) : continuation == null ? value : continuation.InvokeWithReceiver(Undefined, new[] { value }); }
+                catch (Exception error) { result = new AsyncCompletion(CompletionKind.Throw, error); }
+                run(result);
+            }));
+        }
         internal void Attach(JsPromise target, PromiseResolvingFunctions pair, AsyncExecution execution = null)
         {
             var capability = new PromiseCapability { Promise = target, Resolve = pair.Resolve, Reject = pair.Reject };

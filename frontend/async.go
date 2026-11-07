@@ -6,11 +6,11 @@ import "github.com/microsoft/typescript-go/internal/ast"
 // real IR node so tree walks do not interpret a boolean as an unrelated node ID.
 func (b *irBuilder) markSuspendingFunction(function int, n *ast.Node) bool {
 	if generatorFunction(n) {
-		if ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync != 0 {
-			b.unsupported(n)
-		}
 		marker := b.node(20, n, "generator")
 		b.nodes[marker-1].name = b.text("generator")
+		if ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync != 0 {
+			b.nodes[marker-1].name = b.text("async generator")
+		}
 		b.nodes[marker-1].typ = b.typ(b.c.GetAnyType())
 		b.nodes[function-1].right = marker
 		return true
@@ -27,6 +27,9 @@ func (b *irBuilder) markSuspendingFunction(function int, n *ast.Node) bool {
 // Await expressions lower to synchronous continuation functions. The runtime
 // schedules them through intrinsic Promise reactions, retaining one outer Promise.
 func (b *irBuilder) asyncReturnExpression(expression *ast.Node) int {
+	if b.generatorOwner != nil {
+		return b.lower(expression)
+	}
 	if expression == nil || !expressionHasAwait(expression) {
 		return b.lower(expression)
 	}

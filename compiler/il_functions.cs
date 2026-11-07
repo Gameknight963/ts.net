@@ -213,7 +213,7 @@ void il_function_class(int symbol, Compiler c, IlBackend b)
         if (il_suspending_function(symbol, c))
         {
             int marker = get_node(get_symbol(symbol, c).function, c).right;
-            b.call(is_text(get_node(marker, c).name, "generator", c) ? RuntimeMember.GeneratorFunction : RuntimeMember.AsyncFunction);
+            b.call(is_text(get_node(marker, c).name, "async generator", c) ? RuntimeMember.AsyncGeneratorFunction : is_text(get_node(marker, c).name, "generator", c) ? RuntimeMember.GeneratorFunction : RuntimeMember.AsyncFunction);
         }
         if (get_node(get_symbol(symbol,c).function,c).third != 0)
         {

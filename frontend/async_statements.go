@@ -89,6 +89,18 @@ func (a *asyncExpressionLowering) statement(id int, next func() int) int {
 	a.discard(id)
 	switch n.kind {
 	case 14:
+		if a.asyncGenerator {
+			return a.expression(n.left, func(value int) int {
+				if value == 0 {
+					value = a.node(20, "undefined")
+				}
+				callback := a.function(true, func(parameter int) int { return a.returned(a.reference(parameter)) })
+				await := a.node(70, "async generator return")
+				a.b.nodes[await-1].left = value
+				a.b.nodes[await-1].right = callback
+				return a.returned(await)
+			})
+		}
 		return a.expression(n.left, a.returned)
 	case 51:
 		return a.tryStatement(id, n, next)

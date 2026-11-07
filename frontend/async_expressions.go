@@ -38,6 +38,7 @@ func enclosingAsyncFunction(n *ast.Node) *ast.Node {
 }
 
 type asyncExpressionLowering struct {
+	asyncGenerator      bool
 	b                   *irBuilder
 	source              *ast.Node
 	any                 int
@@ -148,7 +149,7 @@ func (a *asyncExpressionLowering) hasAwait(id int) bool {
 		return false
 	}
 	n := a.b.nodes[id-1]
-	if n.kind == rawAsyncAwait || n.kind == rawGeneratorYield {
+	if n.kind == rawAsyncAwait || n.kind == rawGeneratorYield || a.asyncGenerator && n.kind == 14 {
 		return true
 	}
 	if n.kind == 34 && n.third != 0 {
@@ -289,6 +290,9 @@ func (a *asyncExpressionLowering) expression(id int, next asyncExpressionContinu
 			name := "__generatorYield"
 			if n.constant != 0 {
 				name = "__generatorDelegate"
+				if a.asyncGenerator {
+					name = "__asyncGeneratorDelegate"
+				}
 			}
 			return a.returned(a.b.builtinCall(a.source, name, value, callback))
 		})

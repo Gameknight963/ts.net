@@ -481,6 +481,9 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	if b.generatorOwner != nil && lowering.hasAwait(body) {
 		marker := b.node(20, n, "generator class definition")
 		b.nodes[marker-1].name = b.text("generator")
+		if ast.GetCombinedModifierFlags(b.generatorOwner)&ast.ModifierFlagsAsync != 0 {
+			b.nodes[marker-1].name = b.text("async generator")
+		}
 		b.nodes[marker-1].typ = typ
 		b.nodes[factory-1].right = marker
 		b.nodes[factory-1].left = b.generatorBody(n, body)
