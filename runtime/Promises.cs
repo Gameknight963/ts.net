@@ -104,11 +104,10 @@ public static partial class Js
         object constructor = promise.Get("constructor");
         if (IsUndefined(constructor)) return RuntimeNamespaces.Promise;
         if (constructor is not TsObject obj) throw new InvalidOperationException("Promise constructor must be an object");
-        // Native Promise's default species getter returns the constructor itself.
-        // User-defined Symbol.species requires the future symbol-key implementation.
-        for (TsObject current = obj; current != null; current = current.PropertyPrototype)
-            if (ReferenceEquals(current, RuntimeNamespaces.Promise)) return constructor as JsFunction ?? RuntimeNamespaces.Promise;
-        return RuntimeNamespaces.Promise;
+        object species = obj.Get(PropertyKey(SpeciesSymbol));
+        if (IsNullish(species)) return RuntimeNamespaces.Promise;
+        if (species is not JsFunction function || !function.CanInitializeDerived) throw new InvalidOperationException("Promise species must be a constructor");
+        return function;
     }
     sealed class PromiseThenFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("then requires a promise")), null, "then", 2)
     {
@@ -184,6 +183,11 @@ public static partial class Js
     {
         internal PromiseConstructorFunction() : base("Promise", static _ => throw new InvalidOperationException("Promise requires new"), 1)
         {
+            string speciesKey = PropertyKey(SpeciesSymbol);
+            Member(speciesKey, Undefined);
+            var speciesGetter = new CollectionMethod("get [Symbol.species]", 0, static (receiver, _) => receiver);
+            DefineAccessor(speciesKey, speciesGetter, 1);
+            speciesGetter.InferPropertyName("get [Symbol.species]");
             var prototype = new PromisePrototypeObject(); UseObjectPrototype(prototype);
             prototype.Member("constructor", this); prototype.Member("then", new PromiseThenFunction());
             prototype.Member("catch", new PromiseCatchFunction()); prototype.Member("finally", new PromiseFinallyFunction());

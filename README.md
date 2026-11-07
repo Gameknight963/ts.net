@@ -16,7 +16,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current feature completion
 
-86%.
+87%.
 
 <details>
 
@@ -31,7 +31,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Enums | 5 / 5 | Missing nothing. |
 | Classes and inheritance | 14 / 15 | Missing legacy decorators, some built-in base classes, and complete constructor replacement-object support. |
 | Exceptions | 9 / 10 | Missing TypeScript source locations in stack traces. |
-| Async | 9 / 10 | Missing custom promise species. |
+| Async | 10 / 10 | Missing nothing. |
 | Standard library | 3 / 5 | Missing some Symbol protocols, Reflect methods, RegExp features, custom array species, and built-ins. |
 
 </details>

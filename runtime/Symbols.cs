@@ -11,6 +11,7 @@ internal sealed class JsSymbol(object description, string registryKey = null)
 
 public static partial class Js
 {
+    static readonly JsSymbol SpeciesSymbol = new("Symbol.species");
     static readonly JsSymbol MatchSymbol = new("Symbol.match");
     static readonly JsSymbol MatchAllSymbol = new("Symbol.matchAll");
     static readonly JsSymbol ReplaceSymbol = new("Symbol.replace");
@@ -43,7 +44,7 @@ public static partial class Js
             return new JsSymbol(IsUndefined(description) ? Undefined : StringValue(description));
         }, 0)
         {
-            foreach (string name in wellKnown) Member(name, name == "match" ? MatchSymbol : name == "matchAll" ? MatchAllSymbol : name == "replace" ? ReplaceSymbol : name == "search" ? SearchSymbol : name == "split" ? SplitSymbol : name == "iterator" ? IteratorSymbol : name == "asyncIterator" ? AsyncIteratorSymbol : name == "toStringTag" ? ToStringTagSymbol : name == "toPrimitive" ? ToPrimitiveSymbol : name == "hasInstance" ? HasInstanceSymbol : name == "isConcatSpreadable" ? ConcatSpreadableSymbol : name == "dispose" ? DisposeSymbol : name == "asyncDispose" ? AsyncDisposeSymbol : new JsSymbol("Symbol." + name));
+            foreach (string name in wellKnown) Member(name, name == "species" ? SpeciesSymbol : name == "match" ? MatchSymbol : name == "matchAll" ? MatchAllSymbol : name == "replace" ? ReplaceSymbol : name == "search" ? SearchSymbol : name == "split" ? SplitSymbol : name == "iterator" ? IteratorSymbol : name == "asyncIterator" ? AsyncIteratorSymbol : name == "toStringTag" ? ToStringTagSymbol : name == "toPrimitive" ? ToPrimitiveSymbol : name == "hasInstance" ? HasInstanceSymbol : name == "isConcatSpreadable" ? ConcatSpreadableSymbol : name == "dispose" ? DisposeSymbol : name == "asyncDispose" ? AsyncDisposeSymbol : new JsSymbol("Symbol." + name));
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
             prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) => RequireSymbol(receiver).Display));
