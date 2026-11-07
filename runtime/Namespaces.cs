@@ -27,6 +27,7 @@ public static partial class Js
         internal NumberNamespace() : base("Number", static args => args.Length == 0 ? 0d : Number(FunctionArgument(args, 0)), 1, (RawNumberFunction1)(static value => value))
         {
             MarkOrdinaryPrototype();
+            Member("parseInt", NumberParsers.Integer); Member("parseFloat", NumberParsers.Float);
             Member("isNaN", NumberPredicateFunction(0)); Member("isFinite", NumberPredicateFunction(1)); Member("isInteger", NumberPredicateFunction(2)); Member("isSafeInteger", NumberPredicateFunction(3));
             Member("NaN", double.NaN); Member("POSITIVE_INFINITY", double.PositiveInfinity); Member("NEGATIVE_INFINITY", double.NegativeInfinity); Member("MAX_SAFE_INTEGER", 9007199254740991d); Member("MIN_SAFE_INTEGER", -9007199254740991d); Member("EPSILON", Math.Pow(2, -52)); Member("MAX_VALUE", double.MaxValue); Member("MIN_VALUE", double.Epsilon);
         }
@@ -109,5 +110,5 @@ public static partial class Js
     internal static JsFunction GetObjectConstructor() => RuntimeNamespaces.Object;
     public static void ConsoleLog(object[] args) => CallMethod(RuntimeNamespaces.Console.Get("log"), RuntimeNamespaces.Console, args);
     public static double PerformanceNow() => CallMethodNumber0(RuntimeNamespaces.Performance.Get("now"), RuntimeNamespaces.Performance).GetValueOrDefault(double.NaN);
-    public static object BuiltinNamespace(string name) => name == "Map" ? RuntimeNamespaces.Map : name == "Set" ? RuntimeNamespaces.Set : name == "Promise" ? RuntimeNamespaces.Promise : name == "queueMicrotask" ? RuntimeNamespaces.QueueMicrotask : name == "Array" ? RuntimeNamespaces.Array : name == "Math" ? RuntimeNamespaces.Math : name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : name == "String" ? RuntimeNamespaces.String : name == "Boolean" ? RuntimeNamespaces.Boolean : Undefined;
+    public static object BuiltinNamespace(string name) => name == "parseInt" ? NumberParsers.Integer : name == "parseFloat" ? NumberParsers.Float : name == "Map" ? RuntimeNamespaces.Map : name == "Set" ? RuntimeNamespaces.Set : name == "Promise" ? RuntimeNamespaces.Promise : name == "queueMicrotask" ? RuntimeNamespaces.QueueMicrotask : name == "Array" ? RuntimeNamespaces.Array : name == "Math" ? RuntimeNamespaces.Math : name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : name == "String" ? RuntimeNamespaces.String : name == "Boolean" ? RuntimeNamespaces.Boolean : Undefined;
 }
