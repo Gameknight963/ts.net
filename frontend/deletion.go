@@ -4,7 +4,8 @@ import "github.com/microsoft/typescript-go/internal/ast"
 
 // A deleted fixed field cannot retain its CLR layout. Conservatively keep all
 // literals containing a potentially deleted name in dynamic storage, including
-// aliases passed across functions and modules. Unknown keys cover every literal.
+// aliases passed across functions and modules. Unknown delete-expression keys
+// cover every literal; dynamic reflection is deliberately more restrictive.
 func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 	b.deletedNames = map[string]bool{}
 	var visit func(*ast.Node)
@@ -20,21 +21,17 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 					method = key.Text()
 				}
 			}
-			if method == "" {
-				// An escaping namespace or unknown member may expose deleteProperty
-				// through aliases, destructuring, callbacks or another module.
-				b.deleteAnyName = true
-			} else if method == "deleteProperty" {
+			// Reflection must not change every object layout merely because a
+			// namespace or method escapes. Only direct, literal-key calls opt
+			// fixed fields into deletable storage; other calls require a
+			// dictionary-backed object and are checked by the runtime.
+			if method == "deleteProperty" {
 				call := access.Parent
 				if call != nil && call.Kind == ast.KindCallExpression && call.Expression() == access && len(call.AsCallExpression().Arguments.Nodes) >= 2 {
 					key := call.AsCallExpression().Arguments.Nodes[1]
 					if key.Kind == ast.KindStringLiteral {
 						b.deletedNames[key.Text()] = true
-					} else {
-						b.deleteAnyName = true
 					}
-				} else {
-					b.deleteAnyName = true
 				}
 			}
 		}

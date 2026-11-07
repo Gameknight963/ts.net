@@ -6,7 +6,7 @@ public abstract partial class TsObject
     {
         if(IsModuleNamespace || IsReadOnlyOwnProperty(key))return !HasOwn(key);
         if(extra is not null && extra.Remove(key)){accessors?.Remove(key);return true;}
-        if(HasOwn(key))throw new NotSupportedException("Deleting compiler-generated fields is not implemented");
+        if(HasOwn(key))throw new NotSupportedException("Dynamic deletion of a fixed-layout field is unsupported; use a literal-key delete or a dictionary-backed object");
         return true;
     }
 }
