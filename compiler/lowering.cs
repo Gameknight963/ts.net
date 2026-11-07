@@ -49,7 +49,7 @@ internal static partial class CompilerFunctions
     internal static bool builtin(int callee, TextBytes owner, TextBytes member, Compiler c)
     {
         return get_node(callee, c).kind == NodeKind.Property && is_text(get_node(callee, c).name, member, c) &&
-               get_node(get_node(callee, c).left, c).kind == NodeKind.Name &&
+               get_node(get_node(callee, c).left, c).kind == NodeKind.Name && get_node(get_node(callee, c).left, c).symbol == 0 &&
                is_text(get_node(get_node(callee, c).left, c).name, owner, c);
     }
     internal static bool builtin_has_own(int callee, Compiler c)

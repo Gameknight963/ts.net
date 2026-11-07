@@ -176,7 +176,7 @@ func (b *irBuilder) intrinsicVoidCall(callee int) bool {
 		return false
 	}
 	owner := b.nodes[property.left-1]
-	return owner.kind == 3 && owner.name != 0 && b.texts[owner.name-1] == "console"
+	return owner.kind == 3 && owner.symbol == 0 && owner.name != 0 && b.texts[owner.name-1] == "console"
 }
 
 func (b *irBuilder) objectEnumeration(n *ast.Node) int {

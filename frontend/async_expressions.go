@@ -239,6 +239,16 @@ func (a *asyncExpressionLowering) callTarget(id int, next func(int, int) int) in
 		return a.chain(callee, next)
 	}
 	if callee.kind == 5 || callee.kind == 33 {
+		// Intrinsic call lowering uses synthetic names for console/performance
+		// and Object.hasOwn. Awaited arguments must save actual namespace values.
+		if callee.typ == 0 {
+			callee.typ = a.any
+		}
+		owner := &a.b.nodes[callee.left-1]
+		if owner.kind == 3 && owner.symbol == 0 {
+			owner.kind = 66
+			owner.typ = a.any
+		}
 		a.discard(id)
 		return a.expression(callee.left, func(value int) int {
 			return a.bind(value, func(receiver int) int {
