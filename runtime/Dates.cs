@@ -47,6 +47,7 @@ public static partial class Js
             Member("parse", new JsFunction((FunctionBody)(static args => ParseDate(StringValue(FunctionArgument(args, 0)))), null, "parse", 1));
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
+            DefineDateGetters(prototype);
             var getTime = new CollectionMethod("getTime", 0, (receiver, _) => RequireDate(receiver).Timestamp);
             prototype.DefineMethod("getTime", getTime);
             prototype.DefineMethod("valueOf", new CollectionMethod("valueOf", 0, (receiver, _) => RequireDate(receiver).Timestamp));
