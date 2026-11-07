@@ -43,7 +43,7 @@ public static partial class Js
                 position += Iteration.Step(iterator, position);
             }
             foreach (object entry in entries) {
-                if (entry is not BinaryBuffer source || source.Detached || copies.ContainsKey(source)) throw Uncloneable();
+                if (entry is not BinaryBuffer source || source is SharedBuffer || source.Detached || copies.ContainsKey(source)) throw Uncloneable();
                 var target = new BinaryBuffer(0, source.Maximum);
                 copies.Add(source, target);
                 (transfers ??= new()).Add((source, target));
@@ -68,6 +68,8 @@ public static partial class Js
             TsObject result;
             switch (source)
             {
+                case SharedBuffer shared:
+                    result = new SharedBuffer(shared.Storage); break;
                 case BinaryBuffer buffer:
                     if (buffer.Detached) throw Uncloneable();
                     var bytes = new BinaryBuffer(buffer.Bytes.Length, buffer.Maximum);

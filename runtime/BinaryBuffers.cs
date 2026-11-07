@@ -4,7 +4,7 @@ using System.Buffers.Binary;
 
 public static partial class Js
 {
-    sealed class BinaryBuffer(int length, int maximum = -1) : TsObject
+    class BinaryBuffer(int length, int maximum = -1) : TsObject
     {
         internal byte[] Bytes = length == 0 ? Array.Empty<byte>() : new byte[length];
         internal bool Detached;
@@ -30,7 +30,8 @@ public static partial class Js
         if (number < 0 || number > Array.MaxLength) throw new ArgumentOutOfRangeException(null, "Binary buffer index is out of range");
         return (int)number;
     }
-    static BinaryBuffer RequireBuffer(object receiver) => receiver as BinaryBuffer ?? throw new InvalidOperationException("ArrayBuffer receiver required");
+    static BinaryBuffer RequireBufferSource(object receiver) => receiver as BinaryBuffer ?? throw new InvalidOperationException("Buffer receiver required");
+    static BinaryBuffer RequireBuffer(object receiver) => receiver is BinaryBuffer value && value is not SharedBuffer ? value : throw new InvalidOperationException("ArrayBuffer receiver required");
     static BinaryView RequireView(object receiver) => receiver as BinaryView ?? throw new InvalidOperationException("DataView receiver required");
     sealed class BinaryBufferConstructor : NativeNamespaceFunction
     {
@@ -111,7 +112,7 @@ public static partial class Js
         }
         public override object Construct(object[] args)
         {
-            var buffer = RequireBuffer(FunctionArgument(args, 0));
+            var buffer = RequireBufferSource(FunctionArgument(args, 0));
             int offset = BinaryIndex(FunctionArgument(args, 1));
             EnsureAttached(buffer);
             if (offset > buffer.Bytes.Length) throw new ArgumentOutOfRangeException(null, "DataView offset is out of range");
