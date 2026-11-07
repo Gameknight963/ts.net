@@ -42,7 +42,7 @@ public static partial class Js
             if (pattern is JsRegExp regex)
             {
                 if (!regex.Flags.Contains('g')) throw new InvalidOperationException("matchAll requires a global regular expression");
-                copy = new JsRegExp(regex.Pattern, regex.Flags, regex.Engine);
+                copy = new JsRegExp(regex.Pattern, regex.Flags, regex.Engine, regex.NamedGroups);
                 double position = Number(regex.LastIndex);
                 copy.LastIndex = double.IsNaN(position) || position <= 0 ? 0d : Math.Min(Math.Truncate(position), 9007199254740991d);
             }

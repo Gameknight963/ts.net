@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-internal sealed class JsRegExp(string pattern, string flags, Regex engine) : TsObject
+internal sealed class JsRegExp(string pattern, string flags, Regex engine, string[] namedGroups) : TsObject
 {
     internal readonly string Pattern = pattern, Flags = flags;
     internal readonly Regex Engine = engine;
+    internal readonly string[] NamedGroups = namedGroups;
     internal object LastIndex = 0d;
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.RegExpPrototype;
     public override bool HasOwn(string key) => key == "lastIndex" || base.HasOwn(key);
@@ -23,22 +24,48 @@ public static partial class Js
 {
     internal static TsObject RegExpPrototype => (TsObject)RuntimeNamespaces.RegExp.Get("prototype");
     static readonly Dictionary<(string, RegexOptions), Regex> regexEngines = new();
-    static Regex RegExpEngine(string pattern, RegexOptions options, bool dotAll)
+    static Regex RegExpEngine(string pattern, RegexOptions options, bool dotAll, out string[] namedGroups)
     {
         bool inClass = false;
+        var names = new List<string>();
+        string prefix = "tsnetCapture";
+        while (pattern.Contains(prefix, StringComparison.Ordinal)) prefix += "X";
+        int captures = 0;
+        var rewritten = new StringBuilder(pattern.Length);
         for (int i = 0; i < pattern.Length; i++)
         {
             char ch = pattern[i];
             if (ch == '\\')
             {
-                if (++i < pattern.Length && pattern[i] is 'A' or 'G' or 'Z' or 'z' or 'k' or 'p' or 'P') throw new NotSupportedException("This regular-expression escape is not supported");
+                rewritten.Append(ch);
+                if (++i < pattern.Length && pattern[i] is 'A' or 'G' or 'Z' or 'z' or 'p' or 'P') throw new NotSupportedException("This regular-expression escape is not supported");
+                if (i < pattern.Length) rewritten.Append(pattern[i]);
                 continue;
             }
             if (ch == '[') inClass = true; else if (ch == ']') inClass = false;
             bool lookbehind = i + 3 < pattern.Length && pattern[i + 2] == '<' && pattern[i + 3] is '=' or '!';
-            if (!inClass && ch == '(' && i + 2 < pattern.Length && pattern[i + 1] == '?' && pattern[i + 2] is not (':' or '=' or '!') && !lookbehind)
-                throw new NotSupportedException("Named and engine-specific regex groups are not supported");
+            bool named = !inClass && ch == '(' && i + 3 < pattern.Length && pattern[i + 1] == '?' && pattern[i + 2] == '<' && !lookbehind;
+            if (named)
+            {
+                int end = pattern.IndexOf('>', i + 3);
+                if (end < 0) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid named capture"));
+                string name = pattern[(i + 3)..end];
+                if (name.Length == 0 || char.IsDigit(name[0])) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid capture name"));
+                if (names.Contains(name)) throw new NotSupportedException("Duplicate named captures are not supported");
+                names.Add(name); captures++;
+            }
+            if (!inClass && ch == '(' && (i + 1 >= pattern.Length || pattern[i + 1] != '?'))
+            {
+                // .NET otherwise numbers unnamed groups before named groups.
+                rewritten.Append("(?<").Append(prefix).Append(++captures).Append('>');
+                continue;
+            }
+            if (!inClass && ch == '(' && i + 2 < pattern.Length && pattern[i + 1] == '?' && pattern[i + 2] is not (':' or '=' or '!') && !lookbehind && !named)
+                throw new NotSupportedException("Engine-specific regex groups are not supported");
+            rewritten.Append(ch);
         }
+        namedGroups = names.ToArray();
+        pattern = rewritten.ToString();
         if (dotAll) pattern = "(?s:" + pattern + ")";
         lock (regexEngines)
         {
@@ -63,7 +90,8 @@ public static partial class Js
         if (seen.Contains('i')) options |= RegexOptions.IgnoreCase;
         if (seen.Contains('m')) options |= RegexOptions.Multiline;
         string canonical = ""; foreach (char flag in "dgimsy") if (seen.Contains(flag)) canonical += flag;
-        return new JsRegExp(text, canonical, RegExpEngine(text, options, seen.Contains('s')));
+        var engine = RegExpEngine(text, options, seen.Contains('s'), out var names);
+        return new JsRegExp(text, canonical, engine, names);
     }
     static string RegExpSource(string pattern)
     {
@@ -98,14 +126,27 @@ public static partial class Js
         if (test) return BoxBoolean(true);
         var result = new JsArray(0);
         foreach (Group group in match.Groups) result.Append(group.Success ? group.Value : Undefined);
-        result.DefineOwn("index", (double)match.Index); result.DefineOwn("input", text); result.DefineOwn("groups", Undefined);
+        result.DefineOwn("index", (double)match.Index); result.DefineOwn("input", text); result.DefineOwn("groups", RegExpNamedGroups(regex, match));
         if (regex.Flags.Contains('d'))
         {
             var indices = new JsArray(0);
             foreach (Group group in match.Groups)
                 indices.Append(group.Success ? new JsArray(new object[] { (double)group.Index, (double)(group.Index + group.Length) }) : Undefined);
-            indices.DefineOwn("groups", Undefined);
+            indices.DefineOwn("groups", RegExpNamedGroups(regex, match, indices));
             result.DefineOwn("indices", indices);
+        }
+        return result;
+    }
+    static object RegExpNamedGroups(JsRegExp regex, Match match, JsArray indices = null)
+    {
+        if (regex.NamedGroups.Length == 0) return Undefined;
+        var result = new JsDynamicObject(); result.SetPrototype(null);
+        foreach (string name in regex.NamedGroups)
+        {
+            var group = match.Groups[name];
+            result.DefineOwn(name, !group.Success ? Undefined : indices != null
+                ? indices.Get(regex.Engine.GroupNumberFromName(name).ToString(System.Globalization.CultureInfo.InvariantCulture))
+                : group.Value);
         }
         return result;
     }

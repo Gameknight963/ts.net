@@ -5,13 +5,24 @@ using System.Text.RegularExpressions;
 
 public static partial class Js
 {
-    static void AppendReplacement(StringBuilder result, string template, string text, string match, int position, Match captures = null)
+    static void AppendReplacement(StringBuilder result, string template, string text, string match, int position, Match captures = null, JsRegExp regex = null)
     {
         int literal = 0;
         for (int index = 0; index + 1 < template.Length; index++)
         {
             if (template[index] != '$') continue;
             char token = template[index + 1];
+            if (captures != null && regex.NamedGroups.Length != 0 && token == '<')
+            {
+                int end = template.IndexOf('>', index + 2);
+                if (end >= 0)
+                {
+                    result.Append(template, literal, index - literal);
+                    string name = template[(index + 2)..end];
+                    if (Array.IndexOf(regex.NamedGroups, name) >= 0) result.Append(captures.Groups[name].Value);
+                    index = end; literal = end + 1; continue;
+                }
+            }
             if (captures != null && token >= '0' && token <= '9')
             {
                 int capture = token - '0', digits = 1;
@@ -73,12 +84,13 @@ public static partial class Js
             result.Append(text, copied, match.Index - copied);
             if (function != null)
             {
-                var args = new object[match.Groups.Count + 2];
+                var args = new object[match.Groups.Count + 2 + (regex.NamedGroups.Length == 0 ? 0 : 1)];
                 for (int i = 0; i < match.Groups.Count; i++) args[i] = match.Groups[i].Success ? match.Groups[i].Value : Undefined;
-                args[^2] = (double)match.Index; args[^1] = text;
+                args[match.Groups.Count] = (double)match.Index; args[match.Groups.Count + 1] = text;
+                if (regex.NamedGroups.Length != 0) args[^1] = RegExpNamedGroups(regex, match);
                 result.Append(StringValue(function.InvokeWithReceiver(Undefined, args)));
             }
-            else AppendReplacement(result, template, text, match.Value, match.Index, match);
+            else AppendReplacement(result, template, text, match.Value, match.Index, match, regex);
             copied = match.Index + match.Length;
         }
         result.Append(text, copied, text.Length - copied); return result.ToString();
