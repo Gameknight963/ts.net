@@ -31,6 +31,8 @@ public static partial class Js
             prototype.DefineHidden("valueOf", PrimitiveMethod(0d, false));
             prototype.DefineHidden("toString", PrimitiveMethod(0d, true));
             prototype.DefineHidden("toFixed", new NumberFixedFunction());
+            prototype.DefineHidden("toExponential", new NumberPrecisionFunction(false));
+            prototype.DefineHidden("toPrecision", new NumberPrecisionFunction(true));
             UseObjectPrototype(prototype);
             Member("parseInt", NumberParsers.Integer); Member("parseFloat", NumberParsers.Float);
             Member("isNaN", NumberPredicateFunction(0)); Member("isFinite", NumberPredicateFunction(1)); Member("isInteger", NumberPredicateFunction(2)); Member("isSafeInteger", NumberPredicateFunction(3));
