@@ -14,9 +14,10 @@ public static partial class Js
     static double DateNow() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     static double ParseDate(string text) => DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed) ? ClipDate(parsed.ToUnixTimeMilliseconds()) : double.NaN;
     static JsDate RequireDate(object receiver) => receiver as JsDate ?? throw new InvalidOperationException("Date method requires a date");
-    static DateTimeOffset NativeDate(JsDate date)
+    static DateTimeOffset NativeDate(JsDate date) => NativeDate(date.Timestamp);
+    static DateTimeOffset NativeDate(double timestamp)
     {
-        try { return DateTimeOffset.FromUnixTimeMilliseconds((long)date.Timestamp); }
+        try { return DateTimeOffset.FromUnixTimeMilliseconds((long)timestamp); }
         catch (ArgumentOutOfRangeException) { throw new NotSupportedException("Date calendar formatting outside .NET's year range 1 through 9999 is not supported"); }
     }
     static string DateIso(object receiver)

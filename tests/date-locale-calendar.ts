@@ -1,1 +1,1 @@
-console.log(new Date(0).toLocaleString("en-US",{calendar:"gregory"}));
+console.log(new Date(0).toLocaleString("en-US",{calendar:"chinese"}));

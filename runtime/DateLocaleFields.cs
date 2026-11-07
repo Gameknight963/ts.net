@@ -7,7 +7,9 @@ public static partial class Js
 {
     sealed class DateLocaleFields
     {
-        readonly string year, month, day, weekday, era;
+        string year, month, day, era;
+        readonly string weekday;
+        internal bool HasDateRequest => year != null || month != null || day != null || weekday != null;
         internal bool HasFields => year != null || month != null || day != null || weekday != null || era != null;
         internal DateLocaleFields(TsObject options)
         {
@@ -24,6 +26,19 @@ public static partial class Js
             day = Read("day", "numeric", "2-digit");
             weekday = Read("weekday", "long", "short", "narrow");
             era = Read("era", "long", "short", "narrow");
+        }
+        internal void UseDateDefaults(CultureInfo culture)
+        {
+            string pattern = culture.DateTimeFormat.ShortDatePattern;
+            year = pattern.Contains("yyyy", StringComparison.Ordinal) ? "numeric" : "2-digit";
+            month = pattern.Contains("MM", StringComparison.Ordinal) ? "2-digit" : "numeric";
+            day = pattern.Contains("dd", StringComparison.Ordinal) ? "2-digit" : "numeric";
+            if (pattern.Contains('g')) era ??= "short";
+        }
+        internal void WriteOptions(TsObject target)
+        {
+            void Field(string name, string value) { if (value != null) target.DefineOwn(name, value); }
+            Field("year", year); Field("month", month); Field("day", day); Field("weekday", weekday); Field("era", era);
         }
         internal string Format(DateTimeOffset value, CultureInfo culture)
         {

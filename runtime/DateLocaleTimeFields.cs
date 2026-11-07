@@ -37,10 +37,24 @@ public static partial class Js
                 fractionDigits = (int)number;
             }
         }
+        string Clock(CultureInfo culture) => hour12.HasValue ? hour12.Value ? "h12" : "h23"
+            : cycle ?? (culture.DateTimeFormat.ShortTimePattern.Contains('H') ? "h23" : "h12");
+        internal void WriteOptions(TsObject target, CultureInfo culture, bool styled, bool timeStyle)
+        {
+            void Field(string name, string value) { if (value != null) target.DefineOwn(name, value); }
+            if (hour != null || timeStyle) {
+                string clock = Clock(culture);
+                target.DefineOwn("hourCycle", clock); target.DefineOwn("hour12", BoxBoolean(clock is "h11" or "h12"));
+            }
+            if (styled) return;
+            Field("hour", hour); Field("minute", minute == null ? null : hour != null ? "2-digit" : minute);
+            Field("second", second == null ? null : hour != null || minute != null ? "2-digit" : second);
+            Field("dayPeriod", dayPeriod); Field("timeZoneName", zoneName);
+            if (fractionDigits != 0) target.DefineOwn("fractionalSecondDigits", (double)fractionDigits);
+        }
         internal string Format(DateTimeOffset value, CultureInfo culture, TimeZoneInfo zone, bool defaults = false, string style = null)
         {
-            string clock = cycle ?? (culture.DateTimeFormat.ShortTimePattern.Contains('H') ? "h23" : "h12");
-            if (hour12.HasValue) clock = hour12.Value ? "h12" : "h23";
+            string clock = Clock(culture);
             bool use12 = clock is "h11" or "h12";
             bool paddedStyle = style != null && (culture.DateTimeFormat.ShortTimePattern.Contains("HH", StringComparison.Ordinal) || culture.DateTimeFormat.ShortTimePattern.Contains("hh", StringComparison.Ordinal));
             string h = defaults ? paddedStyle || !use12 ? "2-digit" : "numeric" : hour;
