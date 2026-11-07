@@ -12,12 +12,18 @@ public static partial class Js
             long position = 0;
             void Append(object item)
             {
-                if (item is JsArray array)
+                bool spreadable = item is JsArray;
+                if (item is TsObject obj) {
+                    object flag = obj.Get(PropertyKey(ConcatSpreadableSymbol));
+                    if (!IsUndefined(flag)) spreadable = Truthy(flag);
+                }
+                if (spreadable)
                 {
-                    long length = IndexedLength(array);
+                    var indexed = (TsObject)item;
+                    long length = IndexedLength(indexed);
                     if (position + length > uint.MaxValue) throw new ArgumentOutOfRangeException(nameof(receiver), "Invalid array length");
                     for (long index = 0; index < length; index++, position++)
-                        if (TryIndexedValue(array, index, out object value)) result.Set(position.ToString(CultureInfo.InvariantCulture), value);
+                        if (TryIndexedValue(indexed, index, out object value)) result.Set(position.ToString(CultureInfo.InvariantCulture), value);
                 }
                 else
                 {
