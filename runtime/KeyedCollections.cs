@@ -1,3 +1,4 @@
+using System.Numerics;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -10,6 +11,7 @@ internal sealed class CollectionKeyComparer : IEqualityComparer<object>
         (double a, double b) => a == b || double.IsNaN(a) && double.IsNaN(b),
         (string a, string b) => StringComparer.Ordinal.Equals(a, b),
         (bool a, bool b) => a == b,
+        (BigInteger a, BigInteger b) => a == b,
         _ => false
     });
     public int GetHashCode(object value) => value switch
@@ -17,6 +19,7 @@ internal sealed class CollectionKeyComparer : IEqualityComparer<object>
         double number => number.GetHashCode(),
         string text => StringComparer.Ordinal.GetHashCode(text),
         bool boolean => boolean.GetHashCode(),
+        BigInteger integer => integer.GetHashCode(),
         _ => RuntimeHelpers.GetHashCode(value)
     };
 }

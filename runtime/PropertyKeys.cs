@@ -1,10 +1,11 @@
+using System.Numerics;
 using System;
 using System.Globalization;
 
 public static partial class Js
 {
     static bool KeyPrimitive(object value) => value == null || ReferenceEquals(value, Undefined) ||
-        value is string || value is double || value is bool || value is JsSymbol;
+        value is string || value is double || value is bool || value is JsSymbol || value is BigInteger;
 
     public static string PropertyKey(object value)
     {

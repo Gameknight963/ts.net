@@ -1,3 +1,4 @@
+using System.Numerics;
 using System;
 using System.Runtime.CompilerServices;
 
@@ -22,6 +23,11 @@ public static partial class Js
             int order = string.CompareOrdinal(a, b);
             return mode switch { 0 => order < 0, 1 => order > 0, 2 => order <= 0, 3 => order >= 0,
                 _ => throw new ArgumentOutOfRangeException(nameof(mode)) };
+        }
+        if (left is BigInteger || right is BigInteger) {
+            int? order = left is BigInteger firstInteger ? CompareBigInt(firstInteger, right) : -CompareBigInt((BigInteger)right, left);
+            if (!order.HasValue) return false;
+            return mode switch { 0 => order < 0, 1 => order > 0, 2 => order <= 0, 3 => order >= 0, _ => throw new ArgumentOutOfRangeException(nameof(mode)) };
         }
         double x = Number(left), y = Number(right);
         return mode switch { 0 => x < y, 1 => x > y, 2 => x <= y, 3 => x >= y,

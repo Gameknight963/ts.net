@@ -1,3 +1,4 @@
+using System.Numerics;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -47,7 +48,7 @@ internal sealed class JsBoxedPrimitive(object value, bool intrinsicPrototype = f
 
 public static partial class Js
 {
-    internal static TsObject PrimitivePrototype(object value) => (TsObject)((JsFunction)BuiltinNamespace(value is JsSymbol ? "Symbol" : value is string ? "String" : value is double ? "Number" : "Boolean")).Get("prototype");
+    internal static TsObject PrimitivePrototype(object value) => (TsObject)((JsFunction)BuiltinNamespace(value is BigInteger ? "BigInt" : value is JsSymbol ? "Symbol" : value is string ? "String" : value is double ? "Number" : "Boolean")).Get("prototype");
     sealed class PrimitiveValueFunction(Type type, bool text) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Primitive method requires a receiver")), null, text ? "toString" : "valueOf", 0)
     {
         object Execute(object receiver)
@@ -68,5 +69,5 @@ public static partial class Js
         internal static readonly JsFunction BooleanValue = new PrimitiveValueFunction(typeof(bool), false), BooleanText = new PrimitiveValueFunction(typeof(bool), true);
     }
     internal static object PrimitiveMethod(object value, bool text) => value is string ? text ? PrimitiveMethods.StringText : PrimitiveMethods.StringValue : value is double ? text ? PrimitiveMethods.NumberText : PrimitiveMethods.NumberValue : text ? PrimitiveMethods.BooleanText : PrimitiveMethods.BooleanValue;
-    internal static TsObject ToObject(object value) => value is TsObject obj ? obj : value is string or double or bool or JsSymbol ? new JsBoxedPrimitive(value) : throw new InvalidOperationException("Cannot convert null or undefined to object");
+    internal static TsObject ToObject(object value) => value is TsObject obj ? obj : value is string or double or bool or JsSymbol or BigInteger ? new JsBoxedPrimitive(value) : throw new InvalidOperationException("Cannot convert null or undefined to object");
 }

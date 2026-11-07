@@ -1,3 +1,4 @@
+using System.Numerics;
 using System;
 using System.Collections.Generic;
 
@@ -25,7 +26,7 @@ public static partial class Js
     }
     sealed class NumberNamespace : NativeNamespaceFunction
     {
-        internal NumberNamespace() : base("Number", static args => args.Length == 0 ? 0d : Number(FunctionArgument(args, 0)), 1, (RawNumberFunction1)(static value => value))
+        internal NumberNamespace() : base("Number", static args => args.Length == 0 ? 0d : ExplicitNumber(FunctionArgument(args, 0)), 1, (RawNumberFunction1)(static value => value))
         {
             var prototype = new JsBoxedPrimitive(0d, true);
             prototype.DefineHidden("constructor", this);
@@ -43,7 +44,7 @@ public static partial class Js
         internal override bool IsReadOnlyOwnProperty(string key) => key is "NaN" or "POSITIVE_INFINITY" or "NEGATIVE_INFINITY" or "MAX_SAFE_INTEGER" or "MIN_SAFE_INTEGER" or "EPSILON" or "MAX_VALUE" or "MIN_VALUE" || base.IsReadOnlyOwnProperty(key);
         internal override bool OwnPropertyConfigurable(string key) => key is not ("NaN" or "POSITIVE_INFINITY" or "NEGATIVE_INFINITY" or "MAX_SAFE_INTEGER" or "MIN_SAFE_INTEGER" or "EPSILON" or "MAX_VALUE" or "MIN_VALUE") && base.OwnPropertyConfigurable(key);
         public override double? InvokeNumber0() => 0d;
-        public override object Construct(object[] arguments) => new JsBoxedPrimitive(arguments.Length == 0 ? 0d : Number(arguments[0]));
+        public override object Construct(object[] arguments) => new JsBoxedPrimitive(arguments.Length == 0 ? 0d : ExplicitNumber(arguments[0]));
         internal override bool CanInitializeDerived => true;
         internal override object InitializeDerived(object instance, object[] arguments)
         {
@@ -137,6 +138,7 @@ public static partial class Js
         internal static readonly TsObject Performance = new PerformanceNamespace();
         internal static readonly JsFunction Object = ObjectNamespace();
         internal static readonly JsFunction Number = new NumberNamespace();
+        internal static readonly JsFunction BigInt = new BigIntFunction();
         internal static readonly JsFunction String = new PrimitiveConstructorFunction("String", true);
         internal static readonly JsFunction Boolean = new PrimitiveConstructorFunction("Boolean", false);
         internal static readonly JsFunction Array = new ArrayConstructorFunction();
@@ -155,5 +157,5 @@ public static partial class Js
     internal static JsFunction GetObjectConstructor() => RuntimeNamespaces.Object;
     public static void ConsoleLog(object[] args) => CallMethod(RuntimeNamespaces.Console.Get("log"), RuntimeNamespaces.Console, args);
     public static double PerformanceNow() => CallMethodNumber0(RuntimeNamespaces.Performance.Get("now"), RuntimeNamespaces.Performance).GetValueOrDefault(double.NaN);
-    public static object BuiltinNamespace(string name) => name == "Symbol" ? RuntimeNamespaces.Symbol : name == "Iterator" ? RuntimeNamespaces.Iterator : name == "__importMeta" ? ImportMetaFunction.Value : name == "WeakRef" ? RuntimeNamespaces.WeakRef : name == "__templateText" ? TemplateTextFunction.Value : name == "__templateObject" ? TemplateObjectFunction.Value : name == "Date" ? RuntimeNamespaces.Date : name == "RegExp" ? RuntimeNamespaces.RegExp : name == "Reflect" ? RuntimeNamespaces.Reflect : name == "JSON" ? RuntimeNamespaces.Json : name == "escape" ? LegacyEscapes.Escape : name == "unescape" ? LegacyEscapes.Unescape : name == "encodeURI" ? UriFunctions.Encode : name == "encodeURIComponent" ? UriFunctions.EncodeComponent : name == "decodeURI" ? UriFunctions.Decode : name == "decodeURIComponent" ? UriFunctions.DecodeComponent : name == "isNaN" ? GlobalNumberPredicates.IsNaN : name == "isFinite" ? GlobalNumberPredicates.IsFinite : name == "parseInt" ? NumberParsers.Integer : name == "parseFloat" ? NumberParsers.Float : name == "WeakMap" ? RuntimeNamespaces.WeakMap : name == "WeakSet" ? RuntimeNamespaces.WeakSet : name == "Map" ? RuntimeNamespaces.Map : name == "Set" ? RuntimeNamespaces.Set : name == "Promise" ? RuntimeNamespaces.Promise : name == "queueMicrotask" ? RuntimeNamespaces.QueueMicrotask : name == "Array" ? RuntimeNamespaces.Array : name == "Math" ? RuntimeNamespaces.Math : name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : name == "String" ? RuntimeNamespaces.String : name == "Boolean" ? RuntimeNamespaces.Boolean : Undefined;
+    public static object BuiltinNamespace(string name) => name == "BigInt" ? RuntimeNamespaces.BigInt : name == "Symbol" ? RuntimeNamespaces.Symbol : name == "Iterator" ? RuntimeNamespaces.Iterator : name == "__importMeta" ? ImportMetaFunction.Value : name == "WeakRef" ? RuntimeNamespaces.WeakRef : name == "__templateText" ? TemplateTextFunction.Value : name == "__templateObject" ? TemplateObjectFunction.Value : name == "Date" ? RuntimeNamespaces.Date : name == "RegExp" ? RuntimeNamespaces.RegExp : name == "Reflect" ? RuntimeNamespaces.Reflect : name == "JSON" ? RuntimeNamespaces.Json : name == "escape" ? LegacyEscapes.Escape : name == "unescape" ? LegacyEscapes.Unescape : name == "encodeURI" ? UriFunctions.Encode : name == "encodeURIComponent" ? UriFunctions.EncodeComponent : name == "decodeURI" ? UriFunctions.Decode : name == "decodeURIComponent" ? UriFunctions.DecodeComponent : name == "isNaN" ? GlobalNumberPredicates.IsNaN : name == "isFinite" ? GlobalNumberPredicates.IsFinite : name == "parseInt" ? NumberParsers.Integer : name == "parseFloat" ? NumberParsers.Float : name == "WeakMap" ? RuntimeNamespaces.WeakMap : name == "WeakSet" ? RuntimeNamespaces.WeakSet : name == "Map" ? RuntimeNamespaces.Map : name == "Set" ? RuntimeNamespaces.Set : name == "Promise" ? RuntimeNamespaces.Promise : name == "queueMicrotask" ? RuntimeNamespaces.QueueMicrotask : name == "Array" ? RuntimeNamespaces.Array : name == "Math" ? RuntimeNamespaces.Math : name == "console" ? RuntimeNamespaces.Console : name == "performance" ? RuntimeNamespaces.Performance : name == "Object" ? RuntimeNamespaces.Object : name == "Number" ? RuntimeNamespaces.Number : name == "String" ? RuntimeNamespaces.String : name == "Boolean" ? RuntimeNamespaces.Boolean : Undefined;
 }

@@ -1,3 +1,4 @@
+using System.Numerics;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -59,6 +60,7 @@ public static partial class Js
         null => "object",
         bool => "boolean",
         JsSymbol => "symbol",
+        BigInteger => "bigint",
         double => "number",
         string => "string",
         JsFunction => "function",
@@ -130,6 +132,7 @@ public static partial class Js
     {
         double n => n,
         JsSymbol => throw new InvalidOperationException("Cannot convert a symbol to a number"),
+        BigInteger => throw new InvalidOperationException("Cannot implicitly convert a bigint to a number"),
         null => 0,
         bool b => b ? 1 : 0,
         string s => StringNumber(s),
@@ -141,6 +144,7 @@ public static partial class Js
     {
         null => false,
         bool b => b,
+        BigInteger n => !n.IsZero,
         double n => n != 0 && !double.IsNaN(n),
         string s => s.Length != 0,
         _ => !ReferenceEquals(value, Undefined)
@@ -155,7 +159,7 @@ public static partial class Js
         string when key is "indexOf" or "includes" or "lastIndexOf" => StringSearchTarget(key),
         string when key is "slice" or "substring" => StringRangeTarget(key),
         string when key is "charAt" or "charCodeAt" or "codePointAt" => CharacterTarget(key),
-        string or double or bool or JsSymbol => PrimitivePrototype(receiver).GetWithReceiver(key, receiver),
+        string or double or bool or JsSymbol or BigInteger => PrimitivePrototype(receiver).GetWithReceiver(key, receiver),
         _ => throw new InvalidOperationException("Cannot read property of undefined")
     };
 
@@ -382,6 +386,7 @@ public static partial class Js
         if (right is TsObject second) right = ToPrimitive(second, "default");
         if (left is JsSymbol || right is JsSymbol) throw new InvalidOperationException("Cannot convert a symbol to a number or string");
         if (left is string || right is string) return Text(left) + Text(right);
+        if (left is BigInteger a && right is BigInteger b) return a + b;
         return Number(left) + Number(right);
     }
 
@@ -437,6 +442,7 @@ public static partial class Js
     {
         if (left is double a && right is double b) return a == b;
         if (left is string x && right is string y) return x == y;
+        if (left is BigInteger m && right is BigInteger n) return m == n;
         if (left is bool p && right is bool q) return p == q;
         return ReferenceEquals(left, right);
     }
@@ -451,6 +457,7 @@ public static partial class Js
         bool b => b ? "true" : "false",
         string s => s,
         JsSymbol symbol => symbol.Display,
+        BigInteger integer => integer.ToString(CultureInfo.InvariantCulture),
         TsObject => "[object Object]",
         _ when ReferenceEquals(value, Undefined) => "undefined",
         null => "null",
@@ -458,6 +465,7 @@ public static partial class Js
     };
 
     private static string Inspect(object value) =>
+        value is BigInteger integer ? integer.ToString(CultureInfo.InvariantCulture) + "n" :
         value is double n && n == 0 && BitConverter.DoubleToInt64Bits(n) < 0 ? "-0" : Text(value);
 
     public static void Log(params object[] values) =>

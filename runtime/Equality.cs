@@ -1,3 +1,4 @@
+using System.Numerics;
 using System;
 using System.Runtime.CompilerServices;
 
@@ -16,6 +17,8 @@ public static partial class Js
 
     public static bool LooseEqual(object left, object right)
     {
+        if (left is BigInteger first) return BigIntEqual(first, right);
+        if (right is BigInteger second) return BigIntEqual(second, left);
         if (left is double a) return LooseEqualNumberValue(a, right);
         if (right is double b) return LooseEqualNumberValue(b, left);
         if (left is bool x) return LooseEqualNumberValue(x ? 1 : 0, right);
@@ -41,6 +44,7 @@ public static partial class Js
         double other => number == other,
         string text => number == StringNumber(text),
         bool boolean => number == (boolean ? 1 : 0),
+        BigInteger integer => BigIntEqual(integer, number),
         TsObject obj => LooseEqualNumberValue(number, ToPrimitive(obj, "default")),
         _ => false
     };

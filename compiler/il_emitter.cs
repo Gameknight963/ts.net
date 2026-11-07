@@ -640,6 +640,10 @@ internal static partial class CompilerFunctions
                 b.call(RuntimeMember.WrapBoolean);
             }
             else if (is_text(op, text_not, c)) { il_condition(n.left, c, b); il_invert(b); b.call(RuntimeMember.WrapBoolean); }
+            else if (is_text(op, text_minus, c) && get_type(get_node(n.left, c).type, c).kind != TypeKind.Number)
+            {
+                il_boxed(n.left, c, b); b.call(RuntimeMember.NumericNegate); b.from_object(n.type, c);
+            }
             else if (is_text(op, text_bit_not, c))
             {
                 il_integer(n.left, c, b); b.op(0x66); b.op(0x6c); b.call(RuntimeMember.WrapNumber);
