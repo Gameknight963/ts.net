@@ -113,6 +113,7 @@ public static partial class Js
             Member("BYTES_PER_ELEMENT", (double)size);
             prototype.DefineMethod("BYTES_PER_ELEMENT", (double)size);
             prototype.DefineMethod("constructor", this);
+            if (name == "Uint8Array") DefineByteEncoding(this, prototype);
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), name);
             void Getter(string key, Func<TypedArrayValue, object> read) => prototype.DefineClassAccessor(key, new TypedArrayGetter(key, read), 1);
             Getter("length", a => (double)a.Count); Getter("byteLength", a => (double)(a.Count * a.Size));
