@@ -23,6 +23,7 @@ internal sealed class JsArguments : JsDynamicObject
         Array.Copy(source, 1, values, 0, values.Length);
     }
     static readonly JsFunction CalleeThrower = new((FunctionBody)(static _ => throw CalleeError()), null, "", 0);
+    internal override object LookupOwnAccessor(string key, bool setter) => key == "callee" ? CalleeThrower : base.LookupOwnAccessor(key, setter);
     internal override object OwnPropertyDescriptor(string key) => key == "callee"
         ? Js.AccessorDescriptor(CalleeThrower, CalleeThrower, false, false) : base.OwnPropertyDescriptor(key);
     static Exception CalleeError() => new InvalidOperationException("Strict arguments.callee cannot be accessed");

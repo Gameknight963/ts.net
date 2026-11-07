@@ -20,6 +20,8 @@ public static partial class Js
     {
         internal ClassObjectPrototype()
         {
+            DefineMethod("__lookupGetter__", new LookupAccessorFunction(false));
+            DefineMethod("__lookupSetter__", new LookupAccessorFunction(true));
             DefineMethod("isPrototypeOf", new ObjectPrototypeQuery("isPrototypeOf", 0));
             DefineMethod("hasOwnProperty", new ObjectPrototypeQuery("hasOwnProperty", 1));
             DefineMethod("propertyIsEnumerable", new ObjectPrototypeQuery("propertyIsEnumerable", 2));
