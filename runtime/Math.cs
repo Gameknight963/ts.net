@@ -85,6 +85,7 @@ public static partial class Js
             Unary("sinh", Math.Sinh); Unary("cosh", Math.Cosh); Unary("tanh", Math.Tanh);
             Unary("asinh", Math.Asinh); Unary("acosh", Math.Acosh); Unary("atanh", Math.Atanh);
             Unary("fround", static value => (double)(float)value);
+            Unary("f16round", static value => (double)(Half)value);
             Unary("clz32", static value => BitOperations.LeadingZeroCount(unchecked((uint)ToInt32(value))));
             Binary("pow", Power); Binary("atan2", Math.Atan2);
             Binary("imul", static (first, second) => unchecked(ToInt32(first) * ToInt32(second)));
