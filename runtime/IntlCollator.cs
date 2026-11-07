@@ -138,6 +138,7 @@ public static partial class Js
     {
         var result = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
         result.DefineMethod("Collator", IntlCollator.Constructor);
+        result.DefineMethod("NumberFormat", IntlNumberFormat.Constructor);
         result.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl");
         return result;
     }
