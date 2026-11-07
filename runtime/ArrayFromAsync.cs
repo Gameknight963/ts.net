@@ -15,6 +15,7 @@ public static partial class Js
     {
         internal readonly JsPromise Promise = new();
         object iterator, mapper, thisArg;
+        AsyncIterationState asyncCursor;
         TsObject source, target;
         long length, count;
         int position;
@@ -27,9 +28,11 @@ public static partial class Js
                 mapper = FunctionArgument(arguments, 1); thisArg = FunctionArgument(arguments, 2);
                 if (!IsUndefined(mapper) && mapper is not JsFunction) throw new InvalidOperationException("Array.fromAsync mapper is not callable");
                 object iterable = input is JsBoxedPrimitive { Value: string text } ? text : input;
-                if (TryStartCustomIterable(iterable, out var custom)) iterable = custom;
-                iterating = iterable is JsProtocolIterator or JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator || IsIteratorObject(iterable);
-                if (iterating) iterator = Iteration.Start(iterable);
+                if (TryGetAsyncIterator(iterable, out var asyncSource, out var asyncNext))
+                    asyncCursor = new AsyncIterationState { Source = asyncSource, AsyncNext = asyncNext, Started = true };
+                else if (TryStartCustomIterable(iterable, out var custom)) iterable = custom;
+                iterating = asyncCursor != null || iterable is JsProtocolIterator or JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator || IsIteratorObject(iterable);
+                if (iterating) { if (asyncCursor == null) iterator = Iteration.Start(iterable); }
                 else { source = ToObject(input); length = IndexedLength(source); }
                 target = receiver is JsFunction constructor && constructor.CanInitializeDerived
                     ? (TsObject)constructor.Construct(iterating ? Array.Empty<object>() : new object[] { (double)length }) : new JsArray(0);
@@ -40,12 +43,12 @@ public static partial class Js
         void Fail(object reason)
         {
             if (finished) return; finished = true;
-            void Reject() { iterator = source = target = null; Promise.Settle(reason, true); }
+            void Reject() { iterator = source = target = null; asyncCursor = null; Promise.Settle(reason, true); }
             if (closeable)
             {
                 try
                 {
-                    object closed = ForAwaitClose(new AsyncIterationState { Source = iterator, Position = (uint)position });
+                    object closed = ForAwaitClose(asyncCursor ?? new AsyncIterationState { Source = iterator, Position = (uint)position });
                     ((JsPromise)PromiseResolve(RuntimeNamespaces.Promise, closed)).Then(new PromiseReaction(null, null, null, (_, _) => Reject()));
                 }
                 catch { Reject(); }
@@ -64,10 +67,17 @@ public static partial class Js
         void Step()
         {
             closeable = false;
+            if (asyncCursor != null) {
+                Await(ForAwaitNext(asyncCursor), result => {
+                    if (!ForAwaitAccept(asyncCursor, result)) { Complete(); return; }
+                    closeable = true;
+                    Accepted(AsyncIterationValue(asyncCursor));
+                });
+                return;
+            }
             if (iterating ? position >= Iteration.Length(iterator) : count >= length)
             {
-                target.Set("length", (double)count); finished = true;
-                var result = target; iterator = source = target = null; Promise.ResolveValue(result); return;
+                Complete(); return;
             }
             object value;
             if (iterating)
@@ -77,6 +87,11 @@ public static partial class Js
             }
             else value = IndexedValue(source, count);
             Await(value, Accepted);
+        }
+        void Complete()
+        {
+            target.Set("length", (double)count); finished = true;
+            var result = target; iterator = source = target = null; asyncCursor = null; Promise.ResolveValue(result);
         }
         void Accepted(object value)
         {

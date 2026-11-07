@@ -3,6 +3,8 @@ public static partial class Js
     private sealed class AsyncIterationState
     {
         internal object Source;
+        internal bool Started;
+        internal JsFunction AsyncNext;
         internal bool Keys;
         internal uint Position;
         internal object Current;
@@ -13,14 +15,14 @@ public static partial class Js
     public static object BeginAsyncIteration(object source, bool keys)
     {
         if (keys) source = ForInStart(source);
-        else source = Iteration.Start(source);
-        return new AsyncIterationState { Source = source, Keys = keys };
+        return new AsyncIterationState { Source = source, Keys = keys, Started = keys };
     }
 
     public static bool NextAsyncIteration(object state)
     {
         var cursor = (AsyncIterationState)state;
         cursor.NeedsClose = false;
+        if (!cursor.Started) { cursor.Source = Iteration.Start(cursor.Source); cursor.Started = true; }
         if (cursor.Keys)
         {
             cursor.Current = ForInNext(cursor.Source);

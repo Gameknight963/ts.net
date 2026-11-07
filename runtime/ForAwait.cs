@@ -14,6 +14,11 @@ public static partial class Js
     {
         var cursor = (AsyncIterationState)state;
         cursor.NeedsClose = false;
+        if (!cursor.Started && TryGetAsyncIterator(cursor.Source, out var asyncSource, out var asyncNext)) {
+            cursor.Source = asyncSource; cursor.AsyncNext = asyncNext; cursor.Started = true;
+        }
+        if (cursor.AsyncNext != null)
+            return PromiseResolve(RuntimeNamespaces.Promise, cursor.AsyncNext.InvokeWithReceiver(cursor.Source, Array.Empty<object>()));
         var result = new JsPromise();
         var pair = new PromiseResolvingFunctions(result);
         bool more = false;
@@ -38,8 +43,8 @@ public static partial class Js
     public static bool ForAwaitAccept(object state, object result)
     {
         RequireIteratorResult(result);
-        if (Truthy(Get(result, "done"))) return false;
         var cursor = (AsyncIterationState)state;
+        if (Truthy(Get(result, "done"))) { cursor.Finished = true; return false; }
         cursor.Current = Get(result, "value");
         cursor.NeedsClose = true;
         return true;
@@ -49,6 +54,11 @@ public static partial class Js
     {
         var cursor = (AsyncIterationState)state;
         cursor.NeedsClose = false;
+        if (cursor.AsyncNext != null) {
+            object close = ((TsObject)cursor.Source).Get("return");
+            return PromiseResolve(RuntimeNamespaces.Promise, IsNullish(close)
+                ? IteratorResult(Undefined, true) : CallMethod(close, cursor.Source, Array.Empty<object>()));
+        }
         // A missing return method still produces a promise of an iterator
         // result. Its resolution must observe inherited then properties.
         var result = new JsPromise();
