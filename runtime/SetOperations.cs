@@ -78,6 +78,56 @@ public static partial class Js
         }
         return result;
     }
+    static object SetSymmetricDifference(JsKeyedCollection source, object other)
+    {
+        SetRecord record = ReadSetRecord(other);
+        object iterator = SetKeysIterator(record);
+        var result = CopySet(source);
+        while (SetKeysNext(iterator, out object key))
+        {
+            // Membership is checked against the live receiver, so duplicates in
+            // an arbitrary keys iterator do not simply toggle the result.
+            if (source.Contains(key)) result.Remove(key);
+            else result.Write(key, key);
+        }
+        return result;
+    }
+    enum SetRelation { Subset, Superset, Disjoint }
+    static object TestSetRelation(JsKeyedCollection source, object other, SetRelation relation)
+    {
+        SetRecord record = ReadSetRecord(other);
+        if (relation == SetRelation.Subset && source.Size > record.Size ||
+            relation == SetRelation.Superset && source.Size < record.Size) return BoxBoolean(false);
+        if (relation == SetRelation.Subset || relation == SetRelation.Disjoint && source.Size <= record.Size)
+        {
+            var cursor = new JsCollectionIterator(source, 0);
+            try
+            {
+                while (cursor.Take(out object key, out _))
+                {
+                    bool present = Truthy(record.Has.InvokeWithReceiver(record.Object, new[] { key }));
+                    if (relation == SetRelation.Subset ? !present : present) return BoxBoolean(false);
+                }
+            }
+            finally { cursor.Finish(); }
+        }
+        else
+        {
+            object iterator = SetKeysIterator(record);
+            while (SetKeysNext(iterator, out object key))
+            {
+                bool present = source.Contains(key);
+                if (relation == SetRelation.Superset ? !present : present)
+                {
+                    // A successful iterator step followed by an early answer
+                    // must observe return(), including any exception it throws.
+                    CloseIteration(iterator, false);
+                    return BoxBoolean(false);
+                }
+            }
+        }
+        return BoxBoolean(true);
+    }
     static object SetUnion(JsKeyedCollection source, object other)
     {
         SetRecord record = ReadSetRecord(other);

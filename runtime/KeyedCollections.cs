@@ -178,6 +178,13 @@ public static partial class Js
                 finally { cursor.Finish(); }
                 return Undefined;
             }));
+            if (set)
+            {
+                prototype.DefineMethod("symmetricDifference", Method("symmetricDifference", 1, (collection, args) => SetSymmetricDifference(collection, FunctionArgument(args, 0))));
+                prototype.DefineMethod("isSubsetOf", Method("isSubsetOf", 1, (collection, args) => TestSetRelation(collection, FunctionArgument(args, 0), SetRelation.Subset)));
+                prototype.DefineMethod("isSupersetOf", Method("isSupersetOf", 1, (collection, args) => TestSetRelation(collection, FunctionArgument(args, 0), SetRelation.Superset)));
+                prototype.DefineMethod("isDisjointFrom", Method("isDisjointFrom", 1, (collection, args) => TestSetRelation(collection, FunctionArgument(args, 0), SetRelation.Disjoint)));
+            }
             if (set) prototype.DefineMethod("intersection", Method("intersection", 1, (collection, args) => SetIntersection(collection, FunctionArgument(args, 0))));
             if (set) prototype.DefineMethod("difference", Method("difference", 1, (collection, args) => SetDifference(collection, FunctionArgument(args, 0))));
             if (set) prototype.DefineMethod("union", Method("union", 1, (collection, args) => SetUnion(collection, FunctionArgument(args, 0))));
