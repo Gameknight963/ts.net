@@ -61,7 +61,8 @@ public static partial class Js
                 continue;
             }
             if (!inClass && ch == '(' && i + 2 < pattern.Length && pattern[i + 1] == '?' && pattern[i + 2] is not (':' or '=' or '!') && !lookbehind && !named)
-                throw new NotSupportedException("Engine-specific regex groups are not supported");
+                if (!RegExpModifierGroup(pattern, i + 2))
+                    throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid regular-expression group"));
             rewritten.Append(ch);
         }
         namedGroups = names.ToArray();
@@ -76,6 +77,24 @@ public static partial class Js
             if (regexEngines.Count >= 64) regexEngines.Clear();
             regexEngines.Add((pattern, options), result); return result;
         }
+    }
+    static bool RegExpModifierGroup(string pattern, int start)
+    {
+        int flags = 0;
+        bool subtract = false;
+        for (int index = start; index < pattern.Length; index++)
+        {
+            char ch = pattern[index];
+            if (ch == ':') return flags != 0;
+            if (ch == '-') {
+                if (subtract) return false;
+                subtract = true; continue;
+            }
+            int flag = ch switch { 'i' => 1, 'm' => 2, 's' => 4, _ => 0 };
+            if (flag == 0 || (flags & flag) != 0) return false;
+            flags |= flag;
+        }
+        return false;
     }
     static JsRegExp CreateRegExp(object pattern, object flags)
     {
