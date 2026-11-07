@@ -1,0 +1,18 @@
+export {};
+const target=new EventTarget();const seen:string[]=[];
+function listener(this:EventTarget,event:Event){seen.push(event.type+":"+(this===target)+":"+(event.target===target)+":"+(event.currentTarget===target)+":"+event.eventPhase);event.preventDefault();}
+target.addEventListener("work",listener);target.addEventListener("work",listener);target.addEventListener("work",()=>seen.push("once"),{once:true});
+const event=new Event("work",{cancelable:true,bubbles:true,composed:true});console.log("before",event.type,event.bubbles,event.cancelable,event.composed,event.defaultPrevented,event.target,event.isTrusted,typeof event.timeStamp);
+console.log("dispatch",target.dispatchEvent(event),event.defaultPrevented,event.target===target);console.log("again",target.dispatchEvent(new Event("work")));console.log(seen.join("|"));target.removeEventListener("work",listener);console.log("removed",target.dispatchEvent(new Event("work")),seen.length);
+const callback={count:0,handleEvent(event:Event){this.count++;console.log("object",event.type,this===callback);}};target.addEventListener("object",callback);target.dispatchEvent(new Event("object"));target.removeEventListener("object",callback);target.dispatchEvent(new Event("object"));console.log(callback.count);
+const stopped=new EventTarget();stopped.addEventListener("x",event=>{console.log("first");event.stopImmediatePropagation();});stopped.addEventListener("x",()=>console.log("should-not-run"));stopped.dispatchEvent(new Event("x"));
+const passive=new EventTarget();passive.addEventListener("x",event=>event.preventDefault(),{passive:true});const passiveEvent=new Event("x",{cancelable:true});console.log("passive",passive.dispatchEvent(passiveEvent),passiveEvent.defaultPrevented);
+const custom=new CustomEvent("detail",{detail:{value:7}});console.log("custom",custom instanceof Event,custom instanceof CustomEvent,custom.detail.value,new CustomEvent("empty").detail,Object.prototype.toString.call(custom));
+class Target extends EventTarget{value=3;}const derived=new Target();derived.addEventListener("x",()=>console.log("derived",derived.value,derived instanceof EventTarget));derived.dispatchEvent(new Event("x"));
+class SignalEvent extends Event{value=4;}const derivedEvent=new SignalEvent("x");console.log("event-derived",derivedEvent.value,derivedEvent instanceof Event,derivedEvent.type);
+for(const method of [EventTarget.prototype.addEventListener,EventTarget.prototype.removeEventListener,EventTarget.prototype.dispatchEvent,Event.prototype.preventDefault])console.log("metadata",method.name,method.length);
+const reentrant=new EventTarget();reentrant.addEventListener("x",value=>{try{reentrant.dispatchEvent(value);}catch(error){console.log("reentrant",(error as Error).message.length>0);}},{once:true});console.log("reuse",reentrant.dispatchEvent(new Event("x")),reentrant.dispatchEvent(new Event("x")));
+let reads=0;const detail={get detail(){reads++;return 9;}};console.log("detail-once",new CustomEvent("x",detail).detail,reads);
+const captures=new EventTarget();let count=0;const increment=()=>{count++;};captures.addEventListener("x",increment,true);captures.addEventListener("x",increment,false);captures.removeEventListener("x",increment,false);captures.dispatchEvent(new Event("x"));console.log("capture",count);
+for(const action of [()=>new (Event as any)(),()=>EventTarget.prototype.dispatchEvent.call({} as any,new Event("x")),()=>new EventTarget().dispatchEvent({type:"x"} as Event),()=>Event.prototype.preventDefault.call({} as any)])try{action();}catch(error){console.log("invalid",(error as Error).name);}
+console.log("globals",globalThis.Event===Event,globalThis.EventTarget===EventTarget,globalThis.CustomEvent===CustomEvent);
