@@ -6,13 +6,13 @@ public static partial class Js
     {
         object Execute(object receiver, object[] args)
         {
-            if (mode > 2 && receiver is not JsArray) throw new InvalidOperationException("Array method requires an array");
+            if (mode > 3 && receiver is not JsArray) throw new InvalidOperationException("Array method requires an array");
             return mode switch
             {
                 0 => ArrayPush(receiver, args),
                 1 => ArrayPop(receiver),
                 2 => SliceArrayLike(receiver, FunctionArgument(args, 0), FunctionArgument(args, 1)),
-                3 => ArrayReverse(receiver, true),
+                3 => ReverseArrayLike(receiver),
                 4 => ArraySearch(receiver, FunctionArgument(args, 0), FunctionArgument(args, 1), false),
                 _ => BoxBoolean(ArraySearch(receiver, FunctionArgument(args, 0), FunctionArgument(args, 1), true) >= 0)
             };
