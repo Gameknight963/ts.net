@@ -9,6 +9,14 @@ static class Program {
   record.DeleteOwn("e");record.DefineOwn("h",8d);record.DeleteOwn("a");record.DefineOwn("a",1d);Print("promote",Keys(record));
   var clone=(TsObject)record.CloneForSpread();clone.DeleteOwn("g");clone.DefineOwn("g",7d);Print("clone",Keys(clone),Keys(record));
   var accessor=new JsFunction((FunctionBody)(_=>throw new Exception("Unexpected getter")),null,"",0);record.DefineAccessor("accessor",accessor,1);Print("accessor",record.DeleteOwn("accessor"),record.HasOwn("accessor"));
+  var properties=new JsDynamicObject();
+  foreach(string name in new[]{"locked","removable","writable"}) {
+   var descriptor=new JsDynamicObject();descriptor.DefineOwn("value",1d);descriptor.DefineOwn("enumerable",true);
+   descriptor.DefineOwn("configurable",name=="removable");descriptor.DefineOwn("writable",name=="writable");properties.DefineOwn(name,descriptor);
+  }
+  object createCtor=Js.BuiltinNamespace("Object");var created=(TsObject)Js.CallMethod(Js.Get(createCtor,"create"),createCtor,new object[]{null,properties});
+  Print("descriptor-delete",created.DeleteOwn("locked"),created.DeleteOwn("removable"),created.DeleteOwn("writable"),Keys(created));
+  var spread=(TsObject)created.CloneForSpread();spread.Set("locked",2d);Print("descriptor-spread",spread.Get("locked"),spread.DeleteOwn("locked"),created.Get("locked"));
   foreach(JsArray array in new JsArray[]{new JsArray(new object[]{1d,2d,3d}),new NumberArray(0),new TaggedArray(new object[]{1d,2d,3d}),new ReversibleArray(new object[]{1d,2d,3d})}){
    if(array is NumberArray){array.Append(1d);array.Append(2d);array.Append(3d);}
    if(array is ReversibleArray)array.Reverse();

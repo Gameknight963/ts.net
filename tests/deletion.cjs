@@ -4,6 +4,9 @@ console.log('delete',Reflect.deleteProperty(record,'b'),Reflect.deleteProperty(r
 delete record.e;record.h=8;delete record.a;record.a=1;console.log('promote',keys(record).join(','));
 const clone={...record};delete clone.g;clone.g=7;console.log('clone',keys(clone).join(','),keys(record).join(','));
 Object.defineProperty(record,'accessor',{get(){throw Error('Unexpected getter');},configurable:true});console.log('accessor',Reflect.deleteProperty(record,'accessor'),Object.hasOwn(record,'accessor'));
+const created=Object.create(null,{locked:{value:1,enumerable:true},removable:{value:1,enumerable:true,configurable:true},writable:{value:1,enumerable:true,writable:true}});
+console.log('descriptor-delete',Reflect.deleteProperty(created,'locked'),Reflect.deleteProperty(created,'removable'),Reflect.deleteProperty(created,'writable'),keys(created).join(','));
+const spread={...created};spread.locked=2;console.log('descriptor-spread',spread.locked,Reflect.deleteProperty(spread,'locked'),created.locked);
 for(let i=0;i<4;i++){
  const array=[1,2,3];if(i===3)array.reverse();Object.setPrototypeOf(array,{'1':99});
  console.log('element',Reflect.deleteProperty(array,'1'),array.length,Object.hasOwn(array,'1'),array[1],keys(array).join(','));
