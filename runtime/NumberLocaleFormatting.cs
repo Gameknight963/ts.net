@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Numerics;
 
 public static partial class Js
 {
@@ -39,21 +40,43 @@ public static partial class Js
             if (primitive is not double value) throw new InvalidOperationException("Number method has an incompatible receiver");
             return FormatLocaleNumber(value, double.IsFinite(value), arguments);
         }
-        static string FormatLocaleNumber<T>(T value, bool finite, object[] arguments) where T : struct, IFormattable
+        static string FormatLocaleNumber<T>(T value, bool finite, object[] arguments) where T : struct, IFormattable =>
+            new NumberLocaleSettings(FunctionArgument(arguments, 0), FunctionArgument(arguments, 1)).Format(value, finite);
+    }
+    readonly struct NumberLocaleSettings
+    {
+        internal readonly CultureInfo culture;
+        internal readonly int minimum, maximum, integerDigits;
+        internal readonly bool grouping;
+        internal readonly object groupingOption;
+        internal readonly string signDisplay;
+        readonly string format;
+        internal NumberLocaleSettings(object locales, object optionValue)
         {
-            var culture = CaseCulture(FunctionArgument(arguments, 0));
-            int minimum = 0, maximum = 3, integerDigits = 1; bool grouping = true; string signDisplay = "auto";
-            object optionValue = FunctionArgument(arguments, 1);
+            culture = CaseCulture(locales);
+            minimum = 0; maximum = 3; integerDigits = 1; grouping = true; groupingOption = "auto"; signDisplay = "auto";
+
             if (!IsUndefined(optionValue))
             {
                 var options = ToObject(optionValue);
-                foreach (string key in new[] { "style", "currency", "notation", "minimumSignificantDigits", "maximumSignificantDigits", "roundingMode", "roundingPriority", "roundingIncrement", "trailingZeroDisplay", "compactDisplay", "unit", "numberingSystem", "localeMatcher" })
+                object style = options.Get("style");
+                if (!IsUndefined(style) && StringValue(style) != "decimal") throw new NotSupportedException("Number locale formatting option style is not supported");
+                foreach (string key in new[] { "currency", "minimumSignificantDigits", "maximumSignificantDigits", "compactDisplay", "unit", "numberingSystem" })
                     if (!IsUndefined(options.Get(key))) throw new NotSupportedException("Number locale formatting option " + key + " is not supported");
+                foreach (var item in new[] { ("notation", "standard"), ("roundingMode", "halfExpand"), ("roundingPriority", "auto"), ("roundingIncrement", "1"), ("trailingZeroDisplay", "auto") })
+                {
+                    object setting = options.Get(item.Item1);
+                    if (!IsUndefined(setting) && StringValue(setting) != item.Item2)
+                        throw new NotSupportedException("Number locale formatting option " + item.Item1 + " is not supported");
+                }
+                object matcher = options.Get("localeMatcher");
+                if (!IsUndefined(matcher) && StringValue(matcher) is not ("lookup" or "best fit"))
+                    throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
                 int Digits(string key, int fallback, int lower = 0, int upper = 100)
                 {
                     object setting = options.Get(key); if (IsUndefined(setting)) return fallback;
                     double count = Number(setting);
-                    if (!double.IsFinite(count) || count < lower || count > upper) throw new ArgumentOutOfRangeException(nameof(arguments), "Invalid digit count");
+                    if (!double.IsFinite(count) || count < lower || count > upper) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid digit count");
                     return (int)Math.Floor(count);
                 }
                 object sign = options.Get("signDisplay");
@@ -61,15 +84,54 @@ public static partial class Js
                 {
                     signDisplay = StringValue(sign);
                     if (signDisplay is not ("auto" or "always" or "exceptZero" or "never" or "negative"))
-                        throw new ArgumentOutOfRangeException(nameof(arguments), "Invalid sign display");
+                        throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid sign display");
                 }
                 integerDigits = Digits("minimumIntegerDigits", 1, 1, 21);
                 minimum = Digits("minimumFractionDigits", 0);
                 maximum = Digits("maximumFractionDigits", Math.Max(3, minimum));
-                if (minimum > maximum) throw new ArgumentOutOfRangeException(nameof(arguments), "Invalid digit count");
-                object group = options.Get("useGrouping"); if (!IsUndefined(group)) grouping = Truthy(group);
+                if (minimum > maximum) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid digit count");
+                object group = options.Get("useGrouping");
+                if (!IsUndefined(group))
+                {
+                    grouping = Truthy(group);
+                    groupingOption = !grouping ? BoxBoolean(false) : group is string text ? text switch
+                    {
+                        "auto" or "always" => text,
+                        "true" or "false" => "auto",
+                        "min2" => throw new NotSupportedException("Minimum grouping threshold is not supported"),
+                        _ => throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid grouping option")
+                    } : "always";
+                }
             }
-            string result = value.ToString((grouping ? "N" : "F") + maximum.ToString(CultureInfo.InvariantCulture), culture);
+            format = (grouping ? "N" : "F") + maximum.ToString(CultureInfo.InvariantCulture);
+        }
+        string FiniteNumber(double value)
+        {
+            // Safe integers need no decimal rounding and retain native formatting.
+            if (double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
+            string raw = Math.Abs(value).ToString("R", CultureInfo.InvariantCulture);
+            int split = raw.IndexOf('E');
+            int exponent = split < 0 ? 0 : int.Parse(raw.AsSpan(split + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
+            string coefficient = split < 0 ? raw : raw[..split];
+            int point = coefficient.IndexOf('.');
+            int scale = point < 0 ? 0 : coefficient.Length - point - 1;
+            BigInteger digits = BigInteger.Parse(coefficient.Replace(".", ""), CultureInfo.InvariantCulture);
+            int shift = exponent - scale + maximum;
+            if (shift >= 0) digits *= BigInteger.Pow(10, shift);
+            else
+            {
+                BigInteger denominator = BigInteger.Pow(10, -shift);
+                digits = BigInteger.DivRem(digits, denominator, out var remainder);
+                if (remainder * 2 >= denominator) digits++;
+            }
+            BigInteger whole = BigInteger.DivRem(digits, BigInteger.Pow(10, maximum), out var fraction);
+            string result = whole.ToString(grouping ? "N0" : "F0", culture);
+            if (maximum != 0) result += culture.NumberFormat.NumberDecimalSeparator + fraction.ToString(CultureInfo.InvariantCulture).PadLeft(maximum, '0');
+            return double.IsNegative(value) ? culture.NumberFormat.NegativeSign + result : result;
+        }
+        internal string Format<T>(T value, bool finite) where T : struct, IFormattable
+        {
+            string result = finite && value is double numberValue ? FiniteNumber(numberValue) : value.ToString(format, culture);
             if (finite && integerDigits > 1) result = PadLocaleInteger(result, integerDigits, grouping, culture.NumberFormat);
             if (signDisplay != "auto")
             {
