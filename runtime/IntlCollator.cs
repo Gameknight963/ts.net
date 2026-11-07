@@ -29,7 +29,7 @@ public static partial class Js
             result.DefineOwn("locale", settings.Culture.Name);
             result.DefineOwn("usage", settings.Usage); result.DefineOwn("sensitivity", settings.Sensitivity);
             result.DefineOwn("ignorePunctuation", BoxBoolean(settings.IgnorePunctuation));
-            result.DefineOwn("collation", "default"); result.DefineOwn("numeric", BoxBoolean(settings.Numeric)); result.DefineOwn("caseFirst", settings.CaseFirst);
+            result.DefineOwn("collation", settings.Collation); result.DefineOwn("numeric", BoxBoolean(settings.Numeric)); result.DefineOwn("caseFirst", settings.CaseFirst);
             return result;
         }
     }
@@ -72,6 +72,12 @@ public static partial class Js
         if (extension >= 0) name = name[..extension];
         while (!CollatorLocales.Values.Contains(name))
         {
+            // Known aliases such as zh-CN need not appear in GetCultures.
+            // Custom (0x1000) and invariant (0x7f) IDs do not prove support.
+            try {
+                var alias = CultureInfo.GetCultureInfo(name);
+                if (alias.LCID is not (0x1000 or 0x7f)) return alias.Name;
+            } catch (CultureNotFoundException) { }
             int dash = name.LastIndexOf('-'); if (dash < 0) return null;
             name = name[..dash];
         }

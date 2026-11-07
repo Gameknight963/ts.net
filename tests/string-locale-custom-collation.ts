@@ -1,1 +1,1 @@
-console.log("a".localeCompare("b","en",{collation:"phonebk"}));
+console.log("a".localeCompare("b","en",{collation:"emoji"}));
