@@ -11,6 +11,7 @@ public static class Iteration
         JsSequenceIterator iterator => Js.StartSequenceIterator(iterator),
         JsProtocolIterator or JsArray or JsArguments or string => value,
         JsBoxedPrimitive { Value: string text } => text,
+        TsObject iterator when Js.IsIteratorObject(iterator) => Js.StartIteratorObject(iterator),
         _ => throw new InvalidOperationException("Value is not iterable")
     };
     static class Characters

@@ -13,7 +13,7 @@ public static partial class Js
         bool mapping = !IsUndefined(mapper);
         if (mapping && mapper is not JsFunction) throw new InvalidOperationException("Array.from mapper is not callable");
         object iterable = input is JsBoxedPrimitive { Value: string text } ? text : input;
-        bool iterating = iterable is JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator;
+        bool iterating = iterable is JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator || IsIteratorObject(iterable);
         TsObject source = iterating ? null : ToObject(input);
         long length = iterating ? 0 : IndexedLength(source);
         TsObject result;
