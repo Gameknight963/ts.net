@@ -1,1 +1,1 @@
-console.log(new RegExp("a", "s").test("a"));
+console.log(new RegExp("a", "u").test("a"));

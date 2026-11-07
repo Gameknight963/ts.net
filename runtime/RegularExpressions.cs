@@ -23,7 +23,7 @@ public static partial class Js
 {
     internal static TsObject RegExpPrototype => (TsObject)RuntimeNamespaces.RegExp.Get("prototype");
     static readonly Dictionary<(string, RegexOptions), Regex> regexEngines = new();
-    static Regex RegExpEngine(string pattern, RegexOptions options)
+    static Regex RegExpEngine(string pattern, RegexOptions options, bool dotAll)
     {
         bool inClass = false;
         for (int i = 0; i < pattern.Length; i++)
@@ -38,6 +38,7 @@ public static partial class Js
             if (!inClass && ch == '(' && i + 2 < pattern.Length && pattern[i + 1] == '?' && pattern[i + 2] is not (':' or '=' or '!'))
                 throw new NotSupportedException("Named, lookbehind and engine-specific regex groups are not supported");
         }
+        if (dotAll) pattern = "(?s:" + pattern + ")";
         lock (regexEngines)
         {
             if (regexEngines.TryGetValue((pattern, options), out var cached)) return cached;
@@ -56,12 +57,12 @@ public static partial class Js
         foreach (char flag in requested)
             if ("dgimsuvy".IndexOf(flag) < 0 || !seen.Add(flag)) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid regular-expression flags"));
         if (seen.Contains('u') && seen.Contains('v')) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid regular-expression flags"));
-        foreach (char flag in "dsuv") if (seen.Contains(flag)) throw new NotSupportedException("Regular-expression flags d, s, u and v are not supported");
+        foreach (char flag in "duv") if (seen.Contains(flag)) throw new NotSupportedException("Regular-expression flags d, u and v are not supported");
         var options = RegexOptions.ECMAScript | RegexOptions.CultureInvariant | RegexOptions.Compiled;
         if (seen.Contains('i')) options |= RegexOptions.IgnoreCase;
         if (seen.Contains('m')) options |= RegexOptions.Multiline;
-        string canonical = ""; foreach (char flag in "gimy") if (seen.Contains(flag)) canonical += flag;
-        return new JsRegExp(text, canonical, RegExpEngine(text, options));
+        string canonical = ""; foreach (char flag in "gimsy") if (seen.Contains(flag)) canonical += flag;
+        return new JsRegExp(text, canonical, RegExpEngine(text, options, seen.Contains('s')));
     }
     static string RegExpSource(string pattern)
     {
