@@ -108,7 +108,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
-	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || collectionType(symbol.Name) || symbol.Name == "PropertyDescriptor" || symbol.Name == "TypedPropertyDescriptor" || symbol.Name == "IArguments" || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "String" || symbol.Name == "Boolean" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance" || symbol.Name == "Reflect" || symbol.Name == "JSON" || symbol.Name == "Math" || symbol.Name == "ArrayConstructor" || symbol.Name == "Promise" || symbol.Name == "PromiseLike" || symbol.Name == "PromiseConstructor" || symbol.Name == "PromiseWithResolvers") {
+	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || collectionType(symbol.Name) || symbol.Name == "PropertyDescriptor" || symbol.Name == "TypedPropertyDescriptor" || symbol.Name == "IArguments" || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "String" || symbol.Name == "Boolean" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance" || symbol.Name == "RegExp" || symbol.Name == "RegExpConstructor" || symbol.Name == "RegExpExecArray" || symbol.Name == "Reflect" || symbol.Name == "JSON" || symbol.Name == "Math" || symbol.Name == "ArrayConstructor" || symbol.Name == "Promise" || symbol.Name == "PromiseLike" || symbol.Name == "PromiseConstructor" || symbol.Name == "PromiseWithResolvers") {
 		for _, declaration := range symbol.Declarations {
 			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
 				t = b.c.GetAnyType()
@@ -432,6 +432,21 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			text = strconv.FormatFloat(value, 'g', -1, 64)
 		}
 		id = b.node(0, n, text)
+	case ast.KindRegularExpressionLiteral:
+		text := n.Text()
+		split := strings.LastIndex(text, "/")
+		callee := b.node(66, n, "RegExp")
+		b.nodes[callee-1].typ = b.typ(b.c.GetAnyType())
+		pattern := b.node(1, n, text[1:split])
+		b.nodes[pattern-1].typ = b.typ(b.c.GetStringType())
+		flags := b.node(1, n, text[split+1:])
+		b.nodes[flags-1].typ = b.typ(b.c.GetStringType())
+		b.nodes[pattern-1].next = flags
+		id = b.node(54, n, "new")
+		row = b.nodes[id-1]
+		row.left = callee
+		row.children = pattern
+		row.typ = b.typ(b.c.GetAnyType())
 	case ast.KindStringLiteral, ast.KindNoSubstitutionTemplateLiteral:
 		id = b.node(1, n, n.Text())
 	case ast.KindTemplateExpression:
@@ -482,7 +497,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		if owner := b.namespaceExports[b.c.GetSymbolAtLocation(n)]; owner != nil && !namespaceLocalFunction(n, owner, b.c.GetSymbolAtLocation(n)) {
 			return b.namespaceReference(n, owner)
 		}
-		if (n.Text() == "Reflect" || n.Text() == "JSON" || n.Text() == "escape" || n.Text() == "unescape" || n.Text() == "encodeURI" || n.Text() == "encodeURIComponent" || n.Text() == "decodeURI" || n.Text() == "decodeURIComponent" || n.Text() == "isNaN" || n.Text() == "isFinite" || n.Text() == "parseInt" || n.Text() == "parseFloat" || n.Text() == "WeakMap" || n.Text() == "WeakSet" || n.Text() == "Map" || n.Text() == "Set" || n.Text() == "Promise" || n.Text() == "queueMicrotask" || n.Text() == "Array" || n.Text() == "Math" || n.Text() == "console" || n.Text() == "performance" || n.Text() == "Object" || n.Text() == "Number" || n.Text() == "String" || n.Text() == "Boolean") && b.isBuiltinIdentifier(n) {
+		if (n.Text() == "RegExp" || n.Text() == "Reflect" || n.Text() == "JSON" || n.Text() == "escape" || n.Text() == "unescape" || n.Text() == "encodeURI" || n.Text() == "encodeURIComponent" || n.Text() == "decodeURI" || n.Text() == "decodeURIComponent" || n.Text() == "isNaN" || n.Text() == "isFinite" || n.Text() == "parseInt" || n.Text() == "parseFloat" || n.Text() == "WeakMap" || n.Text() == "WeakSet" || n.Text() == "Map" || n.Text() == "Set" || n.Text() == "Promise" || n.Text() == "queueMicrotask" || n.Text() == "Array" || n.Text() == "Math" || n.Text() == "console" || n.Text() == "performance" || n.Text() == "Object" || n.Text() == "Number" || n.Text() == "String" || n.Text() == "Boolean") && b.isBuiltinIdentifier(n) {
 			id = b.node(66, n, n.Text())
 			b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
 			return id

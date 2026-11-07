@@ -8,6 +8,7 @@ public static partial class Js
         {
             string text = AtString(receiver);
             object separator = FunctionArgument(arguments, 0), limitValue = FunctionArgument(arguments, 1);
+            if (separator is JsRegExp) throw new NotSupportedException("Regular-expression string splitting is not supported");
             uint limit = IsUndefined(limitValue) ? uint.MaxValue : unchecked((uint)ToInt32(Number(limitValue)));
             string pattern = StringValue(separator);
             var result = new JsArray(0);

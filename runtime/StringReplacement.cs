@@ -28,7 +28,9 @@ public static partial class Js
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
             string text = AtString(receiver);
-            string search = StringValue(FunctionArgument(arguments, 0));
+            object searchValue = FunctionArgument(arguments, 0);
+            if (searchValue is JsRegExp) throw new NotSupportedException("Regular-expression string replacement is not supported");
+            string search = StringValue(searchValue);
             object replacement = FunctionArgument(arguments, 1);
             var function = replacement as JsFunction;
             // Replacement conversion is observable even when no match exists.
