@@ -4,26 +4,28 @@ using System.Threading.Tasks;
 
 public static partial class Js
 {
-    sealed class ScheduledTimer(long id, JsFunction callback, object[] arguments, int delay, bool repeating)
+    sealed class ScheduledTimer(long id, JsFunction callback, object[] arguments, int delay, bool repeating, bool referenced)
     {
         internal readonly long Id = id;
         internal readonly int Delay = delay;
-        internal readonly bool Repeating = repeating;
+        internal readonly bool Repeating = repeating, Referenced = referenced;
         internal JsFunction Callback = callback;
         internal object[] Arguments = arguments;
     }
     [ThreadStatic] static PriorityQueue<ScheduledTimer, (long Due, long Order)> timers;
     [ThreadStatic] static Dictionary<long, ScheduledTimer> activeTimers;
     [ThreadStatic] static long nextTimerId, timerOrder;
+    [ThreadStatic] static int referencedTimers;
 
-    static object ScheduleTimer(object[] args, bool repeating)
+    static object ScheduleTimer(object[] args, bool repeating, bool referenced = true)
     {
         if (FunctionArgument(args, 0) is not JsFunction callback)
             throw MakeThrown(new JsCaughtError("TypeError", "Timer callback must be a function"));
         double value = Number(FunctionArgument(args, 1));
         int delay = !double.IsFinite(value) || value < 1 || value > int.MaxValue ? 1 : (int)value;
         var arguments = args.Length > 2 ? args[2..] : Array.Empty<object>();
-        var timer = new ScheduledTimer(++nextTimerId, callback, arguments, delay, repeating);
+        var timer = new ScheduledTimer(++nextTimerId, callback, arguments, delay, repeating, referenced);
+        if (referenced) referencedTimers++;
         (activeTimers ??= new()).Add(timer.Id, timer);
         (timers ??= new()).Enqueue(timer, (Environment.TickCount64 + delay, ++timerOrder));
         return (double)timer.Id;
@@ -34,6 +36,7 @@ public static partial class Js
         if (double.IsFinite(value) && value >= 1 && value <= long.MaxValue && value == Math.Truncate(value)
             && activeTimers != null && activeTimers.Remove((long)value, out var timer))
         {
+            if (timer.Referenced) referencedTimers--;
             timer.Callback = null; timer.Arguments = Array.Empty<object>();
             if (activeTimers.Count == 0) timers.Clear();
         }
@@ -41,6 +44,8 @@ public static partial class Js
     }
     static bool RunNextTimer()
     {
+        // AbortSignal timeout timers run alongside live work, but never keep it alive.
+        if (referencedTimers == 0) return false;
         while (timers != null && timers.TryPeek(out var timer, out var priority))
         {
             if (!activeTimers.ContainsKey(timer.Id)) { timers.Dequeue(); continue; }
@@ -51,7 +56,7 @@ public static partial class Js
                 Task.Delay((int)Math.Min(remaining, int.MaxValue)).GetAwaiter().GetResult(); continue;
             }
             timers.Dequeue();
-            if (!timer.Repeating) activeTimers.Remove(timer.Id);
+            if (!timer.Repeating) { activeTimers.Remove(timer.Id); if (timer.Referenced) referencedTimers--; }
             timer.Callback.InvokeWithReceiver(Undefined, timer.Arguments);
             if (timer.Repeating && activeTimers.ContainsKey(timer.Id))
                 timers.Enqueue(timer, (Environment.TickCount64 + timer.Delay, ++timerOrder));
@@ -59,7 +64,7 @@ public static partial class Js
         }
         return false;
     }
-    static void ClearTimers() { timers = null; activeTimers = null; }
+    static void ClearTimers() { timers = null; activeTimers = null; referencedTimers = 0; }
     static class TimerFunctions
     {
         internal static readonly JsFunction Timeout = new((FunctionBody)(static args => ScheduleTimer(args, false)), null, "setTimeout", 1);

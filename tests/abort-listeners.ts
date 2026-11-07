@@ -1,0 +1,8 @@
+export {};
+const target=new EventTarget(),first=new AbortController(),second=new AbortController();let count=0;const callback=()=>{count++;};
+target.addEventListener("x",callback,{signal:first.signal});target.addEventListener("x",callback,{signal:second.signal});second.abort();target.dispatchEvent(new Event("x"));first.abort();target.dispatchEvent(new Event("x"));console.log("duplicate",count);
+const once=new AbortController();target.addEventListener("x",callback,{signal:once.signal,once:true});target.dispatchEvent(new Event("x"));once.abort();target.dispatchEvent(new Event("x"));console.log("once",count);
+const source=new AbortController(),other=new AbortController();const combined=AbortSignal.any([source.signal,other.signal]);source.signal.addEventListener("abort",event=>{console.log("source",combined.aborted,combined.reason===source.signal.reason);event.stopImmediatePropagation();});combined.addEventListener("abort",()=>console.log("dependent",combined.reason));source.abort("reason");
+const owner=new AbortController(),signal=owner.signal;let order="";signal.onabort=()=>{order+="old|";};signal.addEventListener("abort",()=>{order+="listener|";});signal.onabort=()=>{order+="new|";};owner.abort();console.log("handler-order",order);
+for(const action of [()=>new AbortSignal(),()=>AbortSignal.prototype.throwIfAborted.call({} as any),()=>AbortSignal.any([{} as AbortSignal]),()=>target.addEventListener("x",callback,{signal:{} as AbortSignal})])try{action();}catch(error){console.log("invalid",(error as Error).name);}
+const origin=new AbortController();let tail=origin.signal;for(let i=0;i<2000;i++)tail=AbortSignal.any([tail]);const deepReason={value:1};origin.abort(deepReason);console.log("deep",tail.aborted,tail.reason===deepReason);
