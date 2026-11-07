@@ -141,12 +141,14 @@ func (a *asyncExpressionLowering) function(parameter bool, body func(int) int) i
 		return body(0)
 	})
 }
+
+// Yield shares the same continuation and protected-region pass as await.
 func (a *asyncExpressionLowering) hasAwait(id int) bool {
 	if id == 0 {
 		return false
 	}
 	n := a.b.nodes[id-1]
-	if n.kind == rawAsyncAwait {
+	if n.kind == rawAsyncAwait || n.kind == rawGeneratorYield {
 		return true
 	}
 	if n.kind == 34 && n.third != 0 {
@@ -278,6 +280,18 @@ func (a *asyncExpressionLowering) expression(id int, next asyncExpressionContinu
 	n := a.b.nodes[id-1]
 	a.discard(id)
 	switch n.kind {
+	case rawGeneratorYield:
+		return a.expression(n.left, func(value int) int {
+			if value == 0 {
+				value = a.node(20, "undefined")
+			}
+			callback := a.function(true, func(parameter int) int { return next(a.reference(parameter)) })
+			name := "__generatorYield"
+			if n.constant != 0 {
+				name = "__generatorDelegate"
+			}
+			return a.returned(a.b.builtinCall(a.source, name, value, callback))
+		})
 	case rawAsyncAwait:
 		return a.expression(n.left, func(value int) int {
 			callback := a.function(true, func(parameter int) int { return next(a.reference(parameter)) })

@@ -6,12 +6,6 @@ import (
 )
 
 func (b *irBuilder) functionValue(n *ast.Node) int {
-	if n.Kind == ast.KindMethodDeclaration && n.AsMethodDeclaration().AsteriskToken != nil {
-		b.unsupported(n)
-	}
-	if n.Kind == ast.KindFunctionExpression && n.AsFunctionExpression().AsteriskToken != nil {
-		b.unsupported(n)
-	}
 	name := ""
 	parent := n.Parent
 	for parent != nil && (parent.Kind == ast.KindParenthesizedExpression || parent.Kind == ast.KindAsExpression || parent.Kind == ast.KindTypeAssertionExpression || parent.Kind == ast.KindSatisfiesExpression) {
@@ -60,8 +54,8 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 		// A named expression's self value belongs to each created instance.
 		b.nodes[function-1].constant = 1
 	}
-	async := b.markAsyncFunction(function, n)
-	if !async && (n.Kind == ast.KindFunctionDeclaration || n.Kind == ast.KindFunctionExpression) {
+	suspending := b.markSuspendingFunction(function, n)
+	if !suspending && (n.Kind == ast.KindFunctionDeclaration || n.Kind == ast.KindFunctionExpression) {
 		b.markFunctionPrototype(function, n)
 	}
 	b.nodes[function-1].name = b.text(name)
@@ -113,7 +107,7 @@ func (b *irBuilder) localFunction(n *ast.Node) int {
 	if n.Body() == nil {
 		return 0
 	}
-	if n.Parent == nil || (n.Parent.Kind != ast.KindModuleBlock && n.Parent.Kind != ast.KindBlock && n.Parent.Kind != ast.KindCaseClause && n.Parent.Kind != ast.KindDefaultClause) || n.Name() == nil || n.AsFunctionDeclaration().AsteriskToken != nil {
+	if n.Parent == nil || (n.Parent.Kind != ast.KindModuleBlock && n.Parent.Kind != ast.KindBlock && n.Parent.Kind != ast.KindCaseClause && n.Parent.Kind != ast.KindDefaultClause) || n.Name() == nil {
 		b.unsupported(n)
 	}
 	value := b.functionValue(n)
@@ -202,6 +196,13 @@ func (b *irBuilder) functionIdentity(n *ast.Node, value, function, self int) int
 // Ordinary functions receive their own this binding. Arrows capture the enclosing
 // binding through the same closure machinery used for other parameters.
 func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
+	previousGenerator := b.generatorOwner
+	b.generatorOwner = nil
+	generator := generatorFunction(n)
+	if generator {
+		b.generatorOwner = n
+	}
+	defer func() { b.generatorOwner = previousGenerator }()
 	arrow := n.Kind == ast.KindArrowFunction
 	previous, scope := b.thisSymbol, b.thisScope
 	previousNewTarget := b.newTargetUsed
@@ -226,7 +227,9 @@ func (b *irBuilder) functionParts(n *ast.Node, function int) (int, int) {
 		}
 		body = b.lower(n.Body())
 		b.awaitReturnOwner = previousAwait
-		if async {
+		if generator {
+			body = b.generatorBody(n.Body(), body)
+		} else if async {
 			lowering := asyncExpressionLowering{b: b, source: n.Body(), any: b.typ(b.c.GetAnyType())}
 			if lowering.hasAwait(body) {
 				body = lowering.body(body, function)

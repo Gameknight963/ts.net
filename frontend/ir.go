@@ -41,6 +41,7 @@ type irBuilder struct {
 	usingStack            int
 	dynamicNumericReturns map[*ast.Node]bool
 	awaitReturnOwner      *ast.Node
+	generatorOwner        *ast.Node
 	c                     *checker.Checker
 	file                  *ast.SourceFile
 	texts                 []string
@@ -1056,6 +1057,17 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			}
 			row.right = wrapper
 		}
+	case ast.KindYieldExpression:
+		if b.generatorOwner == nil || awaitOwner(n) != b.generatorOwner {
+			b.unsupported(n)
+		}
+		id = b.node(rawGeneratorYield, n, "yield")
+		row = b.nodes[id-1]
+		row.left = b.lower(n.Expression())
+		if n.AsYieldExpression().AsteriskToken != nil {
+			row.constant = 1
+		}
+		row.typ = b.typ(b.c.GetAnyType())
 	case ast.KindAwaitExpression:
 		if b.awaitReturnOwner == nil || awaitOwner(n) != b.awaitReturnOwner {
 			b.unsupported(n)
@@ -1287,7 +1299,7 @@ func exportIR(s *session) (result []byte, err error) {
 			b.nodes[id-1].typ = typ
 			b.symbols[symbol-1].typ = typ
 			b.symbols[symbol-1].function = id
-			if !b.markAsyncFunction(id, n) {
+			if !b.markSuspendingFunction(id, n) {
 				b.markFunctionPrototype(id, n)
 			}
 			functions[n] = id

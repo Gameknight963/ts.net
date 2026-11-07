@@ -478,7 +478,18 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	b.nodes[call-1].left = factoryValue
 	b.nodes[call-1].typ = typ
 	lowering := asyncExpressionLowering{b: b, source: n, any: typ}
-	if lowering.hasAwait(body) {
+	if b.generatorOwner != nil && lowering.hasAwait(body) {
+		marker := b.node(20, n, "generator class definition")
+		b.nodes[marker-1].name = b.text("generator")
+		b.nodes[marker-1].typ = typ
+		b.nodes[factory-1].right = marker
+		b.nodes[factory-1].left = b.generatorBody(n, body)
+		yielded := b.node(rawGeneratorYield, n, "yield class definition")
+		b.nodes[yielded-1].typ = typ
+		b.nodes[yielded-1].left = call
+		b.nodes[yielded-1].constant = 1
+		call = yielded
+	} else if lowering.hasAwait(body) {
 		marker := b.node(20, n, "async class definition")
 		b.nodes[marker-1].typ = typ
 		b.nodes[factory-1].right = marker

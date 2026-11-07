@@ -12,7 +12,7 @@ internal static partial class CompilerFunctions
         int receiver = function == 0 ? 0 : get_node(function, c).fourth;
         return receiver != 0 && get_node(receiver, c).name != 0;
     }
-    internal static bool il_async_function(int symbol, Compiler c)
+    internal static bool il_suspending_function(int symbol, Compiler c)
     {
         int function = get_symbol(symbol, c).function;
         return function != 0 && get_node(function, c).right != 0;
@@ -20,7 +20,7 @@ internal static partial class CompilerFunctions
     internal static int il_direct_function(int entry, Compiler c, IlBackend b)
     {
         Node n = get_node(entry, c);
-        if (n.symbol != 0 && il_async_function(n.symbol, c)) return 0;
+        if (n.symbol != 0 && il_suspending_function(n.symbol, c)) return 0;
         if (n.kind == NodeKind.FunctionValue) { return il_uses_arguments(n.symbol, c) ? 0 : n.symbol; }
         if (n.kind != NodeKind.Name || n.symbol == 0) { return 0; }
         if (get_symbol(n.symbol, c).function != 0)
@@ -30,7 +30,7 @@ internal static partial class CompilerFunctions
             return b.function_contexts.at(n.symbol) == 0 || function.constant ? n.symbol : 0;
         }
         int target = (int)b.function_targets.at(n.symbol);
-        return target != 0 && (b.function_contexts.at(target) != 0 || il_uses_arguments(target, c) || il_async_function(target, c)) ? 0 : target;
+        return target != 0 && (b.function_contexts.at(target) != 0 || il_uses_arguments(target, c) || il_suspending_function(target, c)) ? 0 : target;
     }
     internal static int il_predicate_reference(int entry, Compiler c, IlBackend b)
     {
@@ -210,7 +210,11 @@ void il_function_class(int symbol, Compiler c, IlBackend b)
         int receiver = get_node(get_symbol(symbol, c).function, c).fourth;
         if (receiver != 0 && get_node(receiver, c).constant) b.call(RuntimeMember.EnableNewTarget);
         if (receiver != 0 && get_node(receiver, c).name != 0) b.call(RuntimeMember.EnableArguments);
-        if (il_async_function(symbol, c)) b.call(RuntimeMember.AsyncFunction);
+        if (il_suspending_function(symbol, c))
+        {
+            int marker = get_node(get_symbol(symbol, c).function, c).right;
+            b.call(is_text(get_node(marker, c).name, "generator", c) ? RuntimeMember.GeneratorFunction : RuntimeMember.AsyncFunction);
+        }
         if (get_node(get_symbol(symbol,c).function,c).third != 0)
         {
             if(b.function_allocator==0)b.op(0x14);

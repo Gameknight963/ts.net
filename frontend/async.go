@@ -2,14 +2,21 @@ package main
 
 import "github.com/microsoft/typescript-go/internal/ast"
 
-// Function.right is metadata reserved for async execution. Keep the marker a
+// Function.right identifies async functions and generators. Keep the marker a
 // real IR node so tree walks do not interpret a boolean as an unrelated node ID.
-func (b *irBuilder) markAsyncFunction(function int, n *ast.Node) bool {
+func (b *irBuilder) markSuspendingFunction(function int, n *ast.Node) bool {
+	if generatorFunction(n) {
+		if ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync != 0 {
+			b.unsupported(n)
+		}
+		marker := b.node(20, n, "generator")
+		b.nodes[marker-1].name = b.text("generator")
+		b.nodes[marker-1].typ = b.typ(b.c.GetAnyType())
+		b.nodes[function-1].right = marker
+		return true
+	}
 	if ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync == 0 {
 		return false
-	}
-	if n.Kind == ast.KindFunctionDeclaration && n.AsFunctionDeclaration().AsteriskToken != nil {
-		b.unsupported(n)
 	}
 	marker := b.node(20, n, "async")
 	b.nodes[marker-1].typ = b.typ(b.c.GetAnyType())
