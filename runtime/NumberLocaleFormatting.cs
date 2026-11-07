@@ -53,7 +53,7 @@ public static partial class Js
         internal readonly bool grouping;
         internal readonly object groupingOption;
         internal readonly string signDisplay;
-        internal readonly string roundingMode, trailingZeroDisplay, roundingPriority;
+        internal readonly string roundingMode, trailingZeroDisplay, roundingPriority, notation;
         internal readonly string style;
         internal readonly string currency, currencyDisplay, currencySign;
         readonly string positivePattern, negativePattern;
@@ -61,7 +61,7 @@ public static partial class Js
         internal NumberLocaleSettings(object locales, object optionValue)
         {
             culture = CaseCulture(locales);
-            roundingPriority = "auto";
+            notation = "standard"; roundingPriority = "auto";
             minimumSignificant = maximumSignificant = 0;
             roundingIncrement = 1; roundingMode = "halfExpand"; trailingZeroDisplay = "auto";
             style = "decimal"; positivePattern = negativePattern = null;
@@ -111,12 +111,10 @@ public static partial class Js
                 }
                 foreach (string key in new[] { "compactDisplay", "unit", "numberingSystem" })
                     if (!IsUndefined(options.Get(key))) throw new NotSupportedException("Number locale formatting option " + key + " is not supported");
-                foreach (var item in new[] { ("notation", "standard") })
-                {
-                    object setting = options.Get(item.Item1);
-                    if (!IsUndefined(setting) && StringValue(setting) != item.Item2)
-                        throw new NotSupportedException("Number locale formatting option " + item.Item1 + " is not supported");
-                }
+                object requestedNotation = options.Get("notation");
+                if (!IsUndefined(requestedNotation)) notation = StringValue(requestedNotation);
+                if (notation == "compact") throw new NotSupportedException("Compact notation is not supported");
+                if (notation is not ("standard" or "scientific" or "engineering")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number notation");
                 object priority = options.Get("roundingPriority");
                 if (!IsUndefined(priority)) roundingPriority = StringValue(priority);
                 if (roundingPriority is not ("auto" or "morePrecision" or "lessPrecision"))
@@ -171,8 +169,8 @@ public static partial class Js
                 }
                 if (maximumSignificant == 0 || roundingPriority != "auto")
                 {
-                    minimum = DigitValue(minimumSetting, style == "currency" ? currencyDigits : 0);
-                    maximum = DigitValue(maximumSetting, Math.Max(style == "currency" ? currencyDigits : style == "percent" ? 0 : 3, minimum));
+                    minimum = DigitValue(minimumSetting, style == "currency" && notation == "standard" ? currencyDigits : 0);
+                    maximum = DigitValue(maximumSetting, Math.Max(style == "currency" && notation == "standard" ? currencyDigits : style == "percent" ? 0 : 3, minimum));
                     if (minimum > maximum && IsUndefined(minimumSetting)) minimum = maximum;
                     if (minimum > maximum) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid digit count");
                     if (roundingIncrement != 1 && minimum != maximum)
@@ -230,11 +228,11 @@ public static partial class Js
                 _ => true
             };
         }
-        string FiniteNumber(double value, out int fractionMinimum, out int fractionMaximum)
+        string FiniteNumber(double value, out int fractionMinimum, out int fractionMaximum, out int notationExponent)
         {
-            fractionMinimum = minimum; fractionMaximum = maximum;
+            notationExponent = 0; fractionMinimum = minimum; fractionMaximum = maximum;
             // Safe integers need no decimal rounding and retain native formatting.
-            if (maximumSignificant == 0 && groupingOption is not "min2" && roundingIncrement == 1 && style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
+            if (notation == "standard" && maximumSignificant == 0 && groupingOption is not "min2" && roundingIncrement == 1 && style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
             string raw = Math.Abs(value).ToString("R", CultureInfo.InvariantCulture);
             int split = raw.IndexOf('E');
             int exponent = split < 0 ? 0 : int.Parse(raw.AsSpan(split + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
@@ -242,11 +240,41 @@ public static partial class Js
             int point = coefficient.IndexOf('.');
             int scale = point < 0 ? 0 : coefficient.Length - point - 1;
             BigInteger digits = BigInteger.Parse(coefficient.Replace(".", ""), CultureInfo.InvariantCulture);
-            if (maximumSignificant != 0)
-                return PrecisionText(digits, exponent - scale + (style == "percent" ? 2 : 0), double.IsNegative(value), out fractionMinimum, out fractionMaximum);
-            int shift = exponent - scale + maximum + (style == "percent" ? 2 : 0);
-            digits = Quantize(digits, shift, double.IsNegative(value));
-            return QuantizedText(digits, double.IsNegative(value));
+            return NumericText(digits, exponent - scale + (style == "percent" ? 2 : 0), double.IsNegative(value), out fractionMinimum, out fractionMaximum, out notationExponent);
+        }
+        int ExponentFor(int magnitude) => notation == "engineering" ? (int)Math.Floor(magnitude / 3d) * 3 : magnitude;
+        string NumericText(BigInteger digits, int exponent, bool negative, out int fractionMinimum, out int fractionMaximum, out int notationExponent)
+        {
+            if (notation == "standard")
+            {
+                notationExponent = 0;
+                return ScaledText(digits, exponent, negative, out fractionMinimum, out fractionMaximum);
+            }
+            int magnitude = digits.IsZero ? 0 : digits.ToString(CultureInfo.InvariantCulture).Length + exponent - 1;
+            notationExponent = digits.IsZero ? 0 : ExponentFor(magnitude);
+            string result = ScaledText(digits, exponent - notationExponent, negative, out fractionMinimum, out fractionMaximum);
+            if (notation != "standard" && !digits.IsZero)
+            {
+                int point = result.IndexOf(culture.NumberFormat.NumberDecimalSeparator, StringComparison.Ordinal);
+                int width = 0;
+                for (int i = 0; i < (point < 0 ? result.Length : point); i++) if (char.IsAsciiDigit(result[i])) width++;
+                if (width > magnitude - notationExponent + 1)
+                {
+                    int adjusted = ExponentFor(magnitude + 1);
+                    if (adjusted != notationExponent)
+                    {
+                        notationExponent = adjusted;
+                        result = ScaledText(digits, exponent - notationExponent, negative, out fractionMinimum, out fractionMaximum);
+                    }
+                }
+            }
+            return result;
+        }
+        string ScaledText(BigInteger digits, int exponent, bool negative, out int fractionMinimum, out int fractionMaximum)
+        {
+            if (maximumSignificant != 0) return PrecisionText(digits, exponent, negative, out fractionMinimum, out fractionMaximum);
+            fractionMinimum = minimum; fractionMaximum = maximum;
+            return QuantizedText(Quantize(digits, exponent + maximum, negative), negative);
         }
         string PrecisionText(BigInteger digits, int exponent, bool negative, out int fractionMinimum, out int fractionMaximum)
         {
@@ -293,10 +321,10 @@ public static partial class Js
         }
         internal string Format<T>(T value, bool finite) where T : struct, IFormattable
         {
-            int fractionMinimum = minimum, fractionMaximum = maximum;
-            string result = finite && value is double numberValue ? FiniteNumber(numberValue, out fractionMinimum, out fractionMaximum)
-                : maximumSignificant != 0 && value is BigInteger significantInteger
-                    ? PrecisionText(BigInteger.Abs(significantInteger), style == "percent" ? 2 : 0, significantInteger.Sign < 0, out fractionMinimum, out fractionMaximum)
+            int fractionMinimum = minimum, fractionMaximum = maximum, notationExponent = 0;
+            string result = finite && value is double numberValue ? FiniteNumber(numberValue, out fractionMinimum, out fractionMaximum, out notationExponent)
+                : (maximumSignificant != 0 || notation != "standard") && value is BigInteger significantInteger
+                    ? NumericText(BigInteger.Abs(significantInteger), style == "percent" ? 2 : 0, significantInteger.Sign < 0, out fractionMinimum, out fractionMaximum, out notationExponent)
                 : (roundingIncrement != 1 || groupingOption is "min2") && value is BigInteger quantizedInteger
                     ? QuantizedText(Quantize(BigInteger.Abs(quantizedInteger), maximum + (style == "percent" ? 2 : 0), quantizedInteger.Sign < 0), quantizedInteger.Sign < 0)
                 : style == "percent" && value is BigInteger integerValue ? (integerValue * 100).ToString(format, culture) : value.ToString(format, culture);
@@ -345,6 +373,8 @@ public static partial class Js
                     if (integer) result = result[..point];
                 }
             }
+            if (finite && notation != "standard")
+                result += "E" + (notationExponent < 0 ? culture.NumberFormat.NegativeSign : "") + Math.Abs(notationExponent).ToString(CultureInfo.InvariantCulture);
             if (style == "decimal") return result;
             var info = culture.NumberFormat;
             bool negativeSign = result.StartsWith(info.NegativeSign, StringComparison.Ordinal);

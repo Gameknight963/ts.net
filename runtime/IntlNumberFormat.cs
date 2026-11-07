@@ -24,7 +24,7 @@ public static partial class Js
             {
                 var part = new JsDynamicObject(); part.DefineOwn("type", type); part.DefineOwn("value", contents); result.Append(part);
             }
-            int position = 0; bool fraction = false;
+            int position = 0; bool fraction = false, exponent = false;
             while (position < text.Length)
             {
                 bool Token(string token, string type)
@@ -32,8 +32,10 @@ public static partial class Js
                     if (token.Length == 0 || !text.AsSpan(position).StartsWith(token, StringComparison.Ordinal)) return false;
                     Part(type, token); position += token.Length; return true;
                 }
-                if (Token(info.NumberDecimalSeparator, "decimal")) { fraction = true; continue; }
                 if (settings.style == "currency" && Token(info.CurrencySymbol, "currency")) continue;
+                if (!exponent && settings.notation != "standard" && Token("E", "exponentSeparator")) { exponent = true; fraction = false; continue; }
+                if (exponent && Token(info.NegativeSign, "exponentMinusSign")) continue;
+                if (Token(info.NumberDecimalSeparator, "decimal")) { fraction = true; continue; }
                 if (settings.style == "percent" && Token(info.PercentSymbol, "percentSign")) continue;
                 if (Token(info.NumberGroupSeparator, "group") || Token(info.NegativeSign, "minusSign") || Token(info.PositiveSign, "plusSign")
                     || Token(info.NaNSymbol, "nan") || Token(info.PositiveInfinitySymbol, "infinity")) continue;
@@ -41,7 +43,8 @@ public static partial class Js
                 if (char.IsAsciiDigit(text[position]))
                 {
                     while (position < text.Length && char.IsAsciiDigit(text[position])) position++;
-                    Part(fraction ? "fraction" : "integer", text[start..position]);
+                    Part(exponent ? "exponentInteger" : fraction ? "fraction" : "integer", text[start..position]);
+                    if (exponent) exponent = false;
                 }
                 else { Part("literal", text.Substring(position, 1)); position++; }
             }
@@ -66,7 +69,7 @@ public static partial class Js
                 result.DefineOwn("minimumSignificantDigits", (double)settings.minimumSignificant);
                 result.DefineOwn("maximumSignificantDigits", (double)settings.maximumSignificant);
             }
-            result.DefineOwn("useGrouping", settings.groupingOption); result.DefineOwn("notation", "standard");
+            result.DefineOwn("useGrouping", settings.groupingOption); result.DefineOwn("notation", settings.notation);
             result.DefineOwn("signDisplay", settings.signDisplay);
             result.DefineOwn("roundingIncrement", (double)settings.roundingIncrement); result.DefineOwn("roundingMode", settings.roundingMode);
             result.DefineOwn("roundingPriority", settings.roundingPriority); result.DefineOwn("trailingZeroDisplay", settings.trailingZeroDisplay);
