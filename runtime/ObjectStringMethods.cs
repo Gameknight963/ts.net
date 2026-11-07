@@ -19,6 +19,7 @@ public static partial class Js
             // properties are not supported yet, but their native tags are.
             for (TsObject current = obj; current != null; current = current.PropertyPrototype)
             {
+                if (ReferenceEquals(current, RuntimeNamespaces.Reflect)) { tag = "Reflect"; break; }
                 if (ReferenceEquals(current, RuntimeNamespaces.Json)) { tag = "JSON"; break; }
                 if (ReferenceEquals(current, RuntimeNamespaces.Math)) { tag = "Math"; break; }
                 if (ReferenceEquals(current, KeyedCollectionPrototype(false))) { tag = "Map"; break; }

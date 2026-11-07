@@ -14,7 +14,7 @@ internal sealed class JsFunctionMethod(string name, int mode) : JsFunction((Func
         if (arguments.Length <= 1) return Array.Empty<object>();
         var result = new object[arguments.Length - 1]; Array.Copy(arguments, 1, result, 0, result.Length); return result;
     }
-    static object[] ApplyArguments(object value)
+    internal static object[] ApplyArguments(object value)
     {
         if (Js.IsNullish(value)) return Array.Empty<object>();
         if (value is not TsObject) throw new InvalidOperationException("apply requires an array-like object");
