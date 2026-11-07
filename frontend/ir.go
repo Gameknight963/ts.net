@@ -30,6 +30,11 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
+	dynamicModules        bool
+	moduleDependencies    map[*ast.SourceFile][]*ast.SourceFile
+	moduleAliases         map[*ast.SourceFile]map[string]*ast.SourceFile
+	moduleRecords         map[*ast.SourceFile]int
+	moduleRegistry        int
 	usingFor              *ast.Node
 	usingAsync            map[int]bool
 	usingStack            int
@@ -767,6 +772,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		}
 	case ast.KindCallExpression:
 		call := n.AsCallExpression()
+		if call.Expression.Kind == ast.KindImportKeyword {
+			return b.dynamicImport(n)
+		}
 		if call.Expression.Kind == ast.KindSuperKeyword {
 			id = b.node(60, n, "super call")
 			row = b.nodes[id-1]
@@ -1254,6 +1262,7 @@ func exportIR(s *session) (result []byte, err error) {
 	b.c = c
 	b.prepareDeletion(files)
 	b.prepareEnumNamespaces(files)
+	b.prepareDynamicModules(files)
 	functions := map[*ast.Node]int{}
 	last := 0
 	for _, file := range files {
@@ -1335,6 +1344,7 @@ func exportIR(s *session) (result []byte, err error) {
 		}
 		b.usingStack = previousUsing
 	}
+	b.initializeDynamicModules(files, s.file)
 	b.initializeModuleNamespaces()
 	b.dynamicNamespaces()
 	b.normalizeDynamicBindings()

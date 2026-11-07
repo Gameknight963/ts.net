@@ -20,26 +20,6 @@ func (b *irBuilder) usingReference(n *ast.Node, symbol int) int {
 	b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
 	return id
 }
-func (b *irBuilder) usingCall(n *ast.Node, name string, arguments ...int) int {
-	callee := b.node(66, n, name)
-	b.nodes[callee-1].typ = b.typ(b.c.GetAnyType())
-	id := b.node(6, n, "(")
-	b.nodes[id-1].left = callee
-	b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
-	for index, argument := range arguments {
-		if index == 0 {
-			b.nodes[id-1].children = argument
-		} else {
-			b.nodes[arguments[index-1]-1].next = argument
-		}
-	}
-	return id
-}
-func (b *irBuilder) usingStatement(n *ast.Node, expression int) int {
-	id := b.node(18, n, ";")
-	b.nodes[id-1].left = expression
-	return id
-}
 func (b *irBuilder) usingBlock(n *ast.Node, head int) int {
 	id := b.node(12, n, "{")
 	b.nodes[id-1].name = b.text("scope")
@@ -78,7 +58,7 @@ func (b *irBuilder) registerUsingBinding(n *ast.Node, row *irNode) {
 			b.unsupported(n)
 		}
 	}
-	row.left = b.usingCall(n, b.usingAddName(flags, b.usingStack), b.usingReference(n, b.usingStack), row.left)
+	row.left = b.builtinCall(n, b.usingAddName(flags, b.usingStack), b.usingReference(n, b.usingStack), row.left)
 	row.constant = 1
 }
 func (b *irBuilder) wrapUsing(n *ast.Node, stack, body int) int {
@@ -86,7 +66,7 @@ func (b *irBuilder) wrapUsing(n *ast.Node, stack, body int) int {
 	b.nodes[declaration-1].symbol = stack
 	b.nodes[declaration-1].typ = b.typ(b.c.GetAnyType())
 	b.nodes[declaration-1].constant = 1
-	b.nodes[declaration-1].left = b.usingCall(n, "__usingStack")
+	b.nodes[declaration-1].left = b.builtinCall(n, "__usingStack")
 	caught := b.node(52, n, "caught")
 	b.nodes[caught-1].typ = b.typ(b.c.GetAnyType())
 	b.symbols = append(b.symbols, irSymbol{name: b.text("using error"), typ: b.typ(b.c.GetAnyType())})
@@ -95,20 +75,20 @@ func (b *irBuilder) wrapUsing(n *ast.Node, stack, body int) int {
 	b.nodes[binding-1].symbol = errorSymbol
 	b.nodes[binding-1].typ = b.typ(b.c.GetAnyType())
 	b.nodes[binding-1].left = caught
-	record := b.usingStatement(n, b.usingCall(n, "__usingError", b.usingReference(n, stack), b.usingReference(n, errorSymbol)))
+	record := b.expressionStatement(n, b.builtinCall(n, "__usingError", b.usingReference(n, stack), b.usingReference(n, errorSymbol)))
 	b.nodes[binding-1].next = record
 	disposeName := "__usingDispose"
 	if b.usingAsync[stack] {
 		disposeName = "__usingDisposeAsync"
 	}
-	disposal := b.usingCall(n, disposeName, b.usingReference(n, stack))
+	disposal := b.builtinCall(n, disposeName, b.usingReference(n, stack))
 	if b.usingAsync[stack] {
 		awaited := b.node(rawAsyncAwait, n, "await disposal")
 		b.nodes[awaited-1].typ = b.typ(b.c.GetAnyType())
 		b.nodes[awaited-1].left = disposal
 		disposal = awaited
 	}
-	dispose := b.usingStatement(n, disposal)
+	dispose := b.expressionStatement(n, disposal)
 	protected := b.node(51, n, "try")
 	bodyBlock := b.usingBlock(n, body)
 	// Module bindings stay module bindings inside the cleanup wrapper; they
@@ -140,7 +120,7 @@ func (b *irBuilder) lowerUsingIteration(n *ast.Node, binding int) int {
 	}
 	// The loop has already assigned this iteration's value to the binding.
 	reference := b.usingReference(n, b.nodes[binding-1].symbol)
-	add := b.usingStatement(n, b.usingCall(n, b.usingAddName(ast.GetCombinedNodeFlags(n.AsForInOrOfStatement().Initializer), b.usingStack), b.usingReference(n, b.usingStack), reference))
+	add := b.expressionStatement(n, b.builtinCall(n, b.usingAddName(ast.GetCombinedNodeFlags(n.AsForInOrOfStatement().Initializer), b.usingStack), b.usingReference(n, b.usingStack), reference))
 	body := b.lower(n.AsForInOrOfStatement().Statement)
 	b.nodes[add-1].next = body
 	return b.usingBlock(n, b.wrapUsing(n, b.usingStack, add))

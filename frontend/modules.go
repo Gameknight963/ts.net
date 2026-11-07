@@ -45,6 +45,8 @@ func (b *irBuilder) runtimeImport(n *ast.Node) bool {
 func (b *irBuilder) moduleFiles(s *session) []*ast.SourceFile {
 	var ordered []*ast.SourceFile
 	visited := map[*ast.SourceFile]bool{}
+	b.moduleDependencies = map[*ast.SourceFile][]*ast.SourceFile{}
+	b.moduleAliases = map[*ast.SourceFile]map[string]*ast.SourceFile{}
 	var visit func(*ast.SourceFile)
 	visit = func(file *ast.SourceFile) {
 		if visited[file] {
@@ -53,24 +55,43 @@ func (b *irBuilder) moduleFiles(s *session) []*ast.SourceFile {
 		visited[file] = true
 		b.file = file
 		b.c.GetEmitResolver().MarkLinkedReferencesRecursively(file)
-		for _, n := range file.Statements.Nodes {
-			if n.Kind != ast.KindImportDeclaration && n.Kind != ast.KindExportDeclaration {
-				continue
-			}
-			specifier := n.ModuleSpecifier()
-			if specifier == nil || !b.runtimeImport(n) {
-				continue
-			}
+		dependency := func(specifier *ast.Node, static bool) {
 			resolved := s.program.GetResolvedModuleFromModuleSpecifier(file, specifier)
 			if resolved == nil {
 				panic("unresolved runtime module: " + specifier.Text())
 			}
-			dependency := s.program.GetSourceFile(resolved.ResolvedFileName)
-			if dependency == nil || dependency.IsDeclarationFile {
+			target := s.program.GetSourceFile(resolved.ResolvedFileName)
+			if target == nil || target.IsDeclarationFile {
 				panic("runtime module requires TypeScript source: " + specifier.Text())
 			}
-			visit(dependency)
+			if b.moduleAliases[file] == nil {
+				b.moduleAliases[file] = map[string]*ast.SourceFile{}
+			}
+			b.moduleAliases[file][specifier.Text()] = target
+			if static {
+				b.moduleDependencies[file] = append(b.moduleDependencies[file], target)
+			}
+			visit(target)
 			b.file = file
+		}
+		for _, n := range file.Statements.Nodes {
+			if (n.Kind == ast.KindImportDeclaration || n.Kind == ast.KindExportDeclaration) && n.ModuleSpecifier() != nil && b.runtimeImport(n) {
+				dependency(n.ModuleSpecifier(), true)
+			}
+		}
+		var scan func(*ast.Node)
+		scan = func(n *ast.Node) {
+			if n.Kind == ast.KindCallExpression && n.AsCallExpression().Expression.Kind == ast.KindImportKeyword {
+				b.dynamicModules = true
+				args := n.AsCallExpression().Arguments.Nodes
+				if len(args) != 0 && (args[0].Kind == ast.KindStringLiteral || args[0].Kind == ast.KindNoSubstitutionTemplateLiteral) {
+					dependency(args[0], false)
+				}
+			}
+			n.ForEachChild(func(child *ast.Node) bool { scan(child); return false })
+		}
+		if file.Flags&ast.NodeFlagsPossiblyContainsDynamicImport != 0 {
+			scan(file.AsNode())
 		}
 		ordered = append(ordered, file)
 	}

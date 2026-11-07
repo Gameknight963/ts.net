@@ -23,11 +23,11 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Feature | Points | Missing support |
 |---|---:|---|
 | Values and operators | 9 / 10 | Missing some Symbol protocols and operators. |
-| Control flow | 10 / 10 | Missing `await using` declarations. |
+| Control flow | 10 / 10 | Missing top-level `await using` declarations. |
 | Functions | 9 / 10 | Missing generators, script-global `this`, and source-preserving `Function.toString`. |
 | Objects and arrays | 9 / 10 | Missing complete general prototype behavior. |
 | Types and generics | 5 / 10 | Missing some runtime type representations. |
-| Modules | 4 / 5 | Missing dynamic imports. |
+| Modules | 4 / 5 | Missing dynamic imports of uncompiled modules and import attributes. |
 | Enums | 5 / 5 | Missing nothing. |
 | Classes and inheritance | 14 / 15 | Missing decorators, some built-in base classes, and complete constructor replacement-object support. |
 | Exceptions | 9 / 10 | Missing TypeScript source locations in stack traces. |

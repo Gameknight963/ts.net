@@ -16,13 +16,19 @@ public abstract partial class TsObject
     private object ModuleNamespaceKeys()
     {
         var names = new List<string>();
-        if (extra != null) foreach (var name in extra.Keys) names.Add(name);
+        if (extra != null) foreach (var name in extra.Keys) if (!Js.IsSymbolKey(name)) names.Add(name);
         names.Sort(StringComparer.Ordinal);
+        if (extra != null) foreach (var name in extra.Keys) if (Js.IsSymbolKey(name)) names.Add(name);
         return new JsArray(names.ToArray());
     }
 }
 
 public static partial class Js
 {
-    public static void SealModuleNamespace(object value) => ((TsObject)value).SealModuleNamespace();
+    public static void SealModuleNamespace(object value)
+    {
+        var target = (TsObject)value;
+        target.DefineOwn(PropertyKey(ToStringTagSymbol), "Module");
+        target.SealModuleNamespace();
+    }
 }

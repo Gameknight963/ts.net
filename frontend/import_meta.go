@@ -8,12 +8,16 @@ import (
 	"github.com/microsoft/typescript-go/internal/ast"
 )
 
-func (b *irBuilder) importMeta(n *ast.Node) int {
-	path := filepath.ToSlash(b.file.FileName())
+func sourceFileURL(file *ast.SourceFile) string {
+	path := filepath.ToSlash(file.FileName())
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	sourceURL := (&url.URL{Scheme: "file", Path: path}).String()
+	return (&url.URL{Scheme: "file", Path: path}).String()
+}
+
+func (b *irBuilder) importMeta(n *ast.Node) int {
+	sourceURL := sourceFileURL(b.file)
 	helper := b.node(66, n, "__importMeta")
 	b.nodes[helper-1].typ = b.typ(b.c.GetAnyType())
 	argument := b.node(1, n, sourceURL)

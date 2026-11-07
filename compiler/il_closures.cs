@@ -60,6 +60,7 @@ internal static partial class CompilerFunctions
             if (n.kind != NodeKind.Name || n.symbol == 0 || declarations.at(n.symbol) == 0) { continue; }
             int declaration = (int)declarations.at(n.symbol); int owner = scalar_owner(declaration, b.node_parents, c);
             if (owner == scalar_owner(i, b.node_parents, c)) { continue; }
+            if (il_module_binding(declaration, c, b)) continue;
             int scope = il_binding_scope(declaration, c, b); if (scope == 0) { continue; }
             b.capture_scopes.at_mut(n.symbol) = (int)scope; b.context_types.at_mut(scope) = -1;
             Node binding = get_node(declaration, c);
