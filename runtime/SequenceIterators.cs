@@ -41,7 +41,14 @@ public static partial class Js
     }
     static class NativeIteratorPrototypes
     {
-        internal static readonly TsObject Common = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
+        internal static readonly JsFunction Self = new CollectionMethod("[Symbol.iterator]", 0, (receiver, _) => receiver);
+        internal static readonly TsObject Common = CreateCommon();
+        static TsObject CreateCommon()
+        {
+            var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
+            prototype.DefineMethod(PropertyKey(RuntimeNamespaces.Symbol.Get("iterator")), Self);
+            return prototype;
+        }
         internal static readonly TsObject Array = Create(false), String = Create(true);
         static TsObject Create(bool text)
         {

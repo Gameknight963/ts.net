@@ -40,7 +40,7 @@ public static partial class Js
     internal static TsObject IteratorWrapperPrototype => IteratorWrapperMethods.Prototype;
     static object IteratorFrom(object value)
     {
-        TsObject source = value switch
+        TsObject source = TryGetIterableObject(value, out var custom) ? custom : value switch
         {
             string text => new JsSequenceIterator(text, 0u),
             JsBoxedPrimitive { Value: string text } => new JsSequenceIterator(text, 0u),

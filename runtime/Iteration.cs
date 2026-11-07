@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 public static class Iteration
 {
-    public static object Start(object value) => value switch
+    public static object Start(object value) => Js.TryStartCustomIterable(value, out var custom) ? custom : value switch
     {
         JsKeyedCollection collection => Js.StartCollectionIterator(new JsCollectionIterator(collection, collection.IsSet ? 1 : 2)),
         JsCollectionIterator iterator => Js.StartCollectionIterator(iterator),
