@@ -14,6 +14,15 @@ public static partial class Js
             if (list is not TsObject) throw new InvalidOperationException("Reflect.apply arguments must be an object");
             return function.InvokeWithReceiver(FunctionArgument(arguments, 1), JsFunctionMethod.ApplyArguments(list));
         });
+        Method("construct", 2, static arguments =>
+        {
+            if (FunctionArgument(arguments, 0) is not JsFunction target || !target.CanInitializeDerived) throw new InvalidOperationException("Reflect.construct target is not a constructor");
+            object requested = arguments.Length < 3 ? target : arguments[2];
+            if (requested is not JsFunction newTarget || !newTarget.CanInitializeDerived) throw new InvalidOperationException("Reflect.construct newTarget is not a constructor");
+            object list = FunctionArgument(arguments, 1);
+            if (list is not TsObject) throw new InvalidOperationException("Reflect.construct arguments must be an object");
+            return target.ConstructWithNewTarget(JsFunctionMethod.ApplyArguments(list), newTarget);
+        });
         Method("get", 2, static arguments =>
         {
             var target = ReflectTarget(FunctionArgument(arguments, 0));

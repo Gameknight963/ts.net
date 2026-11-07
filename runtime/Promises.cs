@@ -195,6 +195,11 @@ public static partial class Js
         public override object Construct(object[] arguments) => CreatePromise(arguments);
         internal override bool CanInitializeDerived => true;
         internal override object InitializeDerived(object instance, object[] arguments) => CreatePromise(arguments, ((TsObject)instance).PropertyPrototype);
+        internal override object InitializeDerived(object instance, object[] arguments, JsFunction newTarget)
+        {
+            if (FunctionArgument(arguments, 0) is not JsFunction) throw new InvalidOperationException("Promise executor is not callable");
+            return CreatePromise(arguments, ConstructionPrototype(newTarget));
+        }
     }
     static JsFunction CreateQueueMicrotask() => new((FunctionBody)(args =>
     {

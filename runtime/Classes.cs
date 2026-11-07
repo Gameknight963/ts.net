@@ -82,20 +82,22 @@ public sealed class JsClassFunction : JsFunction
     }
     internal void DefineField(string key, object value) { if (key == "prototype") throw Js.MakeThrown(new JsCaughtError("TypeError", "Cannot redefine class prototype")); ReplaceIntrinsicMetadata(key); DefineOwn(key, value); hidden.Remove(key); }
     internal void InitializeFields(object instance) => fields.InvokeWithReceiver(instance, Array.Empty<object>());
-    internal object Initialize(object instance, object[] arguments)
+    internal object Initialize(object instance, object[] arguments) => Initialize(instance, arguments, ((JsClassInstance)instance).Owner);
+    internal object Initialize(object instance, object[] arguments, JsFunction newTarget)
     {
         if (!derived)
         {
+            ((TsObject)instance).SetPrototype(ConstructionPrototype(newTarget));
             InitializeFields(instance);
-            object result = constructor?.InvokeWithReceiver(constructor.ConstructionReceiver(instance, ((JsClassInstance)instance).Owner), arguments);
+            object result = constructor?.InvokeWithReceiver(constructor.ConstructionReceiver(instance, newTarget), arguments);
             return result is TsObject ? result : instance;
         }
         if (constructor is null)
         {
             if (Parent is null) throw new InvalidOperationException("Super constructor is not callable");
-            object result = Parent.InitializeDerived(instance, arguments); InitializeFields(result); return result;
+            object result = Parent.InitializeDerived(instance, arguments, newTarget); InitializeFields(result); return result;
         }
-        var frame = new JsConstructorFrame(this, instance);
+        var frame = new JsConstructorFrame(this, instance, newTarget);
         object returned = constructor.InvokeWithReceiver(frame, arguments);
         if (returned is TsObject) return returned;
         if (!Js.IsUndefined(returned)) throw new InvalidOperationException("Derived constructor may only return an object or undefined");
@@ -108,6 +110,7 @@ public sealed class JsClassFunction : JsFunction
     public override object Construct(object[] arguments) => Initialize(Allocate(), arguments);
     internal override bool CanInitializeDerived => true;
     internal override object InitializeDerived(object instance, object[] arguments) => Initialize(instance, arguments);
+    internal override object InitializeDerived(object instance, object[] arguments, JsFunction newTarget) => Initialize(instance, arguments, newTarget);
     public override bool HasInstance(object value) => value is TsObject instance && Js.PrototypeContains(instance, Prototype);
 
 

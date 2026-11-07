@@ -7,9 +7,10 @@ internal sealed class JsConstructionReceiver(object receiver, object target)
     internal readonly object Target = target;
 }
 
-internal sealed class JsConstructorFrame(JsClassFunction home, object allocated)
+internal sealed class JsConstructorFrame(JsClassFunction home, object allocated, JsFunction newTarget)
 {
     internal readonly JsClassFunction Home = home;
+    internal readonly JsFunction NewTarget = newTarget;
     internal readonly object Allocated = allocated;
     internal object Value;
     internal bool Initialized;
@@ -36,7 +37,7 @@ public static partial class Js
     public static object NewTarget(object receiver)
     {
         receiver = ArgumentsReceiver(receiver);
-        return receiver is JsConstructionReceiver construction ? construction.Target : receiver is JsConstructorFrame frame ? ((JsClassInstance)frame.Allocated).Owner : Undefined;
+        return receiver is JsConstructionReceiver construction ? construction.Target : receiver is JsConstructorFrame frame ? frame.NewTarget : Undefined;
     }
     public static object EnableNewTarget(object value) { ((JsFunction)value).UsesNewTarget = true; return value; }
     internal static object SuperReceiver(object receiver) => receiver is JsSuperReference reference ? reference.Receiver : receiver;
@@ -49,7 +50,8 @@ public static partial class Js
         int length = checked((int)Iteration.Length(arguments)); var values = new object[length];
         for (int i = 0; i < length; i++) values[i] = Iteration.Value(arguments, i);
         object allocated = frame.Calls++ == 0 ? frame.Allocated : ((JsClassInstance)frame.Allocated).Owner.Allocate();
-        object result = frame.Home.Parent.InitializeDerived(allocated, values);
+        if (!ReferenceEquals(allocated, frame.Allocated)) ((TsObject)allocated).SetPrototype(((TsObject)frame.Allocated).PropertyPrototype);
+        object result = frame.Home.Parent.InitializeDerived(allocated, values, frame.NewTarget);
         if (frame.Initialized) throw MakeThrown(new JsCaughtError("ReferenceError", "Super constructor may only be called once"));
         frame.Value = result; frame.Initialized = true;
         frame.Home.InitializeFields(result);

@@ -49,6 +49,11 @@ public static partial class Js
             var result = (TsObject)Construct(arguments);
             result.SetPrototype(((TsObject)instance).PropertyPrototype); return result;
         }
+        internal override object InitializeDerived(object instance, object[] arguments, JsFunction newTarget)
+        {
+            var result = (TsObject)Construct(arguments);
+            result.SetPrototype(ConstructionPrototype(newTarget)); return result;
+        }
     }
     static object ObjectValue(object value) => IsNullish(value) ? new JsDynamicObject() : ToObject(value);
     sealed class ObjectConstructorFunction() : NativeNamespaceFunction("Object", static args => ObjectValue(FunctionArgument(args, 0)), 1)
@@ -85,6 +90,11 @@ public static partial class Js
         {
             var result = (TsObject)Construct(arguments);
             result.SetPrototype(((TsObject)instance).PropertyPrototype); return result;
+        }
+        internal override object InitializeDerived(object instance, object[] arguments, JsFunction newTarget)
+        {
+            var result = (TsObject)Construct(arguments);
+            result.SetPrototype(ConstructionPrototype(newTarget)); return result;
         }
     }
     static object SetObjectPrototype(object target, object prototype)
