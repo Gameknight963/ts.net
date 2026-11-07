@@ -13,10 +13,17 @@ public static partial class Js
             JsWeakRef => "WeakRef", JsDate => "Date", JsRegExp => "RegExp", JsFunction => "Function", JsArguments => "Arguments", JsCaughtError => "Error",
             _ => "Object"
         };
+        TsObject properties = original ?? PrimitivePrototype(receiver);
+        string tagKey = PropertyKey(ToStringTagSymbol);
+        if (properties != null && properties.HasProperty(tagKey)) {
+            object custom = properties.GetWithReceiver(tagKey, original ?? receiver);
+            string fallback = receiver is JsSymbol or JsWeakRef ? "Object" : tag;
+            return "[object " + (custom is string text ? text : fallback) + "]";
+        }
         if (original is TsObject obj)
         {
-            // These built-in tags normally come from Symbol.toStringTag. Symbol
-            // properties are not supported yet, but their native tags are.
+            // Native tags remain available where intrinsic prototypes do not
+            // yet expose their own Symbol.toStringTag property.
             for (TsObject current = obj; current != null; current = current.PropertyPrototype)
             {
                 if (ReferenceEquals(current, RuntimeNamespaces.Reflect)) { tag = "Reflect"; break; }
