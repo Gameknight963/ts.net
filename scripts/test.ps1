@@ -7,6 +7,8 @@ try {
     $compiler = "$root/compiler/bin/Release/net10.0/tsnetc.dll"
     [IO.Directory]::CreateDirectory("$root/artifacts/metadata-writer") | Out-Null
     '<configuration><packageSources><clear /></packageSources></configuration>' | Set-Content "$root/artifacts/metadata-writer/NuGet.Config"
+    & dotnet build "$root/runtime/Tsnet.Runtime.csproj" -c Release --configfile "$root/artifacts/metadata-writer/NuGet.Config" --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Runtime build failed' }
     $utf8 = New-Object System.Text.UTF8Encoding($false)
     $testRoot = "$root/artifacts/tests"
     [IO.Directory]::CreateDirectory($testRoot) | Out-Null
@@ -42,7 +44,7 @@ try {
     # Differential execution checks against the actual TypeScript compiler.
     foreach ($fixture in @('tests/behavior.ts', 'tests/await-expressions.ts', 'tests/await-destructuring.ts', 'tests/await-switch.ts', 'tests/await-loops.ts', 'tests/await-exceptions.ts', 'tests/for-await.ts', 'tests/for-await-order.ts', 'tests/for-await-result.ts', 'tests/collections.ts', 'tests/map-group-by.ts', 'tests/object-group-by.ts', 'tests/object-from-entries.ts', 'tests/object-create.ts', 'tests/delete.ts', 'tests/delete-modules.ts', 'tests/await-intrinsic-calls.ts', 'tests/collections-modules.ts', 'tests/collection-iterators.ts', 'tests/sequence-cleanup.ts', 'tests/sequence-cleanup-modules.ts', 'tests/await-statements.ts', 'tests/await-statements-modules.ts', 'tests/await-assignments.ts', 'tests/await-optional-chaining.ts', 'tests/await-return.ts', 'tests/await-return-modules.ts', 'tests/async-functions.ts', 'tests/async-functions-modules.ts', 'tests/promises.ts', 'tests/promise-combinators.ts', 'tests/promise-helpers.ts', 'tests/promise-helpers-modules.ts', 'tests/promises-modules.ts', 'tests/exceptions.ts', 'tests/error-prototypes.ts', 'tests/enums.ts', 'tests/enums-namespaces.ts', 'tests/enums-nested-namespaces.ts', 'tests/enum-import-aliases.ts', 'tests/enum-alias-only.ts', 'tests/enums-modules.ts', 'tests/enums-const-import.ts', 'tests/enums-large.ts', 'tests/globals.ts', 'tests/object-constructor.ts', 'tests/object-assign.ts', 'tests/object-is.ts', 'tests/object-is-modules.ts', 'tests/object-assign-modules.ts', 'tests/object-constructor-modules.ts', 'tests/primitive-constructors.ts', 'tests/object-prototypes.ts', 'tests/object-prototype-queries.ts', 'tests/modules.ts', 'tests/default-modules.ts', 'tests/structural-fields.ts', 'tests/empty-structural-types.ts', 'tests/optional-context.ts', 'tests/in-operator.ts', 'tests/in-operator-allocation.ts', 'tests/optional-chaining.ts', 'tests/optional-chaining-modules.ts', 'tests/optional-chaining-allocation.ts', 'tests/has-own.ts', 'tests/object-keys.ts', 'tests/object-enumeration.ts', 'tests/object-spread.ts', 'tests/spread-fastpath.ts', 'tests/key-layouts.ts', 'tests/object-key-count.ts', 'tests/string-index.ts', 'tests/string-search.ts', 'tests/string-search-allocation.ts', 'tests/numeric-string-index.ts', 'tests/string-boundaries.ts', 'tests/string-boundaries-modules.ts', 'tests/string-formatting.ts', 'tests/string-formatting-modules.ts', 'tests/string-ranges.ts', 'tests/string-ranges-allocation.ts', 'tests/has-own-fastpath.ts', 'tests/il-backend.ts', 'tests/frontend.ts', 'tests/functions.ts', 'tests/arguments.ts', 'tests/arguments-modules.ts', 'tests/function-prototypes.ts', 'tests/function-property-deletion.ts', 'tests/function-constructors.ts', 'tests/new-target.ts', 'tests/new-target-modules.ts', 'tests/function-constructor-cold.ts', 'tests/constructor-namespace-alias.ts', 'tests/constructor-namespace-index.ts', 'tests/function-constructor-allocation.ts', 'tests/receivers.ts', 'tests/function-binding.ts', 'tests/classes.ts', 'tests/numeric-members.ts', 'tests/numeric-members-modules.ts', 'tests/class-replacement.ts', 'tests/computed-classes.ts', 'tests/class-spread.ts', 'tests/classes-modules.ts', 'tests/inheritance.ts', 'tests/function-inheritance.ts', 'tests/function-base-no-new.ts', 'tests/inheritance-modules.ts', 'tests/accessors.ts', 'tests/auto-accessors.ts', 'tests/private-members.ts', 'tests/private-members-modules.ts', 'tests/function-self.ts', 'tests/iife-captures.ts', 'tests/closures.ts', 'tests/closure-module-access.ts', 'tests/local-functions.ts', 'tests/local-function-loop.ts', 'tests/closure-loop.ts', 'tests/function-dispatch.ts', 'tests/call-arity.ts', 'tests/function-aliases.ts', 'tests/void-values.ts', 'tests/straightforward.ts', 'tests/logical-assignment.ts', 'tests/dynamic-arithmetic.ts', 'tests/nullable-values.ts', 'tests/number-fields.ts', 'tests/push-values.ts', 'tests/push-local-arrays.ts', 'tests/numeric-fastpaths.ts', 'tests/masked-remainder.ts', 'tests/number-text.ts', 'tests/numeric-constants.ts', 'tests/math.ts', 'tests/math-modules.ts', 'tests/number-predicates.ts', 'tests/number-bindings.ts', 'tests/bitwise.ts', 'tests/exponentiation.ts', 'tests/number-strings.ts', 'tests/object-number.ts', 'tests/relational.ts', 'tests/equality.ts', 'tests/characters.ts', 'tests/characters-allocation.ts', 'tests/at.ts', 'tests/at-allocation.ts', 'tests/scalar-objects.ts', 'tests/scalar-dynamic.ts', 'tests/scalar-references.ts', 'tests/integer-loops.ts', 'tests/integer-call-loops.ts', 'tests/array-constructor.ts', 'tests/array-from.ts', 'tests/array-fill.ts', 'tests/array-copy-within.ts', 'tests/array-copy-within-modules.ts', 'tests/array-fill-modules.ts', 'tests/array-from-modules.ts', 'tests/array-constructor-modules.ts', 'tests/array-prototype-alias.ts', 'tests/arrays.ts', 'tests/array-join.ts', 'tests/array-callbacks.ts', 'tests/array-callback-modules.ts', 'tests/array-reduce.ts', 'tests/array-reduce-modules.ts', 'tests/array-find.ts', 'tests/array-find-modules.ts', 'tests/array-to-sorted.ts', 'tests/array-to-sorted-modules.ts', 'tests/array-to-spliced.ts', 'tests/array-to-spliced-modules.ts', 'tests/array-copy.ts', 'tests/array-copy-modules.ts', 'tests/array-last-index.ts', 'tests/array-flatten.ts', 'tests/array-flatten-modules.ts', 'tests/mixed-index.ts', 'tests/union-arrays.ts', 'tests/loop-accumulators.ts', 'tests/computed-index.ts', 'tests/computed-properties.ts', 'tests/key-coercion-effects.ts', 'tests/dense-read.ts', 'tests/typeof-number.ts', 'tests/slice.ts', 'tests/reverse.ts', 'tests/array-search.ts', 'tests/packed-arrays.ts', 'tests/array-ranges.ts', 'tests/inferred-arrays.ts', 'tests/fresh-any-arrays.ts', 'tests/for-of.ts', 'tests/for-in.ts', 'tests/array-spread.ts', 'tests/array-destructuring.ts', 'tests/object-destructuring.ts', 'tests/object-rest.ts', 'tests/destructuring-fastpath.ts', 'tests/destructured-parameters.ts', 'tests/rest-parameters.ts', 'tests/call-spread.ts', 'examples/structural.ts', 'examples/numeric.ts', 'artifacts/tests/boundaries.ts')) {
         $name = [IO.Path]::GetFileNameWithoutExtension($fixture)
-        & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
+        & "$PSScriptRoot/build.ps1" -InputFile $fixture -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
         $moduleKind = if ($name -eq 'delete-modules') { 'es2022' } else { 'commonjs' }
         & tsc.cmd --strict --target es2022 --module $moduleKind --outDir "$testRoot/node/$name" $fixture
         if ($moduleKind -eq 'es2022') { '{"type":"module"}' | Set-Content "$testRoot/node/$name/package.json" }
@@ -60,7 +62,7 @@ try {
 
     # Namespace semantics need native ES modules as the reference.
     foreach ($name in @('for-in-modules', 'for-in-cycle', 'module-namespace-order', 'in-operator-modules', 'function-constructor-modules')) {
-        & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
+        & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module es2022 --outDir "$testRoot/node/$name" "tests/$name.ts"
         if ($LASTEXITCODE) { throw "ES module reference compilation failed: $name" }
         '{"type":"module"}' | Set-Content "$testRoot/node/$name/package.json" -Encoding utf8
@@ -75,20 +77,20 @@ try {
     # ClassDefinitionEvaluation validates heritage before computing member keys.
     # Node 25.9.0 currently computes keys first for an invalid base.
     # https://tc39.es/ecma262/multipage/ecmascript-language-functions-and-classes.html#sec-runtime-semantics-classdefinitionevaluation
-    & "$PSScriptRoot/build.ps1" -InputFile tests/computed-class-invalid-base.ts -OutputDirectory artifacts/tests/computed-class-invalid-base -SkipCompilerBuild | Out-Host
+    & "$PSScriptRoot/build.ps1" -InputFile tests/computed-class-invalid-base.ts -OutputDirectory artifacts/tests/computed-class-invalid-base -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
     $actual = @(& dotnet "$testRoot/computed-class-invalid-base/bin/Release/net10.0/App.dll")
     if ($LASTEXITCODE -or ($actual -join "`n") -cne 'true 0') { throw 'Computed keys ran before invalid heritage was rejected' }
     Write-Host 'PASS invalid class heritage is rejected before computed keys'
 
     # The spec sorts all namespace export names lexically; V8 currently orders
     # integer-looking names numerically, so this case uses explicit expectations.
-    & "$PSScriptRoot/build.ps1" -InputFile tests/module-namespace-numeric.ts -OutputDirectory artifacts/tests/module-namespace-numeric -SkipCompilerBuild | Out-Host
+    & "$PSScriptRoot/build.ps1" -InputFile tests/module-namespace-numeric.ts -OutputDirectory artifacts/tests/module-namespace-numeric -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
     & dotnet "$testRoot/module-namespace-numeric/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Numeric namespace key ordering failed' }
 
     # Namespace [[Set]] returns false regardless of receiver. V8 currently
     # permits inherited writes, so this check uses the specified result.
-    & "$PSScriptRoot/build.ps1" -InputFile tests/namespace-prototype-write.ts -OutputDirectory artifacts/tests/namespace-prototype-write -SkipCompilerBuild | Out-Host
+    & "$PSScriptRoot/build.ps1" -InputFile tests/namespace-prototype-write.ts -OutputDirectory artifacts/tests/namespace-prototype-write -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
     & dotnet "$testRoot/namespace-prototype-write/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Namespace prototype writes must be rejected' }
 
@@ -289,7 +291,7 @@ try {
         @{ Name = 'bad-structural-cast'; Message = 'checked conversion failed' }
     )) {
         $name = $case.Name
-        & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild | Out-Host
+        & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
         # Process captures expected stderr failures without PowerShell's native
         # stderr-to-error conversion. Argument list contains only a quoted path.
         $start = New-Object System.Diagnostics.ProcessStartInfo
