@@ -34,6 +34,8 @@ public static partial class Js
         prototype.DefineHidden("normalize", new StringNormalizationFunction());
         prototype.DefineHidden("replace", new StringReplacementFunction(false));
         prototype.DefineHidden("replaceAll", new StringReplacementFunction(true));
+        prototype.DefineHidden("toLocaleUpperCase", new StringCaseFunction(true, true));
+        prototype.DefineHidden("toLocaleLowerCase", new StringCaseFunction(false, true));
         prototype.DefineHidden("toUpperCase", new StringCaseFunction(true));
         prototype.DefineHidden("toLowerCase", new StringCaseFunction(false));
         prototype.DefineHidden("matchAll", new StringMatchAllFunction());
