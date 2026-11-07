@@ -12,6 +12,12 @@ public static partial class Js
                 DefineOwn(name, new JsFunction((FunctionBody)(static args => { Log(args); return Undefined; }), null, name, 0));
             foreach (string name in new[] { "warn", "error" })
                 DefineOwn(name, new JsFunction((FunctionBody)(static args => { Console.Error.WriteLine(ConsoleMessage(args)); return Undefined; }), null, name, 0));
+            var labels = new ConsoleLabels();
+            DefineOwn("count", new JsFunction((FunctionBody)labels.Count, null, "count", 0));
+            DefineOwn("countReset", new JsFunction((FunctionBody)labels.Reset, null, "countReset", 0));
+            DefineOwn("time", new JsFunction((FunctionBody)labels.Start, null, "time", 0));
+            DefineOwn("timeLog", new JsFunction((FunctionBody)(args => labels.Elapsed(args, false)), null, "timeLog", 0));
+            DefineOwn("timeEnd", new JsFunction((FunctionBody)(args => labels.Elapsed(args, true)), null, "timeEnd", 0));
             DefineOwn("assert", new JsFunction((FunctionBody)(static args => {
                 if (!Truthy(FunctionArgument(args, 0))) {
                     string message = args.Length > 1 ? ": " + ConsoleMessage(args[1..]) : "";
