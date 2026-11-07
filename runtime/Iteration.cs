@@ -7,6 +7,7 @@ public static class Iteration
     {
         JsKeyedCollection collection => Js.StartCollectionIterator(new JsCollectionIterator(collection, collection.IsSet ? 1 : 2)),
         JsCollectionIterator iterator => Js.StartCollectionIterator(iterator),
+        JsRegexIterator iterator => Js.StartRegexIterator(iterator),
         JsSequenceIterator iterator => Js.StartSequenceIterator(iterator),
         JsProtocolIterator or JsArray or JsArguments or string => value,
         JsBoxedPrimitive { Value: string text } => text,

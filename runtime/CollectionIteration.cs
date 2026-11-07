@@ -56,6 +56,7 @@ public static partial class Js
             JsCollectionIterator { Owner: not null } native => native,
             JsProtocolIterator { Done: false } custom => custom.Source,
             JsSequenceIterator { Done: false } native => native,
+            JsRegexIterator { Done: false } native => native,
             _ => null
         };
 }

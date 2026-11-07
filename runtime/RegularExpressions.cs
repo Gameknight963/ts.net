@@ -75,7 +75,7 @@ public static partial class Js
         }
         return result.ToString();
     }
-    static object RegExpMatch(JsRegExp regex, object input, bool test)
+    internal static object RegExpMatch(JsRegExp regex, object input, bool test)
     {
         string text = StringValue(input);
         bool global = regex.Flags.Contains('g'), sticky = regex.Flags.Contains('y');
