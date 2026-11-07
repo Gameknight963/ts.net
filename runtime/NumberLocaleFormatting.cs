@@ -50,6 +50,7 @@ public static partial class Js
         internal readonly bool grouping;
         internal readonly object groupingOption;
         internal readonly string signDisplay;
+        internal readonly string roundingMode, trailingZeroDisplay;
         internal readonly string style;
         internal readonly string currency, currencyDisplay, currencySign;
         readonly string positivePattern, negativePattern;
@@ -57,6 +58,7 @@ public static partial class Js
         internal NumberLocaleSettings(object locales, object optionValue)
         {
             culture = CaseCulture(locales);
+            roundingMode = "halfExpand"; trailingZeroDisplay = "auto";
             style = "decimal"; positivePattern = negativePattern = null;
             currency = null; currencyDisplay = "symbol"; currencySign = "standard";
             int currencyDigits = 2;
@@ -104,12 +106,20 @@ public static partial class Js
                 }
                 foreach (string key in new[] { "minimumSignificantDigits", "maximumSignificantDigits", "compactDisplay", "unit", "numberingSystem" })
                     if (!IsUndefined(options.Get(key))) throw new NotSupportedException("Number locale formatting option " + key + " is not supported");
-                foreach (var item in new[] { ("notation", "standard"), ("roundingMode", "halfExpand"), ("roundingPriority", "auto"), ("roundingIncrement", "1"), ("trailingZeroDisplay", "auto") })
+                foreach (var item in new[] { ("notation", "standard"), ("roundingPriority", "auto"), ("roundingIncrement", "1") })
                 {
                     object setting = options.Get(item.Item1);
                     if (!IsUndefined(setting) && StringValue(setting) != item.Item2)
                         throw new NotSupportedException("Number locale formatting option " + item.Item1 + " is not supported");
                 }
+                object requestedRounding = options.Get("roundingMode");
+                if (!IsUndefined(requestedRounding)) roundingMode = StringValue(requestedRounding);
+                if (roundingMode is not ("ceil" or "floor" or "expand" or "trunc" or "halfCeil" or "halfFloor" or "halfExpand" or "halfTrunc" or "halfEven"))
+                    throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid rounding mode");
+                object requestedZeros = options.Get("trailingZeroDisplay");
+                if (!IsUndefined(requestedZeros)) trailingZeroDisplay = StringValue(requestedZeros);
+                if (trailingZeroDisplay is not ("auto" or "stripIfInteger"))
+                    throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid trailing zero display");
                 object matcher = options.Get("localeMatcher");
                 if (!IsUndefined(matcher) && StringValue(matcher) is not ("lookup" or "best fit"))
                     throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
@@ -162,6 +172,27 @@ public static partial class Js
             }
             format = (grouping ? "N" : "F") + maximum.ToString(CultureInfo.InvariantCulture);
         }
+        bool RoundUp(BigInteger quotient, BigInteger remainder, BigInteger denominator, bool negative)
+        {
+            if (remainder.IsZero) return false;
+            switch (roundingMode)
+            {
+                case "ceil": return !negative;
+                case "floor": return negative;
+                case "expand": return true;
+                case "trunc": return false;
+            }
+            int half = (remainder * 2).CompareTo(denominator);
+            if (half != 0) return half > 0;
+            return roundingMode switch
+            {
+                "halfCeil" => !negative,
+                "halfFloor" => negative,
+                "halfTrunc" => false,
+                "halfEven" => !quotient.IsEven,
+                _ => true
+            };
+        }
         string FiniteNumber(double value)
         {
             // Safe integers need no decimal rounding and retain native formatting.
@@ -179,7 +210,7 @@ public static partial class Js
             {
                 BigInteger denominator = BigInteger.Pow(10, -shift);
                 digits = BigInteger.DivRem(digits, denominator, out var remainder);
-                if (remainder * 2 >= denominator) digits++;
+                if (RoundUp(digits, remainder, denominator, double.IsNegative(value))) digits++;
             }
             BigInteger whole = BigInteger.DivRem(digits, BigInteger.Pow(10, maximum), out var fraction);
             string result = whole.ToString(grouping ? "N0" : "F0", culture);
@@ -212,6 +243,17 @@ public static partial class Js
                 while (trim < maximum - minimum && result[result.Length - trim - 1] == '0') trim++;
                 if (trim == maximum) trim += culture.NumberFormat.NumberDecimalSeparator.Length;
                 if (trim != 0) result = result[..^trim];
+            }
+            if (finite && trailingZeroDisplay == "stripIfInteger")
+            {
+                string separator = culture.NumberFormat.NumberDecimalSeparator;
+                int point = result.LastIndexOf(separator, StringComparison.Ordinal);
+                if (point >= 0)
+                {
+                    bool integer = true;
+                    for (int i = point + separator.Length; i < result.Length; i++) if (result[i] != '0') { integer = false; break; }
+                    if (integer) result = result[..point];
+                }
             }
             if (style == "decimal") return result;
             var info = culture.NumberFormat;
