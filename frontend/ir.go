@@ -631,7 +631,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row = b.nodes[id-1]
 		row.children = b.list(n.AsObjectLiteralExpression().Properties.Nodes)
 		for _, property := range n.AsObjectLiteralExpression().Properties.Nodes {
-			if property.Kind == ast.KindGetAccessor || property.Kind == ast.KindSetAccessor {
+			if property.Kind == ast.KindGetAccessor || property.Kind == ast.KindSetAccessor || property.Kind == ast.KindPropertyAssignment && property.Name().Kind != ast.KindComputedPropertyName && property.Name().Text() == "__proto__" {
 				row.typ = b.typ(b.c.GetAnyType())
 				break
 			}
@@ -680,9 +680,6 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		if (n.Kind == ast.KindMethodDeclaration || n.Kind == ast.KindGetAccessor || n.Kind == ast.KindSetAccessor) && n.Body() == nil {
 			return 0
 		}
-		if n.Kind == ast.KindPropertyAssignment && n.Name().Kind != ast.KindComputedPropertyName && n.Name().Text() == "__proto__" {
-			b.unsupported(n)
-		}
 		name := n.Name()
 		key := name
 		computed := name.Kind == ast.KindComputedPropertyName
@@ -693,6 +690,10 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		dynamic := !known
 		id = b.node(5, n, "property")
 		row = b.nodes[id-1]
+		if n.Kind == ast.KindPropertyAssignment && !computed && staticName == "__proto__" {
+			// A marker distinguishes prototype setters from ordinary named data.
+			row.fourth = b.node(20, n, "prototype setter")
+		}
 		if dynamic {
 			previousSuper, previousStatic := b.superSymbol, b.superStatic
 			if n.Parent.Kind == ast.KindClassDeclaration || n.Parent.Kind == ast.KindClassExpression {
