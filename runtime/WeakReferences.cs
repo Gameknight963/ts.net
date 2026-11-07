@@ -1,21 +1,22 @@
 using System;
 using System.Collections.Generic;
 
-internal sealed class JsWeakRef(TsObject target) : TsObject
+internal sealed class JsWeakRef(object target) : TsObject
 {
-    internal readonly WeakReference<TsObject> Target = new(target);
+    internal readonly WeakReference<object> Target = new(target);
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.WeakRefPrototype;
 }
 
 public static partial class Js
 {
-    [ThreadStatic] static HashSet<TsObject> keptWeakTargets;
+    [ThreadStatic] static HashSet<object> keptWeakTargets;
     internal static TsObject WeakRefPrototype => (TsObject)RuntimeNamespaces.WeakRef.Get("prototype");
-    static void KeepWeakTarget(TsObject target) => (keptWeakTargets ??= new(ReferenceEqualityComparer.Instance)).Add(target);
+    static void KeepWeakTarget(object target) => (keptWeakTargets ??= new(ReferenceEqualityComparer.Instance)).Add(target);
     static void ClearKeptWeakTargets() => keptWeakTargets?.Clear();
     static JsWeakRef CreateWeakRef(object[] arguments)
     {
-        if (FunctionArgument(arguments, 0) is not TsObject target) throw new InvalidOperationException("WeakRef target must be an object");
+        object target = FunctionArgument(arguments, 0);
+        if (!CanBeWeakKey(target)) throw new InvalidOperationException("WeakRef target must be an object or non-registered symbol");
         var result = new JsWeakRef(target); KeepWeakTarget(target); return result;
     }
     sealed class WeakRefConstructor : NativeNamespaceFunction

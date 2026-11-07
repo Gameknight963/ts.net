@@ -6,9 +6,9 @@ static class Program
 {
     static object Deref(TsObject reference) => Js.CallMethod(reference.Get("deref"), reference, Array.Empty<object>());
     [MethodImpl(MethodImplOptions.NoInlining)]
-    static (TsObject Reference, WeakReference Witness) Create()
+    static (TsObject Reference, WeakReference Witness) Create(bool symbol = false)
     {
-        var target = new JsDynamicObject();
+        object target = symbol ? ((JsFunction)Js.BuiltinNamespace("Symbol")).InvokeWithReceiver(Js.Undefined, new object[] { "weak" }) : new JsDynamicObject();
         return ((TsObject)((JsFunction)Js.BuiltinNamespace("WeakRef")).Construct(new object[] { target }), new WeakReference(target));
     }
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -26,12 +26,16 @@ static class Program
         Check(Js.Run(() => { created = Create(); Collect(); Check(created.Witness.IsAlive, "Construction must retain its target for the current job"); }) == 0, "Construction job failed");
         Collect(); Check(!created.Witness.IsAlive, "WeakRef retained its target after the job");
         Check(Js.IsUndefined(Deref(created.Reference)), "Collected targets must return undefined");
+        (TsObject Reference, WeakReference Witness) createdSymbol = default;
+        Check(Js.Run(() => { createdSymbol = Create(true); Collect(); Check(createdSymbol.Witness.IsAlive, "Construction must retain its symbol for the current job"); }) == 0, "Symbol construction job failed");
+        Collect(); Check(!createdSymbol.Witness.IsAlive, "WeakRef retained its symbol after the job");
+        Check(Js.IsUndefined(Deref(createdSymbol.Reference)), "Collected symbols must return undefined");
         var live = CreateHeld();
         Check(Js.Run(() => { }) == 0, "Initial job failed");
         Check(Js.Run(() => { RetainAndDrop(live.Reference, live.Holder); Collect(); Check(live.Witness.IsAlive, "deref must retain its result for the current job"); }) == 0, "deref job failed");
         Collect(); Check(!live.Witness.IsAlive, "deref retained its target after the job");
         Check(Js.IsUndefined(Deref(live.Reference)), "Collected deref target must return undefined");
-        GC.KeepAlive(created.Reference); GC.KeepAlive(live.Reference);
+        GC.KeepAlive(createdSymbol.Reference); GC.KeepAlive(created.Reference); GC.KeepAlive(live.Reference);
         Console.WriteLine("PASS WeakRef targets survive their job and are collectible afterward");
     }
 }

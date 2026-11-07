@@ -4,22 +4,23 @@ using System.Runtime.CompilerServices;
 public sealed class JsWeakCollection : TsObject
 {
     sealed class Cell(object value) { internal object Value = value; }
-    readonly ConditionalWeakTable<TsObject, Cell> entries = new();
+    readonly ConditionalWeakTable<object, Cell> entries = new();
     internal readonly bool IsSet;
     internal JsWeakCollection(bool set) { IsSet = set; }
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.WeakCollectionPrototype(IsSet);
-    internal object Read(object key) => key is TsObject obj && entries.TryGetValue(obj, out var cell) ? cell.Value : Js.Undefined;
-    internal bool Contains(object key) => key is TsObject obj && entries.TryGetValue(obj, out _);
-    internal bool Remove(object key) => key is TsObject obj && entries.Remove(obj);
+    internal object Read(object key) => Js.CanBeWeakKey(key) && entries.TryGetValue(key, out var cell) ? cell.Value : Js.Undefined;
+    internal bool Contains(object key) => Js.CanBeWeakKey(key) && entries.TryGetValue(key, out _);
+    internal bool Remove(object key) => Js.CanBeWeakKey(key) && entries.Remove(key);
     internal void Write(object key, object value)
     {
-        if (key is not TsObject obj) throw new InvalidOperationException("Weak collection key must be an object");
-        entries.GetValue(obj, static _ => new Cell(Js.Undefined)).Value = IsSet ? Js.Undefined : value;
+        if (!Js.CanBeWeakKey(key)) throw new InvalidOperationException("Weak collection key must be an object or non-registered symbol");
+        entries.GetValue(key, static _ => new Cell(Js.Undefined)).Value = IsSet ? Js.Undefined : value;
     }
 }
 
 public static partial class Js
 {
+    internal static bool CanBeWeakKey(object key) => key is TsObject or JsSymbol { RegistryKey: null };
     internal static TsObject WeakCollectionPrototype(bool set) => (TsObject)(set ? RuntimeNamespaces.WeakSet : RuntimeNamespaces.WeakMap).Get("prototype");
     sealed class WeakCollectionConstructor : NativeNamespaceFunction
     {
