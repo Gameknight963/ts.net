@@ -30,3 +30,7 @@ const absent: { value?: number } = { value: undefined };
 console.log(absent.value);
 function nested(point: { child: WideNumber }) { point.child.value = "nested"; return point.child.value; }
 console.log(nested({ child: { value: 2 } }));
+
+const flexible: {value: any} = {value: 27};
+function readNumberView(value: {value: number}): number {return value.value;}
+console.log('any field view', readNumberView(flexible));

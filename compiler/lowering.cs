@@ -16,6 +16,9 @@ internal static partial class CompilerFunctions
         // Object-backed field views accept typed storage through generated adapters.
         // Top-level scalar conversions still need to box their values.
         if ((target_kind == TypeKind.Any || target_kind == TypeKind.Unknown) && source_kind != TypeKind.Void) { return true; }
+        // An any-valued field can satisfy a typed view through a checked getter.
+        // Keep top-level conversions separate so scalars still box and validate.
+        if (source_kind == TypeKind.Any && target_kind != TypeKind.Void) { return true; }
         // Array references share the same ABI; element reads retain their checks.
         if (source_kind == TypeKind.Array && target_kind == TypeKind.Array) { return true; }
         if (source_kind != TypeKind.Shape || target_kind != TypeKind.Shape)
