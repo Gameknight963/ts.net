@@ -50,6 +50,7 @@ public static partial class Js
             prototype.DefineMethod("constructor", this);
             DefineDateGetters(prototype);
             DefineDateSetters(prototype);
+            DefineDateLocaleFormatting(prototype);
             var getTime = new CollectionMethod("getTime", 0, (receiver, _) => RequireDate(receiver).Timestamp);
             prototype.DefineMethod("getTime", getTime);
             prototype.DefineMethod("valueOf", new CollectionMethod("valueOf", 0, (receiver, _) => RequireDate(receiver).Timestamp));

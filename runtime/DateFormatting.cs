@@ -3,6 +3,18 @@ using System.Globalization;
 
 public static partial class Js
 {
+    static void DefineDateLocaleFormatting(JsClassInstance prototype)
+    {
+        foreach (var item in new[] { ("toLocaleString", "G"), ("toLocaleDateString", "d"), ("toLocaleTimeString", "T") })
+            prototype.DefineMethod(item.Item1, new CollectionMethod(item.Item1, 0, (receiver, arguments) =>
+            {
+                var date = RequireDate(receiver);
+                if (double.IsNaN(date.Timestamp)) return "Invalid Date";
+                var culture = CaseCulture(FunctionArgument(arguments, 0));
+                if (!IsUndefined(FunctionArgument(arguments, 1))) throw new NotSupportedException("Date locale formatting options are not supported");
+                return TimeZoneInfo.ConvertTime(NativeDate(date), TimeZoneInfo.Local).ToString(item.Item2, culture);
+            }));
+    }
     static string LocalDateText(object receiver, int mode)
     {
         var date = RequireDate(receiver);
