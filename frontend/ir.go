@@ -30,6 +30,7 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
+	classDecorations      map[*ast.Node]*classDecoration
 	moduleAsync           map[*ast.SourceFile]bool
 	moduleLoader          bool
 	moduleDependencies    map[*ast.SourceFile][]*ast.SourceFile
@@ -122,7 +123,17 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
-	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || collectionType(symbol.Name) || symbol.Name == "PropertyDescriptor" || symbol.Name == "TypedPropertyDescriptor" || symbol.Name == "IArguments" || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "String" || symbol.Name == "Boolean" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance" || symbol.Name == "Symbol" || symbol.Name == "SymbolConstructor" || symbol.Name == "BigInt" || symbol.Name == "BigIntConstructor" || symbol.Name == "ImportMeta" || symbol.Name == "DisposableStack" || symbol.Name == "DisposableStackConstructor" || symbol.Name == "AsyncDisposableStack" || symbol.Name == "AsyncDisposableStackConstructor" || binaryBuiltinName(symbol.Name) || binaryBuiltinName(strings.TrimSuffix(symbol.Name, "Constructor")) || symbol.Name == "TextEncoder" || symbol.Name == "TextDecoder" || symbol.Name == "TextEncoderEncodeIntoResult" || symbol.Name == "ArrayBuffer" || symbol.Name == "ArrayBufferConstructor" || symbol.Name == "DataView" || symbol.Name == "DataViewConstructor" || symbol.Name == "WeakRef" || symbol.Name == "WeakRefConstructor" || symbol.Name == "TemplateStringsArray" || symbol.Name == "Date" || symbol.Name == "DateConstructor" || symbol.Name == "RegExp" || symbol.Name == "RegExpConstructor" || symbol.Name == "RegExpIndicesArray" || symbol.Name == "RegExpMatchArray" || symbol.Name == "RegExpExecArray" || symbol.Name == "Reflect" || symbol.Name == "JSON" || symbol.Name == "Math" || symbol.Name == "ArrayConstructor" || symbol.Name == "Promise" || symbol.Name == "PromiseLike" || symbol.Name == "PromiseConstructor" || symbol.Name == "PromiseWithResolvers") {
+	if symbol := t.Symbol(); symbol != nil && strings.HasSuffix(symbol.Name, "DecoratorContext") {
+		for _, declaration := range symbol.Declarations {
+			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
+				if access := b.c.GetTypeOfPropertyOfType(t, "access"); access != nil {
+					b.typeIDs[access] = b.typ(b.c.GetAnyType())
+				}
+				break
+			}
+		}
+	}
+	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || collectionType(symbol.Name) || strings.HasSuffix(symbol.Name, "DecoratorContext") || symbol.Name == "ClassAccessorDecoratorTarget" || symbol.Name == "ClassAccessorDecoratorResult" || symbol.Name == "PropertyDescriptor" || symbol.Name == "TypedPropertyDescriptor" || symbol.Name == "IArguments" || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "String" || symbol.Name == "Boolean" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance" || symbol.Name == "Symbol" || symbol.Name == "SymbolConstructor" || symbol.Name == "BigInt" || symbol.Name == "BigIntConstructor" || symbol.Name == "ImportMeta" || symbol.Name == "DisposableStack" || symbol.Name == "DisposableStackConstructor" || symbol.Name == "AsyncDisposableStack" || symbol.Name == "AsyncDisposableStackConstructor" || binaryBuiltinName(symbol.Name) || binaryBuiltinName(strings.TrimSuffix(symbol.Name, "Constructor")) || symbol.Name == "TextEncoder" || symbol.Name == "TextDecoder" || symbol.Name == "TextEncoderEncodeIntoResult" || symbol.Name == "ArrayBuffer" || symbol.Name == "ArrayBufferConstructor" || symbol.Name == "DataView" || symbol.Name == "DataViewConstructor" || symbol.Name == "WeakRef" || symbol.Name == "WeakRefConstructor" || symbol.Name == "TemplateStringsArray" || symbol.Name == "Date" || symbol.Name == "DateConstructor" || symbol.Name == "RegExp" || symbol.Name == "RegExpConstructor" || symbol.Name == "RegExpIndicesArray" || symbol.Name == "RegExpMatchArray" || symbol.Name == "RegExpExecArray" || symbol.Name == "Reflect" || symbol.Name == "JSON" || symbol.Name == "Math" || symbol.Name == "ArrayConstructor" || symbol.Name == "Promise" || symbol.Name == "PromiseLike" || symbol.Name == "PromiseConstructor" || symbol.Name == "PromiseWithResolvers") {
 		for _, declaration := range symbol.Declarations {
 			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
 				t = b.c.GetAnyType()

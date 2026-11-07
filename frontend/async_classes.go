@@ -47,6 +47,9 @@ func (a *asyncExpressionLowering) classMembers(members []int, class int, next fu
 		n.next = 0
 		return a.sequence(a.operation(n), rest())
 	}
+	if n.kind == 18 {
+		return a.expression(n.left, func(value int) int { n.left = value; return a.sequence(a.operation(n), rest()) })
+	}
 	if n.kind == 13 {
 		return a.expression(n.left, func(key int) int { return store(a.b.builtinCall(a.source, "__classKey", key)) })
 	}

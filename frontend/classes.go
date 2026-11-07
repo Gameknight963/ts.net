@@ -94,11 +94,21 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 		}
 		last = stamp
 	}
+	if state := b.classDecorations[n]; state != nil {
+		mode := 0
+		if static {
+			mode = 1
+		}
+		run := b.expressionStatement(n, b.builtinCall(n, "__decoratorRun", b.classReference(n, state.plan), b.classReference(n, b.thisSymbol), b.decoratorNumber(n, mode)))
+		if last == 0 {
+			b.nodes[body-1].children = run
+		} else {
+			b.nodes[last-1].next = run
+		}
+		last = run
+	}
 	for _, member := range n.Members() {
 		flags := ast.GetCombinedModifierFlags(member)
-		if flags&ast.ModifierFlagsDecorator != 0 {
-			b.unsupported(member)
-		}
 		if member.Kind == ast.KindClassStaticBlockDeclaration {
 			if static {
 				statement := b.lower(member.AsClassStaticBlockDeclaration().Body)
@@ -131,6 +141,7 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 			if privateKind(member) == 4 {
 				mode = 2
 			}
+			expression = b.decoratedFieldValue(n, member, b.thisSymbol, expression)
 			statement := b.privateInitialization(member, b.thisSymbol, expression, mode)
 			if last == 0 {
 				b.nodes[body-1].children = statement
@@ -138,6 +149,10 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 				b.nodes[last-1].next = statement
 			}
 			last = statement
+			if extra := b.decoratedFieldEnd(n, member, b.thisSymbol); extra != 0 {
+				b.nodes[last-1].next = extra
+				last = extra
+			}
 			continue
 		}
 		statement := b.node(57, member, "field")
@@ -156,18 +171,25 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 		}
 		receiver := b.classReference(member, b.thisSymbol)
 		b.nodes[statement-1].left = receiver
+		if static && b.classDecorations[n] != nil {
+			b.nodes[receiver-1].symbol = b.classDecorations[n].home
+		}
 		expression := b.lower(member.Initializer())
 		if expression == 0 {
 			expression = b.node(20, member, "undefined")
 			b.nodes[expression-1].typ = b.typ(b.c.GetUndefinedType())
 		}
-		b.nodes[statement-1].right = expression
+		b.nodes[statement-1].right = b.decoratedFieldValue(n, member, b.thisSymbol, expression)
 		if last == 0 {
 			b.nodes[body-1].children = statement
 		} else {
 			b.nodes[last-1].next = statement
 		}
 		last = statement
+		if extra := b.decoratedFieldEnd(n, member, b.thisSymbol); extra != 0 {
+			b.nodes[last-1].next = extra
+			last = extra
+		}
 	}
 	b.thisSymbol, b.thisScope = previous, scope
 	b.newTargetUsed = previousNewTarget
@@ -176,9 +198,6 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 	return value
 }
 func (b *irBuilder) classValue(n *ast.Node) int {
-	if ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsDecorator != 0 {
-		b.unsupported(n)
-	}
 	if ast.HasAmbientModifier(n) {
 		return 0
 	}
@@ -207,6 +226,11 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	binding := len(b.symbols)
 	previous, had := b.symbolIDs[classSymbol]
 	b.symbolIDs[classSymbol] = binding
+	decoration := b.prepareClassDecoration(n, binding)
+	if decoration != nil {
+		// Super keeps the original home; class-name references see the replacement.
+		b.symbolIDs[classSymbol] = decoration.alias
+	}
 	base := b.lower(parent)
 	previousSuper, previousStatic := b.superSymbol, b.superStatic
 	previousKeySuper, previousKeyStatic := b.classKeySuper, b.classKeyStatic
@@ -264,6 +288,15 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 		}
 	}
 
+	if decoration != nil {
+		for _, member := range decoration.members {
+			if member.Kind == ast.KindMethodDeclaration || member.Kind == ast.KindGetAccessor || member.Kind == ast.KindSetAccessor {
+				if _, known := b.literalPropertyName(member.Name()); !known && member.Name().Kind != ast.KindPrivateIdentifier {
+					b.classFieldKeys[member] = declare(member, "$decoratedKey", b.typ(b.c.GetStringType()))
+				}
+			}
+		}
+	}
 	value := b.node(55, n, name)
 	b.nodes[value-1].name = b.text(name)
 	b.nodes[value-1].typ = typ
@@ -304,6 +337,18 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	staticFields := b.classInitializer(n, true)
 	last := 0
 	for _, member := range n.Members() {
+		b.superSymbol, b.superStatic = previousSuper, previousStatic
+		storedDecorators := b.storeMemberDecorators(n, member)
+		b.superSymbol, b.superStatic = binding, false
+		if storedDecorators != 0 {
+			if last == 0 {
+				b.nodes[value-1].children = storedDecorators
+			} else {
+				b.nodes[last-1].next = storedDecorators
+			}
+			last = storedDecorators
+		}
+
 		if member.Name() != nil && member.Name().Kind == ast.KindPrivateIdentifier {
 			if member.Kind != ast.KindPropertyDeclaration && member.Body() == nil {
 				continue
@@ -392,6 +437,19 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 			}
 			b.superStatic = ast.GetCombinedModifierFlags(member)&ast.ModifierFlagsStatic != 0
 			method := b.lower(member)
+			if keySymbol := b.classFieldKeys[member]; keySymbol != 0 {
+				key := b.node(13, member, "decorated method key")
+				b.nodes[key-1].symbol = keySymbol
+				b.nodes[key-1].typ = b.symbols[keySymbol-1].typ
+				b.nodes[key-1].left = b.nodes[method-1].right
+				b.nodes[method-1].right = b.classReference(member, keySymbol)
+				if last == 0 {
+					b.nodes[value-1].children = key
+				} else {
+					b.nodes[last-1].next = key
+				}
+				last = key
+			}
 			if ast.GetCombinedModifierFlags(member)&ast.ModifierFlagsStatic != 0 {
 				b.nodes[method-1].constant = 1
 			} else {
@@ -472,8 +530,20 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	} else {
 		b.nodes[body-1].children = variable
 	}
-	b.nodes[variable-1].next = initialize
-	b.nodes[initialize-1].next = result
+	if decoration != nil {
+		alias := b.applyClassDecoration(n, decoration, variable)
+		b.nodes[alias-1].next = initialize
+		b.nodes[b.nodes[initialize-1].left-1].symbol = decoration.alias
+		b.nodes[b.nodes[result-1].left-1].symbol = decoration.alias
+		done := b.expressionStatement(n, b.builtinCall(n, "__decoratorDone", b.classReference(n, decoration.plan), b.classReference(n, decoration.alias)))
+		b.nodes[initialize-1].next = done
+		b.nodes[done-1].next = result
+		b.nodes[decoration.prefix-1].next = b.nodes[body-1].children
+		b.nodes[body-1].children = decoration.prefix
+	} else {
+		b.nodes[variable-1].next = initialize
+		b.nodes[initialize-1].next = result
+	}
 	call := b.node(6, n, "class definition")
 	b.nodes[call-1].left = factoryValue
 	b.nodes[call-1].typ = typ

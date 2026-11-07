@@ -21,12 +21,27 @@ internal sealed class JsPrivateMember(string name, JsPrivateKind kind)
         if (declarationKind == (int)JsPrivateKind.Getter) { getter = (JsFunction)function; getter.InferPropertyName("get " + name); }
         if (declarationKind == (int)JsPrivateKind.Setter) { setter = (JsFunction)function; setter.InferPropertyName("set " + name); }
     }
+    internal object DecoratorFunction(string declaration)
+    {
+        if (declaration == "method") return method;
+        if (kind != JsPrivateKind.AutoAccessor) return declaration == "getter" ? getter : setter;
+        return declaration == "getter" ? getter ?? Js.PrivateDecoratorAccessor(this, name, false) : setter ?? Js.PrivateDecoratorAccessor(this, name, true);
+    }
+    internal void Decorate(string declaration, JsFunction function)
+    {
+        if (declaration == "method") method = function;
+        else if (declaration == "getter") getter = function;
+        else setter = function;
+    }
+    internal object ReadBacking(object receiver) { var cell = Storage(receiver); return cell.Initialized ? cell.Value : throw Error("Private backing storage is not initialized"); }
+    internal object WriteBacking(object receiver, object value) { var cell = Storage(receiver); if (!cell.Initialized) throw Error("Private backing storage is not initialized"); cell.Value = value; return Js.Undefined; }
     internal bool Has(object receiver) => values.TryGetValue(Target(receiver), out _);
     internal object Read(object receiver)
     {
         var cell = Storage(receiver);
         if (kind == JsPrivateKind.Method) return method;
         if (kind is JsPrivateKind.Getter or JsPrivateKind.Setter) return getter is null ? throw Error("Private accessor has no getter") : getter.InvokeWithReceiver(receiver, Array.Empty<object>());
+        if (kind == JsPrivateKind.AutoAccessor && getter != null) return getter.InvokeWithReceiver(receiver, Array.Empty<object>());
         return cell.Initialized ? cell.Value : throw Error("Private backing storage is not initialized");
     }
     internal object Write(object receiver, object value)
@@ -38,6 +53,7 @@ internal sealed class JsPrivateMember(string name, JsPrivateKind kind)
             if (setter is null) throw Error("Private accessor has no setter");
             setter.InvokeWithReceiver(receiver, new[] { value });
         }
+        else if (kind == JsPrivateKind.AutoAccessor && setter != null) setter.InvokeWithReceiver(receiver, new[] { value });
         else { if (!cell.Initialized) throw Error("Private backing storage is not initialized"); cell.Value = value; }
         return value;
     }
@@ -58,6 +74,7 @@ internal sealed class JsPrivateMember(string name, JsPrivateKind kind)
 
 public static partial class Js
 {
+    internal static JsFunction PrivateDecoratorAccessor(JsPrivateMember member, string name, bool setter) => new CollectionMethod((setter ? "set " : "get ") + name, setter ? 1 : 0, (receiver, args) => setter ? member.WriteBacking(receiver, FunctionArgument(args,0)) : member.ReadBacking(receiver));
     public static object DefinePrivateMember(object home, string name, int kind, object function, object existing)
     {
         var member = existing as JsPrivateMember ?? new JsPrivateMember(name, (JsPrivateKind)kind);

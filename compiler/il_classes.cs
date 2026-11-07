@@ -55,6 +55,7 @@ internal static partial class CompilerFunctions
         for (int member = node.children; member != 0; member = get_node(member, c).next)
         {
             Node method = get_node(member, c);
+            if (method.kind == NodeKind.Expression) { il_statement(member, node.type, c, b); continue; }
             if (method.kind == NodeKind.Variable)
             {
                 il_boxed(method.left, c, b); b.call(RuntimeMember.PropertyKey); b.initialize(method.symbol); continue;
