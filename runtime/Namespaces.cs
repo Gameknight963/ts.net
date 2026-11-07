@@ -75,6 +75,7 @@ public static partial class Js
         var result = new ObjectConstructorFunction();
         result.UseObjectPrototype(DefaultClassObjectPrototype);
         DefaultClassObjectPrototype.DefineMethod("constructor",result);
+        result.Member("groupBy", new JsFunction((FunctionBody)(static args => ObjectGroupBy(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "groupBy", 2));
         result.Member("assign", new JsFunction((FunctionBody)ObjectAssign, null, "assign", 2));
         result.Member("is", new JsFunction((FunctionBody)(static args => BoxBoolean(SameValue(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "is", 2));
         result.Member("keys", GetObjectKeysFunction()); result.Member("values", GetObjectValuesFunction()); result.Member("entries", GetObjectEntriesFunction());

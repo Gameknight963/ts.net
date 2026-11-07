@@ -2,12 +2,16 @@ using System;
 
 public static partial class Js
 {
-    static object MapGroupBy(object items, object callback)
+    static object MapGroupBy(object items, object callback) => GroupBy(items, callback, false);
+    static object ObjectGroupBy(object items, object callback) => GroupBy(items, callback, true);
+    static object GroupBy(object items, object callback, bool objectKeys)
     {
         if (IsNullish(items)) throw new InvalidOperationException("Cannot group null or undefined");
         if (callback is not JsFunction function) throw new InvalidOperationException("Grouping callback is not callable");
         object source = Iteration.Start(items);
-        var groups = new JsKeyedCollection(false);
+        var groups = objectKeys ? null : new JsKeyedCollection(false);
+        var properties = objectKeys ? new JsDynamicObject() : null;
+        properties?.SetPrototype(null);
         int position = 0; double index = 0; bool closeable = false;
         try
         {
@@ -21,14 +25,18 @@ public static partial class Js
                 object value = Iteration.Value(source, position);
                 position += Iteration.Step(source, position); closeable = true;
                 object key = function.InvokeWithReceiver(Undefined, new[] { value, (object)index });
-                if (groups.Read(key) is not JsArray group)
+                if (objectKeys) key = PropertyKey(key);
+                object existing = objectKeys ? properties.Get((string)key) : groups.Read(key);
+                if (existing is not JsArray group)
                 {
-                    group = new JsArray(0); groups.Write(key, group);
+                    group = new JsArray(0);
+                    if (objectKeys) properties.DefineOwn((string)key, group);
+                    else groups.Write(key, group);
                 }
                 group.Append(value); index++;
             }
         }
         catch { if (closeable) CloseIterationAt(source, position, true); throw; }
-        return groups;
+        return objectKeys ? properties : groups;
     }
 }
