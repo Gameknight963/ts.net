@@ -8,3 +8,8 @@ if(!ReferenceEquals(bytes,storage.GetValue(target)))throw new Exception("Same-si
 if(((byte[])storage.GetValue(source)!).Length!=0 || !(bool)source.Get("detached"))throw new Exception("Transfer did not detach the source");
 if(bytes[0]!=17 || bytes[^1]!=99)throw new Exception("Transfer changed the bytes");
 Console.WriteLine("PASS same-size transfer moves the existing byte array and detaches the source");
+var cloneSource=(TsObject)constructor.Construct(new object[]{1048576d});var originalBytes=storage.GetValue(cloneSource);
+var options=new JsDynamicObject();options.DefineOwn("transfer",new JsArray(new object[]{cloneSource}));
+var clone=(TsObject)((JsFunction)Js.BuiltinNamespace("structuredClone")).InvokeWithReceiver(Js.Undefined,new object[]{cloneSource,options});
+if(!ReferenceEquals(originalBytes,storage.GetValue(clone)) || !(bool)cloneSource.Get("detached"))throw new Exception("structuredClone did not move the existing byte array");
+Console.WriteLine("PASS structuredClone transfer moves the existing byte array");

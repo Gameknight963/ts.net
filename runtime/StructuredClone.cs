@@ -10,6 +10,7 @@ public static partial class Js
         internal static readonly JsFunction Value = new((FunctionBody)(static args =>
         {
             if (args.Length == 0) throw MakeThrown(new JsCaughtError("TypeError", "structuredClone requires a value"));
+            var cloner = new StructuredCloner();
             object options = FunctionArgument(args, 1);
             if (!IsNullish(options))
             {
@@ -17,11 +18,12 @@ public static partial class Js
                 object transfer = bag.Get("transfer");
                 if (!IsUndefined(transfer))
                 {
-                    object entries = Iteration.Start(transfer);
-                    if (Iteration.Length(entries) != 0) throw new NotSupportedException("structuredClone transfer is not supported");
+                    cloner.PrepareTransfers(transfer);
                 }
             }
-            return new StructuredCloner().Copy(args[0]);
+            object result = cloner.Copy(args[0]);
+            cloner.CompleteTransfers();
+            return result;
         }), null, "structuredClone", 1);
     }
 
@@ -29,6 +31,33 @@ public static partial class Js
     {
         readonly Dictionary<TsObject, TsObject> copies = new(ReferenceEqualityComparer.Instance);
         static Exception Uncloneable() => MakeThrown(new DomExceptionValue("Value cannot be cloned", "DataCloneError"));
+
+        List<(BinaryBuffer Source, BinaryBuffer Target)> transfers;
+        internal void PrepareTransfers(object value)
+        {
+            object iterator = Iteration.Start(value);
+            var entries = new List<object>();
+            int position = 0;
+            while (position < Iteration.Length(iterator)) {
+                entries.Add(Iteration.Value(iterator, position));
+                position += Iteration.Step(iterator, position);
+            }
+            foreach (object entry in entries) {
+                if (entry is not BinaryBuffer source || source.Detached || copies.ContainsKey(source)) throw Uncloneable();
+                var target = new BinaryBuffer(0, source.Maximum);
+                copies.Add(source, target);
+                (transfers ??= new()).Add((source, target));
+            }
+        }
+        internal void CompleteTransfers()
+        {
+            if (transfers == null) return;
+            foreach (var transfer in transfers) if (transfer.Source.Detached) throw Uncloneable();
+            foreach (var transfer in transfers) {
+                transfer.Target.Bytes = transfer.Source.Bytes;
+                transfer.Source.Detach();
+            }
+        }
 
         internal object Copy(object value)
         {
