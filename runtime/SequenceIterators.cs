@@ -7,14 +7,16 @@ public sealed class JsSequenceIterator : TsObject
 {
     object source;
     readonly bool text;
+    readonly int mode;
     ulong position;
     internal bool Done;
     internal bool IsString => text;
     internal JsSequenceIterator(object source, uint position) { this.source = source; text = source is string; this.position = position; }
+    internal JsSequenceIterator(TsObject source, int mode) { this.source = source; this.mode = mode; }
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.SequenceIteratorPrototype(IsString);
     internal object Next()
     {
-        if (Done || position >= Iteration.Length(source)) { Done = true; source = null; return Js.IteratorResult(Js.Undefined, true); }
+        if (Done || position >= (source is TsObject indexed ? (double)Js.IndexedLength(indexed) : Iteration.Length(source))) { Done = true; source = null; return Js.IteratorResult(Js.Undefined, true); }
         object value;
         if (source is string text)
         {
@@ -24,7 +26,8 @@ public sealed class JsSequenceIterator : TsObject
         else
         {
             ulong index = position++;
-            value = source is JsArray array ? array.ElementAt((uint)index) : ((JsArguments)source).Get(index.ToString(CultureInfo.InvariantCulture));
+            value = mode == 1 ? (double)index : Js.IndexedValue((TsObject)source, (long)index);
+            if (mode == 2) value = new JsArray(new object[] { (double)index, value });
         }
         return Js.IteratorResult(value, false);
     }
@@ -32,6 +35,10 @@ public sealed class JsSequenceIterator : TsObject
 
 public static partial class Js
 {
+    sealed class ArrayIteratorFunction(string name, int mode) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Array method requires a receiver")), null, name, 0)
+    {
+        public override object InvokeWithReceiver(object receiver, object[] arguments) => new JsSequenceIterator(ToObject(receiver), mode);
+    }
     static class NativeIteratorPrototypes
     {
         internal static readonly TsObject Common = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };

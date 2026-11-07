@@ -3,7 +3,7 @@ using System.Globalization;
 
 public static partial class Js
 {
-    static long IndexedLength(TsObject source)
+    internal static long IndexedLength(TsObject source)
     {
         double count = Number(source.Get("length"));
         return double.IsNaN(count) || count <= 0 ? 0 : (long)Math.Min(9007199254740991d, Math.Floor(count));
@@ -23,7 +23,7 @@ public static partial class Js
         if (!source.HasInProperty(name)) return false;
         value = source.Get(name); return true;
     }
-    static object IndexedValue(TsObject source, long index)
+    internal static object IndexedValue(TsObject source, long index)
     {
         if (source is JsArray array)
         {
