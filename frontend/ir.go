@@ -108,7 +108,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
-	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || collectionType(symbol.Name) || symbol.Name == "PropertyDescriptor" || symbol.Name == "TypedPropertyDescriptor" || symbol.Name == "IArguments" || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "String" || symbol.Name == "Boolean" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance" || symbol.Name == "WeakRef" || symbol.Name == "WeakRefConstructor" || symbol.Name == "TemplateStringsArray" || symbol.Name == "Date" || symbol.Name == "DateConstructor" || symbol.Name == "RegExp" || symbol.Name == "RegExpConstructor" || symbol.Name == "RegExpIndicesArray" || symbol.Name == "RegExpMatchArray" || symbol.Name == "RegExpExecArray" || symbol.Name == "Reflect" || symbol.Name == "JSON" || symbol.Name == "Math" || symbol.Name == "ArrayConstructor" || symbol.Name == "Promise" || symbol.Name == "PromiseLike" || symbol.Name == "PromiseConstructor" || symbol.Name == "PromiseWithResolvers") {
+	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || collectionType(symbol.Name) || symbol.Name == "PropertyDescriptor" || symbol.Name == "TypedPropertyDescriptor" || symbol.Name == "IArguments" || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "String" || symbol.Name == "Boolean" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance" || symbol.Name == "ImportMeta" || symbol.Name == "WeakRef" || symbol.Name == "WeakRefConstructor" || symbol.Name == "TemplateStringsArray" || symbol.Name == "Date" || symbol.Name == "DateConstructor" || symbol.Name == "RegExp" || symbol.Name == "RegExpConstructor" || symbol.Name == "RegExpIndicesArray" || symbol.Name == "RegExpMatchArray" || symbol.Name == "RegExpExecArray" || symbol.Name == "Reflect" || symbol.Name == "JSON" || symbol.Name == "Math" || symbol.Name == "ArrayConstructor" || symbol.Name == "Promise" || symbol.Name == "PromiseLike" || symbol.Name == "PromiseConstructor" || symbol.Name == "PromiseWithResolvers") {
 		for _, declaration := range symbol.Declarations {
 			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
 				t = b.c.GetAnyType()
@@ -388,6 +388,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindArrowFunction, ast.KindFunctionExpression:
 		return b.functionValue(n)
 	case ast.KindMetaProperty:
+		if n.AsMetaProperty().KeywordToken == ast.KindImportKeyword {
+			return b.importMeta(n)
+		}
 		if n.AsMetaProperty().KeywordToken != ast.KindNewKeyword || n.Name().Text() != "target" || !b.thisScope {
 			b.unsupported(n)
 		}

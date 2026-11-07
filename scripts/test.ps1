@@ -72,7 +72,7 @@ try {
     }
 
     # Namespace semantics need native ES modules as the reference.
-    foreach ($name in @('module-this', 'tagged-templates-modules', 'reflect-delete-modules', 'property-descriptors-modules', 'for-in-modules', 'for-in-cycle', 'module-namespace-order', 'in-operator-modules', 'function-constructor-modules')) {
+    foreach ($name in @('import-meta', 'module-this', 'tagged-templates-modules', 'reflect-delete-modules', 'property-descriptors-modules', 'for-in-modules', 'for-in-cycle', 'module-namespace-order', 'in-operator-modules', 'function-constructor-modules')) {
         & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
         & tsc.cmd --strict --target es2022 --module es2022 --outDir "$testRoot/node/$name" "tests/$name.ts"
         if ($LASTEXITCODE) { throw "ES module reference compilation failed: $name" }
