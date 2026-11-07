@@ -5,7 +5,7 @@ public static partial class Js
 {
     sealed class UsingResources
     {
-        readonly List<(TsObject Value, JsFunction Dispose, bool Await, bool AsyncMethod)> resources = new();
+        readonly List<(object Value, JsFunction Dispose, bool Await, bool AsyncMethod)> resources = new();
         internal bool HasError;
         internal object Error;
         internal object Add(object value)
@@ -27,6 +27,7 @@ public static partial class Js
             resources.Add((resource, dispose, true, asyncMethod));
             return value;
         }
+        internal void Defer(JsFunction callback, bool asynchronous) => resources.Add((Undefined, callback, asynchronous, asynchronous));
         internal object DisposeAsync()
         {
             object pending = Error; bool failed = HasError;
