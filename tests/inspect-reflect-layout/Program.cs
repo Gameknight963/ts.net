@@ -6,7 +6,7 @@ var context=new AssemblyLoadContext("reflect-layout",true);
 context.LoadFromAssemblyPath(Path.Combine(Path.GetDirectoryName(path)!,"Tsnet.Runtime.dll"));
 var assembly=context.LoadFromAssemblyPath(path);
 var kernel=assembly.GetType("Program")!.GetMethods(BindingFlags.Static|BindingFlags.Public|BindingFlags.NonPublic)
-    .Single(method=>method.Name.StartsWith("f")&&method.Name.Skip(1).All(char.IsDigit)&&method.GetParameters().Length==0&&method.ReturnType==typeof(double?));
+    .Single(method=>method.Name.StartsWith("work_f",StringComparison.Ordinal)&&method.GetParameters().Length==0&&method.ReturnType==typeof(double?));
 for(int i=0;i<5;i++)kernel.Invoke(null,null);
 long before=GC.GetAllocatedBytesForCurrentThread();
 object? result=kernel.Invoke(null,null);
