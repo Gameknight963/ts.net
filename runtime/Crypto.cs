@@ -65,9 +65,11 @@ public static partial class Js
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), subtle ? "SubtleCrypto" : "Crypto");
             if (subtle) {
                 prototype.DefineOwn("digest", new CollectionMethod("digest", 2, CryptoDigest));
-                prototype.DefineOwn("importKey", new CollectionMethod("importKey", 5, static (receiver, args) => CryptoKeyOperation(receiver, () => HmacImport(args))));
-                prototype.DefineOwn("generateKey", new CollectionMethod("generateKey", 3, static (receiver, args) => CryptoKeyOperation(receiver, () => HmacGenerate(args))));
+                prototype.DefineOwn("importKey", new CollectionMethod("importKey", 5, static (receiver, args) => CryptoKeyOperation(receiver, () => CryptoImport(args))));
+                prototype.DefineOwn("generateKey", new CollectionMethod("generateKey", 3, static (receiver, args) => CryptoKeyOperation(receiver, () => CryptoGenerate(args))));
                 prototype.DefineOwn("exportKey", new CollectionMethod("exportKey", 2, static (receiver, args) => CryptoKeyOperation(receiver, () => CryptoExport(args))));
+                prototype.DefineOwn("encrypt", new CollectionMethod("encrypt", 3, static (receiver, args) => CryptoKeyOperation(receiver, () => AesCrypt(args, false))));
+                prototype.DefineOwn("decrypt", new CollectionMethod("decrypt", 3, static (receiver, args) => CryptoKeyOperation(receiver, () => AesCrypt(args, true))));
                 prototype.DefineOwn("sign", new CollectionMethod("sign", 3, static (receiver, args) => CryptoKeyOperation(receiver, () => HmacSign(args, false))));
                 prototype.DefineOwn("verify", new CollectionMethod("verify", 4, static (receiver, args) => CryptoKeyOperation(receiver, () => HmacSign(args, true))));
             }

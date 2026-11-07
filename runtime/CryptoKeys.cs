@@ -4,9 +4,10 @@ using System.Security.Cryptography;
 
 public static partial class Js
 {
-    sealed class CryptoKeyValue(byte[] bytes, string hash, bool extractable, string[] usages) : TsObject
+    sealed class CryptoKeyValue(byte[] bytes, string hash, bool extractable, string[] usages, string name = "HMAC") : TsObject
     {
         internal readonly byte[] Bytes = bytes;
+        internal readonly string Name = name;
         internal readonly string Hash = hash;
         internal readonly bool Extractable = extractable;
         internal readonly string[] Usages = usages;
@@ -17,7 +18,7 @@ public static partial class Js
                 if (algorithm != null) return algorithm;
                 var result = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
                 var hash = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; hash.Set("name", Hash);
-                result.Set("name", "HMAC"); result.Set("hash", hash); result.Set("length", (double)Bytes.Length * 8);
+                result.Set("name", Name); if (Name == "HMAC") result.Set("hash", hash); result.Set("length", (double)Bytes.Length * 8);
                 return algorithm = result;
             }
         }
@@ -41,7 +42,6 @@ public static partial class Js
     }
     static string HmacHash(object algorithm)
     {
-        if (CryptoAlgorithm(algorithm) != "HMAC") throw CryptoError("NotSupportedError", "Unsupported key algorithm");
         if (algorithm is not TsObject options) throw new InvalidOperationException("HMAC requires a hash");
         object value = options.Get("hash");
         if (IsUndefined(value)) throw new InvalidOperationException("HMAC requires a hash");
@@ -55,13 +55,13 @@ public static partial class Js
         if (value is BinaryBuffer buffer && buffer.Detached || value is BinaryView view && view.OutOfBounds || value is TypedArrayValue array && array.OutOfBounds) throw new InvalidOperationException("Buffer is detached or out of bounds");
         return EncodingInput(value).ToArray();
     }
-    static string[] HmacUsages(object value, bool unique = false)
+    static string[] SecretKeyUsages(object value, string[] allowed, bool unique = false)
     {
         var result = new List<string>(); object iterator = Iteration.Start(value); int position = 0;
         try {
             while (position < Iteration.Length(iterator)) {
                 string usage = StringValue(Iteration.Value(iterator, position));
-                if (usage is not ("sign" or "verify")) throw CryptoError("SyntaxError", "HMAC keys support sign and verify only");
+                if (Array.IndexOf(allowed, usage) < 0) throw CryptoError("SyntaxError", "Invalid secret key usage");
                 if (!unique || !result.Contains(usage)) result.Add(usage);
                 position += Iteration.Step(iterator, position);
             }
@@ -86,15 +86,23 @@ public static partial class Js
         catch (Exception error) { promise.Settle(CaughtValue(error), true); }
         return promise;
     }
+    static object CryptoImport(object[] args) => CryptoAlgorithm(FunctionArgument(args, 2)) switch {
+        "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args),
+        _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
+    };
+    static object CryptoGenerate(object[] args) => CryptoAlgorithm(FunctionArgument(args, 0)) switch {
+        "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args),
+        _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
+    };
     static object HmacImport(object[] args)
     {
         string format = StringValue(FunctionArgument(args, 0)); object input = FunctionArgument(args, 1);
         if (format is not ("raw" or "jwk")) throw CryptoError("NotSupportedError", "Unsupported HMAC key format");
         byte[] rawBytes = format == "raw" ? CryptoBytes(input) : null;
         object algorithm = FunctionArgument(args, 2);
-        string hash = HmacHash(algorithm); string[] usages = HmacUsages(FunctionArgument(args, 4));
+        string hash = HmacHash(algorithm); string[] usages = SecretKeyUsages(FunctionArgument(args, 4), new[] { "sign", "verify" });
         bool extractable = Truthy(FunctionArgument(args, 3));
-        byte[] bytes = format == "raw" ? rawBytes : HmacJwkImport(input, hash, extractable, usages);
+        byte[] bytes = format == "raw" ? rawBytes : SecretJwkImport(input, "sig", _ => HmacJwkAlgorithm(hash), extractable, usages);
         int bits = HmacLength(algorithm, checked(bytes.Length * 8));
         if (bits % 8 != 0) throw CryptoError("NotSupportedError", "HMAC keys require whole bytes");
         if (bits == 0 || bits != (long)bytes.Length * 8) throw CryptoError("DataError", "HMAC key length does not match its bytes");
@@ -103,7 +111,7 @@ public static partial class Js
     static object HmacGenerate(object[] args)
     {
         object algorithm = FunctionArgument(args, 0); string hash = HmacHash(algorithm);
-        string[] usages = HmacUsages(FunctionArgument(args, 2), true);
+        string[] usages = SecretKeyUsages(FunctionArgument(args, 2), new[] { "sign", "verify" }, true);
         int bits = HmacLength(algorithm, hash is "SHA-384" or "SHA-512" ? 1024 : 512);
         if (bits == 0) throw CryptoError("OperationError", "HMAC length must be positive");
         if (bits % 8 != 0) throw CryptoError("NotSupportedError", "HMAC keys require whole bytes");
@@ -119,20 +127,26 @@ public static partial class Js
             result.Set("key_ops", new JsArray(Array.ConvertAll(key.Usages, static usage => (object)usage)));
             result.Set("ext", BoxBoolean(key.Extractable)); result.Set("kty", "oct");
             result.Set("k", Convert.ToBase64String(key.Bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_'));
-            result.Set("alg", HmacJwkAlgorithm(key.Hash)); return result;
+            result.Set("alg", key.Name == "HMAC" ? HmacJwkAlgorithm(key.Hash) : AesJwkAlgorithm(key.Bytes.Length)); return result;
         }
         if (format != "raw") throw CryptoError("NotSupportedError", "Unsupported HMAC key format");
         var buffer = new BinaryBuffer(key.Bytes.Length); key.Bytes.CopyTo(buffer.Bytes, 0); return buffer;
     }
     static string HmacJwkAlgorithm(string hash) => hash switch { "SHA-1" => "HS1", "SHA-256" => "HS256", "SHA-384" => "HS384", "SHA-512" => "HS512", _ => throw CryptoError("NotSupportedError", "Unsupported HMAC hash") };
-    static byte[] HmacJwkImport(object value, string hash, bool extractable, string[] usages)
+    static byte[] SecretJwkImport(object value, string keyUse, Func<int, string> keyAlgorithm, bool extractable, string[] usages)
     {
         if (value is not TsObject jwk) throw new InvalidOperationException("JWK must be an object");
         object type = jwk.Get("kty"), encoded = jwk.Get("k");
         if (IsUndefined(type) || StringValue(type) != "oct" || IsUndefined(encoded)) throw CryptoError("DataError", "JWK requires octet key material");
+        string text = StringValue(encoded).Replace('-', '+').Replace('_', '/');
+        if (text.Length % 4 == 1) throw CryptoError("DataError", "Invalid JWK key encoding");
+        text = text.PadRight((text.Length + 3) / 4 * 4, '=');
+        byte[] bytes;
+        try { bytes = Convert.FromBase64String(text); }
+        catch (FormatException) { throw CryptoError("DataError", "Invalid JWK key encoding"); }
         object algorithm = jwk.Get("alg"), use = jwk.Get("use"), extract = jwk.Get("ext");
-        if (!IsUndefined(algorithm) && StringValue(algorithm) != HmacJwkAlgorithm(hash)) throw CryptoError("DataError", "JWK hash does not match the algorithm");
-        if (!IsUndefined(use) && StringValue(use) != "sig") throw CryptoError("DataError", "JWK does not permit signatures");
+        if (!IsUndefined(algorithm) && StringValue(algorithm) != keyAlgorithm(bytes.Length)) throw CryptoError("DataError", "JWK hash does not match the algorithm");
+        if (!IsUndefined(use) && StringValue(use) != keyUse) throw CryptoError("DataError", "JWK does not permit signatures");
         if (!IsUndefined(extract) && !Truthy(extract) && extractable) throw CryptoError("DataError", "JWK does not permit extraction");
         object operations = jwk.Get("key_ops");
         if (!IsUndefined(operations)) {
@@ -145,11 +159,7 @@ public static partial class Js
             } catch { CloseIterationAt(iterator, position, true); throw; }
             foreach (string usage in usages) if (!allowed.Contains(usage)) throw CryptoError("DataError", "JWK does not permit the requested usage");
         }
-        string text = StringValue(encoded).Replace('-', '+').Replace('_', '/');
-        if (text.Length % 4 == 1) throw CryptoError("DataError", "Invalid JWK key encoding");
-        text = text.PadRight((text.Length + 3) / 4 * 4, '=');
-        try { return Convert.FromBase64String(text); }
-        catch (FormatException) { throw CryptoError("DataError", "Invalid JWK key encoding"); }
+        return bytes;
     }
     static byte[] HmacSignature(CryptoKeyValue key, byte[] data) => key.Hash switch {
         "SHA-1" => HMACSHA1.HashData(key.Bytes, data), "SHA-256" => HMACSHA256.HashData(key.Bytes, data),
@@ -160,7 +170,7 @@ public static partial class Js
     {
         string algorithm = CryptoAlgorithm(FunctionArgument(args, 0)); var key = RequireCryptoKey(FunctionArgument(args, 1));
         if (algorithm != "HMAC") throw CryptoError("NotSupportedError", "Unsupported signing algorithm");
-        if (!Array.Exists(key.Usages, usage => usage == (verify ? "verify" : "sign"))) throw CryptoError("InvalidAccessError", "Key does not permit this operation");
+        if (key.Name != "HMAC" || !Array.Exists(key.Usages, usage => usage == (verify ? "verify" : "sign"))) throw CryptoError("InvalidAccessError", "Key does not permit this operation");
         byte[] supplied = verify ? CryptoBytes(FunctionArgument(args, 2)) : null;
         byte[] signature = HmacSignature(key, CryptoBytes(FunctionArgument(args, verify ? 3 : 2)));
         if (verify) return BoxBoolean(CryptographicOperations.FixedTimeEquals(signature, supplied));

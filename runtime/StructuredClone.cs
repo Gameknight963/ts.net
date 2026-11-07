@@ -69,7 +69,7 @@ public static partial class Js
             switch (source)
             {
                 case CryptoKeyValue key:
-                    result = new CryptoKeyValue(key.Bytes, key.Hash, key.Extractable, key.Usages); break;
+                    result = new CryptoKeyValue(key.Bytes, key.Hash, key.Extractable, key.Usages, key.Name); break;
                 case SharedBuffer shared:
                     result = new SharedBuffer(shared.Storage); break;
                 case BinaryBuffer buffer:
