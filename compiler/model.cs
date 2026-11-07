@@ -73,6 +73,7 @@ internal struct Token
     public int text;
     public int line;
     public int column;
+    public int file;
     public int next;
 }
 

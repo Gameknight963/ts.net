@@ -36,7 +36,7 @@ internal static partial class CompilerFunctions
     internal static void import_frontend(TextBytes path, Compiler c, bool experimentalDecorators = false)
     {
         IrReader r = IrReader.create(NativeFrontend.Read(path.Decode(), experimentalDecorators));
-        if (r.integer() != 0x35524954) { print("tsnetc: unsupported frontend IR version"); exit(1); }
+        if (r.integer() != 0x36524954) { print("tsnetc: unsupported frontend IR version"); exit(1); }
         int count = r.id();
         for (int i = 0; i < count; i++) { r.text(c); }
         count = r.id(); c.next_type = (int)count; c.types = count == 0 ? 0 : 1;
@@ -56,8 +56,8 @@ internal static partial class CompilerFunctions
         count = r.id();
         for (int i = 0; i < count; i++)
         {
-            int text = r.id(); int line = r.integer(); int column = r.integer();
-            Token record = new Token { kind = TokenKind.Name, text = text, line = line, column = column, next = 0 }; c.token_store.add(record);
+            int text = r.id(); int line = r.integer(); int column = r.integer(); int file = r.id();
+            Token record = new Token { kind = TokenKind.Name, text = text, line = line, column = column, file = file, next = 0 }; c.token_store.add(record);
         }
         count = r.id();
         for (int i = 0; i < count; i++)

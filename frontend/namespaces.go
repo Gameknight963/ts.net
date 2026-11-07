@@ -43,7 +43,7 @@ func (b *irBuilder) dynamicNamespaces() {
 	count := len(b.nodes)
 	namespace := func(name string, token int) int {
 		original := b.tokens[token-1]
-		b.tokens = append(b.tokens, irToken{b.text(name), original.line, original.column})
+		b.tokens = append(b.tokens, irToken{b.text(name), original.line, original.column, original.file})
 		b.nodes = append(b.nodes, irNode{kind: 66, token: len(b.tokens), typ: b.typ(b.c.GetAnyType())})
 		return len(b.nodes)
 	}

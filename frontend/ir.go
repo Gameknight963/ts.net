@@ -19,7 +19,7 @@ import (
 // Versioned, pointer-free typed IR. Display strings are never used as types.
 type irType struct{ kind, name, fields, element int }
 type irField struct{ name, typ, next, optional int }
-type irToken struct{ text, line, column int }
+type irToken struct{ text, line, column, file int }
 type irNode struct{ kind, token, name, typ, left, right, third, fourth, children, next, symbol, constant int }
 type irSymbol struct{ name, typ, function int }
 type irControl struct {
@@ -312,7 +312,11 @@ func (b *irBuilder) symbolFor(s *ast.Symbol, name string) int {
 
 func (b *irBuilder) token(n *ast.Node, text string) int {
 	pos := n.Pos()
-	source := b.file.Text()
+	file := ast.GetSourceFileOfNode(n)
+	if file == nil {
+		file = b.file
+	}
+	source := file.Text()
 	if pos < 0 {
 		pos = 0
 	}
@@ -322,8 +326,14 @@ func (b *irBuilder) token(n *ast.Node, text string) int {
 	pos += len(source[pos:]) - len(strings.TrimLeftFunc(source[pos:], unicode.IsSpace))
 	prefix := source[:pos]
 	line := strings.Count(prefix, "\n") + 1
-	column := pos - strings.LastIndex(prefix, "\n")
-	b.tokens = append(b.tokens, irToken{b.text(text), line, column})
+	column := 1
+	for _, character := range source[strings.LastIndex(prefix, "\n")+1 : pos] {
+		column++
+		if character > 0xffff {
+			column++
+		}
+	}
+	b.tokens = append(b.tokens, irToken{b.text(text), line, column, b.text(file.FileName())})
 	return len(b.tokens)
 }
 func (b *irBuilder) node(kind int, n *ast.Node, text string) int {
@@ -1431,7 +1441,7 @@ func exportIR(s *session) (result []byte, err error) {
 	b.normalizeDynamicBindings()
 	var data bytes.Buffer
 	put := func(v int) { _ = binary.Write(&data, binary.LittleEndian, int32(v)) }
-	put(0x35524954)
+	put(0x36524954)
 	put(len(b.texts))
 	for _, text := range b.texts {
 		put(len(text))
@@ -1456,6 +1466,7 @@ func exportIR(s *session) (result []byte, err error) {
 		put(t.text)
 		put(t.line)
 		put(t.column)
+		put(t.file)
 	}
 	put(len(b.nodes))
 	for _, n := range b.nodes {

@@ -860,6 +860,12 @@ internal static partial class CompilerFunctions
     {
         if (get_node(entry, c).kind == NodeKind.AsyncBindingScope) { return; }
         Node n = get_node(entry, c);
+        Token location = get_token(n.token, c);
+        if (location.file != 0 && location.line > 0) {
+            Vector<byte> file = new();
+            for (int i = 0; i < text_size(location.file, c); i++) file.push(text_byte(location.file, i, c));
+            b.plan.source_point(b.method, file.view(), location.line, Math.Clamp(location.column, 1, 65534));
+        }
         if (n.kind == NodeKind.Debugger) { b.call(RuntimeMember.DebugStatement); }
         else if (n.kind == NodeKind.Break || n.kind == NodeKind.Continue)
         {

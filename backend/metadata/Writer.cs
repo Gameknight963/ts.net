@@ -18,6 +18,7 @@ sealed class AssemblyPlan
     }
     sealed record FieldRow(int Id, int Attributes, int Type, string Name);
     sealed record Instruction(int Code, int Operand, double Number = 0, string? Text = null);
+    sealed record DebugPoint(int Instruction, string File, int Line, int Column);
     sealed record CatchRegion(int Start, int End, int Handler, int HandlerEnd, int Type);
     sealed class MethodRow(int id, int owner, int attributes, int result, int[] parameters, string name)
     {
@@ -27,6 +28,9 @@ sealed class AssemblyPlan
         public List<CatchRegion> Catches = [];
         public List<int> Locals = [];
         public List<Instruction> Instructions = [];
+        public List<DebugPoint> Locations = [];
+        public SortedDictionary<int, DebugPoint> DebugOffsets = [];
+        public int LocalSignature;
     }
     readonly List<(int Method,int Constructor,string Source)> functionSources = [];
     readonly List<ExternalType> references = [];
@@ -103,6 +107,10 @@ sealed class AssemblyPlan
                     entry = id;
                     if (reader.BaseStream.Position != reader.BaseStream.Length) throw new InvalidDataException("Trailing IL plan data");
                     return;
+                case 15:
+                    var target = methodRows[id];
+                    target.Locations.Add(new(target.Instructions.Count, Text(reader), reader.ReadInt32(), reader.ReadInt32()));
+                    break;
                 case 14: functionSources.Add((id,reader.ReadInt32(),Text(reader))); break;
                 case 13: methodRows[id].Catches.Add(new(reader.ReadInt32(),reader.ReadInt32(),reader.ReadInt32(),reader.ReadInt32(),reader.ReadInt32())); break;
                 case 12: specifications.Add((id, reader.ReadInt32(), reader.ReadInt32())); break;
@@ -250,8 +258,12 @@ sealed class AssemblyPlan
         var il = new InstructionEncoder(code, flow);
         var labels = new Dictionary<int, LabelHandle>();
         LabelHandle Label(int id) { if (!labels.TryGetValue(id, out var label)) labels.Add(id, label = il.DefineLabel()); return label; }
-        foreach (var instruction in method.Instructions)
+        int point = 0;
+        for (int index = 0; index < method.Instructions.Count; index++)
         {
+            while (point < method.Locations.Count && method.Locations[point].Instruction == index)
+                method.DebugOffsets[il.Offset] = method.Locations[point++];
+            var instruction = method.Instructions[index];
             int operand = instruction.Operand;
             switch (instruction.Code)
             {
@@ -291,6 +303,7 @@ sealed class AssemblyPlan
             foreach (int local in method.Locals) EncodeType(encoder.AddVariable().Type(), local);
             locals = metadata.AddStandaloneSignature(metadata.GetOrAddBlob(signature));
         }
+        method.LocalSignature = MetadataTokens.GetRowNumber(locals);
         return bodies.AddMethodBody(il, maxStack: MaxStack(method), localVariablesSignature: locals, attributes: MethodBodyAttributes.InitLocals);
     }
     public byte[] Build()
@@ -354,9 +367,60 @@ sealed class AssemblyPlan
             metadata.AddCustomAttribute(Handle(source.Method),Handle(source.Constructor),metadata.GetOrAddBlob(blob));
         }
         var pe = new ManagedPEBuilder(new PEHeaderBuilder(imageCharacteristics: Characteristics.ExecutableImage), new MetadataRootBuilder(metadata), il,
-            entryPoint: (MethodDefinitionHandle)Handle(entry), flags: CorFlags.ILOnly);
+            debugDirectoryBuilder: DebugDirectory(), entryPoint: (MethodDefinitionHandle)Handle(entry), flags: CorFlags.ILOnly);
         var result = new BlobBuilder();
         pe.Serialize(result);
         return result.ToArray();
     }
+    DebugDirectoryBuilder DebugDirectory()
+    {
+        var debug = new MetadataBuilder();
+        var documents = new Dictionary<string, DocumentHandle>(StringComparer.Ordinal);
+        DocumentHandle Document(string file)
+        {
+            if (!documents.TryGetValue(file, out var handle)) {
+                handle = debug.AddDocument(debug.GetOrAddDocumentName(file), default, default, default);
+                documents.Add(file, handle);
+            }
+            return handle;
+        }
+        foreach (var type in types) foreach (var method in type.Methods)
+        {
+            if (method.DebugOffsets.Count == 0) { debug.AddMethodDebugInformation(default, default); continue; }
+            var sequence = new BlobBuilder();
+            sequence.WriteCompressedInteger(method.LocalSignature);
+            int document = 0, offset = 0, line = 0, column = 0;
+            bool first = true;
+            foreach (var pair in method.DebugOffsets)
+            {
+                var location = pair.Value;
+                int nextDocument = MetadataTokens.GetRowNumber(Document(location.File));
+                if (nextDocument != document) {
+                    if (!first) sequence.WriteCompressedInteger(0);
+                    sequence.WriteCompressedInteger(nextDocument);
+                    document = nextDocument;
+                }
+                sequence.WriteCompressedInteger(first ? pair.Key : pair.Key - offset);
+                sequence.WriteCompressedInteger(0);
+                sequence.WriteCompressedInteger(1);
+                if (first) {
+                    sequence.WriteCompressedInteger(location.Line);
+                    sequence.WriteCompressedInteger(location.Column);
+                } else {
+                    sequence.WriteCompressedSignedInteger(location.Line - line);
+                    sequence.WriteCompressedSignedInteger(location.Column - column);
+                }
+                offset = pair.Key; line = location.Line; column = location.Column; first = false;
+            }
+            debug.AddMethodDebugInformation(default, debug.GetOrAddBlob(sequence));
+        }
+        var pdb = new BlobBuilder();
+        var builder = new PortablePdbBuilder(debug, metadata.GetRowCounts(), (MethodDefinitionHandle)Handle(entry));
+        var id = builder.Serialize(pdb);
+        var directory = new DebugDirectoryBuilder();
+        directory.AddCodeViewEntry(name + ".pdb", id, builder.FormatVersion);
+        directory.AddEmbeddedPortablePdbEntry(pdb, builder.FormatVersion);
+        return directory;
+    }
+
 }

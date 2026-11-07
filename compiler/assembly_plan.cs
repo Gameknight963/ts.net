@@ -101,6 +101,10 @@ internal sealed class AssemblyPlan
         this.integer(13);this.integer(method);this.integer(start);this.integer(end);this.integer(handler);this.integer(handlerEnd);this.integer(type);
     }
     public void function_source(int method, int constructor, TextBytes source) { integer(14); integer(method); integer(constructor); raw_text(source); }
+    public void source_point(int method, TextBytes file, int line, int column)
+    {
+        integer(15); integer(method); raw_text(file); integer(line); integer(column);
+    }
     public void finish(int entry, TextBytes path)
     {
         this.integer(11); this.integer(entry);
