@@ -1187,11 +1187,11 @@ func exportIR(s *session) (result []byte, err error) {
 	b.controlIDs = map[*ast.Node]int{}
 	b.labels = map[string]irLabel{}
 	files := b.moduleFiles(s)
-	b.prepareDeletion(files)
 	b.prepareEnums(files)
 	c, release = s.program.GetTypeCheckerForFileExclusive(context.Background(), s.file)
 	defer release()
 	b.c = c
+	b.prepareDeletion(files)
 	b.prepareEnumNamespaces(files)
 	functions := map[*ast.Node]int{}
 	last := 0

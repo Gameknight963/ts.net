@@ -9,6 +9,35 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 	b.deletedNames = map[string]bool{}
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
+		if n.Kind == ast.KindIdentifier && n.Text() == "Reflect" && b.isBuiltinIdentifier(n) {
+			access := n.Parent
+			method := ""
+			if access != nil && access.Kind == ast.KindPropertyAccessExpression && access.Expression() == n {
+				method = access.Name().Text()
+			} else if access != nil && access.Kind == ast.KindElementAccessExpression && access.Expression() == n {
+				key := access.AsElementAccessExpression().ArgumentExpression
+				if key.Kind == ast.KindStringLiteral {
+					method = key.Text()
+				}
+			}
+			if method == "" {
+				// An escaping namespace or unknown member may expose deleteProperty
+				// through aliases, destructuring, callbacks or another module.
+				b.deleteAnyName = true
+			} else if method == "deleteProperty" {
+				call := access.Parent
+				if call != nil && call.Kind == ast.KindCallExpression && call.Expression() == access && len(call.AsCallExpression().Arguments.Nodes) >= 2 {
+					key := call.AsCallExpression().Arguments.Nodes[1]
+					if key.Kind == ast.KindStringLiteral {
+						b.deletedNames[key.Text()] = true
+					} else {
+						b.deleteAnyName = true
+					}
+				} else {
+					b.deleteAnyName = true
+				}
+			}
+		}
 		if n.Kind == ast.KindDeleteExpression {
 			operand := n.Expression()
 			for operand.Kind == ast.KindParenthesizedExpression {

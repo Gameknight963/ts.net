@@ -20,6 +20,7 @@ public static partial class Js
             string key = PropertyKey(FunctionArgument(arguments, 1));
             return target.GetWithReceiver(key, arguments.Length < 3 ? target : arguments[2]);
         });
+        Method("deleteProperty", 2, static arguments => BoxBoolean(ReflectTarget(FunctionArgument(arguments, 0)).DeleteOwn(PropertyKey(FunctionArgument(arguments, 1)))));
         Method("has", 2, static arguments => BoxBoolean(ReflectTarget(FunctionArgument(arguments, 0)).HasInProperty(PropertyKey(FunctionArgument(arguments, 1)))));
         Method("ownKeys", 1, static arguments => ReflectTarget(FunctionArgument(arguments, 0)).OwnPropertyNames());
         Method("getPrototypeOf", 1, static arguments => ReflectTarget(FunctionArgument(arguments, 0)).PropertyPrototype);
