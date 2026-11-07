@@ -3,17 +3,21 @@ using System.Globalization;
 
 public static partial class Js
 {
+    static CultureInfo LocaleCulture(object value)
+    {
+        if (value is not string && value is not TsObject) throw new InvalidOperationException("Locale must be a string or object");
+        string tag = StringValue(value);
+        if (tag.Length == 0 || tag.Contains('_')) throw new ArgumentOutOfRangeException(nameof(value), "Invalid locale");
+        try { return CultureInfo.GetCultureInfo(tag); }
+        catch (CultureNotFoundException) { throw new ArgumentOutOfRangeException(nameof(value), "Invalid or unsupported locale"); }
+    }
     static CultureInfo CaseCulture(object locales)
     {
         if (IsUndefined(locales)) return CultureInfo.CurrentCulture;
         CultureInfo first = null;
         void Add(object value)
         {
-            if (value is not string && value is not TsObject) throw new InvalidOperationException("Locale must be a string or object");
-            string tag = StringValue(value);
-            if (tag.Length == 0 || tag.Contains('_')) throw new ArgumentOutOfRangeException(nameof(locales), "Invalid casing locale");
-            try { var culture = CultureInfo.GetCultureInfo(tag); first ??= culture; }
-            catch (CultureNotFoundException) { throw new ArgumentOutOfRangeException(nameof(locales), "Invalid or unsupported casing locale"); }
+            first ??= LocaleCulture(value);
         }
         if (locales is string) Add(locales);
         else
