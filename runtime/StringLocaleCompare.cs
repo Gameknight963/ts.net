@@ -1,8 +1,24 @@
 using System;
 using System.Globalization;
+using System.Text;
 
 public static partial class Js
 {
+    static string WithoutComparisonPunctuation(string text)
+    {
+        StringBuilder result = null;
+        int offset = 0;
+        foreach (var rune in text.EnumerateRunes())
+        {
+            if (Rune.IsPunctuation(rune) || Rune.IsWhiteSpace(rune))
+            {
+                result ??= new StringBuilder(text.Length).Append(text, 0, offset);
+            }
+            else if (result != null) result.Append(text, offset, rune.Utf16SequenceLength);
+            offset += rune.Utf16SequenceLength;
+        }
+        return result?.ToString() ?? text;
+    }
     sealed class StringLocaleCompareFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("String method requires a receiver")), null, "localeCompare", 1)
     {
         double Execute(object receiver, object[] arguments)
@@ -14,7 +30,7 @@ public static partial class Js
             if (!IsUndefined(optionValue))
             {
                 var options = ToObject(optionValue);
-                foreach (string key in new[] { "caseFirst", "ignorePunctuation", "usage", "collation", "localeMatcher" })
+                foreach (string key in new[] { "caseFirst", "usage", "collation", "localeMatcher" })
                     if (!IsUndefined(options.Get(key))) throw new NotSupportedException("localeCompare option " + key + " is not supported");
                 object sensitivity = options.Get("sensitivity");
                 if (!IsUndefined(sensitivity)) flags = StringValue(sensitivity) switch
@@ -25,6 +41,11 @@ public static partial class Js
                     "variant" => CompareOptions.None,
                     _ => throw new ArgumentOutOfRangeException(nameof(arguments), "Invalid comparison sensitivity")
                 };
+                if (Truthy(options.Get("ignorePunctuation")))
+                {
+                    text = WithoutComparisonPunctuation(text);
+                    other = WithoutComparisonPunctuation(other);
+                }
                 if (Truthy(options.Get("numeric"))) flags |= CompareOptions.NumericOrdering;
             }
             return Math.Sign(culture.CompareInfo.Compare(text, other, flags));
