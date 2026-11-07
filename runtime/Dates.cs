@@ -32,7 +32,7 @@ public static partial class Js
     }
     static JsDate CreateDate(object[] arguments)
     {
-        if (arguments.Length > 1) throw new NotSupportedException("Date calendar-part construction is not supported yet");
+        if (arguments.Length > 1) return new JsDate(DateFromParts(arguments, false));
         if (arguments.Length == 0) return new JsDate(DateNow());
         object value = arguments[0];
         if (value is JsDate date) return new JsDate(date.Timestamp);
@@ -44,6 +44,7 @@ public static partial class Js
         internal DateConstructor() : base("Date", static _ => DateTimeOffset.UtcNow.ToString("r", CultureInfo.InvariantCulture), 7)
         {
             Member("now", new JsFunction((FunctionBody)(static _ => DateNow()), (RawNumberFunction0)DateNow, "now", 0));
+            Member("UTC", new JsFunction((FunctionBody)(static args => DateFromParts(args, true)), null, "UTC", 7));
             Member("parse", new JsFunction((FunctionBody)(static args => ParseDate(StringValue(FunctionArgument(args, 0)))), null, "parse", 1));
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
