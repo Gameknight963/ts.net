@@ -13,6 +13,13 @@ func (b *irBuilder) contextualObject(n *ast.Node, row *irNode) {
 	if n.Kind != ast.KindObjectLiteralExpression {
 		return
 	}
+	// Accessor literals use dynamic storage so their properties remain
+	// accessors even when a call supplies a structural contextual type.
+	for _, property := range n.AsObjectLiteralExpression().Properties.Nodes {
+		if property.Kind == ast.KindGetAccessor || property.Kind == ast.KindSetAccessor {
+			return
+		}
+	}
 	// Inferred binding patterns can supply placeholder any fields while their
 	// resulting variables still expect the literal's narrower type. Only adopt
 	// storage where the consumer has its own established type.
