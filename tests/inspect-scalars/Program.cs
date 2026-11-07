@@ -30,7 +30,7 @@ bool AllocatesObject(MethodInfo method)
     }
     return false;
 }
-var scalar = methods.Single(m => m.Name == "f0");
+var scalar = methods.Single(m => m.Name.EndsWith("_f0", StringComparison.Ordinal));
 if (AllocatesObject(scalar)) throw new Exception("Local object was not eliminated");
 if (!scalar.GetMethodBody()!.LocalVariables.Any(v => v.LocalType == typeof(int))) throw new Exception("Counted loop has no integer counter");
 if (!methods.Any(m => m.ReturnType == typeof(object) && AllocatesObject(m))) throw new Exception("Escaping object lost its class representation");

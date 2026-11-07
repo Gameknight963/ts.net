@@ -1,7 +1,7 @@
 var assembly = System.Reflection.Assembly.LoadFrom(Path.GetFullPath(args[0]));
 foreach (string name in new[] { "f0", "f1", "f2", "f4", "f6", "f8" })
 {
-    var kernel = assembly.GetType("Program")!.GetMethod(name)!.CreateDelegate<Func<double?, double?, double?>>();
+    var kernel = assembly.GetType("Program")!.GetMethods().Single(method => method.Name.EndsWith("_" + name, StringComparison.Ordinal)).CreateDelegate<Func<double?, double?, double?>>();
     for (int i = 0; i < 20; i++) kernel(1000, 3);
     long before = GC.GetAllocatedBytesForCurrentThread();
     double? result = kernel(1000, 3);

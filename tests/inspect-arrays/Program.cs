@@ -96,7 +96,7 @@ Console.WriteLine("PASS spread presence, independent buffers, NaN, and negative 
 if (args.Length != 0)
 {
     var assembly = System.Reflection.Assembly.LoadFrom(System.IO.Path.GetFullPath(args[0]));
-    var method = assembly.GetType("Program")!.GetMethod("f0")!;
+    var method = assembly.GetType("Program")!.GetMethods().Single(method => method.Name.EndsWith("_f0", StringComparison.Ordinal));
     if (!method.GetMethodBody()!.LocalVariables.Any(v => v.LocalType == typeof(double[]))) throw new Exception("Packed loop has no guarded buffer");
     var kernel = method.CreateDelegate<Func<object, double?, double?>>();
     var packed = new NumberArray(8);

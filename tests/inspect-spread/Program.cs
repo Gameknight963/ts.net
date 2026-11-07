@@ -1,7 +1,7 @@
 using System.Reflection;
 _ = typeof(Js).Assembly;
 var assembly = Assembly.LoadFile(Path.GetFullPath(args[0]));
-var kernel = assembly.GetType("Program")!.GetMethod("f0")!.CreateDelegate<Func<double?, double?, double?>>();
+var kernel = assembly.GetType("Program")!.GetMethods().Single(method => method.Name.EndsWith("_f0", StringComparison.Ordinal)).CreateDelegate<Func<double?, double?, double?>>();
 for (int i = 0; i < 100; i++) kernel(1000, i);
 long before = GC.GetAllocatedBytesForCurrentThread();
 var small = kernel(1, 3);
