@@ -6,11 +6,7 @@ public static partial class Js
 {
     sealed class CollatorValue : TsObject
     {
-        internal readonly CultureInfo Culture;
-        internal readonly string Usage, Sensitivity;
-        internal readonly bool Numeric, IgnorePunctuation;
-        readonly CompareOptions flags;
-        readonly CompareInfo comparer;
+        readonly CollationSettings settings;
         internal readonly JsFunction Compare;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)IntlCollator.Constructor.Get("prototype");
         internal CollatorValue(object locales, object optionValue)
@@ -19,50 +15,21 @@ public static partial class Js
             string selected = supported.Length() == 0 ? null : (string)supported.ElementAt(0);
             if (selected != null && selected.Contains("-u-", StringComparison.OrdinalIgnoreCase))
                 throw new NotSupportedException("Collator Unicode locale extensions are not supported");
-            Culture = selected == null ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(CollatorLocale(selected));
-            comparer = Culture.CompareInfo;
-            TsObject options = IsUndefined(optionValue) ? null : ToObject(optionValue);
-            string Option(string name, string fallback)
-            {
-                object value = options == null ? Undefined : options.Get(name);
-                return IsUndefined(value) ? fallback : StringValue(value);
-            }
-            string matcher = Option("localeMatcher", "best fit");
-            if (matcher is not ("lookup" or "best fit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
-            Usage = Option("usage", "sort");
-            if (Usage is not ("sort" or "search")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid collator usage");
-            string collation = Option("collation", "default");
-            if (collation != "default") throw new NotSupportedException("Custom collations are not supported");
-            string caseFirst = Option("caseFirst", "false");
-            if (caseFirst is not ("false" or "upper" or "lower")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid case order");
-            if (caseFirst != "false") throw new NotSupportedException("Custom case order is not supported");
-            Sensitivity = Option("sensitivity", "variant");
-            flags = Sensitivity switch
-            {
-                "base" => CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace,
-                "accent" => CompareOptions.IgnoreCase,
-                "case" => CompareOptions.IgnoreNonSpace,
-                "variant" => CompareOptions.None,
-                _ => throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid comparison sensitivity")
-            };
-            Numeric = options != null && Truthy(options.Get("numeric"));
-            IgnorePunctuation = options != null && Truthy(options.Get("ignorePunctuation"));
-            if (Numeric) flags |= CompareOptions.NumericOrdering;
+            var culture = selected == null ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(CollatorLocale(selected));
+            settings = new CollationSettings(culture, optionValue);
             Compare = new JsFunction((FunctionBody)(args => Execute(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "", 2);
         }
         object Execute(object first, object second)
         {
-            string left = StringValue(first), right = StringValue(second);
-            if (IgnorePunctuation) { left = WithoutComparisonPunctuation(left); right = WithoutComparisonPunctuation(right); }
-            return (double)Math.Sign(comparer.Compare(left, right, flags));
+            return settings.Compare(StringValue(first), StringValue(second));
         }
         internal TsObject Options()
         {
             var result = new JsDynamicObject();
-            result.DefineOwn("locale", Culture.Name);
-            result.DefineOwn("usage", Usage); result.DefineOwn("sensitivity", Sensitivity);
-            result.DefineOwn("ignorePunctuation", BoxBoolean(IgnorePunctuation));
-            result.DefineOwn("collation", "default"); result.DefineOwn("numeric", BoxBoolean(Numeric)); result.DefineOwn("caseFirst", "false");
+            result.DefineOwn("locale", settings.Culture.Name);
+            result.DefineOwn("usage", settings.Usage); result.DefineOwn("sensitivity", settings.Sensitivity);
+            result.DefineOwn("ignorePunctuation", BoxBoolean(settings.IgnorePunctuation));
+            result.DefineOwn("collation", "default"); result.DefineOwn("numeric", BoxBoolean(settings.Numeric)); result.DefineOwn("caseFirst", settings.CaseFirst);
             return result;
         }
     }
