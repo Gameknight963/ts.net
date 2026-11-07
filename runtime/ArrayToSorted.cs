@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 
 public static partial class Js
 {
@@ -29,7 +30,7 @@ public static partial class Js
         while (right < end) scratch[output++] = values[right++];
         Array.Copy(scratch, first, values, first, end - first);
     }
-    sealed class ArrayToSortedFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Array method requires a receiver")), null, "toSorted", 1)
+    sealed class ArrayToSortedFunction(bool mutate = false) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Array method requires a receiver")), null, mutate ? "sort" : "toSorted", 1)
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
@@ -39,9 +40,18 @@ public static partial class Js
             long length = IndexedLength(source);
             if (length > Array.MaxLength) throw new ArgumentOutOfRangeException(nameof(receiver), "Array is too large to sort");
             var values = new object[(int)length];
-            for (int i = 0; i < values.Length; i++) values[i] = IndexedValue(source, i);
-            if (values.Length > 1) StableSort(values, new object[values.Length], 0, values.Length, argument as JsFunction);
-            return new JsArray(values);
+            int count = 0;
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (!mutate) values[count++] = IndexedValue(source, i);
+                else if (TryIndexedValue(source, i, out object value)) values[count++] = value;
+            }
+            if (count > 1) StableSort(values, new object[count], 0, count, argument as JsFunction);
+            if (!mutate) return new JsArray(values);
+            for (int i = 0; i < count; i++) source.SetWithReceiver(i.ToString(CultureInfo.InvariantCulture), values[i], source);
+            for (long i = count; i < length; i++)
+                if (!source.DeleteOwn(i.ToString(CultureInfo.InvariantCulture))) throw new InvalidOperationException("Cannot delete array-like property");
+            return source;
         }
     }
 }
