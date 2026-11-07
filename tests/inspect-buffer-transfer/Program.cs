@@ -1,0 +1,10 @@
+using System.Reflection;
+var constructor=(JsFunction)Js.BuiltinNamespace("ArrayBuffer");
+var source=(TsObject)constructor.Construct(new object[]{1048576d});
+var storage=source.GetType().GetField("Bytes",BindingFlags.Instance|BindingFlags.NonPublic)!;
+var bytes=(byte[])storage.GetValue(source)!;bytes[0]=17;bytes[^1]=99;
+var target=(TsObject)((JsFunction)source.Get("transfer")).InvokeWithReceiver(source,Array.Empty<object>());
+if(!ReferenceEquals(bytes,storage.GetValue(target)))throw new Exception("Same-size transfer copied the byte array");
+if(((byte[])storage.GetValue(source)!).Length!=0 || !(bool)source.Get("detached"))throw new Exception("Transfer did not detach the source");
+if(bytes[0]!=17 || bytes[^1]!=99)throw new Exception("Transfer changed the bytes");
+Console.WriteLine("PASS same-size transfer moves the existing byte array and detaches the source");

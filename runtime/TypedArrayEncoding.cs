@@ -3,7 +3,7 @@ using System;
 public static partial class Js
 {
     static Exception InvalidByteText() => MakeThrown(new JsCaughtError("SyntaxError", "Invalid byte encoding"));
-    static TypedArrayValue RequireByteArray(object receiver) => receiver is TypedArrayValue { Name: "Uint8Array" } array ? array : throw new InvalidOperationException("Uint8Array receiver required");
+    static TypedArrayValue RequireByteArray(object receiver) => receiver is TypedArrayValue { Name: "Uint8Array", OutOfBounds: false } array ? array : throw new InvalidOperationException("Uint8Array receiver required");
     static string ByteText(object value) => value as string ?? throw new InvalidOperationException("Byte encoding input must be a string");
     static TsObject ByteEncodingOptions(object value) => IsUndefined(value) ? null : value as TsObject ?? throw new InvalidOperationException("Byte encoding options must be an object");
     static string ByteEncodingOption(TsObject options, string key, string fallback, string first, string second, string third = null)

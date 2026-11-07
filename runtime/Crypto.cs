@@ -19,7 +19,7 @@ public static partial class Js
             throw MakeThrown(new DomExceptionValue("An integer typed array is required", "TypeMismatchError"));
         int length = array.Count * array.Size;
         if (length > 65536) throw MakeThrown(new DomExceptionValue("Random byte quota exceeded", "QuotaExceededError"));
-        RandomNumberGenerator.Fill(array.Buffer.Bytes.AsSpan(array.Offset, length));
+        RandomNumberGenerator.Fill(TypedArrayBytes(array));
         return array;
     }
     static string CryptoRandomUuid(object receiver)

@@ -37,7 +37,10 @@ public static partial class Js
             {
                 object part = Iteration.Value(source, position); position += Iteration.Step(source, position);
                 if (part is BlobValue blob) output.Write(blob.Bytes);
-                else if (part is BinaryBuffer or BinaryView or TypedArrayValue) output.Write(EncodingInput(part));
+                else if (part is BinaryBuffer or BinaryView or TypedArrayValue) {
+                    if (part is BinaryBuffer { Detached: true } or BinaryView { OutOfBounds: true } or TypedArrayValue { OutOfBounds: true }) throw new InvalidOperationException("Blob input buffer is detached or out of bounds");
+                    output.Write(EncodingInput(part));
+                }
                 else
                 {
                     string text = StringValue(part);

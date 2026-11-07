@@ -6,7 +6,9 @@ public static partial class Js
 {
     sealed class BinaryBuffer(int length, int maximum = -1) : TsObject
     {
-        internal byte[] Bytes = new byte[length];
+        internal byte[] Bytes = length == 0 ? Array.Empty<byte>() : new byte[length];
+        internal bool Detached;
+        internal void Detach() { Bytes = Array.Empty<byte>(); Detached = true; }
         internal readonly int Maximum = maximum;
         internal bool Resizable => Maximum >= 0;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)RuntimeNamespaces.ArrayBuffer.Get("prototype");
@@ -16,7 +18,7 @@ public static partial class Js
         internal readonly BinaryBuffer Buffer = buffer;
         internal readonly int Offset = offset, FixedLength = length;
         internal readonly bool Tracking = tracking;
-        internal bool OutOfBounds => Offset > Buffer.Bytes.Length || !Tracking && FixedLength > Buffer.Bytes.Length - Offset;
+        internal bool OutOfBounds => Buffer.Detached || Offset > Buffer.Bytes.Length || !Tracking && FixedLength > Buffer.Bytes.Length - Offset;
         internal int Length => OutOfBounds ? throw new InvalidOperationException("DataView is out of bounds") : Tracking ? Buffer.Bytes.Length - Offset : FixedLength;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)RuntimeNamespaces.DataView.Get("prototype");
     }
@@ -39,11 +41,17 @@ public static partial class Js
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "ArrayBuffer");
             prototype.DefineClassAccessor("byteLength", new CollectionMethod("get byteLength", 0, (receiver, _) => (double)RequireBuffer(receiver).Bytes.Length), 1);
             prototype.DefineClassAccessor("resizable", new CollectionMethod("get resizable", 0, (receiver, _) => BoxBoolean(RequireBuffer(receiver).Resizable)), 1);
-            prototype.DefineClassAccessor("maxByteLength", new CollectionMethod("get maxByteLength", 0, (receiver, _) => { var buffer = RequireBuffer(receiver); return (double)(buffer.Resizable ? buffer.Maximum : buffer.Bytes.Length); }), 1);
+            prototype.DefineClassAccessor("maxByteLength", new CollectionMethod("get maxByteLength", 0, (receiver, _) => { var buffer = RequireBuffer(receiver); return (double)(buffer.Detached ? 0 : buffer.Resizable ? buffer.Maximum : buffer.Bytes.Length); }), 1);
+            prototype.DefineClassAccessor("detached", new CollectionMethod("get detached", 0, (receiver, _) => BoxBoolean(RequireBuffer(receiver).Detached)), 1);
+            foreach (bool fixedLength in new[] { false, true }) {
+                string method = fixedLength ? "transferToFixedLength" : "transfer";
+                prototype.DefineMethod(method, new CollectionMethod(method, 0, (receiver, args) => TransferBuffer(receiver, FunctionArgument(args, 0), fixedLength)));
+            }
             prototype.DefineMethod("resize", new CollectionMethod("resize", 1, (receiver, args) => {
                 var buffer = RequireBuffer(receiver);
                 if (!buffer.Resizable) throw new InvalidOperationException("ArrayBuffer is not resizable");
                 int length = BinaryIndex(FunctionArgument(args, 0));
+                EnsureAttached(buffer);
                 if (length > buffer.Maximum) throw new ArgumentOutOfRangeException(null, "ArrayBuffer exceeds maximum length");
                 Array.Resize(ref buffer.Bytes, length);
                 return Undefined;
@@ -51,11 +59,13 @@ public static partial class Js
             prototype.DefineMethod("slice", new CollectionMethod("slice", 2, (receiver, args) =>
             {
                 var source = RequireBuffer(receiver);
+                EnsureAttached(source);
                 int size = source.Bytes.Length;
                 int start = BufferSliceIndex(FunctionArgument(args, 0), size);
                 int end = args.Length < 2 || IsUndefined(args[1]) ? size : BufferSliceIndex(args[1], size);
                 int length = Math.Max(end - start, 0);
                 var result = BufferSpeciesCreate(source, length);
+                EnsureAttached(source);
                 int available = Math.Min(length, Math.Max(source.Bytes.Length - start, 0));
                 if (available != 0) source.Bytes.AsSpan(start, available).CopyTo(result.Bytes);
                 return result;
@@ -103,8 +113,10 @@ public static partial class Js
         {
             var buffer = RequireBuffer(FunctionArgument(args, 0));
             int offset = BinaryIndex(FunctionArgument(args, 1));
+            EnsureAttached(buffer);
             if (offset > buffer.Bytes.Length) throw new ArgumentOutOfRangeException(null, "DataView offset is out of range");
             int length = IsUndefined(FunctionArgument(args, 2)) ? buffer.Bytes.Length - offset : BinaryIndex(args[2]);
+            EnsureAttached(buffer);
             if (length > buffer.Bytes.Length - offset) throw new ArgumentOutOfRangeException(null, "DataView length is out of range");
             return new BinaryView(buffer, offset, length, buffer.Resizable && IsUndefined(FunctionArgument(args, 2)));
         }

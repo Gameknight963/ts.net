@@ -17,6 +17,7 @@ public static partial class Js
         if (constructor == null || ReferenceEquals(constructor, RuntimeNamespaces.ArrayBuffer)) return new BinaryBuffer(length);
         if (constructor.Construct(new object[] { (double)length }) is not BinaryBuffer result)
             throw new InvalidOperationException("ArrayBuffer species must return an ArrayBuffer");
+        EnsureAttached(result);
         if (ReferenceEquals(result, source)) throw new InvalidOperationException("ArrayBuffer species returned the source buffer");
         if (result.Bytes.Length < length) throw new InvalidOperationException("ArrayBuffer species returned a short buffer");
         return result;

@@ -40,6 +40,7 @@ public static partial class Js
             switch (source)
             {
                 case BinaryBuffer buffer:
+                    if (buffer.Detached) throw Uncloneable();
                     var bytes = new BinaryBuffer(buffer.Bytes.Length, buffer.Maximum);
                     buffer.Bytes.CopyTo(bytes.Bytes, 0); result = bytes; break;
                 case BinaryView view:

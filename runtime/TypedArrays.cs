@@ -17,8 +17,8 @@ public static partial class Js
         internal readonly BinaryBuffer Buffer;
         internal readonly int Offset, FixedCount, Size;
         internal readonly bool Tracking;
-        internal bool OutOfBounds => Buffer.Resizable && (Offset > Buffer.Bytes.Length || !Tracking && FixedCount > (Buffer.Bytes.Length - Offset) / Size);
-        internal int Count => !Buffer.Resizable ? FixedCount : OutOfBounds ? 0 : Tracking ? (Buffer.Bytes.Length - Offset) / Size : FixedCount;
+        internal bool OutOfBounds => Buffer.Detached || Buffer.Resizable && (Offset > Buffer.Bytes.Length || !Tracking && FixedCount > (Buffer.Bytes.Length - Offset) / Size);
+        internal int Count => !Buffer.Detached && !Buffer.Resizable ? FixedCount : OutOfBounds ? 0 : Tracking ? (Buffer.Bytes.Length - Offset) / Size : FixedCount;
         internal readonly string Name, Kind;
         internal TypedArrayValue(string name, BinaryBuffer buffer, int offset, int count, bool tracking = false)
         {
@@ -26,7 +26,7 @@ public static partial class Js
             Size = BinarySize(Kind); Buffer = buffer; Offset = offset; FixedCount = count; Tracking = tracking;
         }
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)GetTypedArrayConstructor(Name).Get("prototype");
-        internal object Read(int index) => Buffer.Resizable && (uint)index >= (uint)Count ? Undefined : ReadBinary(Buffer.Bytes.AsSpan(Offset + index * Size, Size), Kind, BitConverter.IsLittleEndian);
+        internal object Read(int index) => Buffer.Detached || Buffer.Resizable && (uint)index >= (uint)Count ? Undefined : ReadBinary(Buffer.Bytes.AsSpan(Offset + index * Size, Size), Kind, BitConverter.IsLittleEndian);
         internal void Write(int index, object value)
         {
             bool bigint = Kind.StartsWith("Big", StringComparison.Ordinal);
@@ -160,6 +160,7 @@ public static partial class Js
             {
                 int size = BinarySize(name == "Uint8ClampedArray" ? "Uint8" : name[..^5]);
                 int offset = BinaryIndex(FunctionArgument(args, 1));
+                EnsureAttached(buffer);
                 if (offset % size != 0 || offset > buffer.Bytes.Length) throw new ArgumentOutOfRangeException(null, "Typed array offset is invalid");
                 int length;
                 if (IsUndefined(FunctionArgument(args, 2)))
@@ -168,6 +169,7 @@ public static partial class Js
                     length = (buffer.Bytes.Length - offset) / size;
                 }
                 else length = BinaryIndex(args[2]);
+                EnsureAttached(buffer);
                 if (length > (buffer.Bytes.Length - offset) / size) throw new ArgumentOutOfRangeException(null, "Typed array length is invalid");
                 return new TypedArrayValue(name, buffer, offset, length, buffer.Resizable && IsUndefined(FunctionArgument(args, 2)));
             }
@@ -182,7 +184,7 @@ public static partial class Js
     }
     static TypedArrayValue CreateTypedArrayResult(object receiver, int count)
     {
-        if (receiver is not JsFunction constructor || constructor.Construct(new object[] { (double)count }) is not TypedArrayValue result || result.Count < count)
+        if (receiver is not JsFunction constructor || constructor.Construct(new object[] { (double)count }) is not TypedArrayValue result || result.OutOfBounds || result.Count < count)
             throw new InvalidOperationException("Typed array constructor required");
         return result;
     }

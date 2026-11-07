@@ -41,11 +41,12 @@ public static partial class Js
             return text;
         }
     }
+    static Span<byte> TypedArrayBytes(TypedArrayValue array) => array.OutOfBounds ? Span<byte>.Empty : array.Buffer.Bytes.AsSpan(array.Offset, array.Count * array.Size);
     static ReadOnlySpan<byte> EncodingInput(object input) => input switch
     {
         BinaryBuffer buffer => buffer.Bytes,
-        BinaryView view => view.Buffer.Bytes.AsSpan(view.Offset, view.Length),
-        TypedArrayValue array => array.Buffer.Bytes.AsSpan(array.Offset, array.Count * array.Size),
+        BinaryView view => view.OutOfBounds ? ReadOnlySpan<byte>.Empty : view.Buffer.Bytes.AsSpan(view.Offset, view.Length),
+        TypedArrayValue array => TypedArrayBytes(array),
         _ when IsUndefined(input) => ReadOnlySpan<byte>.Empty,
         _ => throw new InvalidOperationException("TextDecoder input must be an ArrayBuffer or a view")
     };
@@ -74,7 +75,7 @@ public static partial class Js
                 string text = StringValue(FunctionArgument(args, 0));
                 if (FunctionArgument(args, 1) is not TypedArrayValue { Name: "Uint8Array" } destination)
                     throw new InvalidOperationException("TextEncoder destination must be a Uint8Array");
-                Span<byte> bytes = destination.Buffer.Bytes.AsSpan(destination.Offset, destination.Count);
+                Span<byte> bytes = TypedArrayBytes(destination);
                 int read = 0, written = 0;
                 while (read < text.Length)
                 {
