@@ -3,12 +3,17 @@ using System.Globalization;
 
 public static partial class Js
 {
-    sealed class NumberLocaleFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Number method requires a receiver")), null, "toLocaleString", 0)
+    sealed class NumberLocaleFunction(bool bigint = false) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Number method requires a receiver")), null, "toLocaleString", 0)
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
             object primitive = receiver is JsBoxedPrimitive boxed ? boxed.Value : receiver;
+            if (bigint) return FormatLocaleNumber(RequireBigInt(receiver), true, arguments);
             if (primitive is not double value) throw new InvalidOperationException("Number method has an incompatible receiver");
+            return FormatLocaleNumber(value, double.IsFinite(value), arguments);
+        }
+        static string FormatLocaleNumber<T>(T value, bool finite, object[] arguments) where T : struct, IFormattable
+        {
             var culture = CaseCulture(FunctionArgument(arguments, 0));
             int minimum = 0, maximum = 3; bool grouping = true;
             object optionValue = FunctionArgument(arguments, 1);
@@ -30,7 +35,7 @@ public static partial class Js
                 object group = options.Get("useGrouping"); if (!IsUndefined(group)) grouping = Truthy(group);
             }
             string result = value.ToString((grouping ? "N" : "F") + maximum.ToString(CultureInfo.InvariantCulture), culture);
-            if (!double.IsFinite(value) || maximum == 0) return result;
+            if (!finite || maximum == 0) return result;
             int trim = 0;
             while (trim < maximum - minimum && result[result.Length - trim - 1] == '0') trim++;
             if (trim == maximum) trim += culture.NumberFormat.NumberDecimalSeparator.Length;

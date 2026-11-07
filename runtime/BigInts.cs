@@ -123,6 +123,7 @@ public static partial class Js
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "BigInt");
             prototype.DefineMethod("valueOf", new CollectionMethod("valueOf", 0, (receiver, _) => RequireBigInt(receiver)));
             prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, args) => BigIntText(RequireBigInt(receiver), FunctionArgument(args, 0))));
+            prototype.DefineMethod("toLocaleString", new NumberLocaleFunction(true));
             Member("asIntN", new JsFunction((FunctionBody)(static args => BigIntWidth(args, true)), null, "asIntN", 2));
             Member("asUintN", new JsFunction((FunctionBody)(static args => BigIntWidth(args, false)), null, "asUintN", 2));
         }
