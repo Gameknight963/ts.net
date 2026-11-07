@@ -57,6 +57,7 @@ public static partial class Js
         internal IteratorConstructor() : base("Iterator", static _ => throw new InvalidOperationException("Iterator constructor requires new"), 0)
         {
             var prototype = (JsClassInstance)NativeIteratorPrototype; UseObjectPrototype(prototype); prototype.DefineMethod("constructor", this);
+            DefineIteratorTerminals(prototype);
             Member("from", new JsFunction((FunctionBody)(static arguments => IteratorFrom(FunctionArgument(arguments, 0))), null, "from", 1));
         }
         public override object Construct(object[] arguments) => throw new InvalidOperationException("Iterator is an abstract constructor");
