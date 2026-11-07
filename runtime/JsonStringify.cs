@@ -76,7 +76,8 @@ public static partial class Js
         void Indent(int depth) { for (int i = 0; i < depth; i++) output.Append(gap); }
         void WriteValue(object value)
         {
-            if (value == null) output.Append("null");
+            if (value is JsRawJson raw) output.Append(raw.Text);
+            else if (value == null) output.Append("null");
             else if (value is string text) QuoteJson(output, text);
             else if (value is bool boolean) output.Append(boolean ? "true" : "false");
             else if (value is double number) output.Append(double.IsFinite(number) ? StringValue(number) : "null");

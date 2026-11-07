@@ -122,5 +122,5 @@ public static partial class Js
         else { if (method is JsFunction fn) fn.InferPropertyName(key); home.DefineMethod(key, method, isStatic); }
     }
     public static void InitializeClass(object target, object fields) => ((JsFunction)fields).InvokeWithReceiver(target, Array.Empty<object>());
-    public static void DefineClassField(object target, string key, object value) { target = ResolveThis(target); if (target is JsClassFunction fn) fn.DefineField(key, value); else if (target is JsClassInstance instance) instance.DefineField(key, value); else { if (target is JsBoxedPrimitive boxed && boxed.IsReadOnlyOwnProperty(key)) throw MakeThrown(new JsCaughtError("TypeError", "Cannot redefine a string property")); ((TsObject)target).DefineOwn(key, value); } }
+    public static void DefineClassField(object target, string key, object value) { target = ResolveThis(target); if (target is JsRawJson) throw MakeThrown(new JsCaughtError("TypeError", "Cannot define a field on raw JSON")); if (target is JsClassFunction fn) fn.DefineField(key, value); else if (target is JsClassInstance instance) instance.DefineField(key, value); else { if (target is JsBoxedPrimitive boxed && boxed.IsReadOnlyOwnProperty(key)) throw MakeThrown(new JsCaughtError("TypeError", "Cannot redefine a string property")); ((TsObject)target).DefineOwn(key, value); } }
 }
