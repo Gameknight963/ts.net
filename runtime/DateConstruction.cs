@@ -17,8 +17,12 @@ public static partial class Js
     {
         double[] parts = { double.NaN, 0, 1, 0, 0, 0, 0 };
         for (int index = 0; index < Math.Min(arguments.Length, parts.Length); index++) parts[index] = Math.Truncate(Number(arguments[index]));
+        return DateFromComponents(parts, utc, true);
+    }
+    static double DateFromComponents(double[] parts, bool utc, bool adjustYear)
+    {
         foreach (double part in parts) if (!double.IsFinite(part)) return double.NaN;
-        double year = parts[0]; if (year >= 0 && year <= 99) year += 1900;
+        double year = parts[0]; if (adjustYear && year >= 0 && year <= 99) year += 1900;
         year += Math.Floor(parts[1] / 12);
         int month = (int)(parts[1] - 12 * Math.Floor(parts[1] / 12)) + 1;
         if (year < 1 || year > 9999) throw new NotSupportedException("Date calendar construction outside .NET's year range 1 through 9999 is not supported");

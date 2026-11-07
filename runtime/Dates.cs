@@ -49,6 +49,7 @@ public static partial class Js
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
             DefineDateGetters(prototype);
+            DefineDateSetters(prototype);
             var getTime = new CollectionMethod("getTime", 0, (receiver, _) => RequireDate(receiver).Timestamp);
             prototype.DefineMethod("getTime", getTime);
             prototype.DefineMethod("valueOf", new CollectionMethod("valueOf", 0, (receiver, _) => RequireDate(receiver).Timestamp));
