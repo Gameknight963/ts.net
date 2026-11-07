@@ -44,6 +44,7 @@ func (b *irBuilder) runtimeImport(n *ast.Node) bool {
 
 func (b *irBuilder) moduleFiles(s *session) []*ast.SourceFile {
 	var ordered []*ast.SourceFile
+	b.moduleAsync = map[*ast.SourceFile]bool{}
 	visited := map[*ast.SourceFile]bool{}
 	b.moduleDependencies = map[*ast.SourceFile][]*ast.SourceFile{}
 	b.moduleAliases = map[*ast.SourceFile]map[string]*ast.SourceFile{}
@@ -53,6 +54,10 @@ func (b *irBuilder) moduleFiles(s *session) []*ast.SourceFile {
 			return
 		}
 		visited[file] = true
+		b.moduleAsync[file] = hasModuleAwait(file.AsNode())
+		if b.moduleAsync[file] {
+			b.moduleLoader = true
+		}
 		b.file = file
 		b.c.GetEmitResolver().MarkLinkedReferencesRecursively(file)
 		dependency := func(specifier *ast.Node, static bool) {
@@ -82,7 +87,7 @@ func (b *irBuilder) moduleFiles(s *session) []*ast.SourceFile {
 		var scan func(*ast.Node)
 		scan = func(n *ast.Node) {
 			if n.Kind == ast.KindCallExpression && n.AsCallExpression().Expression.Kind == ast.KindImportKeyword {
-				b.dynamicModules = true
+				b.moduleLoader = true
 				args := n.AsCallExpression().Arguments.Nodes
 				if len(args) != 0 && (args[0].Kind == ast.KindStringLiteral || args[0].Kind == ast.KindNoSubstitutionTemplateLiteral) {
 					dependency(args[0], false)

@@ -21,7 +21,7 @@ func (b *irBuilder) moduleText(n *ast.Node, text string) int {
 	return id
 }
 func (b *irBuilder) prepareDynamicModules(files []*ast.SourceFile) {
-	if !b.dynamicModules {
+	if !b.moduleLoader {
 		return
 	}
 	b.moduleRegistry = b.moduleSymbol("module registry")
@@ -38,7 +38,7 @@ func (b *irBuilder) dynamicImport(n *ast.Node) int {
 	return b.builtinCall(n, "__moduleImport", b.moduleRef(n, b.moduleRegistry), b.moduleText(n, sourceFileURL(b.file)), b.lower(args[0]))
 }
 func (b *irBuilder) initializeDynamicModules(files []*ast.SourceFile, entry *ast.SourceFile) {
-	if !b.dynamicModules {
+	if !b.moduleLoader {
 		return
 	}
 	initializers := map[*ast.SourceFile]int{}
@@ -47,6 +47,13 @@ func (b *irBuilder) initializeDynamicModules(files []*ast.SourceFile, entry *ast
 		next := b.nodes[block-1].next
 		b.nodes[block-1].next = 0
 		function, value := b.newFunction(file.AsNode(), "")
+		if b.moduleAsync[file] {
+			marker := b.node(20, file.AsNode(), "async module")
+			b.nodes[marker-1].typ = b.typ(b.c.GetAnyType())
+			b.nodes[function-1].right = marker
+			lowering := asyncExpressionLowering{b: b, source: file.AsNode(), any: b.typ(b.c.GetAnyType())}
+			block = lowering.body(block, function)
+		}
 		b.nodes[function-1].left = block
 		initializers[file] = value
 		block = next

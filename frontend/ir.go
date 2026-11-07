@@ -30,7 +30,8 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
-	dynamicModules        bool
+	moduleAsync           map[*ast.SourceFile]bool
+	moduleLoader          bool
 	moduleDependencies    map[*ast.SourceFile][]*ast.SourceFile
 	moduleAliases         map[*ast.SourceFile]map[string]*ast.SourceFile
 	moduleRecords         map[*ast.SourceFile]int
@@ -1056,7 +1057,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			row.right = wrapper
 		}
 	case ast.KindAwaitExpression:
-		if b.awaitReturnOwner == nil || enclosingAsyncFunction(n) != b.awaitReturnOwner {
+		if b.awaitReturnOwner == nil || awaitOwner(n) != b.awaitReturnOwner {
 			b.unsupported(n)
 		}
 		id = b.node(rawAsyncAwait, n, "await")
@@ -1190,7 +1191,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindForOfStatement, ast.KindForInStatement:
 		s := n.AsForInOrOfStatement()
 		if s.AwaitModifier != nil {
-			if b.awaitReturnOwner == nil || enclosingAsyncFunction(n) != b.awaitReturnOwner {
+			if b.awaitReturnOwner == nil || awaitOwner(n) != b.awaitReturnOwner {
 				b.unsupported(n)
 			}
 		}
@@ -1319,6 +1320,10 @@ func exportIR(s *session) (result []byte, err error) {
 			b.nodes[last-1].next = block
 		}
 		last = block
+		previousAwait := b.awaitReturnOwner
+		if b.moduleAsync[file] {
+			b.awaitReturnOwner = file.AsNode()
+		}
 		previousUsing := b.usingStack
 		if b.hasUsingDeclarations(file.Statements.Nodes) {
 			b.usingStack = b.newUsingStack()
@@ -1343,6 +1348,7 @@ func exportIR(s *session) (result []byte, err error) {
 			b.nodes[block-1].children = b.wrapUsing(file.AsNode(), b.usingStack, b.nodes[block-1].children)
 		}
 		b.usingStack = previousUsing
+		b.awaitReturnOwner = previousAwait
 	}
 	b.initializeDynamicModules(files, s.file)
 	b.initializeModuleNamespaces()

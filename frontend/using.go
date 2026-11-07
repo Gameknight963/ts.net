@@ -34,12 +34,10 @@ func (b *irBuilder) registerUsingBinding(n *ast.Node, row *irNode) {
 	if flags&ast.NodeFlagsUsing == 0 {
 		return
 	}
-	if flags&ast.NodeFlagsAwaitUsing == ast.NodeFlagsAwaitUsing {
-		owner := enclosingAsyncFunction(n)
-		if owner == nil || ast.GetCombinedModifierFlags(owner)&ast.ModifierFlagsAsync == 0 {
-			b.unsupported(n)
-		}
+	if flags&ast.NodeFlagsAwaitUsing == ast.NodeFlagsAwaitUsing && (b.awaitReturnOwner == nil || awaitOwner(n) != b.awaitReturnOwner) {
+		b.unsupported(n)
 	}
+
 	parent := n.Parent
 	// Iteration binds the value before entering its per-iteration cleanup scope.
 	if parent != nil && parent.Parent != nil && parent.Parent.Kind == ast.KindForOfStatement {

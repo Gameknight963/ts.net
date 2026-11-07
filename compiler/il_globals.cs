@@ -24,7 +24,9 @@ internal static partial class CompilerFunctions
         int owner = scalar_owner(entry, b.node_parents, c);
         if (owner == 0) return false;
         int body = get_node(owner, c).left;
-        return body != 0 && get_node(body, c).kind == NodeKind.Block && get_node(body, c).constant && il_binding_scope(entry, c, b) == owner;
+        if (body == 0 || get_node(body, c).kind != NodeKind.Block || !get_node(body, c).constant) return false;
+        int scope = il_binding_scope(entry, c, b);
+        return scope == owner || get_node(entry, c).kind == NodeKind.AsyncBindingScope && scope == body;
     }
     internal static void il_globals(int program, Compiler c, IlBackend b)
     {
@@ -32,10 +34,10 @@ internal static partial class CompilerFunctions
         for (int i = 1; i <= c.node_store.count(); i++)
         {
             Node n = get_node(i, c);
-            if ((n.kind == NodeKind.Variable || n.kind == NodeKind.Binding) && n.symbol != 0 && (scalar_owner(i, b.node_parents, c) == 0 || il_module_binding(i, c, b)) && b.capture_fields.at(n.symbol) == 0)
+            if ((n.kind == NodeKind.Variable || n.kind == NodeKind.Binding || n.kind == NodeKind.AsyncBindingScope) && n.symbol != 0 && (scalar_owner(i, b.node_parents, c) == 0 || il_module_binding(i, c, b)) && b.capture_fields.at(n.symbol) == 0)
             {
                 declarations.at_mut(n.symbol) = (int)i;
-                if ((n.kind == NodeKind.Variable && n.fourth != 0) || (n.kind == NodeKind.Binding && n.name != 0 && is_text(n.name, text_var, c))) { b.global_vars.at_mut(n.symbol) = 1; }
+                if ((n.kind == NodeKind.Variable && n.fourth != 0) || ((n.kind == NodeKind.Binding || n.kind == NodeKind.AsyncBindingScope) && n.name != 0 && is_text(n.name, text_var, c))) { b.global_vars.at_mut(n.symbol) = 1; }
             }
         }
         for (int i = 1; i <= c.node_store.count(); i++)
