@@ -11,9 +11,44 @@ public static partial class Js
                 var date = RequireDate(receiver);
                 if (double.IsNaN(date.Timestamp)) return "Invalid Date";
                 var culture = CaseCulture(FunctionArgument(arguments, 0));
-                if (!IsUndefined(FunctionArgument(arguments, 1))) throw new NotSupportedException("Date locale formatting options are not supported");
-                return TimeZoneInfo.ConvertTime(NativeDate(date), TimeZoneInfo.Local).ToString(item.Item2, culture);
+                return FormatLocaleDate(date, culture, FunctionArgument(arguments, 1), item.Item2);
             }));
+    }
+    static readonly string[] UnsupportedDateLocaleOptions = { "weekday", "era", "year", "month", "day", "hour", "minute", "second", "fractionalSecondDigits", "timeZoneName", "dayPeriod", "hour12", "hourCycle", "calendar", "numberingSystem" };
+    static string FormatLocaleDate(JsDate date, CultureInfo culture, object optionValue, string mode)
+    {
+        if (IsUndefined(optionValue)) return TimeZoneInfo.ConvertTime(NativeDate(date), TimeZoneInfo.Local).ToString(mode, culture);
+        TsObject options = ToObject(optionValue);
+        string Option(string name)
+        {
+            object value = options.Get(name);
+            return IsUndefined(value) ? null : StringValue(value);
+        }
+        string dateStyle = Option("dateStyle"), timeStyle = Option("timeStyle");
+        static bool ValidStyle(string style) => style is null or "full" or "long" or "medium" or "short";
+        if (!ValidStyle(dateStyle) || !ValidStyle(timeStyle)) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid date or time style");
+        if (mode == "d" && timeStyle != null || mode == "T" && dateStyle != null)
+            throw new InvalidOperationException("This date method does not accept the requested style");
+        foreach (string component in UnsupportedDateLocaleOptions)
+            if (!IsUndefined(options.Get(component)))
+                throw new NotSupportedException("Date locale formatting option " + component + " is not supported");
+        string matcher = Option("localeMatcher");
+        if (matcher != null && matcher is not ("lookup" or "best fit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
+        string formatMatcher = Option("formatMatcher");
+        if (formatMatcher != null && formatMatcher is not ("basic" or "best fit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid format matcher");
+        string zoneName = Option("timeZone");
+        TimeZoneInfo zone;
+        try { zone = zoneName == null ? TimeZoneInfo.Local : TimeZoneInfo.FindSystemTimeZoneById(zoneName); }
+        catch (TimeZoneNotFoundException) { throw new ArgumentOutOfRangeException(nameof(optionValue), "Unknown time zone"); }
+        catch (InvalidTimeZoneException) { throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid time zone"); }
+        var native = NativeDate(date);
+        var local = TimeZoneInfo.ConvertTime(native, zone);
+        if (dateStyle == null && timeStyle == null) return local.ToString(mode, culture);
+        // CLR cultures provide short and long date patterns, rather than Intl's four widths.
+        string dateText = dateStyle == null ? null : local.ToString(dateStyle is "short" or "medium" ? "d" : "D", culture);
+        string timeText = timeStyle == null ? null : local.ToString(timeStyle == "short" ? "t" : "T", culture);
+        if (timeStyle is "long" or "full") timeText += " " + (zone.IsDaylightSavingTime(native) ? zone.DaylightName : zone.StandardName);
+        return dateText == null ? timeText : timeText == null ? dateText : dateText + " " + timeText;
     }
     static string LocalDateText(object receiver, int mode)
     {
