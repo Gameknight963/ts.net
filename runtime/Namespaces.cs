@@ -49,7 +49,12 @@ public static partial class Js
         {
             this.text = text;
             var prototype = new JsBoxedPrimitive(text ? "" : BoxBoolean(false), true);
-            if (text) { DefineStringFormatting(prototype); DefineStringBoundaries(prototype); }
+            if (text)
+            {
+                DefineStringFormatting(prototype); DefineStringBoundaries(prototype);
+                Member("fromCharCode", new JsFunction((FunctionBody)StringFromCharCode, null, "fromCharCode", 1));
+                Member("fromCodePoint", new JsFunction((FunctionBody)StringFromCodePoint, null, "fromCodePoint", 1));
+            }
             prototype.DefineHidden("constructor", this);
             prototype.DefineHidden("valueOf", PrimitiveMethod(prototype.Value, false));
             prototype.DefineHidden("toString", PrimitiveMethod(prototype.Value, true));
