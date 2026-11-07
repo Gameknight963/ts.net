@@ -33,6 +33,8 @@ public static partial class Js
     {
         internal ArrayConstructorFunction() : base("Array", static args => CreateArray(args), 1)
         {
+            string speciesKey = PropertyKey(SpeciesSymbol); var getter = new ArraySpeciesGetter();
+            Member(speciesKey, Undefined); DefineAccessor(speciesKey, getter, 1); getter.InferPropertyName("get [Symbol.species]");
             var prototype = new ArrayPrototypeObject();
             UseObjectPrototype(prototype); prototype.Member("constructor", this); prototype.Member("toString", new ArrayStringFunction());
             foreach (string name in new[] { "at", "push", "pop", "slice", "reverse", "indexOf", "includes", "join", "map", "filter", "forEach", "every", "some", "reduce", "reduceRight", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "lastIndexOf", "toReversed", "toSorted", "sort", "toLocaleString", "keys", "values", "entries", "concat", "splice", "shift", "unshift", "toSpliced", "with", "fill", "copyWithin" })

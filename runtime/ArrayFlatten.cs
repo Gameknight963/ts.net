@@ -26,7 +26,8 @@ public static partial class Js
                 if (!IsUndefined(argument)) { depth = Number(argument); depth = double.IsNaN(depth) || depth < 0 ? 0 : Math.Truncate(depth); }
             }
             object thisValue = FunctionArgument(arguments, 1);
-            var result = new JsArray(0);
+            var result = ArraySpeciesCreate(source, 0);
+            long output = 0;
             var stack = new List<FlattenFrame> { new(source, length, depth, map) };
             while (stack.Count != 0)
             {
@@ -44,7 +45,7 @@ public static partial class Js
                     if (stack.Count >= 65536) throw new ArgumentOutOfRangeException(nameof(receiver), "Maximum flatten depth exceeded");
                     stack.Add(new FlattenFrame(array, IndexedLength(array), frame.Depth - 1, false));
                 }
-                else result.Append(value);
+                else { if (output >= 9007199254740991L) throw new InvalidOperationException("Flattened array is too long"); ArraySpeciesSet(result, output++, value); }
             }
             return result;
         }

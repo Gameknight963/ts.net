@@ -44,8 +44,8 @@ public static partial class Js
             object thisValue = FunctionArgument(arguments, 1);
             bool find = kind is ArrayCallbackKind.Find or ArrayCallbackKind.FindIndex or ArrayCallbackKind.FindLast or ArrayCallbackKind.FindLastIndex;
             bool backwards = kind is ArrayCallbackKind.FindLast or ArrayCallbackKind.FindLastIndex;
-            JsArray result = kind is ArrayCallbackKind.Map or ArrayCallbackKind.Filter ? new JsArray(0) : null;
-            if (kind == ArrayCallbackKind.Map) result.SetLength(length);
+            TsObject result = kind is ArrayCallbackKind.Map or ArrayCallbackKind.Filter ? ArraySpeciesCreate(source, kind == ArrayCallbackKind.Map ? length : 0) : null;
+            long selected = 0;
             for (long i = backwards ? length - 1 : 0; i >= 0 && i < length; i += backwards ? -1 : 1)
             {
                 object value;
@@ -53,8 +53,8 @@ public static partial class Js
                 else if (!TryIndexedValue(source, i, out value)) continue;
                 object mapped = callback.InvokeWithReceiver(thisValue, new object[] { value, (double)i, source });
                 if (find && Truthy(mapped)) return kind is ArrayCallbackKind.FindIndex or ArrayCallbackKind.FindLastIndex ? (object)(double)i : value;
-                if (kind == ArrayCallbackKind.Map) result.Set(i.ToString(CultureInfo.InvariantCulture), mapped);
-                else if (kind == ArrayCallbackKind.Filter) { if (Truthy(mapped)) result.Append(value); }
+                if (kind == ArrayCallbackKind.Map) ArraySpeciesSet(result, i, mapped);
+                else if (kind == ArrayCallbackKind.Filter) { if (Truthy(mapped)) ArraySpeciesSet(result, selected++, value); }
                 else if (kind == ArrayCallbackKind.Every && !Truthy(mapped)) return BoxBoolean(false);
                 else if (kind == ArrayCallbackKind.Some && Truthy(mapped)) return BoxBoolean(true);
             }

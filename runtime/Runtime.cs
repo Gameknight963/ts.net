@@ -264,7 +264,7 @@ public static partial class Js
 
     public static object Slice(object receiver, object start, object end)
     {
-        if (receiver is JsArray array) return array.Slice(start, end);
+        if (receiver is JsArray) return SliceArrayLike(receiver, start, end);
         if (receiver is string text)
         {
             uint first = JsArray.SliceBound(start, (uint)text.Length);

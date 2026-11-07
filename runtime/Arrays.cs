@@ -146,6 +146,19 @@ public partial class JsArray : TsObject
         uint last = Js.IsUndefined(end) ? length : SliceBound(end, length);
         return SliceRange(first, last > first ? last - first : 0);
     }
+    internal bool CanCopySliceRange(uint start, uint count)
+    {
+        if (HasPropertyOverrides) return false;
+        if (this is NumberArray numeric && numeric.TryPacked((double)start + count) != null) return true;
+        if (GetType() == typeof(JsArray) && (ulong)start + count <= values.Length && (ulong)start + count <= (ulong)values.Dense.Length)
+        {
+            bool present = true;
+            for (uint index = start; index < start + count; index++) if (ReferenceEquals(values.Dense[index], Hole)) { present = false; break; }
+            if (present) return true;
+        }
+        return Js.ArraySlicePrototypesHaveNoIndices();
+    }
+    internal JsArray CopySliceRange(uint start, uint count) => SliceRange(start, count);
     protected virtual JsArray SliceRange(uint start, uint count) => new JsArray(values.Slice(start, count));
     public void SetLength(double length)
     {

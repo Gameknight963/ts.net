@@ -8,7 +8,7 @@ public static partial class Js
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
             var source = ToObject(receiver);
-            var result = new JsArray(0);
+            var result = ArraySpeciesCreate(source, 0);
             long position = 0;
             void Append(object item)
             {
@@ -21,19 +21,19 @@ public static partial class Js
                 {
                     var indexed = (TsObject)item;
                     long length = IndexedLength(indexed);
-                    if (position + length > uint.MaxValue) throw new ArgumentOutOfRangeException(nameof(receiver), "Invalid array length");
+                    if (position + length > 9007199254740991L) throw new ArgumentOutOfRangeException(nameof(receiver), "Invalid array length");
                     for (long index = 0; index < length; index++, position++)
-                        if (TryIndexedValue(indexed, index, out object value)) result.Set(position.ToString(CultureInfo.InvariantCulture), value);
+                        if (TryIndexedValue(indexed, index, out object value)) ArraySpeciesSet(result, position, value);
                 }
                 else
                 {
-                    if (position == uint.MaxValue) throw new ArgumentOutOfRangeException(nameof(receiver), "Invalid array length");
-                    result.Set((position++).ToString(CultureInfo.InvariantCulture), item);
+                    if (position == 9007199254740991L) throw new ArgumentOutOfRangeException(nameof(receiver), "Invalid array length");
+                    ArraySpeciesSet(result, position++, item);
                 }
             }
             Append(source);
             foreach (object item in arguments) Append(item);
-            result.SetLength(position); return result;
+            result.Set("length", (double)position); return result;
         }
     }
 }

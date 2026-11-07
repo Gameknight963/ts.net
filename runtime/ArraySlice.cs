@@ -5,7 +5,6 @@ public static partial class Js
 {
     static object SliceArrayLike(object receiver, object start, object end)
     {
-        if (receiver is JsArray array) return array.Slice(start, end);
         var source = ToObject(receiver);
         long length = IndexedLength(source);
         long Bound(object argument)
@@ -17,9 +16,11 @@ public static partial class Js
         long first = Bound(start), last = IsUndefined(end) ? length : Bound(end);
         long count = Math.Max(last - first, 0);
         if (count > uint.MaxValue) throw new ArgumentOutOfRangeException(nameof(receiver), "Invalid array length");
-        var result = new JsArray(0); result.SetLength(count);
+        var constructor = ArraySpeciesConstructor(source, out bool native);
+        if (native && source is JsArray array && array.CanCopySliceRange((uint)first, (uint)count)) return array.CopySliceRange((uint)first, (uint)count);
+        var result = ArraySpeciesCreate(constructor, count);
         for (long index = 0; index < count; index++)
-            if (TryIndexedValue(source, first + index, out object value)) result.Set(index.ToString(CultureInfo.InvariantCulture), value);
-        return result;
+            if (TryIndexedValue(source, first + index, out object value)) ArraySpeciesSet(result, index, value);
+        result.Set("length", (double)count); return result;
     }
 }

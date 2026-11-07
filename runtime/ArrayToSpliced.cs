@@ -24,9 +24,10 @@ public static partial class Js
             if (mutate)
             {
                 if (removed > uint.MaxValue) throw new ArgumentOutOfRangeException(nameof(receiver), "Invalid array length");
-                var deleted = new JsArray(0); deleted.SetLength(removed);
+                var deleted = ArraySpeciesCreate(source, removed);
                 for (long i = 0; i < removed; i++)
-                    if (TryIndexedValue(source, start + i, out object value)) deleted.Set(i.ToString(CultureInfo.InvariantCulture), value);
+                    if (TryIndexedValue(source, start + i, out object value)) ArraySpeciesSet(deleted, i, value);
+                deleted.Set("length", (double)removed);
                 void Delete(long index)
                 {
                     if (!source.DeleteOwn(index.ToString(CultureInfo.InvariantCulture))) throw new InvalidOperationException("Cannot delete array-like property");
