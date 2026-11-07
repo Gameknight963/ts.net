@@ -23,3 +23,13 @@ foreach (string locale in new[] { "en-US", "en-GB", "de-DE", "ja-JP" }) {
  }
 }
 Console.WriteLine("PASS 96 native date/time style and zone combinations");
+
+var fields = new JsDynamicObject();
+fields.DefineOwn("timeZone", "UTC"); fields.DefineOwn("year", "numeric"); fields.DefineOwn("month", "2-digit");
+var dateMethod = (JsFunction)date.Get("toLocaleDateString");
+string numericMonth = (string)dateMethod.InvokeWithReceiver(date, new object[] { "de-DE", fields });
+if (numericMonth != "02.2024") throw new Exception("Native German date separator was not retained");
+fields = new JsDynamicObject(); fields.DefineOwn("timeZone", "UTC"); fields.DefineOwn("era", "short");
+string era = (string)dateMethod.InvokeWithReceiver(date, new object[] { "en-US", fields });
+if (era != utc.ToString("gg", CultureInfo.GetCultureInfo("en-US"))) throw new Exception("Native era name was not retained");
+Console.WriteLine("PASS native date component separators and era names");
