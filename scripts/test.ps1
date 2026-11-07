@@ -18,6 +18,11 @@ try {
     & dotnet tests/inspect-weak-ref/bin/Release/net10.0/Inspect.dll
     if ($LASTEXITCODE) { throw 'WeakRef lifetime checks failed' }
 
+    & dotnet build tests/inspect-symbol-keys/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Symbol key inspector build failed' }
+    & dotnet tests/inspect-symbol-keys/bin/Release/net10.0/Inspect.dll
+    if ($LASTEXITCODE) { throw 'Symbol key lifetime checks failed' }
+
     # Cross read-buffer boundaries, retain IDs through repeated vector growth,
     # and preserve UTF-8 source bytes, a BOM, and CRLF line endings.
     $boundary = New-Object System.Text.StringBuilder
