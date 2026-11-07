@@ -20,6 +20,14 @@ public partial class JsFunction : TsObject
     readonly RawNumberFunction2 raw2;
     string name;
     readonly int length;
+    bool deletedName, deletedLength;
+    protected bool HasIntrinsicLength => !deletedLength;
+    internal void ReplaceIntrinsicMetadata(string key)
+    {
+        if (key == "name") deletedName = true;
+        else if (key == "length") deletedLength = true;
+    }
+    internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.SharedFunctionPrototype;
     public JsFunction(object body, object numeric, string name, int length)
     {
         this.body = (FunctionBody)body;
@@ -37,17 +45,23 @@ public partial class JsFunction : TsObject
     public virtual double? InvokeMethodNumber2(object receiver,double? first,double? second)=>InvokeNumber2(first,second);
     public virtual object Construct(object[] arguments) => ConstructOrdinary(arguments);
     public virtual bool HasInstance(object value) => OrdinaryHasInstance(value);
-    internal override bool IsReadOnlyOwnProperty(string key) => key is "name" or "length";
-    public override object GetWithReceiver(string key, object receiver) => !HasOwn(key) && key is "call" or "apply" or "bind" or "constructor" ? Get(key) : base.GetWithReceiver(key, receiver);
+    internal override bool IsReadOnlyOwnProperty(string key) => key == "name" && !deletedName || key == "length" && !deletedLength;
     internal void InferPropertyName(string value) { name = value; }
-    public override bool HasOwn(string key) => key == "name" || key == "length" || key == "prototype" && ordinaryPrototype != null || base.HasOwn(key);
-    public override bool HasProperty(string key)=>HasOwn(key) || key is "call" or "apply" or "bind" || base.HasProperty(key);
-    public override object Get(string key) => key == "prototype" && ordinaryPrototype != null ? ReadOrdinaryPrototype() : base.HasOwn(key)?base.Get(key):key == "name" ? name : key == "length" ? (double)length : key is "call" or "apply" or "bind"?Js.FunctionMethod(key):key=="constructor"?Js.Undefined:base.Get(key);
+    public override bool HasOwn(string key) => key == "name" && !deletedName || key == "length" && !deletedLength || key == "prototype" && ordinaryPrototype != null || base.HasOwn(key);
+    public override bool HasProperty(string key)=>HasOwn(key) || base.HasProperty(key);
+    public override object Get(string key) => key == "prototype" && ordinaryPrototype != null ? ReadOrdinaryPrototype() : base.HasOwn(key)?base.Get(key):key == "name" && !deletedName ? name : key == "length" && !deletedLength ? (double)length : base.Get(key);
     public override object Set(string key, object value)
     {
         if (key == "prototype" && ordinaryPrototype != null) { ordinaryPrototype = value ?? NullPrototypeValue; return value; }
-        if (key == "name" || key == "length") throw new InvalidOperationException("Function property is read-only");
+        if (IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Function property is read-only");
         return base.Set(key, value);
+    }
+    public override bool DeleteOwn(string key)
+    {
+        if (key == "name" && !deletedName) { deletedName = true; return !base.HasOwn(key) || base.DeleteOwn(key); }
+        if (key == "length" && !deletedLength) { deletedLength = true; return !base.HasOwn(key) || base.DeleteOwn(key); }
+        if (key == "prototype" && ordinaryPrototype != null) return false;
+        return base.DeleteOwn(key);
     }
     public object Invoke(object[] arguments) => body(arguments);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

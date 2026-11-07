@@ -10,6 +10,7 @@ public class JsClassInstance : TsObject
     HashSet<string> hidden;
     internal override object ForInOwnKeys() => base.OwnKeys();
     internal override bool ForInEnumerable(string key) => hidden == null || !hidden.Contains(key);
+    public override bool DeleteOwn(string key) { bool removed = base.DeleteOwn(key); if (removed) hidden?.Remove(key); return removed; }
     internal override bool HasInProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasInProperty(key);
     public override bool HasProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasProperty(key);
     public override object Get(string key) => GetWithReceiver(key, this);
@@ -53,6 +54,7 @@ public sealed class JsClassFunction : JsFunction
         Prototype.ParentPrototype = Parent is not null ? (TsObject)parentPrototype : derived ? null : Js.DefaultClassObjectPrototype;
         Prototype.DefineMethod("constructor", this);
     }
+    public override bool DeleteOwn(string key) { bool removed = base.DeleteOwn(key); if (removed) hidden.Remove(key); return removed; }
     internal override bool IsReadOnlyOwnProperty(string key) => key == "prototype" || base.IsReadOnlyOwnProperty(key);
     public override bool HasOwn(string key) => key == "prototype" || base.HasOwn(key);
     public override bool HasProperty(string key) => HasOwn(key) || (Parent is not null ? Parent.HasProperty(key):base.HasProperty(key));
@@ -67,10 +69,10 @@ public sealed class JsClassFunction : JsFunction
         if (HasOwn(key) && IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Property is read-only");
         DefineOwn(key, value); return value;
     }
-    internal void DefineClassAccessor(string key, object function, int mode) { if (key == "prototype") throw Js.MakeThrown(new JsCaughtError("TypeError", "Cannot redefine class prototype")); DefineAccessor(key, function, mode); hidden.Add(key); }
+    internal void DefineClassAccessor(string key, object function, int mode) { if (key == "prototype") throw Js.MakeThrown(new JsCaughtError("TypeError", "Cannot redefine class prototype")); ReplaceIntrinsicMetadata(key); DefineAccessor(key, function, mode); hidden.Add(key); }
     internal void DefineMethod(string name, object value, bool isStatic)
     {
-        if (isStatic) { if (name == "prototype") throw Js.MakeThrown(new JsCaughtError("TypeError", "Cannot redefine class prototype")); DefineOwn(name, value); hidden.Add(name); } else Prototype.DefineMethod(name, value);
+        if (isStatic) { if (name == "prototype") throw Js.MakeThrown(new JsCaughtError("TypeError", "Cannot redefine class prototype")); ReplaceIntrinsicMetadata(name); DefineOwn(name, value); hidden.Add(name); } else Prototype.DefineMethod(name, value);
     }
     public override object OwnKeys()
     {
@@ -78,7 +80,7 @@ public sealed class JsClassFunction : JsFunction
         for (uint i = 0; i < keys.Length(); i++) { object key = keys.ElementAt(i); if (!hidden.Contains((string)key)) result.Append(key); }
         return result;
     }
-    internal void DefineField(string key, object value) { if (key == "prototype") throw Js.MakeThrown(new JsCaughtError("TypeError", "Cannot redefine class prototype")); DefineOwn(key, value); hidden.Remove(key); }
+    internal void DefineField(string key, object value) { if (key == "prototype") throw Js.MakeThrown(new JsCaughtError("TypeError", "Cannot redefine class prototype")); ReplaceIntrinsicMetadata(key); DefineOwn(key, value); hidden.Remove(key); }
     internal void InitializeFields(object instance) => fields.InvokeWithReceiver(instance, Array.Empty<object>());
     internal object Initialize(object instance, object[] arguments)
     {
