@@ -31,9 +31,14 @@ public static partial class Js
 {
     public static int Run(Action entry)
     {
-        try { entry(); DrainPromiseJobs(); CheckModuleEvaluations(); return 0; }
+        try
+        {
+            entry();
+            do { DrainPromiseJobs(); } while (RunNextTimer());
+            CheckModuleEvaluations(); return 0;
+        }
         catch (Exception error) { Console.Error.WriteLine(error); return 1; }
-        finally { promiseJobs?.Clear(); unhandledPromises?.Clear(); ClearKeptWeakTargets(); ClearModuleEvaluations(); }
+        finally { ClearTimers(); promiseJobs?.Clear(); unhandledPromises?.Clear(); ClearKeptWeakTargets(); ClearModuleEvaluations(); }
     }
     private sealed class UndefinedValue { }
     public static readonly object Undefined = new UndefinedValue();
