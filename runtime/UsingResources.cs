@@ -5,7 +5,7 @@ public static partial class Js
 {
     sealed class UsingResources
     {
-        readonly List<(TsObject Value, JsFunction Dispose)> resources = new();
+        readonly List<(TsObject Value, JsFunction Dispose, bool Await, bool AsyncMethod)> resources = new();
         internal bool HasError;
         internal object Error;
         internal object Add(object value)
@@ -13,8 +13,51 @@ public static partial class Js
             if (IsNullish(value)) return value;
             if (value is not TsObject resource) throw new InvalidOperationException("Using resource must be an object");
             if (resource.Get(PropertyKey(DisposeSymbol)) is not JsFunction dispose) throw new InvalidOperationException("Using resource has no callable Symbol.dispose method");
-            resources.Add((resource, dispose));
+            resources.Add((resource, dispose, false, false));
             return value;
+        }
+        internal object AddAsync(object value)
+        {
+            if (IsNullish(value)) { resources.Add((null, null, true, false)); return value; }
+            if (value is not TsObject resource) throw new InvalidOperationException("Using resource must be an object");
+            object method = resource.Get(PropertyKey(AsyncDisposeSymbol));
+            bool asyncMethod = !IsNullish(method);
+            if (!asyncMethod) method = resource.Get(PropertyKey(DisposeSymbol));
+            if (method is not JsFunction dispose) throw new InvalidOperationException("Using resource has no callable disposal method");
+            resources.Add((resource, dispose, true, asyncMethod));
+            return value;
+        }
+        internal object DisposeAsync()
+        {
+            object pending = Error; bool failed = HasError;
+            Error = null; HasError = false;
+            var result = new JsPromise();
+            void Record(object reason)
+            {
+                if (failed) {
+                    var combined = new JsCaughtError("SuppressedError", "An error was suppressed during disposal.");
+                    combined.DefineHidden("error", reason); combined.DefineHidden("suppressed", pending); pending = combined;
+                } else {pending = reason; failed = true;}
+            }
+            void Advance()
+            {
+                while (resources.Count != 0) {
+                    int index = resources.Count - 1;
+                    var resource = resources[index]; resources.RemoveAt(index);
+                    object value;
+                    try { value = resource.Dispose == null ? Undefined : resource.Dispose.InvokeWithReceiver(resource.Value, Array.Empty<object>()); }
+                    catch (Exception exception) { Record(CaughtValue(exception)); continue; }
+                    if (!resource.Await) continue;
+                    var awaited = new JsPromise();
+                    // A synchronous fallback ignores its return value.
+                    awaited.ResolveValue(resource.AsyncMethod ? value : Undefined);
+                    awaited.Then(new PromiseReaction(null, null, null, (reason, rejected) => { if (rejected) Record(reason); Advance(); }));
+                    return;
+                }
+                result.Settle(failed ? pending : Undefined, failed);
+            }
+            Advance();
+            return result;
         }
         internal object Dispose()
         {
@@ -39,6 +82,8 @@ public static partial class Js
     }
     static class UsingFunctions
     {
+        internal static readonly JsFunction AddAsync = new((FunctionBody)(static args => ((UsingResources)FunctionArgument(args, 0)).AddAsync(FunctionArgument(args, 1))), null, "", 2);
+        internal static readonly JsFunction DisposeAsync = new((FunctionBody)(static args => ((UsingResources)FunctionArgument(args, 0)).DisposeAsync()), null, "", 1);
         internal static readonly JsFunction Stack = new((FunctionBody)(static _ => new UsingResources()), null, "", 0);
         internal static readonly JsFunction Add = new((FunctionBody)(static args => ((UsingResources)FunctionArgument(args, 0)).Add(FunctionArgument(args, 1))), null, "", 2);
         internal static readonly JsFunction Error = new((FunctionBody)(static args => {

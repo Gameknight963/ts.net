@@ -31,6 +31,7 @@ type irLabel struct {
 }
 type irBuilder struct {
 	usingFor              *ast.Node
+	usingAsync            map[int]bool
 	usingStack            int
 	dynamicNumericReturns map[*ast.Node]bool
 	awaitReturnOwner      *ast.Node
@@ -1196,9 +1197,6 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		}
 		if s.Initializer.Kind == ast.KindVariableDeclarationList {
 			flags := ast.GetCombinedNodeFlags(s.Initializer)
-			if flags&ast.NodeFlagsAwaitUsing == ast.NodeFlagsAwaitUsing {
-				b.unsupported(n)
-			}
 			if flags&ast.NodeFlagsBlockScoped != 0 {
 				row.constant = 1
 			}
