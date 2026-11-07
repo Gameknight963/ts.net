@@ -46,7 +46,7 @@ public static partial class Js
     sealed class ErrorConstructor : NativeNamespaceFunction
     {
         readonly string family;
-        internal ErrorConstructor(string name, ErrorConstructor parent) : base(name, (FunctionBody)(arguments => NewError(name, arguments)), name == "AggregateError" ? 2 : 1)
+        internal ErrorConstructor(string name, ErrorConstructor parent) : base(name, (FunctionBody)(arguments => NewError(name, arguments)), name == "SuppressedError" ? 3 : name == "AggregateError" ? 2 : 1)
         {
             family = name;
             if (parent is null) Member("isError", new JsFunction((FunctionBody)(static args => BoxBoolean(FunctionArgument(args, 0) is JsCaughtError)), null, "isError", 1));
@@ -76,18 +76,22 @@ public static partial class Js
         {
             var root = new ErrorConstructor("Error", null);
             var values = new Dictionary<string, JsFunction> { ["Error"] = root };
-            foreach (string name in new[] { "TypeError", "RangeError", "ReferenceError", "SyntaxError", "URIError", "EvalError", "AggregateError" }) values[name] = new ErrorConstructor(name, root);
+            foreach (string name in new[] { "TypeError", "RangeError", "ReferenceError", "SyntaxError", "URIError", "EvalError", "AggregateError", "SuppressedError" }) values[name] = new ErrorConstructor(name, root);
             return values;
         }
     }
     public static object GetErrorConstructor(string name) => ErrorConstructors.Values[name];
     static object NewError(string name, object[] arguments)
     {
-        int offset = name == "AggregateError" ? 1 : 0;
+        int offset = name == "SuppressedError" ? 2 : name == "AggregateError" ? 1 : 0;
         object message = FunctionArgument(arguments, offset), options = FunctionArgument(arguments, offset + 1);
         bool hasMessage = !IsUndefined(message); string text = hasMessage ? StringValue(message) : "";
-        bool hasCause = options is TsObject obj && obj.HasProperty("cause");
+        bool hasCause = name != "SuppressedError" && options is TsObject obj && obj.HasProperty("cause");
         var result = new JsCaughtError(name, text, hasMessage, hasCause ? Get(options, "cause") : null, hasCause);
+        if (name == "SuppressedError") {
+            result.DefineHidden("error", FunctionArgument(arguments, 0));
+            result.DefineHidden("suppressed", FunctionArgument(arguments, 1));
+        }
         if (name == "AggregateError")
         {
             object input = Iteration.Start(FunctionArgument(arguments, 0)); var errors = new JsArray(0);

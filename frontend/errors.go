@@ -2,7 +2,7 @@ package main
 
 func errorKind(name string) bool {
 	switch name {
-	case "Error", "TypeError", "RangeError", "ReferenceError", "SyntaxError", "URIError", "EvalError", "AggregateError":
+	case "Error", "TypeError", "RangeError", "ReferenceError", "SyntaxError", "URIError", "EvalError", "AggregateError", "SuppressedError":
 		return true
 	}
 	return false
