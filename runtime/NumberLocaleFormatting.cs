@@ -48,6 +48,7 @@ public static partial class Js
         internal readonly CultureInfo culture;
         internal readonly int minimum, maximum, integerDigits;
         internal readonly int roundingIncrement;
+        readonly int minimumGroupingWidth;
         internal readonly bool grouping;
         internal readonly object groupingOption;
         internal readonly string signDisplay;
@@ -167,7 +168,7 @@ public static partial class Js
                     {
                         "auto" or "always" => text,
                         "true" or "false" => "auto",
-                        "min2" => throw new NotSupportedException("Minimum grouping threshold is not supported"),
+                        "min2" => text,
                         _ => throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid grouping option")
                     } : "always";
                 }
@@ -181,6 +182,12 @@ public static partial class Js
                 info.NumberGroupSizes = info.PercentGroupSizes;
                 positivePattern = (0.01d).ToString("P0", culture);
                 negativePattern = (-0.01d).ToString("P0", culture);
+            }
+            minimumGroupingWidth = int.MaxValue;
+            if (groupingOption is "min2")
+            {
+                int[] sizes = culture.NumberFormat.NumberGroupSizes;
+                if (sizes.Length > 0 && sizes[0] > 0) minimumGroupingWidth = sizes[0] + 2;
             }
             format = (grouping ? "N" : "F") + maximum.ToString(CultureInfo.InvariantCulture);
         }
@@ -208,7 +215,7 @@ public static partial class Js
         string FiniteNumber(double value)
         {
             // Safe integers need no decimal rounding and retain native formatting.
-            if (roundingIncrement == 1 && style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
+            if (groupingOption is not "min2" && roundingIncrement == 1 && style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
             string raw = Math.Abs(value).ToString("R", CultureInfo.InvariantCulture);
             int split = raw.IndexOf('E');
             int exponent = split < 0 ? 0 : int.Parse(raw.AsSpan(split + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
@@ -230,20 +237,38 @@ public static partial class Js
             if (RoundUp(quotient, remainder, denominator, negative)) quotient++;
             return quotient * roundingIncrement;
         }
+        bool UseMinimumGrouping(int width)
+        {
+            return Math.Max(width, integerDigits) >= minimumGroupingWidth;
+        }
         string QuantizedText(BigInteger digits, bool negative)
         {
             BigInteger whole = BigInteger.DivRem(digits, BigInteger.Pow(10, maximum), out var fraction);
-            string result = whole.ToString(grouping ? "N0" : "F0", culture);
+            bool useGroups = grouping;
+            if (groupingOption is "min2")
+                useGroups = UseMinimumGrouping(whole.ToString(CultureInfo.InvariantCulture).Length);
+            string result = whole.ToString(useGroups ? "N0" : "F0", culture);
             if (maximum != 0) result += culture.NumberFormat.NumberDecimalSeparator + fraction.ToString(CultureInfo.InvariantCulture).PadLeft(maximum, '0');
             return negative ? culture.NumberFormat.NegativeSign + result : result;
         }
         internal string Format<T>(T value, bool finite) where T : struct, IFormattable
         {
             string result = finite && value is double numberValue ? FiniteNumber(numberValue)
-                : roundingIncrement != 1 && value is BigInteger quantizedInteger
+                : (roundingIncrement != 1 || groupingOption is "min2") && value is BigInteger quantizedInteger
                     ? QuantizedText(Quantize(BigInteger.Abs(quantizedInteger), maximum + (style == "percent" ? 2 : 0), quantizedInteger.Sign < 0), quantizedInteger.Sign < 0)
                 : style == "percent" && value is BigInteger integerValue ? (integerValue * 100).ToString(format, culture) : value.ToString(format, culture);
-            if (finite && integerDigits > 1) result = PadLocaleInteger(result, integerDigits, grouping, culture.NumberFormat);
+            if (finite && integerDigits > 1)
+            {
+                bool useGroups = grouping;
+                if (groupingOption is "min2")
+                {
+                    int point = result.IndexOf(culture.NumberFormat.NumberDecimalSeparator, StringComparison.Ordinal);
+                    int width = 0;
+                    for (int i = 0; i < (point < 0 ? result.Length : point); i++) if (char.IsAsciiDigit(result[i])) width++;
+                    useGroups = UseMinimumGrouping(width);
+                }
+                result = PadLocaleInteger(result, integerDigits, useGroups, culture.NumberFormat);
+            }
             if (signDisplay != "auto")
             {
                 bool negative = value is double number ? !double.IsNaN(number) && double.IsNegative(number) : value is System.Numerics.BigInteger integer && integer.Sign < 0;
