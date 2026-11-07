@@ -3,7 +3,7 @@ namespace Tsnet.Compiler;
 
 internal static class NativeFrontend
 {
-    internal static byte[] Read(string path)
+    internal static byte[] Read(string path, bool experimentalDecorators = false)
     {
         string executable = Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "tsnet-frontend.exe" : "tsnet-frontend");
         var start = new System.Diagnostics.ProcessStartInfo(executable)
@@ -13,6 +13,7 @@ internal static class NativeFrontend
             RedirectStandardError = true,
             CreateNoWindow = true
         };
+        if (experimentalDecorators) start.ArgumentList.Add("--experimentalDecorators");
         start.ArgumentList.Add(path);
         using var process = System.Diagnostics.Process.Start(start) ?? throw new CompilationException("Cannot start TypeScript frontend");
         var errors = process.StandardError.ReadToEndAsync();
@@ -30,9 +31,11 @@ internal static class Program
     {
         try
         {
-            if (args.Length != 2) { Console.Error.WriteLine("Usage: tsnetc INPUT.ts OUTPUT.dll"); return 2; }
+            bool experimentalDecorators = args.Contains("--experimentalDecorators");
+            args = args.Where(arg => arg != "--experimentalDecorators").ToArray();
+            if (args.Length != 2) { Console.Error.WriteLine("Usage: tsnetc [--experimentalDecorators] INPUT.ts OUTPUT.dll"); return 2; }
             var compiler = Compiler.create(args[0]);
-            CompilerFunctions.import_frontend(args[0], compiler);
+            CompilerFunctions.import_frontend(args[0], compiler, experimentalDecorators);
             CompilerFunctions.emit_assembly(args[1], compiler);
             return 0;
         }

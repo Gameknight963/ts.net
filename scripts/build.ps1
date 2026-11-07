@@ -2,6 +2,7 @@ param(
     [string]$InputFile = 'examples/structural.ts',
     [string]$OutputDirectory = 'artifacts/app',
     [switch]$Run,
+    [switch]$ExperimentalDecorators,
     [switch]$SkipCompilerBuild,
     [switch]$SkipRuntimeBuild
 )
@@ -23,7 +24,9 @@ try {
         $stalePath = Join-Path $applicationPath $staleName
         if (Test-Path -LiteralPath $stalePath) { Remove-Item -LiteralPath $stalePath }
     }
-    & dotnet "$root/compiler/bin/Release/net10.0/tsnetc.dll" $inputPath "$applicationPath/App.dll"
+    $compilerOptions = @()
+    if ($ExperimentalDecorators) { $compilerOptions += '--experimentalDecorators' }
+    & dotnet "$root/compiler/bin/Release/net10.0/tsnetc.dll" @compilerOptions $inputPath "$applicationPath/App.dll"
     if ($LASTEXITCODE) { throw 'TypeScript compilation failed' }
     # Build the shared runtime incrementally; generated applications go directly
     # from an IL plan to an assembly without compiling generated C# source.

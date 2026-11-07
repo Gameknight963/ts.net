@@ -29,8 +29,9 @@ const (
 )
 
 type session struct {
-	program *compiler.Program
-	file    *ast.SourceFile
+	legacyDecorators bool
+	program          *compiler.Program
+	file             *ast.SourceFile
 }
 
 func encode(value any) string {
@@ -42,7 +43,8 @@ func encode(value any) string {
 }
 func errorReport(message string) string { return encode(map[string]string{"error": message}) }
 
-func load(path string) (*session, string, int) {
+func load(path string) (*session, string, int) { return loadWithOptions(path, false) }
+func loadWithOptions(path string, legacy bool) (*session, string, int) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return nil, errorReport(err.Error()), invalidArgument
@@ -57,6 +59,9 @@ func load(path string) (*session, string, int) {
 		ModuleResolution:  core.ModuleResolutionKindBundler,
 		Types:             []string{},
 		ResolveJsonModule: core.TSTrue,
+	}
+	if legacy {
+		options.ExperimentalDecorators = core.TSTrue
 	}
 	config := &tsoptions.ParsedCommandLine{ParsedConfig: &core.ParsedOptions{
 		FileNames: []string{absolute}, CompilerOptions: options,
@@ -92,7 +97,7 @@ func load(path string) (*session, string, int) {
 		}
 		return nil, encode(map[string]any{"diagnostics": entries}), compilerFailure
 	}
-	return &session{program: program, file: file}, encode(map[string]any{
+	return &session{program: program, file: file, legacyDecorators: legacy}, encode(map[string]any{
 		"file": absolute, "sourceFiles": len(program.GetSourceFiles()), "diagnostics": []any{},
 	}), ok
 }

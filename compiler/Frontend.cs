@@ -33,9 +33,9 @@ internal sealed class IrReader
 }
 internal static partial class CompilerFunctions
 {
-    internal static void import_frontend(TextBytes path, Compiler c)
+    internal static void import_frontend(TextBytes path, Compiler c, bool experimentalDecorators = false)
     {
-        IrReader r = IrReader.create(NativeFrontend.Read(path.Decode()));
+        IrReader r = IrReader.create(NativeFrontend.Read(path.Decode(), experimentalDecorators));
         if (r.integer() != 0x34524954) { print("tsnetc: unsupported frontend IR version"); exit(1); }
         int count = r.id();
         for (int i = 0; i < count; i++) { r.text(c); }

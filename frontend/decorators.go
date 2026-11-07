@@ -43,6 +43,9 @@ func (b *irBuilder) decoratorSymbol(name string) int {
 	return len(b.symbols)
 }
 func (b *irBuilder) prepareClassDecoration(n *ast.Node, home int) *classDecoration {
+	if b.legacyDecorators {
+		return nil
+	}
 	state := &classDecoration{home: home, indices: map[*ast.Node]int{}}
 	for _, member := range n.Members() {
 		if len(member.Decorators()) != 0 {

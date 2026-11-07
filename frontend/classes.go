@@ -226,6 +226,11 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 	binding := len(b.symbols)
 	previous, had := b.symbolIDs[classSymbol]
 	b.symbolIDs[classSymbol] = binding
+	legacyAlias := 0
+	if b.legacyDecorators && legacyClassDecorated(n) {
+		legacyAlias = b.decoratorSymbol("$legacyClass")
+		b.symbolIDs[classSymbol] = legacyAlias
+	}
 	decoration := b.prepareClassDecoration(n, binding)
 	if decoration != nil {
 		// Super keeps the original home; class-name references see the replacement.
@@ -288,8 +293,12 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 		}
 	}
 
-	if decoration != nil {
-		for _, member := range decoration.members {
+	if decoration != nil || legacyAlias != 0 {
+		decoratedMembers := n.Members()
+		if decoration != nil {
+			decoratedMembers = decoration.members
+		}
+		for _, member := range decoratedMembers {
 			if member.Kind == ast.KindMethodDeclaration || member.Kind == ast.KindGetAccessor || member.Kind == ast.KindSetAccessor {
 				if _, known := b.literalPropertyName(member.Name()); !known && member.Name().Kind != ast.KindPrivateIdentifier {
 					b.classFieldKeys[member] = declare(member, "$decoratedKey", b.typ(b.c.GetStringType()))
@@ -540,6 +549,16 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 		b.nodes[done-1].next = result
 		b.nodes[decoration.prefix-1].next = b.nodes[body-1].children
 		b.nodes[body-1].children = decoration.prefix
+	} else if legacyAlias != 0 {
+		alias := b.node(13, n, "legacy class")
+		b.nodes[alias-1].symbol = legacyAlias
+		b.nodes[alias-1].typ = typ
+		b.nodes[alias-1].left = b.classReference(n, binding)
+		b.nodes[variable-1].next = alias
+		b.nodes[alias-1].next = initialize
+		last := b.applyLegacyDecorators(n, binding, legacyAlias, initialize)
+		b.nodes[last-1].next = result
+		b.nodes[b.nodes[result-1].left-1].symbol = legacyAlias
 	} else {
 		b.nodes[variable-1].next = initialize
 		b.nodes[initialize-1].next = result

@@ -30,6 +30,7 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
+	legacyDecorators      bool
 	jsonModules           map[*ast.SourceFile]int
 	jsonExports           map[*ast.SourceFile]*ast.Symbol
 	classDecorations      map[*ast.Node]*classDecoration
@@ -1290,7 +1291,7 @@ func exportIR(s *session) (result []byte, err error) {
 	// Emit-resolver queries lock the checker themselves; discover modules before
 	// holding its exclusive lock for IR construction.
 	release()
-	b := &irBuilder{c: c, file: s.file, textIDs: map[string]int{}, typeIDs: map[*checker.Type]int{}, primitives: map[int]int{}, symbolIDs: map[*ast.Symbol]int{}}
+	b := &irBuilder{legacyDecorators: s.legacyDecorators, c: c, file: s.file, textIDs: map[string]int{}, typeIDs: map[*checker.Type]int{}, primitives: map[int]int{}, symbolIDs: map[*ast.Symbol]int{}}
 	b.controlIDs = map[*ast.Node]int{}
 	b.labels = map[string]irLabel{}
 	files := b.moduleFiles(s)
