@@ -8,6 +8,11 @@ func (b *irBuilder) preserveDynamicType(n *ast.Node, row *irNode) {
 	any := b.typ(b.c.GetAnyType())
 	dynamic := func(id int) bool { return id != 0 && b.nodes[id-1].typ == any }
 	switch n.Kind {
+	case ast.KindVariableDeclaration:
+		if n.Type() == nil && dynamic(row.left) && row.typ != 0 && b.types[row.typ-1].kind == 0 {
+			row.typ = any
+			b.symbols[row.symbol-1].typ = any
+		}
 	case ast.KindIdentifier, ast.KindPropertyAccessExpression:
 		location := n
 		if n.Kind == ast.KindPropertyAccessExpression {
@@ -20,7 +25,7 @@ func (b *irBuilder) preserveDynamicType(n *ast.Node, row *irNode) {
 				return
 			}
 			kind := b.types[b.typ(b.c.GetTypeOfSymbol(symbol))-1].kind
-			if kind == 4 || kind == 5 {
+			if kind == 4 || kind == 5 || row.symbol != 0 && b.symbols[row.symbol-1].typ == any {
 				row.typ = any
 			}
 		}
@@ -42,13 +47,21 @@ func (b *irBuilder) preserveDynamicType(n *ast.Node, row *irNode) {
 			return
 		}
 		switch op {
-		case ast.KindPlusToken, ast.KindPlusEqualsToken, ast.KindAmpersandAmpersandToken, ast.KindBarBarToken, ast.KindQuestionQuestionToken,
+		case ast.KindMinusToken, ast.KindAsteriskToken, ast.KindSlashToken, ast.KindPercentToken, ast.KindAsteriskAsteriskToken,
+			ast.KindAmpersandToken, ast.KindBarToken, ast.KindCaretToken, ast.KindLessThanLessThanToken, ast.KindGreaterThanGreaterThanToken, ast.KindGreaterThanGreaterThanGreaterThanToken,
+			ast.KindMinusEqualsToken, ast.KindAsteriskEqualsToken, ast.KindSlashEqualsToken, ast.KindPercentEqualsToken, ast.KindAsteriskAsteriskEqualsToken,
+			ast.KindAmpersandEqualsToken, ast.KindBarEqualsToken, ast.KindCaretEqualsToken, ast.KindLessThanLessThanEqualsToken, ast.KindGreaterThanGreaterThanEqualsToken, ast.KindGreaterThanGreaterThanGreaterThanEqualsToken,
+			ast.KindPlusToken, ast.KindPlusEqualsToken, ast.KindAmpersandAmpersandToken, ast.KindBarBarToken, ast.KindQuestionQuestionToken,
 			ast.KindAmpersandAmpersandEqualsToken, ast.KindBarBarEqualsToken, ast.KindQuestionQuestionEqualsToken:
 			if dynamic(row.left) || dynamic(row.right) {
 				row.typ = any
 			}
 		case ast.KindCommaToken:
 			row.typ = b.nodes[row.right-1].typ
+		}
+	case ast.KindPrefixUnaryExpression, ast.KindPostfixUnaryExpression:
+		if dynamic(row.left) && (row.kind == 11 || row.kind == 8 && n.Kind == ast.KindPrefixUnaryExpression && (n.AsPrefixUnaryExpression().Operator == ast.KindMinusToken || n.AsPrefixUnaryExpression().Operator == ast.KindTildeToken)) {
+			row.typ = any
 		}
 	case ast.KindConditionalExpression:
 		if dynamic(row.right) || dynamic(row.third) {

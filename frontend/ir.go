@@ -834,7 +834,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			right := b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Right)).Flags()
 			addition := op == "+=" && (left&checker.TypeFlagsStringLike != 0 || (left|right)&checker.TypeFlagsAny != 0)
 			logical := op == "&&=" || op == "||=" || op == "??="
-			numeric := checker.TypeFlagsNumberLike | checker.TypeFlagsAny
+			numeric := checker.TypeFlagsNumberLike | checker.TypeFlagsBigIntLike | checker.TypeFlagsAny
 			if op != "=" && !addition && !logical && (left&numeric == 0 || right&numeric == 0) {
 				b.unsupported(n)
 			}
@@ -850,7 +850,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			b.unsupported(n)
 		}
 		if op == "++" || op == "--" {
-			if b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Operand)).Flags()&(checker.TypeFlagsNumberLike|checker.TypeFlagsAny) == 0 {
+			if b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Operand)).Flags()&(checker.TypeFlagsNumberLike|checker.TypeFlagsBigIntLike|checker.TypeFlagsAny) == 0 {
 				b.unsupported(n)
 			}
 			id = b.node(11, n, op)
@@ -864,7 +864,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.left = b.lower(expr.Operand)
 	case ast.KindPostfixUnaryExpression:
 		expr := n.AsPostfixUnaryExpression()
-		if b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Operand)).Flags()&(checker.TypeFlagsNumberLike|checker.TypeFlagsAny) == 0 {
+		if b.c.GetBaseTypeOfLiteralType(b.c.GetTypeAtLocation(expr.Operand)).Flags()&(checker.TypeFlagsNumberLike|checker.TypeFlagsBigIntLike|checker.TypeFlagsAny) == 0 {
 			b.unsupported(n)
 		}
 		id = b.node(11, n, operators[expr.Operator])

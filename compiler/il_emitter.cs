@@ -234,6 +234,17 @@ internal static partial class CompilerFunctions
             il_load_target(n.left, receiver, index, c, b); b.box(target.type, c);
             il_boxed(n.right, c, b); b.call(RuntimeMember.Add); b.from_object(value_type, c);
         }
+        else if ((n.kind == NodeKind.Update || !is_text(op, text_assign, c)) && get_type(target.type, c).kind != TypeKind.Number)
+        {
+            il_load_target(n.left, receiver, index, c, b); b.box(target.type, c);
+            if (n.kind == NodeKind.Update) {
+                b.call(RuntimeMember.NumericValue); previous = b.local(-5); b.op(0x25); b.emit(0xfe0e, previous);
+                b.emit(0x20, is_text(op, text_increment, c) ? 1 : -1); b.call(RuntimeMember.NumericStep);
+            } else {
+                il_boxed(n.right, c, b); il_text(op, c, b); b.call(RuntimeMember.NumericBinary);
+            }
+            b.from_object(value_type, c);
+        }
         else if (n.kind == NodeKind.Update || !is_text(op, text_assign, c))
         {
             bool staged = n.kind == NodeKind.Assign && il_numeric_coercion_calls(n.left, c);
@@ -644,6 +655,10 @@ internal static partial class CompilerFunctions
             {
                 il_boxed(n.left, c, b); b.call(RuntimeMember.NumericNegate); b.from_object(n.type, c);
             }
+            else if (is_text(op, text_bit_not, c) && get_type(get_node(n.left, c).type, c).kind != TypeKind.Number)
+            {
+                il_boxed(n.left, c, b); b.call(RuntimeMember.NumericBitNot); b.from_object(n.type, c);
+            }
             else if (is_text(op, text_bit_not, c))
             {
                 il_integer(n.left, c, b); b.op(0x66); b.op(0x6c); b.call(RuntimeMember.WrapNumber);
@@ -768,6 +783,11 @@ internal static partial class CompilerFunctions
             {
                 il_boxed(n.left, c, b); il_boxed(n.right, c, b); b.emit(0x20, il_relational_mode(op, c));
                 b.call(get_type(get_node(n.left, c).type, c).kind == TypeKind.String && get_type(get_node(n.right, c).type, c).kind == TypeKind.String ? RuntimeMember.StringRelational : RuntimeMember.Relational); b.call(RuntimeMember.WrapBoolean);
+            }
+            else if ((get_type(get_node(n.left, c).type, c).kind != TypeKind.Number || get_type(get_node(n.right, c).type, c).kind != TypeKind.Number) &&
+                (il_bitwise_code(op, c) != 0 || is_text(op, text_minus, c) || is_text(op, text_star, c) || is_text(op, text_slash, c) || is_text(op, text_modulo, c) || is_text(op, text_power, c)))
+            {
+                il_boxed(n.left, c, b); il_boxed(n.right, c, b); il_text(op, c, b); b.call(RuntimeMember.NumericBinary); b.from_object(n.type, c);
             }
             else if (il_integer_remainder(entry, c, b))
             {
