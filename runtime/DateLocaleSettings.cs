@@ -53,7 +53,7 @@ public static partial class Js
                 dateFields.UseDateDefaults(culture);
         }
         static string NativeCalendarName(CultureInfo culture) => NativeCalendarName(culture.DateTimeFormat.Calendar) ?? throw new NotSupportedException("Native calendar identification is not supported");
-        static string NativeCalendarName(Calendar calendar) => calendar switch {
+        internal static string NativeCalendarName(Calendar calendar) => calendar switch {
             GregorianCalendar => "gregory", JapaneseCalendar => "japanese", ThaiBuddhistCalendar => "buddhist",
             HebrewCalendar => "hebrew", TaiwanCalendar => "roc", PersianCalendar => "persian", UmAlQuraCalendar => "islamic-umalqura", HijriCalendar => "islamic",
             _ => null

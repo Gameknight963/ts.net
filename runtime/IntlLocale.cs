@@ -79,6 +79,23 @@ public static partial class Js
             Getter("script", value => value.Script ?? Undefined); Getter("region", value => value.Region ?? Undefined);
             foreach (var pair in new[] { ("calendar", "ca"), ("collation", "co"), ("firstDayOfWeek", "fw"), ("hourCycle", "hc"), ("caseFirst", "kf"), ("numberingSystem", "nu") }) Getter(pair.Item1, value => value.Keyword(pair.Item2));
             Getter("numeric", static value => BoxBoolean(value.Numeric));
+            prototype.DefineMethod("getCalendars", new CollectionMethod("getCalendars", 0, static (receiver, _) =>
+            {
+                var locale = RequireLocale(receiver);
+                object calendar = locale.Keyword("ca");
+                if (!IsUndefined(calendar)) return new JsArray(new[] { calendar });
+                var result = new JsArray(0);
+                var names = new HashSet<string>(StringComparer.Ordinal);
+                var culture = LocaleCulture(locale.BaseName);
+                void Add(System.Globalization.Calendar value)
+                {
+                    string name = DateLocaleSettings.NativeCalendarName(value);
+                    if (name != null && names.Add(name)) result.Append(name);
+                }
+                Add(culture.DateTimeFormat.Calendar);
+                foreach (var available in culture.OptionalCalendars) Add(available);
+                return result;
+            }));
             prototype.DefineMethod("getHourCycles", new CollectionMethod("getHourCycles", 0, static (receiver, _) =>
             {
                 var locale = RequireLocale(receiver);
