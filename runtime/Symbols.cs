@@ -45,11 +45,14 @@ public static partial class Js
         }, 0)
         {
             foreach (string name in wellKnown) Member(name, name == "species" ? SpeciesSymbol : name == "match" ? MatchSymbol : name == "matchAll" ? MatchAllSymbol : name == "replace" ? ReplaceSymbol : name == "search" ? SearchSymbol : name == "split" ? SplitSymbol : name == "iterator" ? IteratorSymbol : name == "asyncIterator" ? AsyncIteratorSymbol : name == "toStringTag" ? ToStringTagSymbol : name == "toPrimitive" ? ToPrimitiveSymbol : name == "hasInstance" ? HasInstanceSymbol : name == "isConcatSpreadable" ? ConcatSpreadableSymbol : name == "dispose" ? DisposeSymbol : name == "asyncDispose" ? AsyncDisposeSymbol : new JsSymbol("Symbol." + name));
-            var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) => RequireSymbol(receiver).Display));
-            prototype.DefineMethod("valueOf", new CollectionMethod("valueOf", 0, (receiver, _) => RequireSymbol(receiver)));
-            prototype.DefineClassAccessor("description", new CollectionMethod("get description", 0, (receiver, _) => RequireSymbol(receiver).Description), 1);
+            var prototype = new JsCreatedObject(); UseObjectPrototype(prototype);
+            void Data(string key, object value, bool writable = true) => prototype.Define(new(key, value, null, null, false, writable, false, true));
+            Data("constructor", this);
+            Data("toString", new CollectionMethod("toString", 0, (receiver, _) => RequireSymbol(receiver).Display));
+            Data("valueOf", new CollectionMethod("valueOf", 0, (receiver, _) => RequireSymbol(receiver)));
+            prototype.Define(new("description", Undefined, new CollectionMethod("get description", 0, (receiver, _) => RequireSymbol(receiver).Description), null, true, false, false, true));
+            Data(PropertyKey(ToPrimitiveSymbol), new CollectionMethod("[Symbol.toPrimitive]", 1, (receiver, _) => RequireSymbol(receiver)), false);
+            Data(PropertyKey(ToStringTagSymbol), "Symbol", false);
             Member("for", new JsFunction((FunctionBody)(static arguments =>
             {
                 string key = StringValue(FunctionArgument(arguments, 0));

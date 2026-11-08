@@ -33,7 +33,6 @@ public static partial class Js
 
     static object OrdinaryPrimitive(TsObject obj, bool stringHint)
     {
-        if (obj is JsBoxedPrimitive { Value: JsSymbol symbol }) return symbol;
         object primitive = obj;
         for (int step = 0; step < 2; step++) {
             string name = (step == 0) == stringHint ? "toString" : "valueOf";
