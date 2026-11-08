@@ -50,6 +50,7 @@ public static partial class Js
         internal readonly int roundingIncrement;
         internal readonly int minimumSignificant, maximumSignificant;
         readonly int minimumGroupingWidth;
+        readonly bool minimumGrouping;
         internal readonly bool grouping;
         internal readonly object groupingOption;
         internal readonly string signDisplay;
@@ -224,8 +225,9 @@ public static partial class Js
                 positivePattern = (0.01d).ToString("P0", culture);
                 negativePattern = (-0.01d).ToString("P0", culture);
             }
+            minimumGrouping = groupingOption is "min2" || groupingOption is "auto" && culture.Name is "es" or "es-ES";
             minimumGroupingWidth = int.MaxValue;
-            if (groupingOption is "min2")
+            if (minimumGrouping)
             {
                 int[] sizes = culture.NumberFormat.NumberGroupSizes;
                 if (sizes.Length > 0 && sizes[0] > 0) minimumGroupingWidth = sizes[0] + 2;
@@ -258,7 +260,7 @@ public static partial class Js
         {
             notationExponent = 0; fractionMinimum = minimum; fractionMaximum = maximum;
             // Safe integers need no decimal rounding and retain native formatting.
-            if (notation == "standard" && maximumSignificant == 0 && groupingOption is not "min2" && roundingIncrement == 1 && style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
+            if (notation == "standard" && maximumSignificant == 0 && !minimumGrouping && roundingIncrement == 1 && style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
             string raw = Math.Abs(value).ToString("R", CultureInfo.InvariantCulture);
             int split = raw.IndexOf('E');
             int exponent = split < 0 ? 0 : int.Parse(raw.AsSpan(split + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
@@ -339,7 +341,7 @@ public static partial class Js
         {
             BigInteger whole = BigInteger.DivRem(digits, BigInteger.Pow(10, fractionDigits), out var fraction);
             bool useGroups = grouping;
-            if (groupingOption is "min2")
+            if (minimumGrouping)
                 useGroups = UseMinimumGrouping(whole.ToString(CultureInfo.InvariantCulture).Length);
             string result = whole.ToString(useGroups ? "N0" : "F0", culture);
             if (fractionDigits != 0) result += culture.NumberFormat.NumberDecimalSeparator + fraction.ToString(CultureInfo.InvariantCulture).PadLeft(fractionDigits, '0');
@@ -354,13 +356,13 @@ public static partial class Js
                 : finite && value is double numberValue ? FiniteNumber(numberValue, out fractionMinimum, out fractionMaximum, out notationExponent)
                 : (maximumSignificant != 0 || notation != "standard") && value is BigInteger significantInteger
                     ? NumericText(BigInteger.Abs(significantInteger), style == "percent" ? 2 : 0, significantInteger.Sign < 0, out fractionMinimum, out fractionMaximum, out notationExponent)
-                : (roundingIncrement != 1 || groupingOption is "min2") && value is BigInteger quantizedInteger
+                : (roundingIncrement != 1 || minimumGrouping) && value is BigInteger quantizedInteger
                     ? QuantizedText(Quantize(BigInteger.Abs(quantizedInteger), maximum + (style == "percent" ? 2 : 0), quantizedInteger.Sign < 0), quantizedInteger.Sign < 0)
                 : style == "percent" && value is BigInteger integerValue ? (integerValue * 100).ToString(format, culture) : value.ToString(format, culture);
             if (finite && integerDigits > 1)
             {
                 bool useGroups = grouping;
-                if (groupingOption is "min2")
+                if (minimumGrouping)
                 {
                     int point = result.IndexOf(culture.NumberFormat.NumberDecimalSeparator, StringComparison.Ordinal);
                     int width = 0;
