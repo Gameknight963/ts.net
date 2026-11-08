@@ -45,7 +45,7 @@ public static partial class Js
             capability.Complete(result, false);
         });
     }
-    sealed class JsPromise : TsObject
+    sealed class JsPromise : JsDescriptorObject
     {
         int state; // 0 pending, 1 fulfilled, 2 rejected
         List<PromiseReaction> reactions;

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-internal sealed class JsWeakRef(object target) : TsObject
+internal sealed class JsWeakRef(object target) : JsDescriptorObject
 {
     internal readonly WeakReference<object> Target = new(target);
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.WeakRefPrototype;
