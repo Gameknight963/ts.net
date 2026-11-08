@@ -10,14 +10,14 @@ public static partial class Js
             {
                 var date = RequireDate(receiver);
                 if (double.IsNaN(date.Timestamp)) return "Invalid Date";
-                var culture = CaseCulture(FunctionArgument(arguments, 0));
-                return FormatLocaleDate(date, culture, FunctionArgument(arguments, 1), item.Item2);
+                var selected = SelectDateLocale(FunctionArgument(arguments, 0));
+                return FormatLocaleDate(date, selected.Culture, FunctionArgument(arguments, 1), item.Item2, selected.Locale);
             }));
     }
-    static string FormatLocaleDate(JsDate date, CultureInfo culture, object optionValue, string mode)
+    static string FormatLocaleDate(JsDate date, CultureInfo culture, object optionValue, string mode, LocaleValue locale = null)
     {
-        if (IsUndefined(optionValue)) return TimeZoneInfo.ConvertTime(NativeDate(date), TimeZoneInfo.Local).ToString(mode, culture);
-        return new DateLocaleSettings(culture, optionValue, mode).Format(date.Timestamp);
+        if (IsUndefined(optionValue) && (locale == null || IsUndefined(locale.Keyword("ca")) && IsUndefined(locale.Keyword("hc")) && IsUndefined(locale.Keyword("nu")))) return TimeZoneInfo.ConvertTime(NativeDate(date), TimeZoneInfo.Local).ToString(mode, culture);
+        return new DateLocaleSettings(culture, optionValue, mode, locale).Format(date.Timestamp);
     }
     static string LocalDateText(object receiver, int mode)
     {

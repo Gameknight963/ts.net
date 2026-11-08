@@ -10,10 +10,8 @@ public static partial class Js
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)IntlDateTimeFormat.Constructor.Get("prototype");
         internal DateTimeFormatValue(object locales, object options)
         {
-            var supported = (JsArray)CollatorSupportedLocales(locales, Undefined);
-            LocaleValue locale = supported.Length() == 0 ? null : new LocaleValue(supported.ElementAt(0), Undefined);
-            var culture = locale == null ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(CollatorLocale(locale.BaseName));
-            Settings = new DateLocaleSettings(culture, options, "intl", locale);
+            var selected = SelectDateLocale(locales);
+            Settings = new DateLocaleSettings(selected.Culture, options, "intl", selected.Locale);
             Format = new JsFunction((FunctionBody)(args => Text(FunctionArgument(args, 0))), null, "", 1);
         }
         internal string Text(object value)
@@ -22,6 +20,13 @@ public static partial class Js
             if (double.IsNaN(timestamp)) throw new ArgumentOutOfRangeException(nameof(value), "Invalid time value");
             return Settings.Format(timestamp);
         }
+    }
+    static (CultureInfo Culture, LocaleValue Locale) SelectDateLocale(object locales)
+    {
+        var supported = (JsArray)CollatorSupportedLocales(locales, Undefined);
+        LocaleValue locale = supported.Length() == 0 ? null : new LocaleValue(supported.ElementAt(0), Undefined);
+        var culture = locale == null ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(CollatorLocale(locale.BaseName));
+        return (culture, locale);
     }
     static DateTimeFormatValue RequireDateTimeFormat(object receiver) => receiver as DateTimeFormatValue ?? throw new InvalidOperationException("DateTimeFormat receiver required");
     sealed class DateTimeFormatConstructor : NativeNamespaceFunction
