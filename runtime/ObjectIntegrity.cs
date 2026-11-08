@@ -6,7 +6,7 @@ public static partial class Js
     static object ObjectPreventExtensions(object value)
     {
         if (value is not TsObject target || !ObjectExtensible(value)) return value;
-        if (target is not JsDescriptorObject dictionary || target is JsFunction and not JsClassFunction) throw new NotSupportedException("Preventing extensions on this object layout is not implemented yet");
+        if (target is not JsDescriptorObject dictionary) throw new NotSupportedException("Preventing extensions on this object layout is not implemented yet");
         dictionary.Extensible = false;
         return value;
     }

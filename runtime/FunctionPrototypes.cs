@@ -59,23 +59,9 @@ public partial class JsFunction
     }
     private sealed class FunctionPrototypeObject : JsDynamicObject
     {
-        bool hiddenConstructor = true;
-        internal FunctionPrototypeObject(JsFunction owner) => DefineOwn("constructor", owner);
-        internal override object ForInOwnKeys() => base.OwnKeys();
-        internal override bool ForInEnumerable(string key) => key != "constructor" || !hiddenConstructor;
-        public override bool DeleteOwn(string key)
-        {
-            bool removed = base.DeleteOwn(key);
-            if (removed && key == "constructor") hiddenConstructor = false;
-            return removed;
-        }
-        public override object OwnKeys()
-        {
-            var keys = (JsArray)base.OwnKeys(); var result = new JsArray(0);
-            for (uint i = 0; i < keys.Length(); i++) if ((string)keys.ElementAt(i) != "constructor" || !hiddenConstructor) result.Append(keys.ElementAt(i));
-            return result;
-        }
+        internal FunctionPrototypeObject(JsFunction owner) => DefineMethod("constructor", owner);
     }
+
 }
 
 public static partial class Js

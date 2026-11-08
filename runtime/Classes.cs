@@ -50,7 +50,6 @@ public sealed class JsClassFunction : JsFunction
     internal override void Define(Descriptor descriptor)
     {
         base.Define(descriptor);
-        ReplaceIntrinsicMetadata(descriptor.Key);
         hidden.Remove(descriptor.Key);
     }
     public override bool DeleteOwn(string key) { if (key == "prototype") return false; bool removed = base.DeleteOwn(key); if (removed) hidden.Remove(key); return removed; }

@@ -41,6 +41,12 @@ public partial class JsFunction : JsDescriptorObject
         raw2 = numeric as RawNumberFunction2;
         this.name = name;this.length = length;
     }
+    internal override void Define(Descriptor descriptor)
+    {
+        base.Define(descriptor);
+        ReplaceIntrinsicMetadata(descriptor.Key);
+        if (descriptor.Key == "prototype" && ordinaryPrototype != null) ordinaryPrototype = descriptor.Value ?? NullPrototypeValue;
+    }
     internal virtual void SetObjectHome(TsObject home) { }
     public virtual object InvokeWithReceiver(object receiver,object[] arguments)=>Invoke(arguments);
     public virtual double? InvokeMethodNumber0(object receiver)=>InvokeNumber0();
@@ -60,8 +66,8 @@ public partial class JsFunction : JsDescriptorObject
     }
     public override object Set(string key, object value)
     {
-        if (key == "prototype" && ordinaryPrototype != null) { ordinaryPrototype = value ?? NullPrototypeValue; return value; }
         if (IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Function property is read-only");
+        if (key == "prototype" && ordinaryPrototype != null) { ordinaryPrototype = value ?? NullPrototypeValue; return value; }
         return base.Set(key, value);
     }
     public override bool DeleteOwn(string key)

@@ -75,7 +75,7 @@ public static partial class Js
     }
     static bool TryApplyPropertyDefinition(TsObject obj, string key, PropertyDefinition definition)
     {
-        if (obj is not JsDescriptorObject created || obj.IsModuleNamespace || obj is JsFunction and not JsClassFunction) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
+        if (obj is not JsDescriptorObject created || obj.IsModuleNamespace) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
         object existing = obj.OwnPropertyDescriptor(key);
         if (IsUndefined(existing)) {
             if (!obj.IsExtensible) return false;
