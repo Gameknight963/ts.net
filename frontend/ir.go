@@ -133,6 +133,9 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
+	if b.arrayLikeType(t) {
+		t = b.c.GetAnyType()
+	}
 	if symbol := t.Symbol(); symbol != nil && strings.HasSuffix(symbol.Name, "DecoratorContext") {
 		for _, declaration := range symbol.Declarations {
 			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {

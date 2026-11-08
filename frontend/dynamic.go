@@ -45,6 +45,10 @@ func (b *irBuilder) preserveDynamicType(n *ast.Node, row *irNode) {
 			if symbol := source.Symbol(); symbol != nil && binaryBuiltinName(symbol.Name) {
 				return
 			}
+			// Object storage does not erase the checked scalar index signature.
+			if row.typ != 0 && b.arrayLikeType(source) && b.types[row.typ-1].kind <= 2 {
+				return
+			}
 		}
 		owner := b.nodes[row.left-1].typ
 		if owner != 0 {
