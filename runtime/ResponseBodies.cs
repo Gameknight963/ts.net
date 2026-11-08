@@ -105,6 +105,8 @@ public static partial class Js
             });
             result.DefineOwn("values",values); result.DefineMethod(PropertyKey(AsyncIteratorSymbol),values);
             result.DefineOwn("tee",new CollectionMethod("tee",0,(receiver,_) => receiver is CustomReadableStream stream ? TeeCustomStream(stream) : TeeBufferedBody(RequireBufferedBody(receiver))));
+            result.DefineOwn("pipeTo",new CollectionMethod("pipeTo",1,(receiver,args) => BodyPromiseOperation(() => StartStreamPipe(receiver,FunctionArgument(args,0),FunctionArgument(args,1)))));
+            result.DefineOwn("pipeThrough",new CollectionMethod("pipeThrough",1,(receiver,args) => PipeThroughStreams(receiver,FunctionArgument(args,0),FunctionArgument(args,1))));
             result.DefineOwn("cancel",new CollectionMethod("cancel",0,(receiver,args) => receiver is CustomReadableStream stream ? BodyPromiseOperation(() => stream.CancelUnlocked(FunctionArgument(args,0))) : CancelBufferedBody(receiver,false)));
             return result;
         }

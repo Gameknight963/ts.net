@@ -18,6 +18,8 @@ public static partial class Js
         TsObject sink;
         JsFunction write, close, abort, size;
         internal WritableWriter Writer;
+        internal int PipeState => state;
+        internal bool PipeClosing => closing;
         readonly WritableController controller;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)WritableBuiltins.Stream.Get("prototype");
         internal WritableStreamValue(object source, object strategyValue)

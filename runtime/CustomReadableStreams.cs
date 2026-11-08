@@ -30,6 +30,7 @@ public static partial class Js
         JsFunction pull, cancel, size;
         bool started, pulling, pullAgain, closeRequested;
         internal CustomStreamReader Reader;
+        internal bool PipeReadable => state == 0;
         readonly CustomStreamController controller;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : BufferedBodyMethods.Prototype;
         internal CustomReadableStream(object sourceValue, object strategyValue)
