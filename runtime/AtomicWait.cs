@@ -4,11 +4,12 @@ using System.Threading;
 
 public static partial class Js
 {
-    sealed class AtomicWaiter : IDisposable
+    sealed class AtomicWaiter(bool asynchronous = false) : IDisposable
     {
-        internal readonly ManualResetEventSlim Ready = new(false, 0);
+        internal readonly ManualResetEventSlim Ready = asynchronous ? null : new(false, 0);
         internal bool Notified;
-        public void Dispose() => Ready.Dispose();
+        internal Action Completion;
+        public void Dispose() => Ready?.Dispose();
     }
     static TypedArrayValue AtomicWaitArray(object value)
     {
@@ -68,7 +69,7 @@ public static partial class Js
             int notified = 0;
             while (queue.First != null && notified < count) {
                 var waiter = queue.First.Value; queue.RemoveFirst();
-                waiter.Notified = true; waiter.Ready.Set(); notified++;
+                waiter.Notified = true; waiter.Ready?.Set(); waiter.Completion?.Invoke(); notified++;
             }
             if (queue.Count == 0) storage.Waiters.Remove(address);
             return (double)notified;

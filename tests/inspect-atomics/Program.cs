@@ -31,6 +31,32 @@ try{
  while(!waiting.IsCompleted && deadline.Elapsed<TimeSpan.FromSeconds(10)){notifications+=(int)(double)notify.InvokeWithReceiver(atomics,new object[]{second,0d,1d});Thread.Sleep(1);}
  if(!waiting.IsCompleted)throw new Exception("Wait stress did not finish");waiting.GetAwaiter().GetResult();
  if(notifications!=successful)throw new Exception("A notification was lost at the timeout boundary");
+ var waitAsync=(JsFunction)atomics.Get("waitAsync");
+ var timeoutFunction=(JsFunction)Js.BuiltinNamespace("setTimeout");var clearTimeout=(JsFunction)Js.BuiltinNamespace("clearTimeout");
+ int ownerThread=Environment.CurrentManagedThreadId;bool resolved=false;Task<object> background=null;Task<string> synchronous=null;
+ var elapsed=System.Diagnostics.Stopwatch.StartNew();
+ int status=Js.Run(()=>{
+  var result=(TsObject)waitAsync.InvokeWithReceiver(atomics,new object[]{first,0d,0d});
+  if(!(bool)result.Get("async"))throw new Exception("Expected an asynchronous waiter");
+  object timerId=timeoutFunction.Invoke(new object[]{new JsFunction((FunctionBody)(_=>throw new Exception("Async notification did not complete")),null,"timeout",0),5000d});
+  var promise=(TsObject)result.Get("value");
+  ((JsFunction)promise.Get("then")).InvokeWithReceiver(promise,new object[]{new JsFunction((FunctionBody)(args=>{
+   if(Environment.CurrentManagedThreadId!=ownerThread)throw new Exception("Promise reaction ran off the entry thread");
+   if((string)args[0]!="ok")throw new Exception("Unexpected asynchronous notification result");
+   resolved=true;clearTimeout.Invoke(new[]{timerId});return Js.Undefined;
+  }),null,"completed",1)});
+  synchronous=Task.Run(()=>(string)wait.InvokeWithReceiver(atomics,new object[]{first,0d,0d,5000d}));
+  background=Task.Run<object>(()=>{
+   var clock=System.Diagnostics.Stopwatch.StartNew();double count=0;
+   while(count<2 && clock.ElapsedMilliseconds<3000){count+=(double)notify.InvokeWithReceiver(atomics,new object[]{second,0d,2d});if(count<2)Thread.Sleep(1);}
+   return count;
+  });
+ });
+ if(status!=0 || !resolved || (double)background.GetAwaiter().GetResult()!=2 || synchronous.GetAwaiter().GetResult()!="ok" || elapsed.ElapsedMilliseconds>=4000)
+  throw new Exception("Cross-thread notification did not wake the entry event loop");
+ if(Js.Run(()=>waitAsync.InvokeWithReceiver(atomics,new object[]{first,0d,0d}))!=0)throw new Exception("Unreferenced async wait failed");
+ if((double)notify.InvokeWithReceiver(atomics,new object[]{first,0d,1d})!=0)throw new Exception("An exited entry loop retained an async waiter");
+ Console.WriteLine("PASS mixed sync/async notifications wake the entry thread and abandoned waiters are removed");
  Console.WriteLine("PASS cross-wrapper and cross-width wakeups and concurrent timeout/notify accounting");
  Console.WriteLine("PASS 800000 concurrent updates through cloned buffers and overlapping integer widths; lock-free query is honest");
 }catch(Exception error){Console.Error.WriteLine(error);Environment.ExitCode=1;}

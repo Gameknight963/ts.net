@@ -59,6 +59,7 @@ public static partial class Js
             result.DefineMethod(operation, new JsFunction((FunctionBody)(args => AtomicUpdate(operation, args)), null, operation, length));
         }
         result.DefineMethod("wait", new JsFunction((FunctionBody)AtomicWait, null, "wait", 4));
+        result.DefineMethod("waitAsync", new JsFunction((FunctionBody)AtomicWaitAsync, null, "waitAsync", 4));
         result.DefineMethod("notify", new JsFunction((FunctionBody)AtomicNotify, null, "notify", 3));
         result.DefineMethod("pause", new JsFunction((FunctionBody)(static _ => {
             System.Threading.Thread.SpinWait(1); return Undefined;

@@ -44,16 +44,21 @@ public static partial class Js
     }
     static bool RunNextTimer()
     {
+        if (RunNextHostEvent()) return true;
         // AbortSignal timeout timers run alongside live work, but never keep it alive.
         if (referencedTimers == 0) return false;
         while (timers != null && timers.TryPeek(out var timer, out var priority))
         {
+            if (RunNextHostEvent()) return true;
             if (!activeTimers.ContainsKey(timer.Id)) { timers.Dequeue(); continue; }
             long remaining = priority.Due - Environment.TickCount64;
             if (remaining > 0)
             {
                 // Keep user callbacks and Promise jobs on the entry thread.
-                Task.Delay((int)Math.Min(remaining, int.MaxValue)).GetAwaiter().GetResult(); continue;
+                int delay=(int)Math.Min(remaining,int.MaxValue);
+                if(hostEvents != null) hostEvents.Wait(delay);
+                else Task.Delay(delay).GetAwaiter().GetResult();
+                continue;
             }
             timers.Dequeue();
             if (!timer.Repeating) { activeTimers.Remove(timer.Id); if (timer.Referenced) referencedTimers--; }
