@@ -4,9 +4,13 @@ using System.Security.Cryptography;
 
 public static partial class Js
 {
-    sealed class CryptoKeyValue(byte[] bytes, string hash, bool extractable, string[] usages, string name = "HMAC") : TsObject
+    sealed class CryptoKeyValue(byte[] bytes, string hash, bool extractable, string[] usages, string name = "HMAC", ECDsa ec = null, string curve = null, bool privateKey = false) : TsObject
     {
         internal readonly byte[] Bytes = bytes;
+        internal readonly ECDsa Ec = ec;
+        internal readonly string Curve = curve;
+        internal readonly bool PrivateKey = privateKey;
+        internal string KeyType => Ec == null ? "secret" : PrivateKey ? "private" : "public";
         internal readonly string Name = name;
         internal readonly string Hash = hash;
         internal readonly bool Extractable = extractable;
@@ -18,6 +22,7 @@ public static partial class Js
                 if (algorithm != null) return algorithm;
                 var result = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
                 result.Set("name", Name);
+                if (Ec != null) result.Set("namedCurve", Curve);
                 if (Name == "HMAC") {
                     var hash = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; hash.Set("name", Hash); result.Set("hash", hash);
                 }
@@ -90,11 +95,11 @@ public static partial class Js
         return promise;
     }
     static object CryptoImport(object[] args) => CryptoAlgorithm(FunctionArgument(args, 2)) switch {
-        "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "AES-CBC" => AesImport(args, "AES-CBC"), "AES-CTR" => AesImport(args, "AES-CTR"), "AES-KW" => AesImport(args, "AES-KW"), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
+        "ECDSA" => EcImport(args), "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "AES-CBC" => AesImport(args, "AES-CBC"), "AES-CTR" => AesImport(args, "AES-CTR"), "AES-KW" => AesImport(args, "AES-KW"), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object CryptoGenerate(object[] args) => CryptoAlgorithm(FunctionArgument(args, 0)) switch {
-        "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args), "AES-CBC" => AesGenerate(args, "AES-CBC"), "AES-CTR" => AesGenerate(args, "AES-CTR"), "AES-KW" => AesGenerate(args, "AES-KW"),
+        "ECDSA" => EcGenerate(args), "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args), "AES-CBC" => AesGenerate(args, "AES-CBC"), "AES-CTR" => AesGenerate(args, "AES-CTR"), "AES-KW" => AesGenerate(args, "AES-KW"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object HmacImport(object[] args)
@@ -126,6 +131,7 @@ public static partial class Js
         if (key.Name is "PBKDF2" or "HKDF") throw CryptoError("NotSupportedError", "Derivation base keys cannot be exported");
         if (!key.Extractable) throw CryptoError("InvalidAccessException", "Key is not extractable");
         string format = StringValue(FunctionArgument(args, 0));
+        if (key.Ec != null) return EcExport(key, format);
         if (format == "jwk") {
             var result = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
             result.Set("key_ops", new JsArray(Array.ConvertAll(key.Usages, static usage => (object)usage)));
@@ -173,6 +179,7 @@ public static partial class Js
     static object HmacSign(object[] args, bool verify)
     {
         string algorithm = CryptoAlgorithm(FunctionArgument(args, 0)); var key = RequireCryptoKey(FunctionArgument(args, 1));
+        if (algorithm == "ECDSA") return EcSign(args, verify);
         if (algorithm != "HMAC") throw CryptoError("NotSupportedError", "Unsupported signing algorithm");
         if (key.Name != "HMAC" || !Array.Exists(key.Usages, usage => usage == (verify ? "verify" : "sign"))) throw CryptoError("InvalidAccessError", "Key does not permit this operation");
         byte[] supplied = verify ? CryptoBytes(FunctionArgument(args, 2)) : null;
@@ -186,7 +193,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "CryptoKey");
-            prototype.DefineClassAccessor("type", new CollectionMethod("get type", 0, static (receiver, _) => { RequireCryptoKey(receiver); return "secret"; }), 1);
+            prototype.DefineClassAccessor("type", new CollectionMethod("get type", 0, static (receiver, _) => RequireCryptoKey(receiver).KeyType), 1);
             prototype.DefineClassAccessor("extractable", new CollectionMethod("get extractable", 0, static (receiver, _) => BoxBoolean(RequireCryptoKey(receiver).Extractable)), 1);
             prototype.DefineClassAccessor("algorithm", new CollectionMethod("get algorithm", 0, static (receiver, _) => RequireCryptoKey(receiver).Algorithm), 1);
             prototype.DefineClassAccessor("usages", new CollectionMethod("get usages", 0, static (receiver, _) => RequireCryptoKey(receiver).PublicUsages), 1);
