@@ -2,6 +2,7 @@ using System;
 
 public partial class JsArray
 {
+    internal bool CanAppendDirectly => IsExtensible && ReferenceEquals(PropertyPrototype, Js.ArrayPrototype) && Js.ArraySlicePrototypesHaveNoIndices();
     internal bool CanUseElementStorage => !HasIndexedAccessors && ReferenceEquals(PropertyPrototype, Js.ArrayPrototype) && Js.ArraySlicePrototypesHaveNoIndices();
     sealed class DefinedProperty(JsArray owner, JsDescriptorObject.Descriptor descriptor)
     {

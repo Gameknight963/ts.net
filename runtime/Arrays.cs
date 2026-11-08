@@ -261,7 +261,7 @@ public partial class JsArray : TsObject
     }
     public double PushMany(object[] items)
     {
-        if (!IsExtensible) return Js.ArrayPush(this, items);
+        if (!CanAppendDirectly) return Js.ArrayPush(this, items);
         if (items.Length == 0) CheckLengthWritable();
         foreach (object value in items)
         {
@@ -377,7 +377,7 @@ public sealed partial class NumberArray : JsArray
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double PushNumber(double? value)
     {
-        if (!IsExtensible) return Js.ArrayPush(this, new[] {Js.BoxNumber(value)});
+        if (!CanAppendDirectly) return Js.ArrayPush(this, new[] {Js.BoxNumber(value)});
         uint index = numbers.Length;
         if (index == uint.MaxValue) throw new InvalidOperationException("Invalid array length");
         Store(index, value);return numbers.Length;

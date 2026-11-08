@@ -246,7 +246,7 @@ public static partial class Js
     public static double ArrayPushOne(object receiver, object value)
     {
         if (receiver is not JsArray array) throw new InvalidOperationException("push requires an array");
-        if (!array.IsExtensible) return ArrayPush(array, new[] {value});
+        if (!array.CanAppendDirectly) return ArrayPush(array, new[] {value});
         array.Append(value);
         return array.Length();
     }
@@ -260,7 +260,7 @@ public static partial class Js
     }
     public static double ArrayPush(object receiver, object[] values)
     {
-        if (receiver is JsArray array && array.IsExtensible) return array.PushMany(values);
+        if (receiver is JsArray array && array.CanAppendDirectly) return array.PushMany(values);
         var source = ToObject(receiver);
         long length = IndexedLength(source);
         if (length > 9007199254740991L - values.Length) throw new InvalidOperationException("Array-like length exceeds the safe integer limit");
