@@ -47,7 +47,10 @@ public static partial class Js
     {
         if (target is not TsObject value) throw new InvalidOperationException("Right-hand side of in must be an object");
         if (value is JsArray array && key.HasValue && key.Value >= 0 && key.Value < uint.MaxValue && key.Value == Math.Truncate(key.Value))
-            return array.HasElement((uint)key.Value);
+        {
+            if (array.HasElement((uint)key.Value)) return true;
+            if (array.CanUseElementStorage) return false;
+        }
         return value.HasInProperty(key.HasValue ? NumberKeyString(key.Value) : "undefined");
     }
 }
