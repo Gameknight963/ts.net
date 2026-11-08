@@ -182,7 +182,9 @@ public static partial class Js
             var values = Method("values", 0, (collection, _) => new JsCollectionIterator(collection, 1));
             prototype.DefineMethod("values", values);
             prototype.DefineMethod("keys", set ? values : Method("keys", 0, (collection, _) => new JsCollectionIterator(collection, 0)));
-            prototype.DefineMethod("entries", Method("entries", 0, (collection, _) => new JsCollectionIterator(collection, 2)));
+            var entries = Method("entries", 0, (collection, _) => new JsCollectionIterator(collection, 2));
+            prototype.DefineMethod("entries", entries);
+            prototype.DefineMethod(PropertyKey(IteratorSymbol), set ? values : entries);
             prototype.DefineMethod("forEach", Method("forEach", 1, (collection, args) =>
             {
                 object callback = FunctionArgument(args, 0), receiver = FunctionArgument(args, 1);
@@ -247,6 +249,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = NativeIteratorPrototype };
             prototype.DefineMethod("next", set ? SetNext : MapNext);
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), set ? "Set Iterator" : "Map Iterator");
             return prototype;
         }
     }
