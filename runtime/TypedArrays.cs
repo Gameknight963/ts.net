@@ -399,7 +399,7 @@ public static partial class Js
             var values = new object[array.Count];
             for (int i = 0; i < values.Length; i++) values[i] = array.Read(i);
             StableSort(values, new object[values.Length], 0, values.Length, comparator as JsFunction ?? TypedArrayComparison.Value);
-            var result = method == "sort" ? array : AllocateTypedArray(array.Name, array.Count);
+            var result = method == "sort" ? array : AllocateTypedArray(array.Name, values.Length);
             for (int i = 0; i < values.Length; i++) result.Write(i, values[i]);
             return result;
         }
