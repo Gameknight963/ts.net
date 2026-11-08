@@ -13,8 +13,12 @@ public static partial class Js
         {
             var supported = (JsArray)CollatorSupportedLocales(locales, Undefined);
             string selected = supported.Length() == 0 ? null : (string)supported.ElementAt(0);
-            if (selected != null && selected.Contains("-u-", StringComparison.OrdinalIgnoreCase))
-                throw new NotSupportedException("Collator Unicode locale extensions are not supported");
+            if (selected != null)
+            {
+                var locale = new LocaleValue(selected, Undefined);
+                if (!IsUndefined(locale.Keyword("co")) || !IsUndefined(locale.Keyword("kf")) || !IsUndefined(locale.Keyword("kn")))
+                    throw new NotSupportedException("Collator collation, case-order, and numeric locale extensions are not supported");
+            }
             var culture = selected == null ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(CollatorLocale(selected));
             settings = new CollationSettings(culture, optionValue);
             Compare = new JsFunction((FunctionBody)(args => Execute(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "", 2);

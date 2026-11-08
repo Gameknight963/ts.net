@@ -11,8 +11,12 @@ public static partial class Js
         internal DateTimeFormatValue(object locales, object options)
         {
             var supported = (JsArray)CollatorSupportedLocales(locales, Undefined);
-            if (supported.Length() != 0 && ((string)supported.ElementAt(0)).Contains("-u-", StringComparison.OrdinalIgnoreCase))
-                throw new NotSupportedException("DateTimeFormat Unicode locale extensions are not supported");
+            if (supported.Length() != 0)
+            {
+                var locale = new LocaleValue(supported.ElementAt(0), Undefined);
+                if (!IsUndefined(locale.Keyword("ca")) || !IsUndefined(locale.Keyword("hc")) || !IsUndefined(locale.Keyword("nu")))
+                    throw new NotSupportedException("DateTimeFormat calendar, hour-cycle, and numbering locale extensions are not supported");
+            }
             var culture = supported.Length() == 0 ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(CollatorLocale((string)supported.ElementAt(0)));
             Settings = new DateLocaleSettings(culture, options, "intl");
             Format = new JsFunction((FunctionBody)(args => Text(FunctionArgument(args, 0))), null, "", 1);
