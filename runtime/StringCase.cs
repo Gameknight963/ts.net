@@ -75,6 +75,11 @@ public static partial class Js
     }
     static string CaseString(string text, bool upper, CultureInfo culture)
     {
+        // ASCII cannot contain any of the context-sensitive Unicode inputs.
+        if (text.AsSpan().IndexOfAnyInRange('\u0080', '\uffff') < 0)
+            return ReferenceEquals(culture, CultureInfo.InvariantCulture)
+                ? upper ? text.ToUpperInvariant() : text.ToLowerInvariant()
+                : upper ? text.ToUpper(culture) : text.ToLower(culture);
         if (culture.TwoLetterISOLanguageName == "lt") text = ApplyLithuanianCasing(text, upper);
         if (upper) return ExpandUppercase(RecentSupplementaryCase(text.ToUpper(culture), true));
         text = ApplyFinalSigma(text);
