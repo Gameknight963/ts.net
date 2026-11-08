@@ -12,7 +12,7 @@ public static partial class Js
     }
     // Buffered bodies own immutable bytes. Exposed buffers and reader chunks are
     // copies, so consuming or changing one response cannot change a clone.
-    sealed class BufferedBody(byte[] bytes) : TsObject
+    sealed class BufferedBody(byte[] bytes) : JsDescriptorObject
     {
         internal readonly byte[] Bytes = bytes;
         internal bool Disturbed, Consuming;
@@ -45,7 +45,7 @@ public static partial class Js
             return !wasClosed && Tee != null ? Tee.Cancel(TeeBranch) : BodyOperation(() => Undefined);
         }
     }
-    sealed class BufferedBodyReader : TsObject
+    sealed class BufferedBodyReader : JsDescriptorObject
     {
         internal BufferedBody Owner;
         JsPromise closedPromise;
@@ -89,7 +89,7 @@ public static partial class Js
         static TsObject Create()
         {
             var result = new JsClassInstance {ParentPrototype = DefaultClassObjectPrototype};
-            result.DefineMethod(PropertyKey(ToStringTagSymbol),"ReadableStream");
+            result.DefineMethod(PropertyKey(ToStringTagSymbol),"ReadableStream",false);
             result.DefineAccessor("locked",new CollectionMethod("get locked",0,(receiver,_) => BoxBoolean(RequireBufferedBody(receiver).Locked)),1);
             result.DefineOwn("getReader",new CollectionMethod("getReader",0,(receiver,args) => RequireBufferedBody(receiver).GetReader(FunctionArgument(args,0))));
             var values = new CollectionMethod("values",0,(receiver,args) => {
@@ -104,7 +104,7 @@ public static partial class Js
             return result;
         }
     }
-    sealed class BufferedBodyIterator(BufferedBodyReader reader, bool preventCancel) : TsObject
+    sealed class BufferedBodyIterator(BufferedBodyReader reader, bool preventCancel) : JsDescriptorObject
     {
         bool done;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : BufferedIteratorMethods.Prototype;
@@ -147,7 +147,7 @@ public static partial class Js
         static TsObject Create()
         {
             var result = new JsClassInstance {ParentPrototype = DefaultClassObjectPrototype};
-            result.DefineMethod(PropertyKey(ToStringTagSymbol),"ReadableStreamDefaultReader");
+            result.DefineMethod(PropertyKey(ToStringTagSymbol),"ReadableStreamDefaultReader",false);
             result.DefineAccessor("closed",new CollectionMethod("get closed",0,(receiver,_) => RequireBufferedReader(receiver).ClosedPromise),1);
             result.DefineOwn("read",new CollectionMethod("read",0,(receiver,_) => BodyOperation(() => RequireBufferedReader(receiver).Read())));
             result.DefineOwn("cancel",new CollectionMethod("cancel",1,(receiver,_) => CancelBufferedBody(receiver,true)));
