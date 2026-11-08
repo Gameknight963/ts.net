@@ -390,7 +390,7 @@ public static partial class Js
             }
             return Undefined;
         }
-        if (method == "toLocaleString") return CallMethod(ArrayMethodValue(method), array, args);
+        if (method == "toLocaleString") return CallMethod(ArrayMethodValue(method), new TypedArrayMethodView(array), args);
         if (method is "sort" or "toSorted")
         {
             object comparator = FunctionArgument(args, 0);
