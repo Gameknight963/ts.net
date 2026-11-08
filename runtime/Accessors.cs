@@ -12,10 +12,36 @@ internal sealed class JsAccessor
         Setter.InvokeWithReceiver(receiver, new[] { value }); return value;
     }
 }
+internal class JsAccessors : Dictionary<string, JsAccessor>
+{
+    internal int IndexedCount { get; private set; }
+    internal JsAccessors() { }
+    internal JsAccessors(Dictionary<string, JsAccessor> source)
+    {
+        foreach (var entry in source) this[entry.Key] = entry.Value;
+    }
+    public new JsAccessor this[string key]
+    {
+        get => base[key];
+        set {
+            if (!ContainsKey(key) && JsArray.Index(key, out _)) IndexedCount++;
+            base[key] = value;
+        }
+    }
+    public new bool Remove(string key)
+    {
+        if (!base.Remove(key)) return false;
+        if (JsArray.Index(key, out _)) IndexedCount--;
+        return true;
+    }
+}
+
 public abstract partial class TsObject
 {
-    Dictionary<string, JsAccessor> accessors;
-    internal bool HasOwnAccessors => accessors != null;
+    JsAccessors accessors;
+    internal bool HasIndexedAccessors => accessors != null && accessors.IndexedCount != 0;
+    internal bool HasOwnAccessors => accessors != null && accessors.Count != 0;
+    internal IEnumerable<string> OwnAccessorKeys => accessors == null ? Array.Empty<string>() : accessors.Keys;
     internal bool HasPropertyOverrides => extra != null || accessors != null;
     internal bool TryOwnAccessor(string key, out JsAccessor accessor)
     {

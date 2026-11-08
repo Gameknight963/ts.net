@@ -5,7 +5,7 @@ public abstract partial class TsObject
 {
     // Reuse the descriptor-map slot to mark namespace objects, without adding
     // storage or a lookup table to ordinary objects.
-    private sealed class ModuleNamespaceAccessors : Dictionary<string, JsAccessor>
+    private sealed class ModuleNamespaceAccessors : JsAccessors
     {
         internal ModuleNamespaceAccessors() { }
         internal ModuleNamespaceAccessors(Dictionary<string, JsAccessor> source) : base(source) { }
