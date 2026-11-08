@@ -26,6 +26,10 @@ public static partial class Js
         year += Math.Floor(parts[1] / 12);
         int month = (int)(parts[1] - 12 * Math.Floor(parts[1] / 12)) + 1;
         if (utc) return ClipDate(UtcDateTimestamp(year, month, parts));
+        // A local offset cannot bring a date more than one day outside TimeClip
+        // back into the valid range. Avoid passing these inputs to DateTime.
+        double localTimestamp = UtcDateTimestamp(year, month, parts);
+        if (!double.IsFinite(localTimestamp) || Math.Abs(localTimestamp) > 8640000000000000d + 86400000d) return double.NaN;
         if (year < 1 || year > 9999) throw new NotSupportedException("Date calendar construction outside .NET's year range 1 through 9999 is not supported");
         try
         {
