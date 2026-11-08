@@ -102,26 +102,7 @@ public static partial class Js
                 foreach (var available in culture.OptionalCalendars) Add(available);
                 return result;
             }));
-            prototype.DefineMethod("getHourCycles", new CollectionMethod("getHourCycles", 0, static (receiver, _) =>
-            {
-                var locale = RequireLocale(receiver);
-                object cycle = locale.Keyword("hc");
-                if (IsUndefined(cycle))
-                {
-                    // The likely region for an undetermined language is US.
-                    string pattern = LocaleCulture(locale.BaseName == "und" ? "en-US" : locale.BaseName).DateTimeFormat.ShortTimePattern;
-                    bool quoted = false;
-                    cycle = "h23";
-                    for (int index = 0; index < pattern.Length; index++)
-                    {
-                        char character = pattern[index];
-                        if (character == '\\') { index++; continue; }
-                        if (character == '\'') { quoted = !quoted; continue; }
-                        if (!quoted && character is 'H' or 'h') { cycle = character == 'h' ? "h12" : "h23"; break; }
-                    }
-                }
-                return new JsArray(new[] { cycle });
-            }));
+            prototype.DefineMethod("getHourCycles", new CollectionMethod("getHourCycles", 0, static (receiver, _) => LocaleHourCycles(RequireLocale(receiver))));
             prototype.DefineMethod("getTextInfo", new CollectionMethod("getTextInfo", 0, static (receiver, _) =>
             {
                 var locale = RequireLocale(receiver);

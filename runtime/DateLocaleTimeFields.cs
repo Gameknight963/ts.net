@@ -7,15 +7,16 @@ public static partial class Js
 {
     sealed class DateLocaleTimeFields
     {
-        readonly string hour, minute, second, cycle, zoneName, dayPeriod;
+        readonly string hour, minute, second, cycle, zoneName, dayPeriod, regionalCycle;
         readonly bool? hour12;
         internal readonly bool KeepCycleExtension;
         readonly int fractionDigits;
         internal bool HasClockFields => hour != null || minute != null || second != null || fractionDigits != 0 || dayPeriod != null;
         internal bool HasFields => HasClockFields || zoneName != null;
-        internal bool HasClockOption => hour12.HasValue || cycle != null;
-        internal DateLocaleTimeFields(TsObject options, string cycleDefault = null)
+        internal bool HasClockOption => hour12.HasValue || cycle != null || regionalCycle != null;
+        internal DateLocaleTimeFields(TsObject options, string cycleDefault = null, string regionalCycle = null)
         {
+            this.regionalCycle = regionalCycle;
             string Read(string name, params string[] choices)
             {
                 object value = options.Get(name);
@@ -46,7 +47,7 @@ public static partial class Js
         }
         string Clock(CultureInfo culture) => hour12.HasValue
             ? cycle != null && (cycle is "h11" or "h12") == hour12.Value ? cycle : hour12.Value ? "h12" : "h23"
-            : cycle ?? (culture.DateTimeFormat.ShortTimePattern.Contains('H') ? "h23" : "h12");
+            : cycle ?? regionalCycle ?? (culture.DateTimeFormat.ShortTimePattern.Contains('H') ? "h23" : "h12");
         internal void WriteOptions(TsObject target, CultureInfo culture, bool styled, bool timeStyle)
         {
             void Field(string name, string value) { if (value != null) target.DefineOwn(name, value); }
