@@ -12,11 +12,11 @@ public static partial class Js
         if (excludedKeys.Length != 0) { excluded = new(StringComparer.Ordinal); foreach (object key in excludedKeys) excluded.Add((string)key); }
         if (source is TsObject value)
         {
-            var keys = (JsArray)value.OwnKeys();
+            var keys = (JsArray)value.OwnPropertyNames();
             for (uint index = 0; index < keys.Length(); index++)
             {
                 string key = (string)keys.ElementAt(index);
-                if (excluded?.Contains(key) == true || !value.HasOwn(key)) continue;
+                if (excluded?.Contains(key) == true || !value.HasOwn(key) || !value.ForInEnumerable(key)) continue;
                 target.DefineOwn(key, value.Get(key));
             }
         }
