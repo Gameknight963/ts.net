@@ -1,3 +1,4 @@
+/// <reference lib="esnext.intl" />
 export {};
 for(const name of ['en','en-US','fr','de','ja','zh-Hans','ru','ar','he','fa','ur','ps','dv','ar-Latn','en-Arab','az-Arab','az-Latn','ku-Arab','ku-Latn','und-Arab','und-Latn']) {
  const locale: any=new Intl.Locale(name);
@@ -12,3 +13,12 @@ for(const receiver of [undefined,null,{},'en']) {
 }
 
 for(const script of ['Adlm','Arab','Armi','Avst','Chrs','Elym','Gara','Hatr','Hebr','Hung','Khar','Lydi','Mand','Mani','Mend','Merc','Mero','Narb','Nbat','Nkoo','Orkh','Ougr','Palm','Phli','Phlp','Phnx','Prti','Rohg','Samr','Sarb','Sogd','Sogo','Syrc','Thaa','Yezi']) {const locale:any=new Intl.Locale('und-'+script);console.log(script,locale.getTextInfo().direction);}
+
+for (const a of 'abcdefghijklmnopqrstuvwxyz') for (const b of 'abcdefghijklmnopqrstuvwxyz') for (const c of 'abcdefghijklmnopqrstuvwxyz') {
+ const tag = a + b + c;
+ console.log('language direction', tag, (new Intl.Locale(tag) as any).getTextInfo().direction);
+}
+
+const typedInfo: Intl.TextInfo = new Intl.Locale('bqi').getTextInfo();
+console.log('typed direction', typedInfo.direction);
+for (const script of ['Cprt', 'Sidt']) console.log('additional script', script, new Intl.Locale('und-' + script).getTextInfo().direction);

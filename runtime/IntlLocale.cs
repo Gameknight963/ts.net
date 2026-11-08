@@ -126,11 +126,12 @@ public static partial class Js
             {
                 var locale = RequireLocale(receiver);
                 var result = new JsDynamicObject();
-                bool rtl = locale.Script == null ? LocaleCulture(locale.BaseName).TextInfo.IsRightToLeft : locale.Script is
-                    "Adlm" or "Arab" or "Armi" or "Avst" or "Chrs" or "Elym" or "Gara" or "Hatr" or "Hebr" or "Hung" or
+                string script = locale.Script ?? ExpandLocaleSubtags(locale.Language, null, locale.Region).Script;
+                bool rtl = script is
+                    "Adlm" or "Arab" or "Armi" or "Avst" or "Cprt" or "Chrs" or "Elym" or "Gara" or "Hatr" or "Hebr" or "Hung" or
                     "Khar" or "Lydi" or "Mand" or "Mani" or "Mend" or "Merc" or "Mero" or "Narb" or "Nbat" or "Nkoo" or
                     "Orkh" or "Ougr" or "Palm" or "Phli" or "Phlp" or "Phnx" or "Prti" or "Rohg" or "Samr" or "Sarb" or
-                    "Sogd" or "Sogo" or "Syrc" or "Thaa" or "Yezi";
+                    "Sidt" or "Sogd" or "Sogo" or "Syrc" or "Thaa" or "Yezi";
                 result.DefineOwn("direction", rtl ? "rtl" : "ltr");
                 return result;
             }));
