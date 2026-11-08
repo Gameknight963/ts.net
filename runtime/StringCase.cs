@@ -15,18 +15,26 @@ public static partial class Js
     static CultureInfo CaseCulture(object locales)
     {
         if (IsUndefined(locales)) return CultureInfo.CurrentCulture;
-        CultureInfo first = null;
-        void Add(object value)
+        if (locales is LocaleValue locale) return LocaleCulture(locale.BaseName);
+        if (locales is string tag)
         {
-            first ??= LocaleCulture(value);
+            // Ordinary tags keep the cached native-culture lookup. Extension
+            // tags need separate parsing, since they do not select casing rules.
+            for (int dash = tag.IndexOf('-'); dash >= 0;)
+            {
+                int next = tag.IndexOf('-', dash + 1);
+                if ((next < 0 ? tag.Length : next) - dash - 1 == 1)
+                    return LocaleCulture(new LocaleValue(tag, Undefined).BaseName);
+                dash = next;
+            }
+            return LocaleCulture(tag);
         }
-        if (locales is string or LocaleValue) Add(locales);
-        else
-        {
-            var list = ToObject(locales); long length = IndexedLength(list);
-            for (long index = 0; index < length; index++) if (TryIndexedValue(list, index, out object value)) { Add(value); break; }
-        }
-        return first ?? CultureInfo.CurrentCulture;
+        var list = ToObject(locales);
+        long length = IndexedLength(list);
+        for (long index = 0; index < length; index++)
+            if (TryIndexedValue(list, index, out object value))
+                return value is string or LocaleValue ? CaseCulture(value) : LocaleCulture(new LocaleValue(value, Undefined).BaseName);
+        return CultureInfo.CurrentCulture;
     }
     static string UppercaseWithIota(char first) => string.Create(2, first, static (output, value) => { output[0] = value; output[1] = '\u0399'; });
     static string ExpandUppercase(string text)
