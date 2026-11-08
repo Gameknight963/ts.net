@@ -47,6 +47,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
             prototype.DefineMethod(PropertyKey(IteratorSymbol), Self);
+            prototype.DefineMethod(PropertyKey(DisposeSymbol),new CollectionMethod("[Symbol.dispose]",0,(receiver,_)=>DisposeIterator(receiver)));
             return prototype;
         }
         internal static readonly JsFunction ArrayNext = NextMethod(false), StringNext = NextMethod(true);

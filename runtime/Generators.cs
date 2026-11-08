@@ -166,9 +166,8 @@ public static partial class Js
         internal static readonly TsObject Prototype = Create(false), AsyncPrototype = Create(true);
         static TsObject Create(bool asynchronous)
         {
-            var prototype = new JsClassInstance { ParentPrototype = asynchronous ? DefaultClassObjectPrototype : NativeIteratorPrototype };
+            var prototype = new JsClassInstance { ParentPrototype = asynchronous ? NativeAsyncIteratorPrototype : NativeIteratorPrototype };
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), asynchronous ? "AsyncGenerator" : "Generator");
-            if (asynchronous) prototype.DefineMethod(PropertyKey(AsyncIteratorSymbol), new CollectionMethod("[Symbol.asyncIterator]", 0, (receiver, _) => receiver));
             foreach (var item in new[] { ("next", CompletionKind.Normal), ("throw", CompletionKind.Throw), ("return", CompletionKind.Return) })
                 prototype.DefineMethod(item.Item1, new CollectionMethod(item.Item1, 1, (receiver, args) => receiver is GeneratorValue generator && generator.Asynchronous == asynchronous
                     ? (asynchronous ? generator.QueueResume(item.Item2, FunctionArgument(args, 0)) : generator.Resume(item.Item2, FunctionArgument(args, 0))) : throw new InvalidOperationException("Generator receiver required")));

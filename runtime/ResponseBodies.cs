@@ -123,8 +123,7 @@ public static partial class Js
         internal static readonly TsObject Prototype = Create();
         static TsObject Create()
         {
-            var result = new JsClassInstance {ParentPrototype = DefaultClassObjectPrototype};
-            result.DefineMethod(PropertyKey(AsyncIteratorSymbol),new CollectionMethod("[Symbol.asyncIterator]",0,(receiver,_) => receiver));
+            var result = new JsClassInstance {ParentPrototype = NativeAsyncIteratorPrototype};
             result.DefineMethod("next",new CollectionMethod("next",0,(receiver,_) => BodyOperation(() => receiver is BufferedBodyIterator iterator ? iterator.Next() : throw new InvalidOperationException("Body iterator receiver required"))));
             result.DefineMethod("return",new CollectionMethod("return",1,(receiver,args) => BodyOperation(() => receiver is BufferedBodyIterator iterator ? iterator.Return(FunctionArgument(args,0)) : throw new InvalidOperationException("Body iterator receiver required"))));
             return result;
