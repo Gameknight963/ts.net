@@ -76,11 +76,11 @@ public static partial class Js
     static string CaseString(string text, bool upper, CultureInfo culture)
     {
         if (culture.TwoLetterISOLanguageName == "lt") text = ApplyLithuanianCasing(text, upper);
-        if (upper) return ExpandUppercase(text.ToUpper(culture));
+        if (upper) return ExpandUppercase(RecentSupplementaryCase(text.ToUpper(culture), true));
         text = ApplyFinalSigma(text);
         if (culture.TwoLetterISOLanguageName is "tr" or "az") text = ApplyTurkicDotContext(text);
         else text = text.Replace("\u0130", "i\u0307", StringComparison.Ordinal);
-        return RecentLowercase(text.ToLower(culture));
+        return RecentLowercase(RecentSupplementaryCase(text.ToLower(culture), false));
     }
     sealed class StringCaseFunction(bool upper, bool localized = false) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("String method requires a receiver")), null, localized ? upper ? "toLocaleUpperCase" : "toLocaleLowerCase" : upper ? "toUpperCase" : "toLowerCase", 0)
     {

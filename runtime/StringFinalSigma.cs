@@ -7,6 +7,7 @@ public static partial class Js
     static bool SigmaCaseIgnorable(Rune rune) => Rune.GetUnicodeCategory(rune) is UnicodeCategory.NonSpacingMark or UnicodeCategory.EnclosingMark or UnicodeCategory.Format or UnicodeCategory.ModifierLetter or UnicodeCategory.ModifierSymbol
         || rune.Value is 0x27 or 0x2e or 0x3a or 0xb7 or 0x387 or 0x55f or 0x5f4 or 0x2018 or 0x2019 or 0x2024 or 0x2027 or 0xfe13 or 0xfe52 or 0xfe55 or 0xff07 or 0xff0e or 0xff1a;
     static bool SigmaCased(Rune rune) => Rune.GetUnicodeCategory(rune) is UnicodeCategory.UppercaseLetter or UnicodeCategory.LowercaseLetter or UnicodeCategory.TitlecaseLetter
+        || !rune.IsBmp && (RecentSupplementaryPoint(rune.Value, true) != rune.Value || RecentSupplementaryPoint(rune.Value, false) != rune.Value)
         || rune.IsBmp && (RecentCase((char)rune.Value, true) != rune.Value || RecentCase((char)rune.Value, false) != rune.Value)
         || rune.Value is 0xaa or 0xba or >= 0x2160 and <= 0x217f or >= 0x24b6 and <= 0x24e9 or >= 0x1f130 and <= 0x1f149 or >= 0x1f150 and <= 0x1f169 or >= 0x1f170 and <= 0x1f189;
     static bool SigmaCasedNeighbor(string text, int index, bool backward)
