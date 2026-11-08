@@ -214,6 +214,7 @@ public static partial class Js
         {
             UseObjectPrototype(BufferedBodyMethods.Prototype);
             ((JsDescriptorObject)BufferedBodyMethods.Prototype).DefineMethod("constructor",this);
+            Member("from",new JsFunction((FunctionBody)(args => StreamFromIterable(FunctionArgument(args,0))),null,"from",1));
         }
         public override object Construct(object[] args) => new CustomReadableStream(FunctionArgument(args,0),FunctionArgument(args,1));
         internal override bool CanInitializeDerived => true;
