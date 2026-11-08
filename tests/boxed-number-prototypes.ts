@@ -1,0 +1,13 @@
+export {};
+const number = new Number(7);
+const original = Object.getPrototypeOf(number);
+console.log('normal', typeof number.valueOf, number.valueOf());
+const empty = Object.create(null);
+Object.setPrototypeOf(number, empty);
+console.log('missing', typeof number.valueOf, typeof number.toString, 'valueOf' in number, 'toString' in number);
+empty.valueOf = () => 9;
+console.log('custom', number.valueOf(), 'valueOf' in number);
+delete empty.valueOf;
+console.log('deleted', typeof number.valueOf, 'valueOf' in number);
+Object.setPrototypeOf(number, original);
+console.log('restored', number.valueOf(), number.toString());

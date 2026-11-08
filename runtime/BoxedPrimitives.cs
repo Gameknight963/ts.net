@@ -11,8 +11,6 @@ internal sealed class JsBoxedPrimitive(object value, bool intrinsicPrototype = f
     bool StringIndex(string key, out uint index) => JsArray.Index(key, out index) && Value is string text && index < text.Length;
     internal override bool IsReadOnlyOwnProperty(string key) => Value is string && (key == "length" || StringIndex(key, out _)) || base.IsReadOnlyOwnProperty(key);
     public override bool HasOwn(string key) => Value is string && (key == "length" || StringIndex(key, out _)) || base.HasOwn(key);
-    bool NumberMethodFallback(string key) => Value is double && PropertyPrototype is not null && key is "valueOf" or "toString";
-    public override bool HasProperty(string key) => NumberMethodFallback(key) || base.HasProperty(key);
     public override object Get(string key)
     {
         if (Value is string text)
@@ -20,10 +18,8 @@ internal sealed class JsBoxedPrimitive(object value, bool intrinsicPrototype = f
             if (key == "length") return (double)text.Length;
             if (StringIndex(key, out uint index)) return Iteration.CodeUnit(text[(int)index]);
         }
-        if (base.HasProperty(key)) return base.Get(key);
-        return NumberMethodFallback(key) ? Js.PrimitiveMethod(Value, key == "toString") : base.Get(key);
+        return base.Get(key);
     }
-    public override object GetWithReceiver(string key, object receiver) => !base.HasProperty(key) && NumberMethodFallback(key) ? Get(key) : base.GetWithReceiver(key, receiver);
     public override object Set(string key, object value) => IsReadOnlyOwnProperty(key) ? throw new InvalidOperationException("String property is read-only") : base.Set(key, value);
     object AllKeys()
     {
