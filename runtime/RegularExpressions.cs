@@ -198,6 +198,11 @@ public static partial class Js
     }
     static JsRegExp CreateRegExp(object pattern, object flags, bool? recognized = null)
     {
+        var input = RegExpInputs(pattern, flags, recognized);
+        return CompileRegExp(input.Source, input.Flags);
+    }
+    static (object Source, object Flags) RegExpInputs(object pattern, object flags, bool? recognized = null)
+    {
         bool regexLike = recognized ?? IsRegExpValue(pattern);
         object source = pattern;
         if (pattern is JsRegExp original)
@@ -210,6 +215,10 @@ public static partial class Js
             source = Get(pattern, "source");
             if (IsUndefined(flags)) flags = Get(pattern, "flags");
         }
+        return (source, flags);
+    }
+    static JsRegExp CompileRegExp(object source, object flags)
+    {
         string text = IsUndefined(source) ? "" : StringValue(source);
         string requested = IsUndefined(flags) ? "" : StringValue(flags);
         var seen = new HashSet<char>();
@@ -335,5 +344,13 @@ public static partial class Js
         public override object Construct(object[] arguments) => CreateRegExp(FunctionArgument(arguments, 0), FunctionArgument(arguments, 1));
         internal override bool CanInitializeDerived => true;
         internal override object InitializeDerived(object instance, object[] arguments) { var result = (TsObject)Construct(arguments); result.SetPrototype(((TsObject)instance).PropertyPrototype); return result; }
+        internal override object InitializeDerived(object instance, object[] arguments, JsFunction newTarget)
+        {
+            var input = RegExpInputs(FunctionArgument(arguments, 0), FunctionArgument(arguments, 1));
+            var prototype = ConstructionPrototype(newTarget);
+            var result = CompileRegExp(input.Source, input.Flags);
+            result.SetPrototype(prototype);
+            return result;
+        }
     }
 }
