@@ -25,12 +25,13 @@ public static partial class Js
         string[] usages = AesUsages(FunctionArgument(args, 2), true);
         return new CryptoKeyValue(RandomNumberGenerator.GetBytes((int)bits / 8), null, Truthy(FunctionArgument(args, 1)), usages, "AES-GCM");
     }
-    static object AesCrypt(object[] args, bool decrypt)
+    static object AesCrypt(object[] args, bool decrypt, string usage = null)
     {
         object algorithm = FunctionArgument(args, 0);
         if (CryptoAlgorithm(algorithm) != "AES-GCM") throw CryptoError("NotSupportedError", "Unsupported encryption algorithm");
         var key = RequireCryptoKey(FunctionArgument(args, 1));
-        if (key.Name != "AES-GCM" || !Array.Exists(key.Usages, usage => usage == (decrypt ? "decrypt" : "encrypt"))) throw CryptoError("InvalidAccessError", "Key does not permit this operation");
+        string requiredUsage = usage ?? (decrypt ? "decrypt" : "encrypt");
+        if (key.Name != "AES-GCM" || !Array.Exists(key.Usages, value => value == requiredUsage)) throw CryptoError("InvalidAccessError", "Key does not permit this operation");
         if (algorithm is not TsObject options) throw new InvalidOperationException("AES-GCM requires an IV");
         byte[] iv = CryptoBytes(options.Get("iv"));
         if (iv.Length != 12) throw CryptoError("OperationError", "This platform requires a 12-byte AES-GCM IV");
