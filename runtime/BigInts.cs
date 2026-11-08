@@ -39,9 +39,13 @@ public static partial class Js
         return order != 0 || number == Math.Truncate(number) ? order : number > 0 ? -1 : 1;
     }
 
-    static BigInteger ParseBigInt(string text)
+    static BigInteger ParseBigInt(string source)
     {
-        text = text.Trim().Trim('\uFEFF').Trim();
+        ReadOnlySpan<char> text = source.AsSpan();
+        int first = 0, last = text.Length;
+        while (first < last && NumberSpace(text[first])) first++;
+        while (last > first && NumberSpace(text[last - 1])) last--;
+        text = text[first..last];
         if (text.Length == 0) return BigInteger.Zero;
         int radix = 10, start = 0;
         if (text.Length > 2 && text[0] == '0') {
