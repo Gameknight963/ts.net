@@ -15,12 +15,14 @@ internal sealed class JsArguments : JsDynamicObject
     readonly object[] values;
     object assignedLength;
     bool lengthAssigned;
+    bool iteratorHidden = true;
     internal JsArguments(object[] source)
     {
         // The generated adapter consumes its hidden receiver and parameters
         // before running user code. Keep an independent snapshot of user values.
         values = new object[source.Length - 1];
         Array.Copy(source, 1, values, 0, values.Length);
+        DefineOwn(Js.ArgumentsIteratorKey, Js.ArrayMethodValue("values"));
     }
     static readonly JsFunction CalleeThrower = new((FunctionBody)(static _ => throw CalleeError()), null, "", 0);
     internal override object LookupOwnAccessor(string key, bool setter) => key == "callee" ? CalleeThrower : base.LookupOwnAccessor(key, setter);
@@ -44,14 +46,29 @@ internal sealed class JsArguments : JsDynamicObject
         return base.Set(key, value);
     }
     public override object SetWithReceiver(string key, object value, object receiver) => key == "callee" ? throw CalleeError() : base.SetWithReceiver(key, value, receiver);
-    internal override object OwnPropertyNames() => Js.MergeOwnNames(this, OwnKeys(), "length", "callee");
+    internal override object OwnPropertyNames() => AllOwnKeys(true);
     internal override object ForInOwnKeys() => Js.ForInNames(OwnKeys(), "length", "callee");
-    internal override bool ForInEnumerable(string key) => key is not ("length" or "callee");
+    internal override bool ForInEnumerable(string key) => key is not ("length" or "callee") && (!iteratorHidden || key != Js.ArgumentsIteratorKey);
+    public override bool DeleteOwn(string key)
+    {
+        bool deleted = base.DeleteOwn(key);
+        if (deleted && key == Js.ArgumentsIteratorKey) iteratorHidden = false;
+        return deleted;
+    }
     public override double OwnKeyCount() => values.Length + ExtraKeyCount;
     public override object OwnKeys()
     {
-        var keys = new object[values.Length];
-        for (int i = 0; i < keys.Length; i++) keys[i] = i.ToString(CultureInfo.InvariantCulture);
+        var names = (JsArray)AllOwnKeys(false);
+        if (!iteratorHidden) return names;
+        var result = new JsArray(0);
+        for (uint index = 0; index < names.Length(); index++) if ((string)names.ElementAt(index) != Js.ArgumentsIteratorKey) result.Append(names.ElementAt(index));
+        return result;
+    }
+    object AllOwnKeys(bool hidden)
+    {
+        var keys = new object[values.Length + (hidden ? 2 : 0)];
+        for (int index = 0; index < values.Length; index++) keys[index] = index.ToString(CultureInfo.InvariantCulture);
+        if (hidden) { keys[^2] = "length"; keys[^1] = "callee"; }
         return KeysFromFixed(keys);
     }
     internal double IterationLength()
@@ -63,6 +80,7 @@ internal sealed class JsArguments : JsDynamicObject
 
 public static partial class Js
 {
+    internal static string ArgumentsIteratorKey => PropertyKey(IteratorSymbol);
     public static object Arguments(object receiver) => ((JsArgumentsReceiver)receiver).Arguments;
     public static object EnableArguments(object value) { ((JsReceiverFunction)value).EnableArguments(); return value; }
     internal static object ArgumentsReceiver(object receiver) => receiver is JsArgumentsReceiver arguments ? arguments.Receiver : receiver;

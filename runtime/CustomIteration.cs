@@ -23,7 +23,7 @@ public static partial class Js
         if (source == null && value is not string) return null;
         string key = PropertyKey(IteratorSymbol);
         object method = source == null ? Get(value, key) : source.Get(key);
-        if (IsNullish(method)) { disabled = value is string or JsArray or JsBoxedPrimitive { Value: string } || source.HasInProperty(key); return null; }
+        if (IsNullish(method)) { disabled = value is string or JsArray or JsArguments or JsBoxedPrimitive { Value: string } || source.HasInProperty(key); return null; }
         if (ReferenceEquals(method, NativeIteratorPrototypes.Self) && IsIteratorObject(source)) return null;
         return method as JsFunction ?? throw new InvalidOperationException("Symbol.iterator is not callable");
     }
@@ -43,7 +43,7 @@ public static partial class Js
         var method = CustomIterableMethod(value, out bool disabled);
         if (required && disabled) throw new InvalidOperationException("Value is not iterable");
         if (value is string && ReferenceEquals(method, StringIteratorMethods.Iterator) && HasIntrinsicSequenceNext(true)) return false;
-        if (value is JsArray && ReferenceEquals(method, ArrayMethods.Values) && HasIntrinsicSequenceNext(false)) return false;
+        if (value is JsArray or JsArguments && ReferenceEquals(method, ArrayMethods.Values) && HasIntrinsicSequenceNext(false)) return false;
         if (method == null) return false;
         cursor = StartIteratorObject(InvokeIterableMethod(method, value));
         return true;
