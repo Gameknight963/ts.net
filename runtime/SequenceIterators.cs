@@ -35,6 +35,10 @@ public sealed class JsSequenceIterator : TsObject
 
 public static partial class Js
 {
+    static class StringIteratorMethods
+    {
+        internal static readonly JsFunction Iterator = new CollectionMethod("[Symbol.iterator]", 0, static (receiver, _) => new JsSequenceIterator(AtString(receiver), 0u));
+    }
     sealed class ArrayIteratorFunction(string name, int mode) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Array method requires a receiver")), null, name, 0)
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments) => new JsSequenceIterator(ToObject(receiver), mode);
@@ -58,6 +62,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = Common };
             prototype.DefineMethod("next", text ? StringNext : ArrayNext);
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), text ? "String Iterator" : "Array Iterator");
             return prototype;
         }
     }
