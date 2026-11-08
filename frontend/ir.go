@@ -31,6 +31,7 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
+	nativeShapeViews      map[*checker.Type]bool
 	sourceTexts           map[int]int
 	legacyDecorators      bool
 	jsonModules           map[*ast.SourceFile]int
@@ -133,7 +134,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
-	if b.arrayLikeType(t) || b.thenableType(t) || b.collectionInterfaceType(t) {
+	if b.nativeShapeViews[t] || b.arrayLikeType(t) || b.thenableType(t) || b.collectionInterfaceType(t) {
 		t = b.c.GetAnyType()
 	}
 	if symbol := t.Symbol(); symbol != nil && strings.HasSuffix(symbol.Name, "DecoratorContext") {
@@ -146,13 +147,8 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			}
 		}
 	}
-	if symbol := t.Symbol(); symbol != nil && (errorKind(symbol.Name) || collectionType(symbol.Name) || strings.HasSuffix(symbol.Name, "DecoratorContext") || symbol.Name == "ClassAccessorDecoratorTarget" || symbol.Name == "ClassAccessorDecoratorResult" || symbol.Name == "PropertyDescriptor" || symbol.Name == "TypedPropertyDescriptor" || symbol.Name == "IArguments" || symbol.Name == "Object" || symbol.Name == "Number" || symbol.Name == "String" || symbol.Name == "Boolean" || symbol.Name == "Function" || symbol.Name == "Console" || symbol.Name == "Performance" || symbol.Name == "Symbol" || symbol.Name == "SymbolConstructor" || symbol.Name == "BigInt" || symbol.Name == "BigIntConstructor" || symbol.Name == "ImportMeta" || symbol.Name == "DisposableStack" || symbol.Name == "DisposableStackConstructor" || symbol.Name == "AsyncDisposableStack" || symbol.Name == "AsyncDisposableStackConstructor" || binaryBuiltinName(symbol.Name) || binaryBuiltinName(strings.TrimSuffix(symbol.Name, "Constructor")) || symbol.Name == "Crypto" || symbol.Name == "AesKeyAlgorithm" || symbol.Name == "JsonWebKey" || symbol.Name == "KeyAlgorithm" || symbol.Name == "HmacKeyAlgorithm" || symbol.Name == "CryptoKey" || symbol.Name == "SubtleCrypto" || symbol.Name == "DOMException" || symbol.Name == "Event" || symbol.Name == "CustomEvent" || symbol.Name == "EventTarget" || symbol.Name == "AbortController" || symbol.Name == "AbortSignal" || symbol.Name == "File" || symbol.Name == "Blob" || symbol.Name == "URL" || symbol.Name == "URLSearchParams" || symbol.Name == "TextEncoder" || symbol.Name == "TextDecoder" || symbol.Name == "TextEncoderEncodeIntoResult" || symbol.Name == "SharedArrayBuffer" || symbol.Name == "SharedArrayBufferConstructor" || symbol.Name == "ArrayBuffer" || symbol.Name == "ArrayBufferConstructor" || symbol.Name == "DataView" || symbol.Name == "DataViewConstructor" || symbol.Name == "WeakRef" || symbol.Name == "WeakRefConstructor" || symbol.Name == "TemplateStringsArray" || symbol.Name == "Date" || symbol.Name == "DateConstructor" || symbol.Name == "RegExp" || symbol.Name == "RegExpConstructor" || symbol.Name == "RegExpIndicesArray" || symbol.Name == "RegExpMatchArray" || symbol.Name == "RegExpExecArray" || symbol.Name == "Intl" || symbol.Name == "Locale" || symbol.Name == "NumberFormat" || symbol.Name == "NumberFormatPart" || symbol.Name == "ResolvedNumberFormatOptions" || symbol.Name == "DateTimeFormat" || symbol.Name == "ResolvedDateTimeFormatOptions" || symbol.Name == "Segmenter" || symbol.Name == "Segments" || symbol.Name == "SegmentData" || symbol.Name == "ResolvedSegmenterOptions" || symbol.Name == "SegmentIterator" || symbol.Name == "Collator" || symbol.Name == "ResolvedCollatorOptions" || symbol.Name == "Reflect" || symbol.Name == "JSON" || symbol.Name == "Atomics" || symbol.Name == "Math" || symbol.Name == "ArrayConstructor" || symbol.Name == "Promise" || symbol.Name == "PromiseLike" || symbol.Name == "PromiseConstructor" || symbol.Name == "PromiseWithResolvers") {
-		for _, declaration := range symbol.Declarations {
-			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
-				t = b.c.GetAnyType()
-				break
-			}
-		}
+	if nativeObjectType(t) {
+		t = b.c.GetAnyType()
 	}
 	if len(b.c.GetConstructSignatures(t)) != 0 {
 		t = b.c.GetAnyType()
@@ -1353,6 +1349,7 @@ func exportIR(s *session) (result []byte, err error) {
 	c, release = s.program.GetTypeCheckerForFileExclusive(context.Background(), s.file)
 	defer release()
 	b.c = c
+	b.prepareNativeShapeViews(files)
 	b.prepareJSONModules(files)
 	b.prepareExportAssignments(files)
 	b.prepareDeletion(files)
