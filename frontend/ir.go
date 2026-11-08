@@ -73,6 +73,7 @@ type irBuilder struct {
 	labels                map[string]irLabel
 	deletedNames          map[string]bool
 	deleteAnyName         bool
+	reflectionArguments   map[*ast.Node][]*ast.Node
 	enumValues            map[*ast.Node]evaluator.Result
 	enumDeclared          map[*ast.Symbol]bool
 	namespaceExports      map[*ast.Symbol]*ast.Node

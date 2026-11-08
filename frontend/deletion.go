@@ -63,7 +63,10 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 			return 0
 		}
 		declaration := symbol.ValueDeclaration
-		if declaration.Kind == ast.KindVariableDeclaration || declaration.Kind == ast.KindParameter {
+		if declaration.Kind == ast.KindParameter {
+			return b.reflectionParameterValue(declaration, seen, b.reflectionDeletionValue)
+		}
+		if declaration.Kind == ast.KindVariableDeclaration {
 			return b.reflectionDeletionValue(declaration.Initializer(), seen)
 		}
 		if declaration.Kind == ast.KindBindingElement && declaration.Parent.Kind == ast.KindObjectBindingPattern {
@@ -76,7 +79,7 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 			}
 			owner := declaration.Parent.Parent
 			if (name.Kind == ast.KindIdentifier || name.Kind == ast.KindStringLiteral) && name.Text() == "deleteProperty" && owner != nil &&
-				(owner.Kind == ast.KindVariableDeclaration || owner.Kind == ast.KindParameter) && b.reflectionDeletionValue(owner.Initializer(), seen) == 1 {
+				(owner.Kind == ast.KindVariableDeclaration || owner.Kind == ast.KindParameter) && b.reflectionBindingValue(owner, seen, b.reflectionDeletionValue) == 1 {
 				return 2
 			}
 		}
@@ -119,6 +122,7 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 // cover every literal. Dynamic reflection uses the target's known field names,
 // or covers every literal when an object/any parameter hides those names.
 func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
+	b.prepareReflectionArguments(files)
 	b.deletedNames = map[string]bool{}
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {

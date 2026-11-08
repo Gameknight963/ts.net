@@ -50,7 +50,10 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 			return 0
 		}
 		declaration := symbol.ValueDeclaration
-		if declaration.Kind == ast.KindVariableDeclaration || declaration.Kind == ast.KindParameter {
+		if declaration.Kind == ast.KindParameter {
+			return b.reflectionParameterValue(declaration, seen, b.reflectionDefinitionValue)
+		}
+		if declaration.Kind == ast.KindVariableDeclaration {
 			return b.reflectionDefinitionValue(declaration.Initializer(), seen)
 		}
 		if declaration.Kind == ast.KindBindingElement && declaration.Parent.Kind == ast.KindObjectBindingPattern {
@@ -63,7 +66,7 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 			}
 			owner := declaration.Parent.Parent
 			if (name.Kind == ast.KindIdentifier || name.Kind == ast.KindStringLiteral) && (name.Text() == "defineProperty" || name.Text() == "defineProperties" || name.Text() == "preventExtensions" || name.Text() == "seal" || name.Text() == "freeze") && owner != nil &&
-				(owner.Kind == ast.KindVariableDeclaration || owner.Kind == ast.KindParameter) && b.reflectionDefinitionValue(owner.Initializer(), seen) == 1 {
+				(owner.Kind == ast.KindVariableDeclaration || owner.Kind == ast.KindParameter) && b.reflectionBindingValue(owner, seen, b.reflectionDefinitionValue) == 1 {
 				return 2
 			}
 		}
