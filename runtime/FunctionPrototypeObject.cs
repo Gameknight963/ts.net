@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 public static partial class Js
 {
@@ -15,35 +14,12 @@ public static partial class Js
     }
     sealed class FunctionPrototypeValue : JsFunction
     {
-        readonly string instanceKey = PropertyKey(HasInstanceSymbol);
-        readonly HashSet<string> hidden = new() {"call", "apply", "bind", "toString"};
         internal FunctionPrototypeValue() : base((FunctionBody)(static _ => Undefined), null, "", 0)
         {
-            hidden.Add(instanceKey);
-            foreach (string key in hidden) DefineOwn(key, key == instanceKey ? OrdinaryInstanceCheck.Method : key == "toString" ? new FunctionStringFunction() : FunctionMethod(key));
+            foreach (string key in new[] {"call", "apply", "bind", "toString"})
+                DefineMethod(key, key == "toString" ? new FunctionStringFunction() : FunctionMethod(key));
+            Define(new(PropertyKey(HasInstanceSymbol), OrdinaryInstanceCheck.Method, null, null, false, false, false, false));
         }
-        internal override bool IsReadOnlyOwnProperty(string key) => key == instanceKey || base.IsReadOnlyOwnProperty(key);
-        internal override bool OwnPropertyConfigurable(string key) => key != instanceKey && base.OwnPropertyConfigurable(key);
-        public override object Set(string key, object value) => key == instanceKey ? throw new InvalidOperationException("Symbol.hasInstance is read-only") : base.Set(key, value);
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : DefaultClassObjectPrototype;
-        internal override bool ForInEnumerable(string key) => !hidden.Contains(key) && base.ForInEnumerable(key);
-        internal override object ForInOwnKeys() => base.ForInOwnKeys();
-        public override object OwnKeys()
-        {
-            var keys = (JsArray)base.OwnKeys(); var result = new JsArray(0);
-            for (uint index = 0; index < keys.Length(); index++)
-            {
-                string key = (string)keys.ElementAt(index);
-                if (!hidden.Contains(key)) result.Append(key);
-            }
-            return result;
-        }
-        public override bool DeleteOwn(string key)
-        {
-            if (key == instanceKey) return false;
-            bool removed = base.DeleteOwn(key);
-            if (removed) hidden.Remove(key);
-            return removed;
-        }
     }
 }
