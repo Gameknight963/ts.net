@@ -80,15 +80,18 @@ public static partial class Js
     }
     static class LazyIteratorMethods
     {
+        internal static readonly JsFunction Next = new CollectionMethod("next", 0, (receiver, _) => receiver is JsLazyIterator iterator ? NextLazyIterator(iterator)
+            : receiver is ConcatIterator concat ? concat.Next() : throw new InvalidOperationException("Incompatible iterator helper receiver"));
         internal static readonly TsObject Prototype = Create();
         static TsObject Create()
         {
             var prototype = new JsCreatedObject();
             prototype.SetPrototype(NativeIteratorPrototype);
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Iterator Helper", false);
-            prototype.DefineMethod("next", new CollectionMethod("next", 0, (receiver, _) => receiver is JsLazyIterator iterator ? NextLazyIterator(iterator) : throw new InvalidOperationException("Incompatible iterator helper receiver")));
+            prototype.DefineMethod("next", Next);
             prototype.DefineMethod("return", new CollectionMethod("return", 0, (receiver, _) =>
             {
+                if (receiver is ConcatIterator concat) return concat.Return();
                 if (receiver is not JsLazyIterator iterator) throw new InvalidOperationException("Incompatible iterator helper receiver");
                 if (iterator.Running) throw new InvalidOperationException("Iterator helper is already running");
                 if (iterator.Done) return IteratorResult(Undefined, true);
