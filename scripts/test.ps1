@@ -10,6 +10,11 @@ try {
     & dotnet build "$root/runtime/Tsnet.Runtime.csproj" -c Release --configfile "$root/artifacts/metadata-writer/NuGet.Config" --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Runtime build failed' }
     $utf8 = New-Object System.Text.UTF8Encoding($false)
+    & dotnet build tests/inspect-host-events/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Host event checks failed to build' }
+    & dotnet tests/inspect-host-events/bin/Release/net10.0/Inspect.dll
+    if ($LASTEXITCODE) { throw 'Host event lifetime checks failed' }
+
     $testRoot = "$root/artifacts/tests"
     [IO.Directory]::CreateDirectory($testRoot) | Out-Null
 

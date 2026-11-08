@@ -46,7 +46,7 @@ public static partial class Js
     {
         if (RunNextHostEvent()) return true;
         // AbortSignal timeout timers run alongside live work, but never keep it alive.
-        if (referencedTimers == 0) return false;
+        if (referencedTimers == 0 && !HasReferencedHostEvents) return false;
         while (timers != null && timers.TryPeek(out var timer, out var priority))
         {
             if (RunNextHostEvent()) return true;
@@ -66,6 +66,10 @@ public static partial class Js
             if (timer.Repeating && activeTimers.ContainsKey(timer.Id))
                 timers.Enqueue(timer, (Environment.TickCount64 + timer.Delay, ++timerOrder));
             return true;
+        }
+        while (HasReferencedHostEvents) {
+            if (RunNextHostEvent()) return true;
+            hostEvents.Wait(int.MaxValue);
         }
         return false;
     }
