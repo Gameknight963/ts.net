@@ -260,7 +260,7 @@ public static partial class Js
             0x1e916, 0x1e938, 0x1e917, 0x1e939, 0x1e918, 0x1e93a, 0x1e919, 0x1e93b, 0x1e91a, 0x1e93c, 0x1e91b, 0x1e93d,
             0x1e91c, 0x1e93e, 0x1e91d, 0x1e93f, 0x1e91e, 0x1e940, 0x1e91f, 0x1e941, 0x1e920, 0x1e942, 0x1e921, 0x1e943,
         ];
-        static int Canonical(int value)
+        internal static int Canonical(int value)
         {
             if (value < 128) return value is >= 'A' and <= 'Z' ? value + 32 : value;
             int first = 0, last = Pairs.Length / 2 - 1;

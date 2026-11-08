@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 
 public static partial class Js
 {
@@ -15,6 +17,47 @@ public static partial class Js
         }
         return result;
     }
+    sealed class RegExpCharacterSet
+    {
+        internal List<RegExpCodePointRange> Ranges = new();
+        // Six hex digits per code point preserve lone-surrogate boundaries.
+        internal readonly HashSet<string> Strings = new(StringComparer.Ordinal);
+        internal bool MayContainStrings;
+        internal bool IgnoreCase;
+        internal void Union(RegExpCharacterSet other)
+        {
+            Ranges.AddRange(other.Ranges); Strings.UnionWith(other.Strings);
+            MayContainStrings |= other.MayContainStrings;
+        }
+        internal void Intersect(RegExpCharacterSet other, bool subtract)
+        {
+            Ranges = IntersectRegExpRanges(Ranges, subtract ? InvertRegExpRanges(other.Ranges) : other.Ranges);
+            if (subtract) Strings.ExceptWith(other.Strings);
+            else {Strings.IntersectWith(other.Strings); MayContainStrings &= other.MayContainStrings;}
+        }
+    }
+    static string SetExpressionAtom(RegExpCharacterSet set)
+    {
+        var strings = new List<string>(set.Strings);
+        strings.Sort(static (a, b) => {
+            int length = b.Length.CompareTo(a.Length);
+            return length != 0 ? length : StringComparer.Ordinal.Compare(a, b);
+        });
+        var alternatives = new List<string>();
+        foreach (string value in strings) {
+            if (value.Length == 0) continue;
+            var expression = new StringBuilder();
+            for (int index = 0; index < value.Length; index += 6) {
+                int point = int.Parse(value.AsSpan(index, 6), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture);
+                var ranges = new List<RegExpCodePointRange>{new(point, point)};
+                expression.Append(RegExpCodePointAtom(set.IgnoreCase ? UnicodeRegExpFolding.Close(ranges) : ranges));
+            }
+            alternatives.Add(expression.ToString());
+        }
+        if (set.Ranges.Count != 0) alternatives.Add(RegExpCodePointAtom(set.Ranges));
+        if (set.Strings.Contains("")) alternatives.Add("");
+        return alternatives.Count == 0 ? "(?!)" : "(?:" + string.Join('|', alternatives) + ")";
+    }
     sealed partial class UnicodeRegExpReader
     {
         bool SetOperator(string operation) => source.AsSpan(position).StartsWith(operation, StringComparison.Ordinal);
@@ -22,6 +65,8 @@ public static partial class Js
         {
             if (position >= source.Length) throw UnicodeRegExpSyntax();
             char ch = source[position];
+            if (ch == '\\' && position + 1 < source.Length && "dDwWsSpPq".Contains(source[position + 1]))
+                throw UnicodeRegExpSyntax();
             if (ch != '\\') {
                 if ("()[]{}/-|".Contains(ch) ||
                     position + 1 < source.Length && source[position + 1] == ch && ("&!#$%*+,.:;<=>?@^~".Contains(ch) || ch == (char)96))
@@ -31,19 +76,41 @@ public static partial class Js
             if (atomIsSet || ranges.Count != 1 || ranges[0].First != ranges[0].Last) throw UnicodeRegExpSyntax();
             return ranges[0].First;
         }
-        List<RegExpCodePointRange> SetOperand(out int? character)
+        RegExpCharacterSet SetStrings()
+        {
+            position += 2;
+            if (position == source.Length || source[position++] != '{') throw UnicodeRegExpSyntax();
+            var result = new RegExpCharacterSet { IgnoreCase = ignoreCase };
+            while (true) {
+                var points = new List<int>();
+                var key = new StringBuilder();
+                while (position < source.Length && source[position] is not ('|' or '}')) {
+                    int point = SetCharacter();
+                    if (ignoreCase) point = UnicodeRegExpFolding.Canonical(point);
+                    points.Add(point); key.Append(point.ToString("X6", CultureInfo.InvariantCulture));
+                }
+                if (position == source.Length) throw UnicodeRegExpSyntax();
+                if (points.Count == 1) result.Ranges.Add(new(points[0], points[0]));
+                else {result.Strings.Add(key.ToString()); result.MayContainStrings = true;}
+                if (source[position++] == '}') break;
+            }
+            if (ignoreCase) result.Ranges = UnicodeRegExpFolding.Close(result.Ranges);
+            return result;
+        }
+        RegExpCharacterSet SetOperand(out int? character)
         {
             character = null;
             if (position == source.Length) throw UnicodeRegExpSyntax();
             if (source[position] == '[') return SetClass();
-            if (source[position] == '\\' && position + 1 < source.Length && "dDwWsSpPq".Contains(source[position + 1])) {
+            if (source[position] == '\\' && position + 1 < source.Length && source[position + 1] == 'q') return SetStrings();
+            if (source[position] == '\\' && position + 1 < source.Length && "dDwWsSpP".Contains(source[position + 1])) {
                 var ranges = Atom(true);
-                return ignoreCase ? UnicodeRegExpFolding.Close(ranges) : ranges;
+                return new() {Ranges = ignoreCase ? UnicodeRegExpFolding.Close(ranges) : ranges, IgnoreCase = ignoreCase};
             }
             character = SetCharacter();
-            return [new(character.Value, character.Value)];
+            return new() {Ranges = [new(character.Value, character.Value)], IgnoreCase = ignoreCase};
         }
-        List<RegExpCodePointRange> SetTerm(out bool range)
+        RegExpCharacterSet SetTerm(out bool range)
         {
             var result = SetOperand(out int? first);
             range = false;
@@ -52,16 +119,17 @@ public static partial class Js
                 position++;
                 int last = SetCharacter();
                 if (first.Value > last) throw UnicodeRegExpSyntax();
-                result = [new(first.Value, last)]; range = true;
+                result = new() {Ranges = [new(first.Value, last)], IgnoreCase = ignoreCase}; range = true;
             }
-            return ignoreCase ? UnicodeRegExpFolding.Close(result) : result;
+            if (ignoreCase) result.Ranges = UnicodeRegExpFolding.Close(result.Ranges);
+            return result;
         }
-        List<RegExpCodePointRange> SetClass()
+        RegExpCharacterSet SetClass()
         {
             position++;
             bool invert = position < source.Length && source[position] == '^';
             if (invert) position++;
-            var result = new List<RegExpCodePointRange>();
+            var result = new RegExpCharacterSet {IgnoreCase = ignoreCase};
             if (position < source.Length && source[position] != ']') {
                 result = SetTerm(out bool range);
                 string operation = SetOperator("&&") ? "&&" : SetOperator("--") ? "--" : "";
@@ -70,19 +138,21 @@ public static partial class Js
                     do {
                         position += 2;
                         var right = SetOperand(out _);
-                        if (ignoreCase) right = UnicodeRegExpFolding.Close(right);
-                        result = IntersectRegExpRanges(result, operation == "--" ? InvertRegExpRanges(right) : right);
+                        if (ignoreCase) right.Ranges = UnicodeRegExpFolding.Close(right.Ranges);
+                        result.Intersect(right, operation == "--");
                     } while (SetOperator(operation));
                 }
                 else {
                     while (position < source.Length && source[position] != ']') {
                         if (SetOperator("&&") || SetOperator("--")) throw UnicodeRegExpSyntax();
-                        result.AddRange(SetTerm(out _));
+                        result.Union(SetTerm(out _));
                     }
                 }
             }
             if (position == source.Length || source[position++] != ']') throw UnicodeRegExpSyntax();
-            return invert ? InvertRegExpRanges(result) : MergeRegExpRanges(result);
+            if (invert && result.MayContainStrings) throw UnicodeRegExpSyntax();
+            result.Ranges = invert ? InvertRegExpRanges(result.Ranges) : MergeRegExpRanges(result.Ranges);
+            return result;
         }
     }
 }

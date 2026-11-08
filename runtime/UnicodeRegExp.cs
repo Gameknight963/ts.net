@@ -139,12 +139,16 @@ public static partial class Js
                     }
                     return UnicodeRegExpClassEscape(escape);
                 }
-                if (unicodeSets && characterClass && escape == 'q') throw new NotSupportedException("Unicode regular-expression string sets are not supported yet");
                 if (escape is 'p' or 'P') {
                     atomIsSet = true;
                     if (position == source.Length || source[position++] != '{') throw UnicodeRegExpSyntax();
                     int end = source.IndexOf('}', position); if (end < 0) throw UnicodeRegExpSyntax();
-                    var ranges = UnicodeRegExpProperty(source[position..end]); position = end + 1;
+                    string property = source[position..end]; position = end + 1;
+                    if (unicodeSets && property is "Basic_Emoji" or "Emoji_Keycap_Sequence" or "RGI_Emoji_Modifier_Sequence" or "RGI_Emoji_Flag_Sequence" or "RGI_Emoji_Tag_Sequence" or "RGI_Emoji_ZWJ_Sequence" or "RGI_Emoji") {
+                        if (escape == 'P') throw UnicodeRegExpSyntax();
+                        throw new NotSupportedException("Unicode regular-expression string properties are not supported yet");
+                    }
+                    var ranges = UnicodeRegExpProperty(property);
                     if (unicodeSets && ignoreCase) ranges = UnicodeRegExpFolding.Close(ranges);
                     return escape == 'P' ? InvertRegExpRanges(ranges) : ranges;
                 }
@@ -205,7 +209,7 @@ public static partial class Js
                 char ch = source[position];
                 if (previousAssertion && ch is '*' or '+' or '?' or '{') throw UnicodeRegExpSyntax();
                 previousAssertion = false;
-                if (ch == '[') {result.Append(unicodeSets ? RegExpCodePointAtom(SetClass()) : CharacterClass()); continue;}
+                if (ch == '[') {result.Append(unicodeSets ? SetExpressionAtom(SetClass()) : CharacterClass()); continue;}
                 if (ch == '\\') {
                     if (position + 1 < source.Length && source[position + 1] is 'b' or 'B') {
                         string word = ignoreCase ? "[A-Za-z0-9_\\u017F\\u212A]" : "[A-Za-z0-9_]";
