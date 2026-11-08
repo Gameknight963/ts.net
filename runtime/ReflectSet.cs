@@ -25,7 +25,8 @@ public static partial class Js
             var descriptor = (TsObject)existing;
             if (!descriptor.HasOwn("writable") || !Truthy(descriptor.Get("writable"))) return false;
         }
-        destination.SetOwnValue(key, value);
+        try { destination.SetOwnValue(key, value); }
+        catch (JsArray.LengthBlockedException) { return false; }
         return true;
     }
 }

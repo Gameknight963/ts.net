@@ -28,10 +28,15 @@ public partial class JsArray
     {
         public bool Matches(object value) => ReferenceEquals(value, Hole);
     }
-    public virtual JsArray Reverse()
+    protected void ReverseStorage()
     {
         var hole = new ObjectHole();
         values.Reverse(ref hole);
+    }
+    public virtual JsArray Reverse()
+    {
+        if (!CanUseElementStorage) return (JsArray)Js.ReverseArrayLike(this);
+        ReverseStorage();
         return this;
     }
 }
@@ -44,6 +49,7 @@ public sealed partial class NumberArray
     }
     public override JsArray Reverse()
     {
+        if (!CanUseElementStorage) return (JsArray)Js.ReverseArrayLike(this);
         bool packed = packedPrefix == numbers.Length;
         var hole = new NumberHole();
         numbers.Reverse(ref hole);

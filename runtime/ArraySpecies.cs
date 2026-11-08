@@ -7,15 +7,21 @@ public static partial class Js
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments) => receiver;
     }
+    [ThreadStatic] static int objectPrototypeIndexVersion;
+    [ThreadStatic] static bool objectPrototypeIndicesChecked, objectPrototypeHasIndices;
     internal static bool ArraySlicePrototypesHaveNoIndices()
     {
-        if (!ReferenceEquals(ArrayPrototype.PropertyPrototype, DefaultClassObjectPrototype) || DefaultClassObjectPrototype.PropertyPrototype != null) return false;
-        foreach (TsObject prototype in new[] { ArrayPrototype, DefaultClassObjectPrototype })
-        {
-            var names = (JsArray)prototype.OwnPropertyNames();
-            for (uint i = 0; i < names.Length(); i++) if (JsArray.Index((string)names.ElementAt(i), out _)) return false;
+        if (!ReferenceEquals(ArrayPrototype.PropertyPrototype, DefaultClassObjectPrototype) || DefaultClassObjectPrototype.PropertyPrototype != null || ((JsArray)ArrayPrototype).Length() != 0) return false;
+        int version = DefaultClassObjectPrototype.OwnPropertyVersion;
+        if (!objectPrototypeIndicesChecked || version != objectPrototypeIndexVersion) {
+            var names = (JsArray)DefaultClassObjectPrototype.OwnPropertyNames();
+            bool found = false;
+            for (uint i = 0; i < names.Length(); i++) if (JsArray.Index((string)names.ElementAt(i), out _)) { found = true; break; }
+            objectPrototypeHasIndices = found;
+            objectPrototypeIndexVersion = version;
+            objectPrototypeIndicesChecked = true;
         }
-        return true;
+        return !objectPrototypeHasIndices;
     }
     static JsFunction ArraySpeciesConstructor(TsObject source, out bool native)
     {

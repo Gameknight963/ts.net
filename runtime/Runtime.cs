@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 public abstract partial class TsObject
 {
     private OwnProperties extra;
+    internal int OwnPropertyVersion => extra?.Version ?? 0;
 
     public virtual bool HasOwn(string key) => extra != null && extra.ContainsKey(key);
     public virtual bool HasProperty(string key) => HasOwn(key) || PropertyPrototype is not null && PropertyPrototype.HasProperty(key);
@@ -302,6 +303,7 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object[] ArrayTryDense(object receiver, double limit)
     {
+        if (receiver is JsArray guarded && !guarded.CanUseElementStorage) return null;
         if (receiver is JsArray array && receiver.GetType() == typeof(JsArray)) return array.DenseRange(limit);
         if (receiver is TaggedArray tagged) return tagged.MaterializedDenseRange(limit);
         return receiver is ReversibleArray view ? view.DenseRange(limit) : null;

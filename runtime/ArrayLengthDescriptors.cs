@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 
 public partial class JsArray
 {
@@ -10,6 +12,20 @@ public partial class JsArray
     protected void CheckLengthWritable()
     {
         if (!LengthWritable) throw new InvalidOperationException("Array length is read-only");
+    }
+    internal sealed class LengthBlockedException() : InvalidOperationException("Array element is not configurable");
+    protected void RemoveDefinedElements(uint length)
+    {
+        if (!HasIndexedAccessors || length >= Count) return;
+        var indices = new List<uint>();
+        foreach (string key in OwnAccessorKeys)
+            if (Index(key, out uint index) && index >= length && index < Count) indices.Add(index);
+        indices.Sort(static (left, right) => right.CompareTo(left));
+        foreach (uint index in indices) {
+            if (DeleteOwn(index.ToString(CultureInfo.InvariantCulture))) continue;
+            Resize(index + 1);
+            throw new LengthBlockedException();
+        }
     }
     protected void CheckGrowth(uint index)
     {
@@ -31,7 +47,13 @@ public static partial class Js
         bool writable = array is not JsTemplateArray && array.LengthWritable;
         if (definition.Accessor || Has(DescriptorFields.Configurable) && definition.Configurable || Has(DescriptorFields.Enumerable) && definition.Enumerable) return false;
         if (!writable && (Has(DescriptorFields.Writable) && definition.Writable || length != array.Length())) return false;
-        if (Has(DescriptorFields.Value) && writable) array.SetLength(length);
+        if (Has(DescriptorFields.Value) && writable) {
+            try { array.SetLength(length); }
+            catch (JsArray.LengthBlockedException) {
+                if (Has(DescriptorFields.Writable) && !definition.Writable) array.MakeLengthReadOnly();
+                return false;
+            }
+        }
         if (writable && Has(DescriptorFields.Writable) && !definition.Writable) array.MakeLengthReadOnly();
         return true;
     }

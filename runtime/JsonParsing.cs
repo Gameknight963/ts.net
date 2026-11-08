@@ -155,7 +155,9 @@ public static partial class Js
     }
     static void DefineJsonValue(TsObject holder, string key, object value)
     {
-        if (holder is JsArray array && JsArray.Index(key, out _)) array.Set(key, value);
+        if (holder is JsArray array && JsArray.Index(key, out _))
+            TryApplyPropertyDefinition(array, key, new(value, null, null, true, true, true,
+                DescriptorFields.Value | DescriptorFields.Writable | DescriptorFields.Enumerable | DescriptorFields.Configurable));
         else if (holder is JsDescriptorObject described && described.HasPropertyDescriptors)
             TryApplyPropertyDefinition(described, key, new(value, null, null, true, true, true,
                 DescriptorFields.Value | DescriptorFields.Writable | DescriptorFields.Enumerable | DescriptorFields.Configurable));

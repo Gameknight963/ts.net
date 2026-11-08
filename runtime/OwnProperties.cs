@@ -21,6 +21,7 @@ sealed class OwnProperties
         if (source.tail != null) tail = new Dictionary<string, object>(source.tail);
         if (source.tailOrder != null) tailOrder = new List<string>(source.tailOrder);
     }
+    public int Version => version;
     public int Count => inlineCount + (tail?.Count ?? 0);
     public int StringCount => Count - symbolCount;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -32,7 +32,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Classes and inheritance | 14 / 15 | Missing some built-in base classes and complete constructor replacement-object support. |
 | Exceptions | 9 / 10 | Stack traces keep CLR formatting and may omit inlined frames. |
 | Async | 10 / 10 | Missing nothing. |
-| Standard library | 3 / 5 | Missing RegExp u/v flags, descriptor support for arrays, FinalizationRegistry, and other built-ins. |
+| Standard library | 3 / 5 | Missing RegExp u/v flags, Object.preventExtensions, Object.seal, and Object.freeze on arrays, FinalizationRegistry, and other built-ins. |
 
 </details>
 

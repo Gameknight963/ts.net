@@ -12,21 +12,24 @@ public sealed partial class ReversibleArray : JsArray
     void NormalizeOrder()
     {
         if (!reversed) return;
-        base.Reverse();
+        ReverseStorage();
         reversed = false;
     }
     public override JsArray Reverse()
     {
+        if (!CanUseElementStorage) return (JsArray)Js.ReverseArrayLike(this);
         if (Count > 1) reversed = !reversed;
         return this;
     }
-    protected override object Read(uint index) {object value=values.Get(PhysicalIndex(index));return ReferenceEquals(value,HoleValue())?InheritedElement(index):value;}
+    protected override object Read(uint index) {if (TryReadDefinedElement(index, out var defined)) return defined; object value=values.Get(PhysicalIndex(index));return ReferenceEquals(value,HoleValue())?InheritedElement(index):value;}
     protected override void DeleteElement(uint index) => base.DeleteElement(PhysicalIndex(index));
-    public override bool HasElement(uint index) => base.HasElement(PhysicalIndex(index));
+    public override bool HasElement(uint index) => HasDefinedElement(index) || index < Count && !ReferenceEquals(values.Get(PhysicalIndex(index)), HoleValue());
     protected override void Write(uint index, object value)
     {
+        if (TryWriteDefinedElement(index, value)) return;
+        CheckGrowth(index);
         if (reversed && index >= Count) NormalizeOrder();
-        base.Write(PhysicalIndex(index), value);
+        values.Set(PhysicalIndex(index), value);
     }
     protected override void Resize(uint length)
     {

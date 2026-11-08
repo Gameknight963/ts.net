@@ -82,7 +82,7 @@ public static partial class Js
     }
     static void InstallPropertyDefinition(TsObject target, JsDescriptorObject.Descriptor descriptor)
     {
-        if (target is JsArray array) array.DefineNamedProperty(descriptor);
+        if (target is JsArray array) array.DefineArrayProperty(descriptor);
         else ((JsDescriptorObject)target).Define(descriptor);
     }
     static bool TryApplyPropertyDefinition(TsObject obj, string key, PropertyDefinition definition)
@@ -96,8 +96,9 @@ public static partial class Js
             if (HasElementField(DescriptorFields.Value)) array.Write((int)index, definition.Value);
             return true;
         }
-        if (obj.IsModuleNamespace || obj is not JsDescriptorObject && (obj is not JsArray || JsArray.Index(key, out _)))
+        if (obj.IsModuleNamespace || obj is not JsDescriptorObject && obj is not JsArray)
             throw new NotSupportedException("Property definition on this object layout is not implemented yet");
+        if (obj is JsArray indexed && JsArray.Index(key, out uint element) && element >= indexed.Length() && !indexed.LengthWritable) return false;
         object existing = obj.OwnPropertyDescriptor(key);
         if (IsUndefined(existing)) {
             if (!obj.IsExtensible) return false;

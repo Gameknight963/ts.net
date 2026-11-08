@@ -20,8 +20,8 @@ public sealed partial class TaggedArray : JsArray
             if (!ReferenceEquals(items[i], HoleValue())) Write((uint)i, items[i]);
     }
     protected override uint Count => materialized != null ? (uint)materialized.Length() : length;
-    public override bool HasElement(uint index) => materialized != null ? materialized.HasElement(index) : index < length && index < (uint)tags.Length && tags[index] != 0;
-    protected override object Read(uint index) => HasElement(index) ? Materialize().ElementAt(index) : InheritedElement(index);
+    public override bool HasElement(uint index) => HasDefinedElement(index) || (materialized != null ? materialized.HasElement(index) : index < length && index < (uint)tags.Length && tags[index] != 0);
+    protected override object Read(uint index) => TryReadDefinedElement(index, out var defined) ? defined : HasElement(index) ? Materialize().ElementAt(index) : InheritedElement(index);
     protected override void DeleteElement(uint index)
     {
         if(materialized!=null){materialized.DeleteOwn(index.ToString(System.Globalization.CultureInfo.InvariantCulture));return;}
@@ -67,6 +67,7 @@ public sealed partial class TaggedArray : JsArray
     }
     protected override void Write(uint index, object value)
     {
+        if (TryWriteDefinedElement(index, value)) return;
         if (!Prepare(index)) { materialized.Set(index.ToString(System.Globalization.CultureInfo.InvariantCulture), value);return; }
         if (value is double number) { tags[index] = 1;numbers[index] = number;references[index] = null; }
         else { tags[index] = 2;references[index] = value;numbers[index] = 0; }
@@ -75,6 +76,7 @@ public sealed partial class TaggedArray : JsArray
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetNumberAt(int index, double? value)
     {
+        if (TryWriteDefinedNumber((uint)index, value)) return;
         if (!value.HasValue) { Write((uint)index, Js.Undefined);return; }
         if (!Prepare((uint)index)) { materialized.SetAt(index, value.Value);return; }
         tags[index] = 1;numbers[index] = value.Value;references[index] = null;
@@ -84,6 +86,7 @@ public sealed partial class TaggedArray : JsArray
     // The compiler uses this entry point only for statically nonnumeric values.
     public void SetReferenceAt(int index, object value)
     {
+        if (TryWriteDefinedElement((uint)index, value)) return;
         if (!Prepare((uint)index)) { materialized.SetAt(index, value);return; }
         tags[index] = 2;references[index] = value;
         if ((uint)index >= length) length = (uint)index + 1;
@@ -91,6 +94,7 @@ public sealed partial class TaggedArray : JsArray
     protected override void Resize(uint count)
     {
         CheckLengthWritable();
+        RemoveDefinedElements(count);
         if (materialized != null) { materialized.SetLength(count);return; }
         if (count < length && count < (uint)tags.Length)
         {
@@ -100,12 +104,32 @@ public sealed partial class TaggedArray : JsArray
         length = count;
     }
     internal object[] MaterializedDenseRange(double limit) => materialized != null ? materialized.DenseRange(limit) : limit >= 0 && limit <= length && limit <= tags.Length ? Materialize().DenseRange(limit) : null;
-    public byte[] TryTags(double limit) => materialized == null && limit >= 0 && limit <= length && limit <= tags.Length ? tags : null;
-    public bool IsNumberAt(int index) => materialized != null ? Js.IsNumber(materialized.ElementAt((uint)index)) : (uint)index < length && (uint)index < (uint)tags.Length && tags[index] == 1;
+    public byte[] TryTags(double limit) => CanUseElementStorage && materialized == null && limit >= 0 && limit <= length && limit <= tags.Length ? tags : null;
+    public bool IsNumberAt(int index)
+    {
+        if (TryReadDefinedElement((uint)index, out var defined)) return Js.IsNumber(defined);
+        if (materialized != null) return Js.IsNumber(materialized.HasElement((uint)index) ? materialized.ElementAt((uint)index) : InheritedElement((uint)index));
+        if ((uint)index >= length || (uint)index >= (uint)tags.Length || tags[index] == 0) return Js.IsNumber(InheritedElement((uint)index));
+        return tags[index] == 1;
+    }
     protected override JsArray SliceRange(uint start, uint count) => Materialize().Slice((double)start, (double)start + count);
-    internal override double Search(object value, object fromIndex, bool includes) => Materialize().Search(value, fromIndex, includes);
-    internal override double SearchNumber(double? value, object fromIndex, bool includes) => Materialize().SearchNumber(value, fromIndex, includes);
-    public override JsArray Reverse() { Materialize().Reverse();return this; }
+    internal override double Search(object value, object fromIndex, bool includes)
+    {
+        uint count = Count;
+        if (count == 0) return -1;
+        uint start = SliceBound(fromIndex, count);
+        return CanUseElementStorage && count == Count ? Materialize().Search(value, (double)start, includes)
+            : Js.SearchArrayRange(this, value, count, start, includes);
+    }
+    internal override double SearchNumber(double? value, object fromIndex, bool includes)
+    {
+        uint count = Count;
+        if (count == 0) return -1;
+        uint start = SliceBound(fromIndex, count);
+        return CanUseElementStorage && count == Count ? Materialize().SearchNumber(value, (double)start, includes)
+            : Js.SearchArrayRange(this, Js.BoxNumber(value), count, start, includes);
+    }
+    public override JsArray Reverse() { if (!CanUseElementStorage) return (JsArray)Js.ReverseArrayLike(this); Materialize().Reverse();return this; }
 }
 
 public static partial class Js

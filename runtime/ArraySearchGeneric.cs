@@ -2,9 +2,9 @@ using System;
 
 public static partial class Js
 {
-    static double SearchArrayLike(object receiver, object search, object fromIndex, bool includes)
+    internal static double SearchArrayLike(object receiver, object search, object fromIndex, bool includes)
     {
-        if (receiver is JsArray array) return array.Search(search, fromIndex, includes);
+        if (receiver is JsArray array && array.CanUseElementStorage) return array.Search(search, fromIndex, includes);
         var source = ToObject(receiver);
         long length = IndexedLength(source);
         if (length == 0) return -1;
@@ -12,6 +12,10 @@ public static partial class Js
         start = double.IsNaN(start) ? 0 : Math.Truncate(start);
         if (start >= length) return -1;
         long first = (long)(start < 0 ? Math.Max(length + start, 0) : start);
+        return SearchArrayRange(source, search, length, first, includes);
+    }
+    internal static double SearchArrayRange(TsObject source, object search, long length, long first, bool includes)
+    {
         for (long index = first; index < length; index++)
         {
             object value;

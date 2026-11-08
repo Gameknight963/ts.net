@@ -121,18 +121,18 @@ public partial class JsArray : TsObject
     public static object HoleValue() => Hole;
     protected JsArray() { }
     protected virtual uint Count => values.Length;
-    protected virtual object Read(uint index) { object value = values.Get(index); return ReferenceEquals(value, Hole) ? InheritedElement(index) : value; }
+    protected virtual object Read(uint index) { if (TryReadDefinedElement(index, out var defined)) return defined; object value = values.Get(index); return ReferenceEquals(value, Hole) ? InheritedElement(index) : value; }
     protected object InheritedElement(uint index) => PropertyPrototype is TsObject prototype ? prototype.GetWithReceiver(index.ToString(CultureInfo.InvariantCulture),this) : Js.Undefined;
     protected virtual void DeleteElement(uint index) => values.Remove(index);
     public override bool DeleteOwn(string key)
     {
         if(key=="length")return false;
-        if(Index(key,out uint index)){DeleteElement(index);return true;}
-        return DeleteNamedProperty(key);
+        if(Index(key,out uint index)){if (HasOwnAccessors && base.HasOwn(key) && !DeleteDefinedProperty(key)) return false; DeleteElement(index);return true;}
+        return DeleteDefinedProperty(key);
     }
-    public virtual bool HasElement(uint index) => index < Count && !ReferenceEquals(values.Get(index), Hole);
-    protected virtual void Write(uint index, object value) { CheckGrowth(index); values.Set(index, value); }
-    protected virtual void Resize(uint length) { CheckLengthWritable(); values.Resize(length); }
+    public virtual bool HasElement(uint index) => HasDefinedElement(index) || index < Count && !ReferenceEquals(values.Get(index), Hole);
+    protected virtual void Write(uint index, object value) { if (TryWriteDefinedElement(index, value)) return; CheckGrowth(index); values.Set(index, value); }
+    protected virtual void Resize(uint length) { CheckLengthWritable(); RemoveDefinedElements(length); values.Resize(length); }
     public double Length() => Count;
     internal static uint SliceBound(object value, uint length)
     {
@@ -142,6 +142,7 @@ public partial class JsArray : TsObject
     }
     public JsArray Slice(object start, object end)
     {
+        if (HasOwnAccessors) return (JsArray)Js.SliceArrayLike(this, start, end);
         uint length = Count, first = SliceBound(start, length);
         uint last = Js.IsUndefined(end) ? length : SliceBound(end, length);
         return SliceRange(first, last > first ? last - first : 0);
@@ -185,7 +186,7 @@ public partial class JsArray : TsObject
         base.Get(key);
     public override object SetOwnValue(string key, object value)
     {
-        if (TrySetNamedData(key, value)) return value;
+        if (TrySetDefinedData(key, value)) return value;
         if (TryOwnAccessor(key, out _)) throw new InvalidOperationException("Cannot replace accessor through assignment");
         if (key == "length" || Index(key, out _)) return Set(key, value);
         DefineOwn(key, value);
@@ -260,6 +261,10 @@ public partial class JsArray : TsObject
         uint length = Count;
         if (length == 0) { CheckLengthWritable(); return Js.Undefined; }
         object value = Read(length - 1);
+        if (HasOwnAccessors) {
+            if (!DeleteOwn((length - 1).ToString(CultureInfo.InvariantCulture))) throw new InvalidOperationException("Array element is not configurable");
+            SetLength(length - 1); return value;
+        }
         if (!LengthWritable) DeleteElement(length - 1);
         Resize(length - 1);return value;
     }
@@ -282,20 +287,22 @@ public sealed partial class NumberArray : JsArray
     static double Encode(double? value) => !value.HasValue ? Undefined : double.IsNaN(value.Value) ? double.NaN : value.Value;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static double? Decode(double value) => unchecked((ulong)(BitConverter.DoubleToInt64Bits(value) - MissingBits)) <= 1 ? null : value;
-    public override bool HasElement(uint index) => index < Count && BitConverter.DoubleToInt64Bits(numbers.Get(index)) != MissingBits;
+    public override bool HasElement(uint index) => HasDefinedElement(index) || index < Count && BitConverter.DoubleToInt64Bits(numbers.Get(index)) != MissingBits;
     internal override void ReserveCapacity(int capacity) => numbers.Reserve(capacity);
     protected override uint Count => numbers.Length;
-    protected override object Read(uint index) {double value=numbers.Get(index);return BitConverter.DoubleToInt64Bits(value)==MissingBits ? InheritedElement(index) : Js.BoxNumber(Decode(value));}
+    protected override object Read(uint index) {if (TryReadDefinedElement(index, out var defined)) return defined; double value=numbers.Get(index);return BitConverter.DoubleToInt64Bits(value)==MissingBits ? InheritedElement(index) : Js.BoxNumber(Decode(value));}
     protected override void DeleteElement(uint index) {numbers.Remove(index);packedPrefix=Math.Min(packedPrefix,index);}
     protected override void Write(uint index, object value) => Store(index, Js.Cast<double?>(value, "Array write violates number element type"));
     protected override void Resize(uint length)
     {
         CheckLengthWritable();
+        RemoveDefinedElements(length);
         numbers.Resize(length);packedPrefix = Math.Min(packedPrefix, length);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void Store(uint index, double? value)
     {
+        if (TryWriteDefinedNumber(index, value)) return;
         CheckGrowth(index);
         numbers.Set(index, Encode(value));
         if (!value.HasValue) { if (index < packedPrefix) packedPrefix = index; }
@@ -328,11 +335,17 @@ public sealed partial class NumberArray : JsArray
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double? GetNumber(double index)
     {
-        if (index >= 0 && index < uint.MaxValue && index == (uint)index) return Decode(numbers.Get((uint)index));
+        if (index >= 0 && index < uint.MaxValue && index == (uint)index) return GetNumberAt((int)(uint)index);
         return Js.Cast<double?>(Get(Js.PropertyKey(index)), "Array element is not a number");
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public double? GetNumberAt(int index) => Decode(numbers.Get((uint)index));
+    public double? GetNumberAt(int index)
+    {
+        if (TryReadDefinedElement((uint)index, out var value)) return Js.Cast<double?>(value, "Array element is not a number");
+        double stored = numbers.Get((uint)index);
+        return BitConverter.DoubleToInt64Bits(stored) == MissingBits
+            ? Js.Cast<double?>(InheritedElement((uint)index), "Array element is not a number") : Decode(stored);
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetNumberAt(int index, double? value) => Store((uint)index, value);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -350,6 +363,7 @@ public sealed partial class NumberArray : JsArray
     }
     public double? PopNumber()
     {
+        if (HasOwnAccessors) return Js.Cast<double?>(Pop(), "Array element is not a number");
         uint length = numbers.Length;
         if (length == 0) { CheckLengthWritable(); return null; }
         double? value = Decode(numbers.Get(length - 1));

@@ -20,3 +20,9 @@ const readonly = JSON.parse('{"a":1,"b":2}', function(this: any, key: string, va
     return key === 'b' ? 9 : value;
 });
 console.log('readonly replaced', JSON.stringify(readonly), JSON.stringify(Object.getOwnPropertyDescriptor(readonly, 'b')));
+let arraySetters = 0;
+const array = JSON.parse('[1,2]', function(this: any, key: string, value: any) {
+    if (key === '0') Object.defineProperty(this, '1', {get() {return 7;}, set() {arraySetters++;}, configurable: true});
+    return key === '1' ? value + 1 : value;
+});
+console.log('array accessor replaced', JSON.stringify(array), arraySetters, JSON.stringify(Object.getOwnPropertyDescriptor(array, '1')));

@@ -3,9 +3,9 @@ using System.Globalization;
 
 public static partial class Js
 {
-    static object ReverseArrayLike(object receiver)
+    internal static object ReverseArrayLike(object receiver)
     {
-        if (receiver is JsArray array) return array.Reverse();
+        if (receiver is JsArray array && array.CanUseElementStorage) return array.Reverse();
         var source = ToObject(receiver);
         long length = IndexedLength(source);
         void Set(long index, object value) => source.SetWithReceiver(index.ToString(CultureInfo.InvariantCulture), value, source);

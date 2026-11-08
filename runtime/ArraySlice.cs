@@ -3,7 +3,7 @@ using System.Globalization;
 
 public static partial class Js
 {
-    static object SliceArrayLike(object receiver, object start, object end)
+    internal static object SliceArrayLike(object receiver, object start, object end)
     {
         var source = ToObject(receiver);
         long length = IndexedLength(source);

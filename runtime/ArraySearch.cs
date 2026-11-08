@@ -51,17 +51,23 @@ public partial class JsArray
     }
     internal virtual double Search(object value, object fromIndex, bool includes)
     {
+        if (!CanUseElementStorage) return Js.SearchArrayLike(this, value, fromIndex, includes);
         uint length = Count;
         if (length == 0) return -1;
         var match = new ObjectMatch { Value = value, Includes = includes };
-        return values.Find(SliceBound(fromIndex, length), length, ref match);
+        uint start = SliceBound(fromIndex, length);
+        if (!CanUseElementStorage) return Js.SearchArrayRange(this, value, length, start, includes);
+        return values.Find(start, length, ref match);
     }
     internal virtual double SearchNumber(double? value, object fromIndex, bool includes)
     {
+        if (!CanUseElementStorage) return Js.SearchArrayLike(this, Js.BoxNumber(value), fromIndex, includes);
         uint length = Count;
         if (length == 0) return -1;
         var match = new ObjectMatch { Number = value, Numeric = true, Includes = includes };
-        return values.Find(SliceBound(fromIndex, length), length, ref match);
+        uint start = SliceBound(fromIndex, length);
+        if (!CanUseElementStorage) return Js.SearchArrayRange(this, Js.BoxNumber(value), length, start, includes);
+        return values.Find(start, length, ref match);
     }
 }
 
@@ -102,16 +108,21 @@ public sealed partial class NumberArray
     }
     internal override double Search(object value, object fromIndex, bool includes)
     {
+        if (!CanUseElementStorage) return Js.SearchArrayLike(this, value, fromIndex, includes);
         if (value is double n) return SearchNumber(n, fromIndex, includes);
         if (Js.IsUndefined(value)) return SearchNumber(null, fromIndex, includes);
-        if (Count != 0) SliceBound(fromIndex, Count);
-        return -1;
-    }
-    internal override double SearchNumber(double? value, object fromIndex, bool includes)
-    {
         uint length = Count;
         if (length == 0) return -1;
         uint start = SliceBound(fromIndex, length);
+        return CanUseElementStorage ? -1 : Js.SearchArrayRange(this, value, length, start, includes);
+    }
+    internal override double SearchNumber(double? value, object fromIndex, bool includes)
+    {
+        if (!CanUseElementStorage) return Js.SearchArrayLike(this, Js.BoxNumber(value), fromIndex, includes);
+        uint length = Count;
+        if (length == 0) return -1;
+        uint start = SliceBound(fromIndex, length);
+        if (!CanUseElementStorage) return Js.SearchArrayRange(this, Js.BoxNumber(value), length, start, includes);
         var match = new NumberMatch { Value = value, Includes = includes };
         if (value.HasValue && !double.IsNaN(value.Value))
         {
