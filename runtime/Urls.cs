@@ -201,6 +201,8 @@ public static partial class Js
             prototype.DefineMethod("toJSON", new CollectionMethod("toJSON", 0, (receiver, _) => RequireUrl(receiver).Href));
             Member("canParse", new JsFunction((FunctionBody)(static args => BoxBoolean(TryUrlArguments(args, out _))), null, "canParse", 1));
             Member("parse", new JsFunction((FunctionBody)(static args => UrlArguments(args, false)), null, "parse", 1));
+            Member("createObjectURL", new JsFunction((FunctionBody)CreateObjectUrl, null, "createObjectURL", 1));
+            Member("revokeObjectURL", new JsFunction((FunctionBody)RevokeObjectUrl, null, "revokeObjectURL", 1));
         }
         public override object Construct(object[] args) => UrlArguments(args, true);
         internal override bool CanInitializeDerived => true;

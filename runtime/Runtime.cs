@@ -38,7 +38,7 @@ public static partial class Js
             CheckModuleEvaluations(); return 0;
         }
         catch (Exception error) { Console.Error.WriteLine(error); return 1; }
-        finally { consoleGroupDepth = 0; ClearHostEvents(); ClearTimers(); promiseJobs?.Clear(); unhandledPromises?.Clear(); ClearKeptWeakTargets(); ClearModuleEvaluations(); }
+        finally { consoleGroupDepth = 0; ClearHostEvents(); ClearTimers(); promiseJobs?.Clear(); unhandledPromises?.Clear(); ClearKeptWeakTargets(); ClearModuleEvaluations(); ClearObjectUrls(); }
     }
     private sealed class UndefinedValue { }
     public static readonly object Undefined = new UndefinedValue();
