@@ -2,19 +2,17 @@ using System;
 
 public abstract partial class TsObject
 {
-    // Membership includes non-enumerable prototype names. Keep it separate from
-    // value lookup while the standard-library prototype methods remain partial.
+    // Membership checks do not read values or invoke accessors.
     internal virtual bool HasInProperty(string key)
     {
         if (HasOwn(key)) return true;
         if (IsModuleNamespace) return false;
-        return HasProperty(key) || PropertyPrototype is not null && PropertyPrototype.HasInProperty(key) || this is JsArray && Js.IsArrayPrototypeKey(key);
+        return HasProperty(key) || PropertyPrototype is not null && PropertyPrototype.HasInProperty(key);
     }
 }
 
 public static partial class Js
 {
-    internal static bool IsArrayPrototypeKey(string key) => key is "at" or "concat" or "copyWithin" or "fill" or "find" or "findIndex" or "findLast" or "findLastIndex" or "lastIndexOf" or "pop" or "push" or "reverse" or "shift" or "unshift" or "slice" or "sort" or "splice" or "includes" or "indexOf" or "join" or "keys" or "entries" or "values" or "forEach" or "filter" or "flat" or "flatMap" or "map" or "every" or "some" or "reduce" or "reduceRight" or "toReversed" or "toSorted" or "toSpliced" or "with";
     private sealed class ClassObjectPrototype : JsClassInstance
     {
         internal ClassObjectPrototype()
