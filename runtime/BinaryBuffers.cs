@@ -45,7 +45,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "ArrayBuffer");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "ArrayBuffer", false);
             prototype.DefineClassAccessor("byteLength", new CollectionMethod("get byteLength", 0, (receiver, _) => (double)RequireBuffer(receiver).Bytes.Length), 1);
             prototype.DefineClassAccessor("resizable", new CollectionMethod("get resizable", 0, (receiver, _) => BoxBoolean(RequireBuffer(receiver).Resizable)), 1);
             prototype.DefineClassAccessor("maxByteLength", new CollectionMethod("get maxByteLength", 0, (receiver, _) => { var buffer = RequireBuffer(receiver); return (double)(buffer.Detached ? 0 : buffer.Resizable ? buffer.Maximum : buffer.Bytes.Length); }), 1);
@@ -105,7 +105,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "DataView");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "DataView", false);
             prototype.DefineClassAccessor("buffer", new CollectionMethod("get buffer", 0, (receiver, _) => RequireView(receiver).Buffer), 1);
             prototype.DefineClassAccessor("byteOffset", new CollectionMethod("get byteOffset", 0, (receiver, _) => (double)ViewOffset(RequireView(receiver))), 1);
             prototype.DefineClassAccessor("byteLength", new CollectionMethod("get byteLength", 0, (receiver, _) => (double)RequireView(receiver).Length), 1);

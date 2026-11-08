@@ -66,7 +66,7 @@ public static partial class Js
         }), null, "pause", 0));
         // The current implementation uses CLR locks for every integer width.
         result.DefineMethod("isLockFree", new JsFunction((FunctionBody)(static args => { _ = Number(FunctionArgument(args, 0)); return BoxBoolean(false); }), null, "isLockFree", 1));
-        result.DefineMethod(PropertyKey(ToStringTagSymbol), "Atomics"); return result;
+        result.DefineMethod(PropertyKey(ToStringTagSymbol), "Atomics", false); return result;
     }
     static class AtomicsNamespace { internal static readonly TsObject Value = CreateAtomics(); }
 }

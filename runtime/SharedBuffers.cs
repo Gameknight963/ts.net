@@ -27,7 +27,7 @@ public static partial class Js
         internal SharedBufferConstructor() : base("SharedArrayBuffer", static _ => throw new InvalidOperationException("SharedArrayBuffer requires new"), 1)
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "SharedArrayBuffer");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "SharedArrayBuffer", false);
             prototype.DefineClassAccessor("byteLength", new CollectionMethod("get byteLength", 0, static (receiver, _) => (double)RequireSharedBuffer(receiver).Bytes.Length), 1);
             prototype.DefineClassAccessor("maxByteLength", new CollectionMethod("get maxByteLength", 0, static (receiver, _) => { var buffer = RequireSharedBuffer(receiver); return (double)(buffer.Resizable ? buffer.Maximum : buffer.Bytes.Length); }), 1);
             prototype.DefineClassAccessor("growable", new CollectionMethod("get growable", 0, static (receiver, _) => BoxBoolean(RequireSharedBuffer(receiver).Resizable)), 1);

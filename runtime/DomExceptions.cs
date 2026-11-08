@@ -40,7 +40,7 @@ public static partial class Js
         {
             var prototype = new DomExceptionPrototype { ParentPrototype = (TsObject)((JsFunction)GetErrorConstructor("Error")).Get("prototype") }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "DOMException");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "DOMException", false);
             prototype.DefineAccessor("name", new CollectionMethod("get name", 0, static (receiver, _) => RequireDomException(receiver).Name), 1);
             prototype.DefineAccessor("message", new CollectionMethod("get message", 0, static (receiver, _) => RequireDomException(receiver).Message), 1);
             prototype.DefineAccessor("code", new CollectionMethod("get code", 0, static (receiver, _) => (double)RequireDomException(receiver).Code), 1);
