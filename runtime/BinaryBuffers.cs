@@ -122,18 +122,28 @@ public static partial class Js
                 prototype.DefineMethod("set" + type, new CollectionMethod("set" + type, 2, (receiver, args) => AccessView(receiver, args, captured, true)));
             }
         }
-        public override object Construct(object[] args)
+        public override object Construct(object[] args) => CreateView(args, null);
+        BinaryView CreateView(object[] args, JsFunction newTarget)
         {
             var buffer = RequireBufferSource(FunctionArgument(args, 0));
             double requestedOffset = BinarySafeIndex(FunctionArgument(args, 1));
             EnsureAttached(buffer);
-            if (requestedOffset > buffer.Bytes.Length) throw new ArgumentOutOfRangeException(null, "DataView offset is out of range");
+            int initialLength = buffer.Bytes.Length;
+            if (requestedOffset > initialLength) throw new ArgumentOutOfRangeException(null, "DataView offset is out of range");
             int offset = (int)requestedOffset;
-            int length = IsUndefined(FunctionArgument(args, 2)) ? buffer.Bytes.Length - offset : BinaryIndex(args[2]);
+            object requested = FunctionArgument(args, 2);
+            bool tracking = buffer.Resizable && IsUndefined(requested);
+            double length = IsUndefined(requested) ? initialLength - offset : BinarySafeIndex(requested);
+            if (length > initialLength - offset) throw new ArgumentOutOfRangeException(null, "DataView length is out of range");
+            var prototype = newTarget == null ? null : ConstructionPrototype(newTarget);
             EnsureAttached(buffer);
-            if (length > buffer.Bytes.Length - offset) throw new ArgumentOutOfRangeException(null, "DataView length is out of range");
-            return new BinaryView(buffer, offset, length, buffer.Resizable && IsUndefined(FunctionArgument(args, 2)));
+            if (offset > buffer.Bytes.Length || !tracking && length > buffer.Bytes.Length - offset)
+                throw new ArgumentOutOfRangeException(null, "DataView length is out of range");
+            var result = new BinaryView(buffer, offset, (int)length, tracking);
+            if (prototype != null) result.SetPrototype(prototype);
+            return result;
         }
+        internal override object InitializeDerived(object instance, object[] args, JsFunction newTarget) => CreateView(args, newTarget);
         internal override bool CanInitializeDerived => true;
         internal override object InitializeDerived(object instance, object[] args) { var result = (TsObject)Construct(args); result.SetPrototype(((TsObject)instance).PropertyPrototype); return result; }
     }
