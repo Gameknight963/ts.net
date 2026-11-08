@@ -8,7 +8,7 @@ internal sealed class JsCreatedObject : JsDynamicObject
     internal void DefineMethod(string key, object value, bool writable = true) => Define(new(key, value, null, null, false, writable, false, true));
     internal void Define(Descriptor descriptor)
     {
-        descriptors.Add(descriptor.Key, descriptor);
+        descriptors[descriptor.Key] = descriptor;
         DefineOwn(descriptor.Key, descriptor.Value);
         if (descriptor.Getter != null) DefineAccessor(descriptor.Key, descriptor.Getter, 1, false);
         if (descriptor.Setter != null) DefineAccessor(descriptor.Key, descriptor.Setter, 2, false);

@@ -32,4 +32,42 @@ public static partial class Js
             throw new InvalidOperationException("Property descriptor mixes data and accessors");
         return new(value, getter as JsFunction, setter as JsFunction, writable, enumerable, configurable, fields);
     }
+    static object ObjectDefineProperty(object target, object property, object attributes)
+    {
+        if (target is not TsObject obj) throw new InvalidOperationException("Property target must be an object");
+        string key = PropertyKey(property);
+        PropertyDefinition definition = ReadPropertyDefinition(attributes);
+        if (obj is not JsCreatedObject created) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
+        object existing = obj.OwnPropertyDescriptor(key);
+        if (IsUndefined(existing)) { created.Define(definition.Complete(key)); return obj; }
+        var current = (TsObject)existing;
+        bool Has(DescriptorFields field) => (definition.Fields & field) != 0;
+        bool configurable = Truthy(current.Get("configurable")), enumerable = Truthy(current.Get("enumerable"));
+        bool accessor = !current.HasOwn("writable");
+        bool dataDefinition = Has(DescriptorFields.Value | DescriptorFields.Writable);
+        bool changesKind = (definition.Accessor || dataDefinition) && accessor != definition.Accessor;
+        void Reject() => throw new InvalidOperationException("Cannot redefine a non-configurable property");
+        if (!configurable)
+        {
+            if (Has(DescriptorFields.Configurable) && definition.Configurable || Has(DescriptorFields.Enumerable) && definition.Enumerable != enumerable || changesKind) Reject();
+            if (accessor)
+            {
+                if (Has(DescriptorFields.Get) && !SameValue(current.Get("get"), definition.Getter ?? Undefined) ||
+                    Has(DescriptorFields.Set) && !SameValue(current.Get("set"), definition.Setter ?? Undefined)) Reject();
+            }
+            else if (!Truthy(current.Get("writable")))
+            {
+                if (Has(DescriptorFields.Writable) && definition.Writable || Has(DescriptorFields.Value) && !SameValue(current.Get("value"), definition.Value)) Reject();
+            }
+        }
+        bool nextAccessor = changesKind ? definition.Accessor : accessor;
+        object value = Has(DescriptorFields.Value) ? definition.Value : accessor ? Undefined : current.Get("value");
+        bool writable = Has(DescriptorFields.Writable) ? definition.Writable : !accessor && Truthy(current.Get("writable"));
+        JsFunction getter = !nextAccessor ? null : Has(DescriptorFields.Get) ? definition.Getter : accessor ? current.Get("get") as JsFunction : null;
+        JsFunction setter = !nextAccessor ? null : Has(DescriptorFields.Set) ? definition.Setter : accessor ? current.Get("set") as JsFunction : null;
+        created.Define(new(key, value, getter, setter, nextAccessor, writable,
+            Has(DescriptorFields.Enumerable) ? definition.Enumerable : enumerable,
+            Has(DescriptorFields.Configurable) ? definition.Configurable : configurable));
+        return obj;
+    }
 }

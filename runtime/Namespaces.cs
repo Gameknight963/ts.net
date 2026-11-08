@@ -139,6 +139,7 @@ public static partial class Js
         result.UseObjectPrototype(DefaultClassObjectPrototype);
         DefaultClassObjectPrototype.DefineMethod("constructor",result);
         result.Member("create", new JsFunction((FunctionBody)(static args => ObjectCreate(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "create", 2));
+        result.Member("defineProperty", new JsFunction((FunctionBody)(static args => ObjectDefineProperty(FunctionArgument(args, 0), FunctionArgument(args, 1), FunctionArgument(args, 2))), null, "defineProperty", 3));
         result.Member("fromEntries", new JsFunction((FunctionBody)(static args => ObjectFromEntries(FunctionArgument(args, 0))), null, "fromEntries", 1));
         result.Member("groupBy", new JsFunction((FunctionBody)(static args => ObjectGroupBy(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "groupBy", 2));
         result.Member("assign", new JsFunction((FunctionBody)ObjectAssign, null, "assign", 2));
