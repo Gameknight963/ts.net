@@ -37,6 +37,12 @@ public static partial class Js
         if (target is not TsObject obj) throw new InvalidOperationException("Property target must be an object");
         string key = PropertyKey(property);
         PropertyDefinition definition = ReadPropertyDefinition(attributes);
+        return ApplyPropertyDefinition(obj, key, definition);
+    }
+    static void DefineDictionaryField(JsDynamicObject target, string key, object value) => ApplyPropertyDefinition(target, key,
+        new(value, null, null, true, true, true, DescriptorFields.Value | DescriptorFields.Writable | DescriptorFields.Enumerable | DescriptorFields.Configurable));
+    static object ApplyPropertyDefinition(TsObject obj, string key, PropertyDefinition definition)
+    {
         if (obj is not JsDynamicObject created || obj.IsModuleNamespace) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
         object existing = obj.OwnPropertyDescriptor(key);
         if (IsUndefined(existing)) { created.Define(definition.Complete(key)); return obj; }
