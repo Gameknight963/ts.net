@@ -14,6 +14,7 @@ public static partial class Js
     {
         readonly List<FinalizationCell> cells = new();
         bool queued;
+        int mutationVersion;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)RuntimeNamespaces.FinalizationRegistry.Get("prototype");
         internal void Register(object target, object held, object token)
         {
@@ -21,11 +22,14 @@ public static partial class Js
             if (SameValue(target, held)) throw new InvalidOperationException("FinalizationRegistry target and held value must differ");
             if (!IsUndefined(token) && !CanBeWeakKey(token)) throw new InvalidOperationException("FinalizationRegistry token must be an object or non-registered symbol");
             cells.Add(new(target, held, token));
+            mutationVersion++;
         }
         internal bool Unregister(object token)
         {
             if (!CanBeWeakKey(token)) throw new InvalidOperationException("FinalizationRegistry token must be an object or non-registered symbol");
-            return cells.RemoveAll(cell => cell.Token != null && cell.Token.TryGetTarget(out var candidate) && ReferenceEquals(candidate, token)) != 0;
+            int removed = cells.RemoveAll(cell => cell.Token != null && cell.Token.TryGetTarget(out var candidate) && ReferenceEquals(candidate, token));
+            if (removed != 0) mutationVersion++;
+            return removed != 0;
         }
         internal void CheckTargets()
         {
@@ -53,13 +57,18 @@ public static partial class Js
         void Cleanup()
         {
             queued = false;
-            while (true) {
-                int index = cells.FindIndex(cell => cell.Collected);
-                if (index < 0) return;
+            int index = 0;
+            while (index < cells.Count) {
+                if (!cells[index].Collected) {index++; continue;}
                 object held = cells[index].Held;
-                cells.RemoveAt(index);
+                // Cleanup order is unspecified. Fill this slot from the end
+                // instead of moving the remaining registrations on every call.
+                cells[index] = cells[^1];
+                cells.RemoveAt(cells.Count - 1);
+                int version = mutationVersion;
                 try {callback.InvokeWithReceiver(Undefined, new[] {held});}
                 catch {RetryFinalizationCleanup(this); throw;}
+                if (mutationVersion != version) index = 0;
             }
         }
     }

@@ -86,6 +86,18 @@ static class Program
             });
             Check(cancelledCalls == 0, "Cleanup ran after an entry failure");
             Check(Js.Run(() => {}) == 0 && cancelledCalls == 1, "Cancelled cleanup was not retried");
+            int mutationCalls = 0;
+            TsObject mutating = null;
+            var liveToken = new JsDynamicObject();
+            mutating = Create(new JsFunction((FunctionBody)(_ => {
+                mutationCalls++;
+                Call(mutating, "unregister", liveToken);
+                return Js.Undefined;
+            }), null, "mutating", 1));
+            Call(mutating, "register", liveTarget, 0d, liveToken);
+            Register(mutating); Register(mutating); Collect();
+            Check(Js.Run(() => {}) == 0 && mutationCalls == 2, "Unregistering during cleanup skipped a collected cell");
+            GC.KeepAlive(mutating);
             GC.KeepAlive(interrupted); GC.KeepAlive(cancelled);
             GC.KeepAlive(liveTarget); GC.KeepAlive(registry);
             Console.WriteLine("PASS finalization cleanup ordering, entry thread, held values, unregister groups, weak tokens, registry lifetimes, and cleanup retries");
