@@ -26,3 +26,28 @@ for (const constructor of [StringLength, StringIndex, RegExpIndex]) {
 class BufferLength extends ArrayBuffer {byteLength = 9;}
 class ByteLength extends Uint8Array {byteLength = 9;}
 console.log('inherited getter', new BufferLength(3).byteLength, new ByteLength(3).byteLength);
+
+class View extends DataView<ArrayBuffer> {value = 7; #secret = 8; read() {return this.#secret;}}
+class Shared extends SharedArrayBuffer {value = 7; #secret = 8; read() {return this.#secret;}}
+class WeakDictionary extends WeakMap<object, number> {value = 7; #secret = 8; read() {return this.#secret;}}
+class WeakUnique extends WeakSet<object> {value = 7; #secret = 8; read() {return this.#secret;}}
+class Failures extends AggregateError {value = 7; #secret = 8; read() {return this.#secret;}}
+const key = {};
+const view = new View(new ArrayBuffer(8));
+view.setInt32(0, 123);
+const shared = new Shared(8);
+const weakMap = new WeakDictionary([[key, 42]]);
+const weakSet = new WeakUnique([key]);
+const failures = new Failures([1, 2], 'both');
+for (const value of [view, shared, weakMap, weakSet, failures]) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, 'value')!;
+    console.log('more fields', value.constructor.name, value.value, value.read(), descriptor.writable, descriptor.enumerable, descriptor.configurable);
+}
+console.log('more native', view.getInt32(0), shared.byteLength, weakMap.get(key), weakSet.has(key), failures.errors.join(','), failures.message);
+
+class Reference extends WeakRef<object> {value = 7; #secret = 8; read() {return this.#secret;}}
+class Registry extends FinalizationRegistry<string> {value = 7; #secret = 8; read() {return this.#secret;}}
+const reference = new Reference(key);
+const registry = new Registry(() => {});
+registry.register(key, 'held', key);
+console.log('weak subclasses', reference.value, reference.read(), reference.deref() === key, registry.value, registry.read(), registry.unregister(key));
