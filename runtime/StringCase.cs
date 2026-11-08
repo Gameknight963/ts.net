@@ -19,7 +19,7 @@ public static partial class Js
         {
             first ??= LocaleCulture(value);
         }
-        if (locales is string) Add(locales);
+        if (locales is string or LocaleValue) Add(locales);
         else
         {
             var list = ToObject(locales); long length = IndexedLength(list);

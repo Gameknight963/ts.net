@@ -11,16 +11,7 @@ public static partial class Js
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)IntlCollator.Constructor.Get("prototype");
         internal CollatorValue(object locales, object optionValue)
         {
-            var supported = (JsArray)CollatorSupportedLocales(locales, Undefined);
-            string selected = supported.Length() == 0 ? null : (string)supported.ElementAt(0);
-            if (selected != null)
-            {
-                var locale = new LocaleValue(selected, Undefined);
-                if (!IsUndefined(locale.Keyword("co")) || !IsUndefined(locale.Keyword("kf")) || !IsUndefined(locale.Keyword("kn")))
-                    throw new NotSupportedException("Collator collation, case-order, and numeric locale extensions are not supported");
-            }
-            var culture = selected == null ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(CollatorLocale(selected));
-            settings = new CollationSettings(culture, optionValue);
+            settings = SelectCollationSettings(locales, optionValue);
             Compare = new JsFunction((FunctionBody)(args => Execute(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "", 2);
         }
         object Execute(object first, object second)
@@ -30,12 +21,27 @@ public static partial class Js
         internal TsObject Options()
         {
             var result = new JsDynamicObject();
-            result.DefineOwn("locale", settings.Culture.Name);
+            result.DefineOwn("locale", settings.Locale);
             result.DefineOwn("usage", settings.Usage); result.DefineOwn("sensitivity", settings.Sensitivity);
             result.DefineOwn("ignorePunctuation", BoxBoolean(settings.IgnorePunctuation));
             result.DefineOwn("collation", settings.Collation); result.DefineOwn("numeric", BoxBoolean(settings.Numeric)); result.DefineOwn("caseFirst", settings.CaseFirst);
             return result;
         }
+    }
+    static CollationSettings SelectCollationSettings(object locales, object optionValue)
+    {
+        var supported = (JsArray)CollatorSupportedLocales(locales, Undefined);
+        string selected = supported.Length() == 0 ? null : (string)supported.ElementAt(0);
+        bool? numeric = null;
+        if (selected != null)
+        {
+            var locale = new LocaleValue(selected, Undefined);
+            if (!IsUndefined(locale.Keyword("co")) || !IsUndefined(locale.Keyword("kf")))
+                throw new NotSupportedException("Collator collation and case-order locale extensions are not supported");
+            numeric = (locale.Keyword("kn") as string) switch { "true" => true, "false" => false, _ => null };
+        }
+        var culture = selected == null ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(CollatorLocale(selected));
+        return new CollationSettings(culture, optionValue, numeric);
     }
     static CollatorValue RequireCollator(object receiver) => receiver as CollatorValue ?? throw new InvalidOperationException("Collator receiver required");
     sealed class CollatorConstructor : NativeNamespaceFunction

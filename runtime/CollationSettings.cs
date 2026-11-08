@@ -6,12 +6,12 @@ public static partial class Js
     sealed class CollationSettings
     {
         internal readonly CultureInfo Culture;
-        internal readonly string Usage, Sensitivity, CaseFirst, Collation;
+        internal readonly string Usage, Sensitivity, CaseFirst, Collation, Locale;
         internal readonly bool Numeric, IgnorePunctuation;
         readonly CompareInfo comparer;
         readonly CompareOptions flags;
         readonly bool reverseCaseTies;
-        internal CollationSettings(CultureInfo culture, object optionValue)
+        internal CollationSettings(CultureInfo culture, object optionValue, bool? numericDefault = null)
         {
             TsObject options = IsUndefined(optionValue) ? null : ToObject(optionValue);
             string Option(string name, string fallback)
@@ -36,12 +36,14 @@ public static partial class Js
                 "variant" => CompareOptions.None,
                 _ => throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid comparison sensitivity")
             };
-            Numeric = options != null && Truthy(options.Get("numeric"));
+            object numericOption = options == null ? Undefined : options.Get("numeric");
+            Numeric = IsUndefined(numericOption) ? numericDefault ?? false : Truthy(numericOption);
             IgnorePunctuation = options != null && Truthy(options.Get("ignorePunctuation"));
             if (Numeric) flags |= CompareOptions.NumericOrdering;
             bool configure = caseFirst != null || Usage == "search" || collation != "default";
             Culture = configure && culture.Name.Length == 0 ? CultureInfo.GetCultureInfo("en-US") : culture;
             Collation = Usage == "search" ? "default" : SelectCollation(Culture.TwoLetterISOLanguageName, collation);
+            Locale = Culture.Name + (numericDefault.HasValue ? numericDefault.Value ? "-u-kn" : "-u-kn-false" : "");
             configure = caseFirst != null || Usage == "search" || Collation != "default";
             comparer = configure ? NativeComparer(Culture, Usage, caseFirst, Collation) : Culture.CompareInfo;
             CaseFirst = caseFirst ?? (comparer.Compare("A", "a") < 0 ? "upper" : "false");
