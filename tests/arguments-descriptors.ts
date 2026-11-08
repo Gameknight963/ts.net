@@ -38,3 +38,24 @@ function closed(first: number) {
     try {args.callee;} catch (error) {console.log('callee read', (error as Error).name);}
 }
 closed(1);
+function inherited(first: number, second: number) {
+    const args: any = arguments;
+    const prototype = {get 0() {return 20;}, get length() {return 2;}};
+    Object.setPrototypeOf(args, prototype);
+    Reflect.deleteProperty(args, '0');
+    Reflect.deleteProperty(args, 'length');
+    console.log('inherited values', args[0], args.length, first, Object.hasOwn(args, '0'));
+    const collected = Array.from(args);
+    console.log('inherited iteration', collected.join(','));
+    Object.defineProperty(args, '0', {value: 21, enumerable: true});
+    Object.defineProperty(args, '9', {value: 29, enumerable: true});
+    console.log('ordinary indices', args.length, Object.keys(args).join(','), args[9]);
+}
+inherited(1, 2);
+function changingLength(first: number, second: number) {
+    const args: any = arguments;
+    let reads = 0;
+    Object.defineProperty(args, 'length', {get() {reads++; return reads < 3 ? 2 : 0;}});
+    console.log('live length', [...args].join(','), reads);
+}
+changingLength(3, 4);
