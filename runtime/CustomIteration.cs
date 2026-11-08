@@ -16,17 +16,21 @@ public static partial class Js
         return true;
     }
 
+    static JsFunction CustomIterableMethod(object value)
+    {
+        if (value is not TsObject source) return null;
+        object method = source.Get(PropertyKey(IteratorSymbol));
+        if (IsNullish(method) || ReferenceEquals(method, NativeIteratorPrototypes.Self) && IsIteratorObject(source)) return null;
+        return method as JsFunction ?? throw new InvalidOperationException("Symbol.iterator is not callable");
+    }
+    static TsObject InvokeIterableMethod(JsFunction method, object source) =>
+        method.InvokeWithReceiver(source, Array.Empty<object>()) as TsObject
+            ?? throw new InvalidOperationException("Symbol.iterator must return an object");
     internal static bool TryGetIterableObject(object value, out TsObject iterator)
     {
-        iterator = null;
-        if (value is not TsObject source) return false;
-        string key = PropertyKey(IteratorSymbol);
-        object method = source.Get(key);
-        if (IsNullish(method) || ReferenceEquals(method, NativeIteratorPrototypes.Self) && IsIteratorObject(source)) return false;
-        if (method is not JsFunction function) throw new InvalidOperationException("Symbol.iterator is not callable");
-        iterator = function.InvokeWithReceiver(source, Array.Empty<object>()) as TsObject
-            ?? throw new InvalidOperationException("Symbol.iterator must return an object");
-        return true;
+        var method = CustomIterableMethod(value);
+        iterator = method == null ? null : InvokeIterableMethod(method, value);
+        return iterator != null;
     }
 
     internal static bool TryStartCustomIterable(object value, out object cursor)

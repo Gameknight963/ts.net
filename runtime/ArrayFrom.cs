@@ -13,8 +13,8 @@ public static partial class Js
         bool mapping = !IsUndefined(mapper);
         if (mapping && mapper is not JsFunction) throw new InvalidOperationException("Array.from mapper is not callable");
         object iterable = input is JsBoxedPrimitive { Value: string text } ? text : input;
-        if (TryStartCustomIterable(iterable, out var custom)) iterable = custom;
-        bool iterating = iterable is JsProtocolIterator or JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator || IsIteratorObject(iterable);
+        var iteratorMethod = CustomIterableMethod(iterable);
+        bool iterating = iteratorMethod != null || iterable is JsProtocolIterator or JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator || IsIteratorObject(iterable);
         TsObject source = iterating ? null : ToObject(input);
         long length = iterating ? 0 : IndexedLength(source);
         TsObject result;
@@ -30,7 +30,7 @@ public static partial class Js
         // constructor (or its non-constructor fallback), no user code can run
         // during the copy. Keep the result general so later writes can hold any value.
         bool intrinsic = receiver is not JsFunction function || !function.CanInitializeDerived || ReferenceEquals(receiver, RuntimeNamespaces.Array);
-        if (!mapping && intrinsic && iterable is NumberArray numbers && numbers.Length() <= Array.MaxLength)
+        if (!mapping && intrinsic && iteratorMethod == null && iterable is NumberArray numbers && numbers.Length() <= Array.MaxLength)
         {
             int packedCount = (int)numbers.Length();
             double[] packed = numbers.TryPacked(packedCount);
@@ -53,7 +53,7 @@ public static partial class Js
         long count = 0;
         if (iterating)
         {
-            iterable = Iteration.Start(iterable);
+            iterable = iteratorMethod != null ? StartIteratorObject(InvokeIterableMethod(iteratorMethod, iterable)) : Iteration.Start(iterable);
             int position = 0; bool closeable = false;
             try
             {
