@@ -92,6 +92,7 @@ public static partial class Js
             Member("min", new JsFunction((FunctionBody)(static args => MathExtreme(args, false)), null, "min", 2));
             Member("max", new JsFunction((FunctionBody)(static args => MathExtreme(args, true)), null, "max", 2));
             Member("hypot", new JsFunction((FunctionBody)MathHypotBody, null, "hypot", 2));
+            Member("sumPrecise", new JsFunction((FunctionBody)MathSumPrecise, null, "sumPrecise", 1));
             Member("random", new JsFunction((FunctionBody)(static _ => Random.Shared.NextDouble()), (RawNumberFunction0)(static () => Random.Shared.NextDouble()), "random", 0));
         }
         static object MathHypotBody(object[] arguments) => MathHypot(arguments);
