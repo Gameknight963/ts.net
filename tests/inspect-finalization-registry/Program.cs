@@ -27,6 +27,13 @@ static class Program
         var held = new JsDynamicObject(); Call(registry, "register", target, held);
         return (new WeakReference(registry), new WeakReference(held));
     }
+    static void ExpectReportedFailure(Action action)
+    {
+        var previous = Console.Error; var errors = new System.IO.StringWriter();
+        try {Console.SetError(errors); Check(Js.Run(action) == 1, "Expected entry failure");}
+        finally {Console.SetError(previous);}
+        Check(errors.ToString().Length != 0, "Entry failure was not reported");
+    }
     static void Main()
     {
         try {
@@ -61,8 +68,27 @@ static class Program
             Check(!weakToken.IsAlive, "Registry retained an unregister token");
             var abandoned = Abandon(liveTarget); Collect();
             Check(!abandoned.Registry.IsAlive && !abandoned.Held.IsAlive, "Unused registry or held value remained rooted");
+            int attempts = 0;
+            var interrupted = Create(new JsFunction((FunctionBody)(_ => {
+                if (++attempts == 1) throw new InvalidOperationException("cleanup failed");
+                return Js.Undefined;
+            }), null, "interrupted", 1));
+            Register(interrupted); Register(interrupted); Collect();
+            ExpectReportedFailure(() => {});
+            Check(attempts == 1, "Cleanup continued after its callback failed");
+            Check(Js.Run(() => {}) == 0 && attempts == 2, "Interrupted cleanup was not retried");
+            int cancelledCalls = 0;
+            var cancelled = Create(new JsFunction((FunctionBody)(_ => {cancelledCalls++;return Js.Undefined;}), null, "cancelled", 1));
+            Register(cancelled); Collect();
+            ExpectReportedFailure(() => {
+                var promise = (TsObject)Js.BuiltinNamespace("Promise");
+                Js.CallMethod(promise.Get("reject"), promise, new object[]{"stop"});
+            });
+            Check(cancelledCalls == 0, "Cleanup ran after an entry failure");
+            Check(Js.Run(() => {}) == 0 && cancelledCalls == 1, "Cancelled cleanup was not retried");
+            GC.KeepAlive(interrupted); GC.KeepAlive(cancelled);
             GC.KeepAlive(liveTarget); GC.KeepAlive(registry);
-            Console.WriteLine("PASS finalization cleanup ordering, entry thread, held values, unregister groups, weak tokens, and registry lifetimes");
+            Console.WriteLine("PASS finalization cleanup ordering, entry thread, held values, unregister groups, weak tokens, registry lifetimes, and cleanup retries");
         } catch(Exception error) {Console.Error.WriteLine(error);Environment.ExitCode=1;}
     }
 }

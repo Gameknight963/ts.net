@@ -37,7 +37,18 @@ public static partial class Js
             if (!pending || queued) return;
             queued = true;
             var weak = new WeakReference<FinalizationRegistryValue>(this);
-            CaptureHostEvents().Post(() => {if (weak.TryGetTarget(out var registry)) registry.Cleanup();});
+            var inbox = CaptureHostEvents();
+            Action cancel = () => {
+                if (weak.TryGetTarget(out var registry)) {
+                    registry.queued = false;
+                    RetryFinalizationCleanup(registry);
+                }
+            };
+            inbox.Register(cancel);
+            inbox.Post(() => {
+                inbox.Unregister(cancel);
+                if (weak.TryGetTarget(out var registry)) registry.Cleanup();
+            });
         }
         void Cleanup()
         {
@@ -47,14 +58,21 @@ public static partial class Js
                 if (index < 0) return;
                 object held = cells[index].Held;
                 cells.RemoveAt(index);
-                callback.InvokeWithReceiver(Undefined, new[] {held});
+                try {callback.InvokeWithReceiver(Undefined, new[] {held});}
+                catch {RetryFinalizationCleanup(this); throw;}
             }
         }
     }
     [ThreadStatic] static List<WeakReference<FinalizationRegistryValue>> finalizationRegistries;
+    [ThreadStatic] static List<WeakReference<FinalizationRegistryValue>> finalizationRetries;
+    static void RetryFinalizationCleanup(FinalizationRegistryValue registry) => (finalizationRetries ??= new()).Add(new(registry));
     [ThreadStatic] static int finalizationGcCount;
     static void CheckFinalizationRegistries()
     {
+        var retries = finalizationRetries;
+        finalizationRetries = null;
+        if (retries != null)
+            foreach (var retry in retries) if (retry.TryGetTarget(out var registry)) registry.CheckTargets();
         if (finalizationRegistries == null) return;
         int count = GC.CollectionCount(0) + GC.CollectionCount(1) + GC.CollectionCount(2);
         if (count == finalizationGcCount) return;
