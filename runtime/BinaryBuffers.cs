@@ -119,9 +119,10 @@ public static partial class Js
         public override object Construct(object[] args)
         {
             var buffer = RequireBufferSource(FunctionArgument(args, 0));
-            int offset = BinaryIndex(FunctionArgument(args, 1));
+            double requestedOffset = BinarySafeIndex(FunctionArgument(args, 1));
             EnsureAttached(buffer);
-            if (offset > buffer.Bytes.Length) throw new ArgumentOutOfRangeException(null, "DataView offset is out of range");
+            if (requestedOffset > buffer.Bytes.Length) throw new ArgumentOutOfRangeException(null, "DataView offset is out of range");
+            int offset = (int)requestedOffset;
             int length = IsUndefined(FunctionArgument(args, 2)) ? buffer.Bytes.Length - offset : BinaryIndex(args[2]);
             EnsureAttached(buffer);
             if (length > buffer.Bytes.Length - offset) throw new ArgumentOutOfRangeException(null, "DataView length is out of range");
