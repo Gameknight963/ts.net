@@ -8,11 +8,12 @@ public static partial class Js
     {
         readonly string hour, minute, second, cycle, zoneName, dayPeriod;
         readonly bool? hour12;
+        internal readonly bool KeepCycleExtension;
         readonly int fractionDigits;
         internal bool HasClockFields => hour != null || minute != null || second != null || fractionDigits != 0 || dayPeriod != null;
         internal bool HasFields => HasClockFields || zoneName != null;
         internal bool HasClockOption => hour12.HasValue || cycle != null;
-        internal DateLocaleTimeFields(TsObject options)
+        internal DateLocaleTimeFields(TsObject options, string cycleDefault = null)
         {
             string Read(string name, params string[] choices)
             {
@@ -26,10 +27,15 @@ public static partial class Js
             minute = Read("minute", "numeric", "2-digit");
             second = Read("second", "numeric", "2-digit");
             dayPeriod = Read("dayPeriod", "long", "short", "narrow");
-            cycle = Read("hourCycle", "h11", "h12", "h23", "h24");
+            string requestedCycle = Read("hourCycle", "h11", "h12", "h23", "h24");
+            cycle = requestedCycle ?? cycleDefault;
             zoneName = Read("timeZoneName", "short", "long", "shortOffset", "longOffset", "shortGeneric", "longGeneric");
             object use12 = options.Get("hour12");
             hour12 = IsUndefined(use12) ? null : Truthy(use12);
+            if (hour12.HasValue) cycle = cycleDefault;
+            KeepCycleExtension = cycleDefault != null && (hour12.HasValue
+                ? (cycleDefault is "h11" or "h12") == hour12.Value
+                : requestedCycle == null || requestedCycle == cycleDefault);
             object digits = options.Get("fractionalSecondDigits");
             if (!IsUndefined(digits)) {
                 double number = Math.Floor(Number(digits));
@@ -37,7 +43,8 @@ public static partial class Js
                 fractionDigits = (int)number;
             }
         }
-        string Clock(CultureInfo culture) => hour12.HasValue ? hour12.Value ? "h12" : "h23"
+        string Clock(CultureInfo culture) => hour12.HasValue
+            ? cycle != null && (cycle is "h11" or "h12") == hour12.Value ? cycle : hour12.Value ? "h12" : "h23"
             : cycle ?? (culture.DateTimeFormat.ShortTimePattern.Contains('H') ? "h23" : "h12");
         internal void WriteOptions(TsObject target, CultureInfo culture, bool styled, bool timeStyle)
         {

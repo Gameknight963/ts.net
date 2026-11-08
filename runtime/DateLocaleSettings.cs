@@ -6,11 +6,12 @@ public static partial class Js
     sealed class DateLocaleSettings
     {
         internal readonly CultureInfo Culture;
+        readonly string localeName;
         internal readonly TimeZoneInfo Zone;
         readonly string mode, dateStyle, timeStyle;
         readonly DateLocaleFields dateFields;
         readonly DateLocaleTimeFields timeFields;
-        internal DateLocaleSettings(CultureInfo culture, object optionValue, string mode)
+        internal DateLocaleSettings(CultureInfo culture, object optionValue, string mode, LocaleValue locale = null)
         {
             Culture = culture; this.mode = mode;
             TsObject options = IsUndefined(optionValue) ? new JsDynamicObject() : ToObject(optionValue);
@@ -24,7 +25,9 @@ public static partial class Js
             if (!ValidStyle(dateStyle) || !ValidStyle(timeStyle)) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid date or time style");
             if (mode == "d" && timeStyle != null || mode == "T" && dateStyle != null)
                 throw new InvalidOperationException("This date method does not accept the requested style");
-            string calendar = Option("calendar"), numberingSystem = Option("numberingSystem");
+            string calendarDefault = locale?.Keyword("ca") as string, numberingDefault = locale?.Keyword("nu") as string;
+            string cycleDefault = (locale?.Keyword("hc") as string) switch { "h11" => "h11", "h12" => "h12", "h23" => "h23", "h24" => "h24", _ => null };
+            string calendar = Option("calendar") ?? calendarDefault, numberingSystem = Option("numberingSystem") ?? numberingDefault;
             if (calendar != null && calendar != NativeCalendarName(culture))
             {
                 Calendar selected = null;
@@ -37,7 +40,12 @@ public static partial class Js
             }
             if (numberingSystem != null && numberingSystem != "latn") throw new NotSupportedException("Date locale formatting option numberingSystem is not supported");
             dateFields = new DateLocaleFields(options);
-            timeFields = new DateLocaleTimeFields(options);
+            timeFields = new DateLocaleTimeFields(options, cycleDefault);
+            string extensions = "";
+            if (calendarDefault != null && calendarDefault == NativeCalendarName(Culture)) extensions += "-ca-" + calendarDefault;
+            if (timeFields.KeepCycleExtension) extensions += "-hc-" + cycleDefault;
+            if (numberingDefault == "latn") extensions += "-nu-latn";
+            localeName = Culture.Name + (extensions.Length == 0 ? "" : "-u" + extensions);
             if ((dateFields.HasFields || timeFields.HasFields) && (dateStyle != null || timeStyle != null))
                 throw new InvalidOperationException("Date styles cannot be combined with component options");
             string matcher = Option("localeMatcher");
@@ -61,7 +69,7 @@ public static partial class Js
         internal TsObject Options()
         {
             var result = new JsDynamicObject();
-            result.DefineOwn("locale", Culture.Name);
+            result.DefineOwn("locale", localeName);
             result.DefineOwn("calendar", NativeCalendarName(Culture)); result.DefineOwn("numberingSystem", "latn"); result.DefineOwn("timeZone", Zone.Id);
             if (dateStyle != null) result.DefineOwn("dateStyle", dateStyle);
             if (timeStyle != null) result.DefineOwn("timeStyle", timeStyle);
