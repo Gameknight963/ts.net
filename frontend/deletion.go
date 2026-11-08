@@ -63,7 +63,7 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 			return 0
 		}
 		declaration := symbol.ValueDeclaration
-		if declaration.Kind == ast.KindVariableDeclaration {
+		if declaration.Kind == ast.KindVariableDeclaration || declaration.Kind == ast.KindParameter {
 			return b.reflectionDeletionValue(declaration.Initializer(), seen)
 		}
 		if declaration.Kind == ast.KindBindingElement && declaration.Parent.Kind == ast.KindObjectBindingPattern {

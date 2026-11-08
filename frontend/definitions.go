@@ -50,7 +50,7 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 			return 0
 		}
 		declaration := symbol.ValueDeclaration
-		if declaration.Kind == ast.KindVariableDeclaration {
+		if declaration.Kind == ast.KindVariableDeclaration || declaration.Kind == ast.KindParameter {
 			return b.reflectionDefinitionValue(declaration.Initializer(), seen)
 		}
 		if declaration.Kind == ast.KindBindingElement && declaration.Parent.Kind == ast.KindObjectBindingPattern {
