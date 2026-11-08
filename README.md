@@ -117,5 +117,3 @@ Compilation times:
 | 5,000 variables | 754.27 ms | 391.27 ms |
 
 Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
-
-The Intl rows use Release builds, 500 ms warmup and seven fresh processes per engine, excluding startup and compilation; the full test suite was running in the background. Region-name lookup is encouraging, while word segmentation still trails Node; these two workloads do not establish overall application speed.
