@@ -7,7 +7,7 @@ internal enum RuntimeMember
     IterationStart, CloseIteration, CloseIterationAt, SequenceIteratorHasReturn, CloseAsyncIteration, CloseDestructuring,
     ForAwaitNext, ForAwaitAccept, ForAwaitNeedsClose, ForAwaitClose, RequireIteratorResult, AsyncIteratorTry,
     BeginDestructuring, ReadDestructuring, RestDestructuring, AsyncResume, BeginAsyncIteration, NextAsyncIteration, AsyncIterationValue, AsyncTry, AsyncTryEnd,
-    GetNumber, IndexGetNumber, NumericBinary, NumericBitNot, NumericValue, NumericStep, NumericNegate, SetOwnValueBase, DynamicObjectType, DynamicObjectConstructor, GeneratorFunction, AsyncGeneratorFunction, AsyncFunction, AsyncAwait, AsyncAwaitContinue, MarkFunctionPrototype, In, InNumber, SealModuleNamespace, InitializeEnum, BuiltinNamespace, CopyObjectRest, DebugStatement, DeleteSuperProperty, DeleteProperty, DeleteOwn, SetLiteralPrototype, MarkObjectHome, DefineAccessor, ResolveThis, NewTarget, EnableNewTarget, Arguments, EnableArguments, SuperBase, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, DefineAutoAccessor, InitializeAutoAccessor, DefinePrivateMember, InitializePrivateMember, PrivateGet, PrivateSet, PrivateHas, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    TryFloat64Buffer, Float64BufferLength, ReadFloat64Buffer, GetNumber, IndexGetNumber, NumericBinary, NumericBitNot, NumericValue, NumericStep, NumericNegate, SetOwnValueBase, DynamicObjectType, DynamicObjectConstructor, GeneratorFunction, AsyncGeneratorFunction, AsyncFunction, AsyncAwait, AsyncAwaitContinue, MarkFunctionPrototype, In, InNumber, SealModuleNamespace, InitializeEnum, BuiltinNamespace, CopyObjectRest, DebugStatement, DeleteSuperProperty, DeleteProperty, DeleteOwn, SetLiteralPrototype, MarkObjectHome, DefineAccessor, ResolveThis, NewTarget, EnableNewTarget, Arguments, EnableArguments, SuperBase, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, DefineAutoAccessor, InitializeAutoAccessor, DefinePrivateMember, InitializePrivateMember, PrivateGet, PrivateSet, PrivateHas, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, NumberAtIsNullish, LooseEqual, LooseEqualNumber, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
@@ -48,6 +48,7 @@ internal sealed partial class IlBackend
     public Vector<int> nonnegative_ints;
     public Vector<int> node_parents;
     public Vector<int> packed_arrays;
+    public Vector<int> typed_buffers;
     public Vector<int> dense_arrays;
     public Vector<int> tag_arrays;
     public Vector<int> reversible_literals;
@@ -127,6 +128,7 @@ internal sealed partial class IlBackend
             nonnegative_ints = zero_ids(symbols),
             node_parents = new Vector<int>(),
             packed_arrays = zero_ids(symbols),
+            typed_buffers = zero_ids(symbols),
             dense_arrays = zero_ids(symbols),
             tag_arrays = zero_ids(symbols),
             reversible_literals = zero_ids(c.node_store.count() + 1),
@@ -778,6 +780,9 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.Text, b.plan.method1(6, js, 0, -4, -5, "Text"));
         b.ref_set(RuntimeMember.DynamicGet, b.plan.method2(6, js, 0, -5, -5, -4, "Get"));
         b.ref_set(RuntimeMember.GetNumber, b.plan.method2(6, js, 0, -10, -5, -4, "GetNumber"));
+        b.ref_set(RuntimeMember.TryFloat64Buffer, b.plan.method1(6, js, 0, -13, -5, "TryFloat64Buffer"));
+        b.ref_set(RuntimeMember.Float64BufferLength, b.plan.method1(6, js, 0, -6, -13, "Float64BufferLength"));
+        b.ref_set(RuntimeMember.ReadFloat64Buffer, b.plan.method2(6, js, 0, -3, -13, -6, "ReadFloat64Buffer"));
         Vector<int> set_parameters = new Vector<int>(); set_parameters.push(-5); set_parameters.push(-4); set_parameters.push(-5);
         b.ref_set(RuntimeMember.DynamicSet, b.plan.method(6, js, 0, -5, set_parameters.view(), "Set"));
         b.ref_set(RuntimeMember.Log, b.plan.method1(6, js, 0, -1, -7, "ConsoleLog"));

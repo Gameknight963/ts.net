@@ -18,7 +18,7 @@ internal static partial class CompilerFunctions
         }
         return loop.left;
     }
-    internal static int il_counted_loop(int entry, Compiler c, IlBackend b)
+    internal static int il_counted_loop(int entry, Compiler c, IlBackend b, bool allowLength = false)
     {
         Node loop = get_node(entry, c);
         if (loop.kind != NodeKind.For || loop.left == 0 || loop.right == 0 || loop.third == 0) { return 0; }
@@ -33,7 +33,8 @@ internal static partial class CompilerFunctions
             increment.kind != NodeKind.Update || !is_text(get_token(increment.token, c).text, text_increment, c) ||
             get_node(increment.left, c).kind != NodeKind.Name || get_node(increment.left, c).symbol != binding.symbol) { return 0; }
         Node bound = get_node(condition.right, c);
-        if (bound.kind != NodeKind.Number && (bound.kind != NodeKind.Name || bound.symbol == binding.symbol ||
+        bool lengthBound = allowLength && bound.kind == NodeKind.Property && bound.fourth == 0 && is_text(bound.name, text_length, c) && get_node(bound.left, c).kind == NodeKind.Name;
+        if (!lengthBound && bound.kind != NodeKind.Number && (bound.kind != NodeKind.Name || bound.symbol == binding.symbol ||
             get_type(bound.type, c).kind != TypeKind.Number || b.written_symbols.at(bound.symbol) != 0)) { return 0; }
         for (int i = 1; i <= c.node_store.count(); i++)
         {
@@ -153,6 +154,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_loop_inner(int entry, int result, Compiler c, IlBackend b)
     {
+        if (il_typed_length_loop(entry, result, c, b)) return;
         int counter = il_counted_loop(entry, c, b);
         if (counter == 0) { il_loop_body(entry, result, 0, -1, c, b); return; }
         Node n = get_node(entry, c); Node condition = get_node(n.right, c);
