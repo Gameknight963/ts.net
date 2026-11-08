@@ -21,7 +21,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 <details>
 
 | Feature | Points | Missing support |
-|---|---:|---|
+|---|---|---|
 | Values and operators | 9 / 10 | Missing some Symbol protocols and operators. |
 | Control flow | 10 / 10 | Missing nothing. |
 | Functions | 9 / 10 | Global properties do not alias top-level bindings; native global bindings are read-only. |
@@ -46,7 +46,7 @@ Runtime performance:
 <summary>Click to expand large table</summary>
 
 | Workload | ts.net | Node | Result |
-|---|---:|---:|---:|
+|---|---|---|---|
 | Numeric loop, 20M iterations | 14.44 ms | 74.71 ms | 5.17x |
 | Typed-object loop, 500K iterations | 0.38 ms | 0.66 ms | 1.74x |
 | `any` property loop, 350K iterations | 0.27 ms | 0.43 ms | 1.59x |
