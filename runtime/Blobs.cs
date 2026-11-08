@@ -4,7 +4,7 @@ using System.Text;
 
 public static partial class Js
 {
-    class BlobValue(byte[] bytes, string type) : TsObject
+    class BlobValue(byte[] bytes, string type) : JsDescriptorObject
     {
         internal readonly byte[] Bytes = bytes;
         internal readonly string Type = type;
@@ -58,7 +58,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Blob");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Blob", false);
             prototype.DefineClassAccessor("size", new CollectionMethod("get size", 0, (receiver, _) => (double)RequireBlob(receiver).Bytes.Length), 1);
             prototype.DefineClassAccessor("type", new CollectionMethod("get type", 0, (receiver, _) => RequireBlob(receiver).Type), 1);
             prototype.DefineMethod("slice", new CollectionMethod("slice", 0, (receiver, args) =>

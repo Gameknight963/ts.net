@@ -27,7 +27,7 @@ public static partial class Js
             var prototype = new JsClassInstance { ParentPrototype = (TsObject)RuntimeNamespaces.Blob.Get("prototype") }; UseObjectPrototype(prototype);
             SetPrototype(RuntimeNamespaces.Blob);
             prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "File");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "File", false);
             prototype.DefineClassAccessor("name", new CollectionMethod("get name", 0, (receiver, _) => RequireFile(receiver).Name), 1);
             prototype.DefineClassAccessor("lastModified", new CollectionMethod("get lastModified", 0, (receiver, _) => (double)RequireFile(receiver).Modified), 1);
         }
