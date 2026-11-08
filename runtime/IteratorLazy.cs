@@ -83,7 +83,9 @@ public static partial class Js
         internal static readonly TsObject Prototype = Create();
         static TsObject Create()
         {
-            var prototype = new JsClassInstance { ParentPrototype = NativeIteratorPrototype };
+            var prototype = new JsCreatedObject();
+            prototype.SetPrototype(NativeIteratorPrototype);
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Iterator Helper", false);
             prototype.DefineMethod("next", new CollectionMethod("next", 0, (receiver, _) => receiver is JsLazyIterator iterator ? NextLazyIterator(iterator) : throw new InvalidOperationException("Incompatible iterator helper receiver")));
             prototype.DefineMethod("return", new CollectionMethod("return", 0, (receiver, _) =>
             {

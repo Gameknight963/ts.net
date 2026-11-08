@@ -28,9 +28,10 @@ public static partial class Js
         internal static readonly TsObject Prototype = Create();
         static TsObject Create()
         {
-            var prototype = new JsClassInstance { ParentPrototype = NativeIteratorPrototype };
+            var prototype = new JsCreatedObject();
+            prototype.SetPrototype(NativeIteratorPrototype);
             prototype.DefineMethod("next", new CollectionMethod("next", 0, (receiver, _) => receiver is JsRegexIterator iterator ? iterator.Next() : throw new InvalidOperationException("Incompatible iterator receiver")));
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "RegExp String Iterator");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "RegExp String Iterator", false);
             return prototype;
         }
     }
