@@ -273,8 +273,8 @@ public static partial class Js
                 target.LastIndex = 0d;
                 return target;
             }));
-            foreach (bool test in new[] { false, true })
-                prototype.DefineMethod(test ? "test" : "exec", new CollectionMethod(test ? "test" : "exec", 1, (receiver, args) => receiver is JsRegExp regex ? RegExpMatch(regex, FunctionArgument(args, 0), test) : throw new InvalidOperationException("RegExp method requires a regular expression")));
+            prototype.DefineMethod("exec", RegExpMethods.Exec);
+            prototype.DefineMethod("test", new CollectionMethod("test", 1, RegExpTest));
             prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) =>
             {
                 var source = ReflectTarget(receiver); string pattern = StringValue(source.Get("source")), flags = StringValue(source.Get("flags")); return "/" + pattern + "/" + flags;
