@@ -89,7 +89,6 @@ public static partial class Js
             if (TryStringProtocol(receiver, separator, SplitSymbol, limitValue, true, out var custom)) return custom;
             string text = AtString(receiver);
             uint limit = IsUndefined(limitValue) ? uint.MaxValue : unchecked((uint)ToInt32(Number(limitValue)));
-            if (separator is JsRegExp regex) return SplitRegExp(text, regex, limit);
             string pattern = StringValue(separator);
             var result = new JsArray(0);
             if (limit == 0) return result;

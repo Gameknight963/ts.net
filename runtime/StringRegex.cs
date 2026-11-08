@@ -9,8 +9,8 @@ public static partial class Js
             object pattern = FunctionArgument(arguments, 0);
             if (TryStringProtocol(receiver, pattern, search ? SearchSymbol : MatchSymbol, Undefined, false, out var custom)) return custom;
             string text = AtString(receiver);
-            var regex = pattern as JsRegExp ?? CreateRegExp(pattern, Undefined);
-            return MatchRegExp(text, regex, search);
+            var regex = CreateRegExp(IsUndefined(pattern) ? Undefined : StringValue(pattern), Undefined, false);
+            return CallMethod(regex.Get(PropertyKey(search ? SearchSymbol : MatchSymbol)), regex, new object[] { text });
         }
     }
     static object MatchRegExp(string text, JsRegExp regex, bool search)

@@ -48,7 +48,8 @@ public static partial class Js
             RequireGlobalRegExp(pattern, "matchAll");
             if (TryStringProtocol(receiver, pattern, MatchAllSymbol, Undefined, false, out var custom)) return custom;
             string text = AtString(receiver);
-            return MatchAllRegExp(text, pattern as JsRegExp ?? CreateRegExp(pattern, "g"));
+            var regex = CreateRegExp(IsUndefined(pattern) ? Undefined : StringValue(pattern), "g", false);
+            return CallMethod(regex.Get(PropertyKey(MatchAllSymbol)), regex, new object[] { text });
         }
     }
     static JsFunction RegExpSpeciesConstructor(TsObject regex)

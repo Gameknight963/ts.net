@@ -106,7 +106,6 @@ public static partial class Js
             if (all) RequireGlobalRegExp(searchValue, "replaceAll");
             if (TryStringProtocol(receiver, searchValue, ReplaceSymbol, FunctionArgument(arguments, 1), true, out var custom)) return custom;
             string text = AtString(receiver);
-            if (searchValue is JsRegExp regex) return ReplaceRegExp(text, regex, FunctionArgument(arguments, 1), all);
             string search = StringValue(searchValue);
             object replacement = FunctionArgument(arguments, 1);
             var function = replacement as JsFunction;
