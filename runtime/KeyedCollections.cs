@@ -31,7 +31,7 @@ internal sealed class CollectionEntry(object key, object value)
     internal void Remove() { Active = false; Key = Value = Js.Undefined; }
 }
 
-public sealed class JsKeyedCollection : TsObject
+public sealed class JsKeyedCollection : JsDescriptorObject
 {
     static readonly object NullKey = new();
     internal readonly bool IsSet;

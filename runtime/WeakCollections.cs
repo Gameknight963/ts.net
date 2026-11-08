@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 
-public sealed class JsWeakCollection : TsObject
+public sealed class JsWeakCollection : JsDescriptorObject
 {
     sealed class Cell(object value) { internal object Value = value; }
     readonly ConditionalWeakTable<object, Cell> entries = new();

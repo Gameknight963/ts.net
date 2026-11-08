@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 
-internal sealed class JsDate(double timestamp) : TsObject
+internal sealed class JsDate(double timestamp) : JsDescriptorObject
 {
     internal double Timestamp = timestamp;
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.DatePrototype;
