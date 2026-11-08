@@ -22,11 +22,14 @@ internal sealed class JsRegExp(string pattern, string flags, Regex engine, strin
 
 public static partial class Js
 {
+    const string RegExpWhitespace = "\\u0009-\\u000d\\u0020\\u00a0\\u1680\\u2000-\\u200a\\u2028-\\u2029\\u202f\\u205f\\u3000\\ufeff";
+    const string RegExpNonWhitespace = "\\u0000-\\u0008\\u000e-\\u001f\\u0021-\\u009f\\u00a1-\\u167f\\u1681-\\u1fff\\u200b-\\u2027\\u202a-\\u202e\\u2030-\\u205e\\u2060-\\u2fff\\u3001-\\ufefe\\uff00-\\uffff";
     internal static TsObject RegExpPrototype => (TsObject)RuntimeNamespaces.RegExp.Get("prototype");
     static readonly Dictionary<(string, RegexOptions), Regex> regexEngines = new();
     static Regex RegExpEngine(string pattern, RegexOptions options, bool dotAll, out string[] namedGroups)
     {
         bool inClass = false;
+        bool previousClassSet = false;
         bool currentDotAll = dotAll, currentMultiline = (options & RegexOptions.Multiline) != 0;
         var modes = new Stack<(bool DotAll, bool Multiline)>();
         var names = new List<string>();
@@ -40,6 +43,14 @@ public static partial class Js
             char ch = pattern[i];
             if (ch == '\\')
             {
+                previousClassSet = inClass && i + 1 < pattern.Length && pattern[i + 1] is 'd' or 'D' or 'w' or 'W' or 's' or 'S';
+                if (i + 1 < pattern.Length && pattern[i + 1] is 's' or 'S')
+                {
+                    if (!inClass) rewritten.Append('[');
+                    rewritten.Append(pattern[++i] == 's' ? RegExpWhitespace : RegExpNonWhitespace);
+                    if (!inClass) rewritten.Append(']');
+                    continue;
+                }
                 if (i + 1 < pattern.Length && pattern[i + 1] == 'c')
                 {
                     if (i + 2 < pattern.Length && (char.IsAsciiLetter(pattern[i + 2]) || inClass && (char.IsAsciiDigit(pattern[i + 2]) || pattern[i + 2] == '_')))
@@ -73,6 +84,9 @@ public static partial class Js
                 if (i < pattern.Length) rewritten.Append(pattern[i]);
                 continue;
             }
+            if (inClass && ch == '-' && (previousClassSet || i + 2 < pattern.Length && pattern[i + 1] == '\\' && pattern[i + 2] is 'd' or 'D' or 'w' or 'W' or 's' or 'S'))
+            { rewritten.Append("\\-"); previousClassSet = false; continue; }
+            previousClassSet = false;
             if (!inClass && ch == '[' && i + 1 < pattern.Length && pattern[i + 1] == ']')
             { rewritten.Append("(?!)"); i++; continue; }
             if (!inClass && ch == '[' && i + 2 < pattern.Length && pattern[i + 1] == '^' && pattern[i + 2] == ']')
