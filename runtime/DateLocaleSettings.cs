@@ -8,6 +8,7 @@ public static partial class Js
         internal readonly CultureInfo Culture;
         readonly string localeName, numberingSystem, digitCharacters;
         internal readonly TimeZoneInfo Zone;
+        readonly int? fixedOffset;
         readonly string mode, dateStyle, timeStyle;
         readonly DateLocaleFields dateFields;
         readonly DateLocaleTimeFields timeFields;
@@ -56,12 +57,34 @@ public static partial class Js
             string formatMatcher = Option("formatMatcher");
             if (formatMatcher != null && formatMatcher is not ("basic" or "best fit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid format matcher");
             string zoneName = Option("timeZone");
-            try { Zone = zoneName == null ? TimeZoneInfo.Local : TimeZoneInfo.FindSystemTimeZoneById(zoneName); }
+            try
+            {
+                if (zoneName != null && TryDateOffsetZone(zoneName, out int offset, out string canonical))
+                {
+                    fixedOffset = offset;
+                    Zone = TimeZoneInfo.CreateCustomTimeZone(canonical, TimeSpan.Zero, "GMT" + canonical, "GMT" + canonical);
+                }
+                else Zone = zoneName == null ? TimeZoneInfo.Local : TimeZoneInfo.FindSystemTimeZoneById(zoneName);
+            }
             catch (TimeZoneNotFoundException) { throw new ArgumentOutOfRangeException(nameof(optionValue), "Unknown time zone"); }
             catch (InvalidTimeZoneException) { throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid time zone"); }
 
             if (mode == "intl" && dateStyle == null && timeStyle == null && !dateFields.HasDateRequest && !timeFields.HasClockFields)
                 dateFields.UseDateDefaults(culture);
+        }
+        static bool TryDateOffsetZone(string name, out int offset, out string canonical)
+        {
+            offset = 0; canonical = null;
+            if (name.Length == 0 || name[0] is not ('+' or '-')) return false;
+            string digits = name.Length == 6 && name[3] == ':' ? name.Remove(3, 1) : name;
+            if (digits.Length is not (3 or 5)) throw new ArgumentOutOfRangeException(nameof(name), "Invalid time zone offset");
+            for (int index = 1; index < digits.Length; index++) if (!char.IsAsciiDigit(digits[index])) throw new ArgumentOutOfRangeException(nameof(name), "Invalid time zone offset");
+            int hours = (digits[1] - '0') * 10 + digits[2] - '0';
+            int minutes = digits.Length == 3 ? 0 : (digits[3] - '0') * 10 + digits[4] - '0';
+            if (hours > 23 || minutes > 59) throw new ArgumentOutOfRangeException(nameof(name), "Invalid time zone offset");
+            offset = (hours * 60 + minutes) * (digits[0] == '-' ? -1 : 1);
+            canonical = (offset < 0 ? "-" : "+") + hours.ToString("00", CultureInfo.InvariantCulture) + ":" + minutes.ToString("00", CultureInfo.InvariantCulture);
+            return true;
         }
         static string NativeCalendarName(CultureInfo culture) => NativeCalendarName(culture.DateTimeFormat.Calendar) ?? throw new NotSupportedException("Native calendar identification is not supported");
         internal static string NativeCalendarName(Calendar calendar) => calendar switch {
@@ -85,19 +108,19 @@ public static partial class Js
         {
             var culture = Culture; var zone = Zone;
             var native = NativeDate(timestamp);
-            var local = TimeZoneInfo.ConvertTime(native, zone);
+            var local = fixedOffset.HasValue ? NativeDate(timestamp + fixedOffset.Value * 60000d) : TimeZoneInfo.ConvertTime(native, zone);
             if (dateFields.HasFields || timeFields.HasFields || (timeFields.HasClockOption && dateStyle == null && timeStyle == null)) {
                 bool noComponents = !dateFields.HasFields && !timeFields.HasClockFields;
                 string datePart = dateFields.HasFields ? dateFields.Format(local, culture)
                     : mode == "d" || mode == "G" && noComponents ? local.ToString("d", culture) : null;
-                string timePart = timeFields.HasFields ? timeFields.Format(local, culture, zone, !timeFields.HasClockFields && (mode == "G" || mode == "T"))
-                    : mode == "T" || mode == "G" && noComponents ? timeFields.Format(local, culture, zone, true) : null;
+                string timePart = timeFields.HasFields ? timeFields.Format(local, culture, zone, !timeFields.HasClockFields && (mode == "G" || mode == "T"), fixedOffset: fixedOffset)
+                    : mode == "T" || mode == "G" && noComponents ? timeFields.Format(local, culture, zone, true, fixedOffset: fixedOffset) : null;
                 return datePart == null ? timePart : timePart == null ? datePart : datePart + " " + timePart;
             }
             if (dateStyle == null && timeStyle == null) return local.ToString(mode, culture);
             // CLR cultures provide short and long date patterns, rather than Intl's four widths.
             string dateText = dateStyle == null ? null : local.ToString(dateStyle is "short" or "medium" ? "d" : "D", culture);
-            string timeText = timeStyle == null ? null : timeFields.HasClockOption ? timeFields.Format(local, culture, zone, true, timeStyle) : local.ToString(timeStyle == "short" ? "t" : "T", culture);
+            string timeText = timeStyle == null ? null : timeFields.HasClockOption ? timeFields.Format(local, culture, zone, true, timeStyle, fixedOffset) : local.ToString(timeStyle == "short" ? "t" : "T", culture);
             if (timeStyle is "long" or "full") timeText += " " + (zone.IsDaylightSavingTime(native) ? zone.DaylightName : zone.StandardName);
             return dateText == null ? timeText : timeText == null ? dateText : dateText + " " + timeText;
         }

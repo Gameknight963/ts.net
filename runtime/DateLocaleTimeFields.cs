@@ -59,7 +59,7 @@ public static partial class Js
             Field("dayPeriod", dayPeriod); Field("timeZoneName", zoneName);
             if (fractionDigits != 0) target.DefineOwn("fractionalSecondDigits", (double)fractionDigits);
         }
-        internal string Format(DateTimeOffset value, CultureInfo culture, TimeZoneInfo zone, bool defaults = false, string style = null)
+        internal string Format(DateTimeOffset value, CultureInfo culture, TimeZoneInfo zone, bool defaults = false, string style = null, int? fixedOffset = null)
         {
             string clock = Clock(culture);
             bool use12 = clock is "h11" or "h12";
@@ -101,12 +101,17 @@ public static partial class Js
             }
             if (zoneName != null) {
                 string text;
-                if (zoneName is "shortOffset" or "longOffset") {
-                    int offset = (int)value.Offset.TotalMinutes, absolute = Math.Abs(offset);
-                    text = "GMT";
-                    text += offset < 0 ? "-" : "+";
-                    text += (absolute / 60).ToString(zoneName == "longOffset" ? "00" : "0", CultureInfo.InvariantCulture);
-                    if (absolute % 60 != 0 || zoneName == "longOffset") text += ":" + (absolute % 60).ToString("00", CultureInfo.InvariantCulture);
+                if (fixedOffset.HasValue || zoneName is "shortOffset" or "longOffset") {
+                    int offset = fixedOffset ?? (int)value.Offset.TotalMinutes, absolute = Math.Abs(offset);
+                    bool longOffset = zoneName is "longOffset" or "long" or "longGeneric";
+                    if (fixedOffset == 0 && zoneName is not ("shortOffset" or "longOffset")) text = longOffset ? "Greenwich Mean Time" : "GMT";
+                    else
+                    {
+                        text = "GMT";
+                        text += offset < 0 ? "-" : "+";
+                        text += (absolute / 60).ToString(longOffset ? "00" : "0", CultureInfo.InvariantCulture);
+                        if (absolute % 60 != 0 || longOffset) text += ":" + (absolute % 60).ToString("00", CultureInfo.InvariantCulture);
+                    }
                 } else text = zoneName is "shortGeneric" or "longGeneric" ? zone.StandardName : zone.IsDaylightSavingTime(value) ? zone.DaylightName : zone.StandardName;
                 if (result.Length != 0) result.Append(' ');
                 result.Append(text);
