@@ -168,6 +168,17 @@ public static partial class Js
             prototype.DefineMethod("clear", Method("clear", 0, (collection, _) => { collection.ClearEntries(); return Undefined; }));
             prototype.DefineMethod(set ? "add" : "set", Method(set ? "add" : "set", set ? 1 : 2, (collection, args) => { collection.Write(FunctionArgument(args, 0), FunctionArgument(args, 1)); return collection; }));
             if (!set) prototype.DefineMethod("get", Method("get", 1, (collection, args) => collection.Read(FunctionArgument(args, 0))));
+            if (!set) foreach (bool computed in new[] {false,true}) {
+                string name = computed ? "getOrInsertComputed" : "getOrInsert";
+                prototype.DefineMethod(name,Method(name,2,(collection,args) => {
+                    object key = FunctionArgument(args,0);
+                    JsFunction callback = computed ? FunctionArgument(args,1) as JsFunction ?? throw new InvalidOperationException("Map callback must be callable") : null;
+                    if (key is double number && number == 0) key = 0d;
+                    if (collection.Contains(key)) return collection.Read(key);
+                    object value = computed ? callback.InvokeWithReceiver(Undefined,new[] {key}) : FunctionArgument(args,1);
+                    collection.Write(key,value); return value;
+                }));
+            }
             var values = Method("values", 0, (collection, _) => new JsCollectionIterator(collection, 1));
             prototype.DefineMethod("values", values);
             prototype.DefineMethod("keys", set ? values : Method("keys", 0, (collection, _) => new JsCollectionIterator(collection, 0)));

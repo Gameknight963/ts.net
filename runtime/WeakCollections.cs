@@ -40,6 +40,17 @@ public static partial class Js
                 collection.Write(FunctionArgument(args, 0), FunctionArgument(args, 1)); return collection;
             }));
             if (!set) prototype.DefineMethod("get", Method("get", 1, (collection, args) => collection.Read(FunctionArgument(args, 0))));
+            if (!set) foreach (bool computed in new[] {false,true}) {
+                string name = computed ? "getOrInsertComputed" : "getOrInsert";
+                prototype.DefineMethod(name,Method(name,2,(collection,args) => {
+                    object key = FunctionArgument(args,0);
+                    if (!CanBeWeakKey(key)) throw new InvalidOperationException("WeakMap key must be an object or non-registered symbol");
+                    JsFunction callback = computed ? FunctionArgument(args,1) as JsFunction ?? throw new InvalidOperationException("WeakMap callback must be callable") : null;
+                    if (collection.Contains(key)) return collection.Read(key);
+                    object value = computed ? callback.InvokeWithReceiver(Undefined,new[] {key}) : FunctionArgument(args,1);
+                    collection.Write(key,value); return value;
+                }));
+            }
             UseObjectPrototype(prototype);
         }
         object Create(object[] arguments, TsObject prototype)
