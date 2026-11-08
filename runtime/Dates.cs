@@ -30,7 +30,7 @@ public static partial class Js
     static string DateText(object receiver)
     {
         var date = RequireDate(receiver);
-        return double.IsNaN(date.Timestamp) ? "Invalid Date" : NativeDate(date).ToString("r", CultureInfo.InvariantCulture);
+        return double.IsNaN(date.Timestamp) ? "Invalid Date" : OutsideNativeDate(date.Timestamp) ? ExtendedDateText(date.Timestamp) : NativeDate(date).ToString("r", CultureInfo.InvariantCulture);
     }
     static JsDate CreateDate(object[] arguments)
     {

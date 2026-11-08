@@ -39,6 +39,14 @@ public static partial class Js
             : (value.Year < 0 ? "-" : "+") + Math.Abs(value.Year).ToString("D6", CultureInfo.InvariantCulture);
         return string.Create(CultureInfo.InvariantCulture, $"{year}-{value.Month:D2}-{value.Day:D2}T{value.Hour:D2}:{value.Minute:D2}:{value.Second:D2}.{value.Millisecond:D3}Z");
     }
+    static string ExtendedDateText(double timestamp)
+    {
+        var value = ExtendedUtcDateParts(timestamp);
+        string weekday = value.Weekday switch { 0 => "Sun", 1 => "Mon", 2 => "Tue", 3 => "Wed", 4 => "Thu", 5 => "Fri", _ => "Sat" };
+        string month = value.Month switch { 1 => "Jan", 2 => "Feb", 3 => "Mar", 4 => "Apr", 5 => "May", 6 => "Jun", 7 => "Jul", 8 => "Aug", 9 => "Sep", 10 => "Oct", 11 => "Nov", _ => "Dec" };
+        string year = value.Year.ToString("D4", CultureInfo.InvariantCulture);
+        return string.Create(CultureInfo.InvariantCulture, $"{weekday}, {value.Day:D2} {month} {year} {value.Hour:D2}:{value.Minute:D2}:{value.Second:D2} GMT");
+    }
     static double ExtendedUtcDateField(double timestamp, string name)
     {
         var value = ExtendedUtcDateParts(timestamp);
