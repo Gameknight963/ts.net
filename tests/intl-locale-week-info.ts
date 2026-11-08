@@ -20,3 +20,9 @@ console.log('metadata', method.name, method.length);
 
 const typedWeek: Intl.WeekInfo = new Intl.Locale('en-US').getWeekInfo();
 console.log('typed week', typedWeek.firstDay, typedWeek.weekend.join(','));
+
+for (const a of 'abcdefghijklmnopqrstuvwxyz') for (const b of 'abcdefghijklmnopqrstuvwxyz') for (const c of 'abcdefghijklmnopqrstuvwxyz') {
+ const tag = a + b + c;
+ console.log('language defaults', tag, JSON.stringify(new Intl.Locale(tag).getWeekInfo()));
+}
+for (const tag of ['az-Arab', 'pa-Arab', 'uz-Arab', 'zh-Hant', 'und-Arab', 'und-Cyrl', 'und-Latn', 'en-US-u-rg-buzzzz', 'en-GB-u-rg-ukzzzz']) console.log('inferred region', tag, JSON.stringify(new Intl.Locale(tag).getWeekInfo()));
