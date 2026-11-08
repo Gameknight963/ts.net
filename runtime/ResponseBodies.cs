@@ -26,7 +26,11 @@ public static partial class Js
         {
             if (!IsNullish(options) && options is not TsObject) throw new InvalidOperationException("Reader options must be an object");
             object mode = options is TsObject settings ? settings.Get("mode") : Undefined;
-            if (!IsUndefined(mode)) throw new InvalidOperationException("Buffered response bodies currently support default readers");
+            if (!IsUndefined(mode)) {
+                string requested = StringValue(mode);
+                if (requested != "byob") throw new InvalidOperationException("Invalid reader mode");
+                throw new InvalidOperationException("Buffered response bodies currently support default readers");
+            }
             if (Locked) throw new InvalidOperationException("Body stream is locked");
             return Reader = new BufferedBodyReader(this);
         }
