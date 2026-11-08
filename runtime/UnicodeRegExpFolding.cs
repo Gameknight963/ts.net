@@ -317,7 +317,7 @@ public static partial class Js
     }
     internal static bool RegExpNeedsFoldInput(string pattern, string flags)
     {
-        if (!flags.Contains('u') || !flags.Contains('i')) return false;
+        if (!(flags.Contains('u') || flags.Contains('v')) || !flags.Contains('i')) return false;
         bool characterClass = false;
         for (int index = 0; index < pattern.Length; index++) {
             char unit = pattern[index];

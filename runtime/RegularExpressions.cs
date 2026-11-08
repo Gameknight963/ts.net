@@ -240,14 +240,13 @@ public static partial class Js
         foreach (char flag in requested)
             if ("dgimsuvy".IndexOf(flag) < 0 || !seen.Add(flag)) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid regular-expression flags"));
         if (seen.Contains('u') && seen.Contains('v')) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid regular-expression flags"));
-        if (seen.Contains('v')) throw new NotSupportedException("Regular-expression flag v is not supported");
-        bool unicode = seen.Contains('u');
+        bool unicode = seen.Contains('u') || seen.Contains('v');
         var options = RegexOptions.ECMAScript | RegexOptions.CultureInvariant | RegexOptions.Compiled;
         if (seen.Contains('i')) options |= RegexOptions.IgnoreCase;
         if (seen.Contains('m')) options |= RegexOptions.Multiline;
-        string canonical = ""; foreach (char flag in "dgimsuy") if (seen.Contains(flag)) canonical += flag;
+        string canonical = ""; foreach (char flag in "dgimsuvy") if (seen.Contains(flag)) canonical += flag;
         if (unicode) {
-            var compiled = UnicodeRegExpEngines.Compile(text, options, seen.Contains('s'));
+            var compiled = UnicodeRegExpEngines.Compile(text, options, seen.Contains('s'), seen.Contains('v'));
             return new JsRegExp(text, canonical, compiled.Engine, compiled.Names);
         }
         var engine = RegExpEngine(text, options, seen.Contains('s'), false, out var names);
@@ -274,7 +273,7 @@ public static partial class Js
         position = double.IsNaN(position) || position <= 0 ? 0 : Math.Truncate(position);
         if (!global && !sticky) position = 0;
         if (position > text.Length) { regex.LastIndex = 0d; return test ? BoxBoolean(false) : null; }
-        position = RegExpStartIndex(text, (int)position, regex.Flags.Contains('u'));
+        position = RegExpStartIndex(text, (int)position, (regex.Flags.Contains('u') || regex.Flags.Contains('v')));
         if (test)
         {
             if (!global && !sticky) return BoxBoolean(regex.Engine.IsMatch(matchingText));

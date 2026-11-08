@@ -8,13 +8,13 @@ public static partial class Js
 {
     static class UnicodeRegExpEngines
     {
-        static readonly Dictionary<(string Source, RegexOptions Options, bool DotAll), (Regex Engine, string[] Names)> Values = new();
-        internal static (Regex Engine, string[] Names) Compile(string source, RegexOptions options, bool dotAll)
+        static readonly Dictionary<(string Source, RegexOptions Options, bool DotAll, bool UnicodeSets), (Regex Engine, string[] Names)> Values = new();
+        internal static (Regex Engine, string[] Names) Compile(string source, RegexOptions options, bool dotAll, bool unicodeSets)
         {
             lock (Values) {
-                var key = (source, options, dotAll);
+                var key = (source, options, dotAll, unicodeSets);
                 if (Values.TryGetValue(key, out var compiled)) return compiled;
-                var engine = RegExpEngine(new UnicodeRegExpReader(source, (options & RegexOptions.IgnoreCase) != 0).Rewrite(), options & ~RegexOptions.IgnoreCase, dotAll, true, out var names);
+                var engine = RegExpEngine(new UnicodeRegExpReader(source, (options & RegexOptions.IgnoreCase) != 0, unicodeSets).Rewrite(), options & ~RegexOptions.IgnoreCase, dotAll, true, out var names);
                 if (Values.Count >= 64) Values.Clear();
                 compiled = (engine, names); Values.Add(key, compiled);
                 return compiled;
@@ -89,7 +89,7 @@ public static partial class Js
     static int RegExpStartIndex(string text, int index, bool unicode) =>
         unicode && index > 0 && index < text.Length && char.IsLowSurrogate(text[index]) && char.IsHighSurrogate(text[index - 1]) ? index - 1 : index;
 
-    sealed class UnicodeRegExpReader(string source, bool ignoreCase)
+    sealed partial class UnicodeRegExpReader(string source, bool ignoreCase, bool unicodeSets)
     {
         int position;
         bool atomIsSet;
@@ -139,11 +139,13 @@ public static partial class Js
                     }
                     return UnicodeRegExpClassEscape(escape);
                 }
+                if (unicodeSets && characterClass && escape == 'q') throw new NotSupportedException("Unicode regular-expression string sets are not supported yet");
                 if (escape is 'p' or 'P') {
                     atomIsSet = true;
                     if (position == source.Length || source[position++] != '{') throw UnicodeRegExpSyntax();
                     int end = source.IndexOf('}', position); if (end < 0) throw UnicodeRegExpSyntax();
                     var ranges = UnicodeRegExpProperty(source[position..end]); position = end + 1;
+                    if (unicodeSets && ignoreCase) ranges = UnicodeRegExpFolding.Close(ranges);
                     return escape == 'P' ? InvertRegExpRanges(ranges) : ranges;
                 }
                 value = escape switch {
@@ -154,7 +156,7 @@ public static partial class Js
                     _ => -1
                 };
                 if (value < 0) {
-                    if ("^$\\.*+?()[]{}|/".Contains(escape) || characterClass && escape == '-') value = escape;
+                    if ("^$\\.*+?()[]{}|/".Contains(escape) || characterClass && (escape == '-' || unicodeSets && ("&!#%,:;<=>@~".Contains(escape) || escape == (char)96))) value = escape;
                     else throw UnicodeRegExpSyntax();
                 }
             }
@@ -203,7 +205,7 @@ public static partial class Js
                 char ch = source[position];
                 if (previousAssertion && ch is '*' or '+' or '?' or '{') throw UnicodeRegExpSyntax();
                 previousAssertion = false;
-                if (ch == '[') {result.Append(CharacterClass()); continue;}
+                if (ch == '[') {result.Append(unicodeSets ? RegExpCodePointAtom(SetClass()) : CharacterClass()); continue;}
                 if (ch == '\\') {
                     if (position + 1 < source.Length && source[position + 1] is 'b' or 'B') {
                         string word = ignoreCase ? "[A-Za-z0-9_\\u017F\\u212A]" : "[A-Za-z0-9_]";

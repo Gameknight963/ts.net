@@ -70,7 +70,7 @@ public static partial class Js
             var match = regex.Engine.Match(matchingText, search);
             if (!match.Success || match.Index == text.Length) break;
             int end = match.Index + match.Length;
-            if (end == copied) { search = RegExpAdvanceIndex(text, match.Index, regex.Flags.Contains('u')); continue; }
+            if (end == copied) { search = RegExpAdvanceIndex(text, match.Index, (regex.Flags.Contains('u') || regex.Flags.Contains('v'))); continue; }
             result.Append(text.Substring(copied, match.Index - copied));
             if (result.Length() == limit) return result;
             for (int group = 1; group < match.Groups.Count; group++)
