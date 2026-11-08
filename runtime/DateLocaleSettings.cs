@@ -7,7 +7,7 @@ public static partial class Js
     sealed class DateLocaleSettings
     {
         internal readonly CultureInfo Culture;
-        readonly string localeName, numberingSystem, digitCharacters;
+        readonly string localeName, numberingSystem, digitCharacters, calendarName;
         internal readonly TimeZoneInfo Zone;
         readonly int? fixedOffset;
         readonly string mode, dateStyle, timeStyle;
@@ -34,16 +34,28 @@ public static partial class Js
             string calendar = Option("calendar") ?? calendarDefault;
             string requestedNumbering = Option("numberingSystem");
             numberingSystem = requestedNumbering ?? numberingDefault ?? "latn";
-            if (calendar != null && calendar != NativeCalendarName(culture))
+            string nativeCalendar = calendar == "iso8601" ? "gregory" : calendar;
+            if (nativeCalendar != null && nativeCalendar != NativeCalendarName(culture))
             {
                 Calendar selected = null;
                 foreach (var candidate in culture.OptionalCalendars)
-                    if (NativeCalendarName(candidate) == calendar) { selected = candidate; break; }
+                    if (NativeCalendarName(candidate) == nativeCalendar) { selected = candidate; break; }
                 if (selected == null) throw new NotSupportedException("Date locale formatting option calendar is not supported for this culture");
                 culture = (CultureInfo)culture.Clone();
                 culture.DateTimeFormat.Calendar = selected;
                 Culture = culture;
             }
+            if (calendar == "iso8601") {
+                culture = (CultureInfo)culture.Clone();
+                var dateInfo = culture.DateTimeFormat;
+                dateInfo.ShortDatePattern = "yyyy-MM-dd";
+                dateInfo.LongDatePattern = "yyyy MMMM d, dddd";
+                dateInfo.DateSeparator = "-";
+                dateInfo.FirstDayOfWeek = DayOfWeek.Monday;
+                dateInfo.CalendarWeekRule = CalendarWeekRule.FirstFourDayWeek;
+                Culture = culture;
+            }
+            calendarName = calendar == "iso8601" ? "iso8601" : NativeCalendarName(Culture);
             ValidateNumberingSystem(numberingSystem);
             numberingSystem = ResolveNumberingSystem(numberingSystem);
             try { digitCharacters = NumberDigitCharacters(numberingSystem); }
@@ -51,7 +63,7 @@ public static partial class Js
             dateFields = new DateLocaleFields(options);
             timeFields = new DateLocaleTimeFields(options, cycleDefault);
             string extensions = "";
-            if (calendarDefault != null && calendarDefault == NativeCalendarName(Culture)) extensions += "-ca-" + calendarDefault;
+            if (calendarDefault != null && calendarDefault == calendarName) extensions += "-ca-" + calendarDefault;
             if (timeFields.KeepCycleExtension) extensions += "-hc-" + cycleDefault;
             if (numberingDefault != null && numberingDefault == numberingSystem && (requestedNumbering == null || requestedNumbering == numberingDefault)) extensions += "-nu-" + numberingDefault;
             localeName = Culture.Name + (extensions.Length == 0 ? "" : "-u" + extensions);
@@ -99,7 +111,7 @@ public static partial class Js
         {
             var result = new JsDynamicObject();
             result.DefineOwn("locale", localeName);
-            result.DefineOwn("calendar", NativeCalendarName(Culture)); result.DefineOwn("numberingSystem", numberingSystem); result.DefineOwn("timeZone", Zone.Id);
+            result.DefineOwn("calendar", calendarName); result.DefineOwn("numberingSystem", numberingSystem); result.DefineOwn("timeZone", Zone.Id);
             if (dateStyle != null) result.DefineOwn("dateStyle", dateStyle);
             if (timeStyle != null) result.DefineOwn("timeStyle", timeStyle);
             if (dateStyle == null && timeStyle == null) dateFields.WriteOptions(result);

@@ -115,6 +115,7 @@ public static partial class Js
     static TsObject CreateIntlNamespace()
     {
         var result = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
+        result.DefineMethod("supportedValuesOf", new JsFunction((FunctionBody)(static args => IntlSupportedValues(FunctionArgument(args, 0))), null, "supportedValuesOf", 1));
         result.DefineMethod("getCanonicalLocales", new JsFunction((FunctionBody)(static args => CanonicalLocales(FunctionArgument(args, 0))), null, "getCanonicalLocales", 1));
         result.DefineMethod("Locale", IntlLocale.Constructor);
         result.DefineMethod("Collator", IntlCollator.Constructor);

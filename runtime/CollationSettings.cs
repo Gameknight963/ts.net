@@ -72,7 +72,7 @@ public static partial class Js
             "stroke" or "zhuyin" => language == "zh" ? requested : "default",
             _ => throw new NotSupportedException("Custom collations are not supported for this locale")
         };
-        static CompareInfo NativeComparer(CultureInfo culture, string usage, string caseFirst, string collation)
+        internal static CompareInfo NativeComparer(CultureInfo culture, string usage, string caseFirst, string collation)
         {
             if (culture.Name.Contains("-u-", StringComparison.OrdinalIgnoreCase) || culture.CompareInfo.Name.Contains('_'))
                 throw new NotSupportedException("Combining collation options with locale extensions is not supported");

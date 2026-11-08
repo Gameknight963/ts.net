@@ -4,11 +4,7 @@ using System.Numerics;
 
 public static partial class Js
 {
-    static bool SanctionedNumberUnit(string unit) => unit is
-        "acre" or "bit" or "byte" or "celsius" or "centimeter" or "day" or "degree" or "fahrenheit" or "fluid-ounce" or "foot" or "gallon" or
-        "gigabit" or "gigabyte" or "gram" or "hectare" or "hour" or "inch" or "kilobit" or "kilobyte" or "kilogram" or "kilometer" or "liter" or
-        "megabit" or "megabyte" or "meter" or "microsecond" or "mile" or "mile-scandinavian" or "milliliter" or "millimeter" or "millisecond" or
-        "minute" or "month" or "nanosecond" or "ounce" or "percent" or "petabyte" or "pound" or "second" or "stone" or "terabit" or "terabyte" or "week" or "yard" or "year";
+    static bool SanctionedNumberUnit(string unit) => Array.BinarySearch(IntlValueLists.Units, unit, StringComparer.Ordinal) >= 0;
     static bool WellFormedNumberUnit(string unit)
     {
         if (SanctionedNumberUnit(unit)) return true;
