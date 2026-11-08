@@ -22,6 +22,19 @@ async function run(): Promise<void> {
  const aborted=fetch(other,{signal:controller.signal});controller.abort(reason);
  try{await aborted;}catch(error){console.log('abort',error===reason);}
  URL.revokeObjectURL(other);URL.revokeObjectURL(other);URL.revokeObjectURL('not registered');
+ const fragmented=URL.createObjectURL(blob);
+ for(const suffix of ['#fragment','?query']) {
+  try {const response=await fetch(fragmented+suffix);console.log('suffix',suffix,response.url===fragmented,await response.text());}catch(error){console.log('suffix',suffix,(error as Error).name);}
+ }
+ URL.revokeObjectURL(fragmented+'#fragment');
+ try {console.log('fragment revoke',await (await fetch(fragmented)).text());}catch(error){console.log('fragment revoke',(error as Error).name);}
+ URL.revokeObjectURL(fragmented);
+ for(const value of [undefined,null,1,{},'text']) {
+  try {URL.createObjectURL(value as Blob);console.log('invalid accepted');}catch(error){console.log('invalid',(error as Error).name);}
+ }
+ let conversions=0; const marker=new Error('coercion');
+ const revoke: any=URL.revokeObjectURL;
+ try {revoke({toString(){conversions++;throw marker;}});}catch(error){console.log('coercion',error===marker,conversions);}
  const empty=URL.createObjectURL(new Blob());const result=await fetch(empty);
  console.log('empty',result.status,result.headers.get('content-type'),result.headers.get('content-length'),await result.text());
  URL.revokeObjectURL(empty);
