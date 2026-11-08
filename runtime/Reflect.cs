@@ -48,6 +48,7 @@ public static partial class Js
             return BoxBoolean(target.TrySetPrototype((TsObject)prototype));
         });
         Method("getOwnPropertyDescriptor", 2, static arguments => ReflectTarget(FunctionArgument(arguments, 0)).OwnPropertyDescriptor(PropertyKey(FunctionArgument(arguments, 1))));
+        Method("defineProperty", 3, static arguments => ReflectDefineProperty(FunctionArgument(arguments, 0), FunctionArgument(arguments, 1), FunctionArgument(arguments, 2)));
         return result;
     }
 }

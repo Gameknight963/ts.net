@@ -36,7 +36,7 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
 		return b.reflectionDefinitionValue(n.Expression(), seen)
 	case ast.KindIdentifier:
-		if n.Text() == "Object" && b.isBuiltinIdentifier(n) {
+		if (n.Text() == "Object" || n.Text() == "Reflect") && b.isBuiltinIdentifier(n) {
 			return 1
 		}
 		symbol := b.c.GetSymbolAtLocation(n)

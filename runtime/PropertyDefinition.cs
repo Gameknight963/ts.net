@@ -61,29 +61,40 @@ public static partial class Js
     }
     static void DefineDictionaryField(JsDynamicObject target, string key, object value) => ApplyPropertyDefinition(target, key,
         new(value, null, null, true, true, true, DescriptorFields.Value | DescriptorFields.Writable | DescriptorFields.Enumerable | DescriptorFields.Configurable));
+    static object ReflectDefineProperty(object target, object property, object attributes)
+    {
+        if (target is not TsObject obj) throw new InvalidOperationException("Property target must be an object");
+        string key = PropertyKey(property);
+        PropertyDefinition definition = ReadPropertyDefinition(attributes);
+        return BoxBoolean(TryApplyPropertyDefinition(obj, key, definition));
+    }
     static object ApplyPropertyDefinition(TsObject obj, string key, PropertyDefinition definition)
+    {
+        if (!TryApplyPropertyDefinition(obj, key, definition)) throw new InvalidOperationException("Cannot redefine a non-configurable property");
+        return obj;
+    }
+    static bool TryApplyPropertyDefinition(TsObject obj, string key, PropertyDefinition definition)
     {
         if (obj is not JsDynamicObject created || obj.IsModuleNamespace) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
         object existing = obj.OwnPropertyDescriptor(key);
-        if (IsUndefined(existing)) { created.Define(definition.Complete(key)); return obj; }
+        if (IsUndefined(existing)) { created.Define(definition.Complete(key)); return true; }
         var current = (TsObject)existing;
         bool Has(DescriptorFields field) => (definition.Fields & field) != 0;
         bool configurable = Truthy(current.Get("configurable")), enumerable = Truthy(current.Get("enumerable"));
         bool accessor = !current.HasOwn("writable");
         bool dataDefinition = Has(DescriptorFields.Value | DescriptorFields.Writable);
         bool changesKind = (definition.Accessor || dataDefinition) && accessor != definition.Accessor;
-        void Reject() => throw new InvalidOperationException("Cannot redefine a non-configurable property");
         if (!configurable)
         {
-            if (Has(DescriptorFields.Configurable) && definition.Configurable || Has(DescriptorFields.Enumerable) && definition.Enumerable != enumerable || changesKind) Reject();
+            if (Has(DescriptorFields.Configurable) && definition.Configurable || Has(DescriptorFields.Enumerable) && definition.Enumerable != enumerable || changesKind) return false;
             if (accessor)
             {
                 if (Has(DescriptorFields.Get) && !SameValue(current.Get("get"), definition.Getter ?? Undefined) ||
-                    Has(DescriptorFields.Set) && !SameValue(current.Get("set"), definition.Setter ?? Undefined)) Reject();
+                    Has(DescriptorFields.Set) && !SameValue(current.Get("set"), definition.Setter ?? Undefined)) return false;
             }
             else if (!Truthy(current.Get("writable")))
             {
-                if (Has(DescriptorFields.Writable) && definition.Writable || Has(DescriptorFields.Value) && !SameValue(current.Get("value"), definition.Value)) Reject();
+                if (Has(DescriptorFields.Writable) && definition.Writable || Has(DescriptorFields.Value) && !SameValue(current.Get("value"), definition.Value)) return false;
             }
         }
         bool nextAccessor = changesKind ? definition.Accessor : accessor;
@@ -94,6 +105,6 @@ public static partial class Js
         created.Define(new(key, value, getter, setter, nextAccessor, writable,
             Has(DescriptorFields.Enumerable) ? definition.Enumerable : enumerable,
             Has(DescriptorFields.Configurable) ? definition.Configurable : configurable));
-        return obj;
+        return true;
     }
 }
