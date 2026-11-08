@@ -44,6 +44,7 @@ public static partial class Js
                 }
                 extensions.Option(options, "calendar", "ca");
                 extensions.Option(options, "collation", "co");
+                extensions.Option(options, "firstDayOfWeek", "fw", weekday: true);
                 extensions.Option(options, "hourCycle", "hc", new[] { "h11", "h12", "h23", "h24" });
                 extensions.Option(options, "caseFirst", "kf", new[] { "upper", "lower", "false" });
                 object numeric = options.Get("numeric");
@@ -76,7 +77,7 @@ public static partial class Js
             void Getter(string key, Func<LocaleValue, object> read) => prototype.DefineClassAccessor(key, new CollectionMethod("get " + key, 0, (receiver, _) => read(RequireLocale(receiver))), 1);
             Getter("baseName", value => value.BaseName); Getter("language", value => value.Language);
             Getter("script", value => value.Script ?? Undefined); Getter("region", value => value.Region ?? Undefined);
-            foreach (var pair in new[] { ("calendar", "ca"), ("collation", "co"), ("hourCycle", "hc"), ("caseFirst", "kf"), ("numberingSystem", "nu") }) Getter(pair.Item1, value => value.Keyword(pair.Item2));
+            foreach (var pair in new[] { ("calendar", "ca"), ("collation", "co"), ("firstDayOfWeek", "fw"), ("hourCycle", "hc"), ("caseFirst", "kf"), ("numberingSystem", "nu") }) Getter(pair.Item1, value => value.Keyword(pair.Item2));
             Getter("numeric", static value => BoxBoolean(value.Numeric));
             prototype.DefineMethod("getTextInfo", new CollectionMethod("getTextInfo", 0, static (receiver, _) =>
             {

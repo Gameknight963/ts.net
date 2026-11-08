@@ -35,11 +35,12 @@ public static partial class Js
                 }
             }
         }
-        internal void Option(TsObject options, string property, string key, string[] allowed = null)
+        internal void Option(TsObject options, string property, string key, string[] allowed = null, bool weekday = false)
         {
             object value = options.Get(property);
             if (IsUndefined(value)) return;
             string text = StringValue(value);
+            if (weekday) text = text switch { "0" or "7" => "sun", "1" => "mon", "2" => "tue", "3" => "wed", "4" => "thu", "5" => "fri", "6" => "sat", _ => text };
             if (allowed != null ? Array.IndexOf(allowed, text) < 0 : !ValidType(text))
                 throw new ArgumentOutOfRangeException(nameof(options), "Invalid locale " + property);
             text = text.ToLowerInvariant();
