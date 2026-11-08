@@ -102,7 +102,8 @@ public static partial class Js
                 object cycle = locale.Keyword("hc");
                 if (IsUndefined(cycle))
                 {
-                    string pattern = LocaleCulture(locale.BaseName).DateTimeFormat.ShortTimePattern;
+                    // The likely region for an undetermined language is US.
+                    string pattern = LocaleCulture(locale.BaseName == "und" ? "en-US" : locale.BaseName).DateTimeFormat.ShortTimePattern;
                     bool quoted = false;
                     cycle = "h23";
                     for (int index = 0; index < pattern.Length; index++)
