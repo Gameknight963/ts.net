@@ -167,12 +167,15 @@ public static partial class Js
         }
         namedGroups = names.ToArray();
         pattern = rewritten.ToString();
+        string originalCapturePattern = pattern;
+        if (captures != 0) pattern = ResetRegExpRepeatedCaptures(pattern);
         lock (regexEngines)
         {
             if (!unicode && regexEngines.TryGetValue((pattern, options), out var cached)) return cached;
             Regex result;
             try { result = new Regex(pattern, options); }
             catch (ArgumentException error) { throw MakeThrown(new JsCaughtError("SyntaxError", error.Message)); }
+            if (pattern != originalCapturePattern) RegisterRegExpCaptureTestEngine(result, originalCapturePattern, options);
             if (!unicode) {
                 if (regexEngines.Count >= 64) regexEngines.Clear();
                 regexEngines.Add((pattern, options), result);
@@ -276,8 +279,9 @@ public static partial class Js
         position = RegExpStartIndex(text, (int)position, (regex.Flags.Contains('u') || regex.Flags.Contains('v')));
         if (test)
         {
-            if (!global && !sticky) return BoxBoolean(regex.Engine.IsMatch(matchingText));
-            var matches = regex.Engine.EnumerateMatches(matchingText.AsSpan(), (int)position);
+            var engine = RegExpTestEngine(regex.Engine);
+            if (!global && !sticky) return BoxBoolean(engine.IsMatch(matchingText));
+            var matches = engine.EnumerateMatches(matchingText.AsSpan(), (int)position);
             if (!matches.MoveNext() || sticky && matches.Current.Index != position) { regex.LastIndex = 0d; return BoxBoolean(false); }
             regex.LastIndex = (double)(matches.Current.Index + matches.Current.Length); return BoxBoolean(true);
         }
