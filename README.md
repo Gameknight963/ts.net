@@ -117,5 +117,3 @@ Compilation times:
 | 5,000 variables | 726.64 ms | 388.73 ms |
 
 Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
-
-Eligible read-only Float64Array traversal improved from 18.79 ms to 0.784 ms, with zero allocations during the loop. Node measured 0.718 ms, so this workload is now close to Node; loops with calls, writes, custom lengths, or other view layouts keep the ordinary path. These new measurements are medians of seven fresh processes after three warmup calls, with startup and compilation excluded.
