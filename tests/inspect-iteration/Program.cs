@@ -21,13 +21,22 @@ for (int i = 0; i < 1000; i++) length += ((string)Iteration.Value(text, i % text
 long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 if (length != 1000 || allocated != 0) throw new Exception($"ASCII traversal allocated {allocated} bytes");
 Console.WriteLine("PASS unsigned array positions, Unicode code points, and allocation-free ASCII characters");
-for (int warm = 0; warm < 100; warm++) Iteration.Start(text);
-before = GC.GetAllocatedBytesForCurrentThread();
-length = 0;
-for (int repeat = 0; repeat < 1000; repeat++) {
-    object sequence = Iteration.Start(text);
-    for (int index = 0; index < Iteration.Length(sequence); index += Iteration.Step(sequence, index)) length += ((string)Iteration.Value(sequence, index)).Length;
+var packed = new NumberArray(4);
+for (int index = 0; index < 4; index++) packed.SetNumber((uint)index, index + 1);
+static double Traverse(object input, bool numeric) {
+    object sequence = Iteration.Start(input);
+    double total = 0;
+    for (int index = 0; index < Iteration.Length(sequence); index += Iteration.Step(sequence, index))
+        total += numeric ? Iteration.Number(sequence, index).GetValueOrDefault() : ((string)Iteration.Value(sequence, index)).Length;
+    return total;
 }
-allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-if (length != 8000 || allocated != 0) throw new Exception($"Starting ASCII string traversal allocated {allocated} bytes");
-Console.WriteLine("PASS intrinsic string iteration remains allocation-free after adding Symbol.iterator");
+for (int warm = 0; warm < 10000; warm++) {Traverse(text, false); Traverse(packed, true);}
+foreach (bool numeric in new[] {false, true}) {
+    object input = numeric ? packed : text;
+    before = GC.GetAllocatedBytesForCurrentThread();
+    double sum = 0;
+    for (int repeat = 0; repeat < 1000; repeat++) sum += Traverse(input, numeric);
+    allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+    if (sum != (numeric ? 10000 : 8000) || allocated != 0) throw new Exception($"Intrinsic traversal (numeric: {numeric}) allocated {allocated} bytes");
+    Console.WriteLine($"PASS intrinsic {(numeric ? "numeric array" : "string")} iteration remains allocation-free after adding Symbol.iterator");
+}

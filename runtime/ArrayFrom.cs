@@ -30,7 +30,7 @@ public static partial class Js
         // constructor (or its non-constructor fallback), no user code can run
         // during the copy. Keep the result general so later writes can hold any value.
         bool intrinsic = receiver is not JsFunction function || !function.CanInitializeDerived || ReferenceEquals(receiver, RuntimeNamespaces.Array);
-        if (!mapping && intrinsic && iteratorMethod == null && iterable is NumberArray numbers && numbers.Length() <= Array.MaxLength)
+        if (!mapping && intrinsic && (iteratorMethod == null || ReferenceEquals(iteratorMethod, ArrayMethods.Values) && HasIntrinsicSequenceNext(false)) && iterable is NumberArray numbers && numbers.Length() <= Array.MaxLength)
         {
             int packedCount = (int)numbers.Length();
             double[] packed = numbers.TryPacked(packedCount);

@@ -69,6 +69,11 @@ public static partial class Js
     internal static TsObject NativeIteratorPrototype => NativeIteratorPrototypes.Common;
     internal static TsObject SequenceIteratorPrototype(bool text) => text ? NativeIteratorPrototypes.String : NativeIteratorPrototypes.Array;
     internal static JsFunction SequenceIteratorIntrinsicNext(bool text) => text ? NativeIteratorPrototypes.StringNext : NativeIteratorPrototypes.ArrayNext;
+    static bool HasIntrinsicSequenceNext(bool text)
+    {
+        var prototype = SequenceIteratorPrototype(text);
+        return !prototype.TryOwnAccessor("next", out _) && prototype.HasOwn("next") && ReferenceEquals(prototype.Get("next"), SequenceIteratorIntrinsicNext(text));
+    }
     internal static object StartSequenceIterator(JsSequenceIterator iterator)
     {
         object next = iterator.Get("next");
