@@ -101,30 +101,15 @@ func (b *irBuilder) numberPredicateBindings(n *ast.Node) (int, bool) {
 	if source.Kind != ast.KindIdentifier || source.Text() != "Number" || !b.isBuiltinIdentifier(source) {
 		return 0, false
 	}
+	for _, element := range n.Name().Elements() {
+		if numberPredicateBindingMode(element) < 0 {
+			return 0, false
+		}
+	}
 	block := b.node(12, n, "Number bindings")
 	first, last := 0, 0
 	for _, element := range n.Name().Elements() {
-		binding := element.AsBindingElement()
-		if binding.DotDotDotToken != nil {
-			b.unsupported(element)
-		}
-		key := binding.PropertyName
-		if key == nil {
-			key = element.Name()
-		}
-		if key.Kind == ast.KindComputedPropertyName {
-			key = key.Expression()
-			for key.Kind == ast.KindParenthesizedExpression {
-				key = key.Expression()
-			}
-			if key.Kind != ast.KindStringLiteral && key.Kind != ast.KindNoSubstitutionTemplateLiteral {
-				b.unsupported(key)
-			}
-		}
-		mode := numberPredicateName(key.Text())
-		if mode < 0 {
-			b.unsupported(key)
-		}
+		mode := numberPredicateBindingMode(element)
 		value := b.node(43+mode, element, "number predicate function")
 		b.nodes[value-1].typ = b.typ(b.c.GetAnyType())
 		item := 0
@@ -158,6 +143,27 @@ func (b *irBuilder) numberPredicateBindings(n *ast.Node) (int, bool) {
 	}
 	b.nodes[block-1].children = first
 	return block, true
+}
+
+func numberPredicateBindingMode(element *ast.Node) int {
+	binding := element.AsBindingElement()
+	if binding.DotDotDotToken != nil {
+		return -1
+	}
+	key := binding.PropertyName
+	if key == nil {
+		key = element.Name()
+	}
+	if key.Kind == ast.KindComputedPropertyName {
+		key = key.Expression()
+		for key.Kind == ast.KindParenthesizedExpression {
+			key = key.Expression()
+		}
+		if key.Kind != ast.KindStringLiteral && key.Kind != ast.KindNoSubstitutionTemplateLiteral {
+			return -1
+		}
+	}
+	return numberPredicateName(key.Text())
 }
 
 // IR void denotes a CLR operation with no stack result, not a TS annotation.
