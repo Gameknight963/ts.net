@@ -2083,6 +2083,18 @@ public static partial class Js
             ]);
             return values;
         }
+        internal static bool Contains(string property, int value)
+        {
+            var ranges = Values[property];
+            int first = 0, last = ranges.Length - 1;
+            while (first <= last) {
+                int middle = first + (last - first) / 2;
+                if (value < ranges[middle].First) last = middle - 1;
+                else if (value > ranges[middle].Last) first = middle + 1;
+                else return true;
+            }
+            return false;
+        }
         internal static bool TrySelect(string property, out List<RegExpCodePointRange> ranges)
         {
             if (Values.TryGetValue(property, out var stored)) {ranges = new(stored); return true;}

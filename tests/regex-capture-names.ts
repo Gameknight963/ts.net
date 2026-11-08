@@ -22,3 +22,16 @@ const updated = recompiled.exec('b');
 console.log('recompiled', Object.keys(updated.groups).join(','), updated.groups.$new, updated.indices.groups.$new === updated.indices[1]);
 const cloned = structuredClone(recompiled);
 console.log('cloned', cloned.exec('b').groups.$new);
+
+for (const flags of ['d', 'du']) {
+    for (const name of ['\u{10940}', '\\u{10940}', '\u{1E6C0}', 'a\u00B7', 'a\u200C', 'a\u200D', 'a\u30FB']) {
+        const expression = new RegExp('(?<' + name + '>a)\\k<' + name + '>', flags);
+        const match = expression.exec('aa')!;
+        const key = Object.keys(match.groups!)[0];
+        console.log('identifier name', flags, key, match.groups![key], match.indices!.groups![key] === match.indices![1]);
+    }
+    for (const name of ['\u2E2F', '\u{1FAEA}', 'a\u{1F3FB}', '\u200Cname', 'a\uD800']) {
+        try {new RegExp('(?<' + name + '>a)', flags); console.log('unexpected identifier', flags);}
+        catch (error) {console.log('invalid identifier', flags, (error as Error).name);}
+    }
+}

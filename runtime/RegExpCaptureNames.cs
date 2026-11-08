@@ -20,12 +20,12 @@ public static partial class Js
         string name = decoded.ToString();
         bool first = true;
         foreach (var rune in name.EnumerateRunes()) {
-            var category = Rune.GetUnicodeCategory(rune);
-            bool start = rune.Value is '$' or '_' or 0x1885 or 0x1886 or 0x2118 or 0x212e or 0x309b or 0x309c ||
-                category is UnicodeCategory.UppercaseLetter or UnicodeCategory.LowercaseLetter or UnicodeCategory.TitlecaseLetter or UnicodeCategory.ModifierLetter or UnicodeCategory.OtherLetter or UnicodeCategory.LetterNumber;
-            bool continuation = start || category is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.DecimalDigitNumber or UnicodeCategory.ConnectorPunctuation ||
-                rune.Value is 0x200c or 0x200d or 0x00b7 or 0x0387 or 0x19da or 0x30fb or 0xff65 || rune.Value is >= 0x1369 and <= 0x1371;
-            if (first ? !start : !continuation) throw InvalidCaptureName();
+            bool valid;
+            if (rune.Value is '$' or '_') valid = true;
+            else if (rune.IsAscii) valid = first ? char.IsAsciiLetter((char)rune.Value) : char.IsAsciiLetterOrDigit((char)rune.Value);
+            else valid = UnicodeRegExpBinaryProperties.Contains(first ? "ID_Start" : "ID_Continue", rune.Value) ||
+                (!first && rune.Value is 0x200c or 0x200d);
+            if (!valid) throw InvalidCaptureName();
             first = false;
         }
         if (first) throw InvalidCaptureName();
