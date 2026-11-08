@@ -32,7 +32,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 | Classes and inheritance | 14 / 15 | Missing some built-in base classes and complete constructor replacement-object support. |
 | Exceptions | 9 / 10 | Stack traces keep CLR formatting and may omit inlined frames. |
 | Async | 10 / 10 | Missing nothing. |
-| Standard library | 3 / 5 | Remaining RegExp u/v support and other built-ins. |
+| Standard library | 3 / 5 | Some mixed-case RegExp backreferences and repeated captures; remaining Intl and stream APIs. |
 
 </details>
 
@@ -104,6 +104,8 @@ Runtime performance:
 | Typed-object loop, 500K iterations | 0.5 ms | 0.4 ms | 1.49x |
 | `any` property loop, 350K iterations | 0.3 ms | 0.3 ms | 1.00x |
 | Object valueOf, 1M numeric conversions | 121 ms | 122 ms | 0.99x |
+| Intl.Segmenter, 100 word-segmentation calls and full traversal | 4.14 ms | 2.59 ms | 0.63x |
+| Intl.DisplayNames, 6K region-name lookups | 7.64 ms | 13.70 ms | 1.79x |
 
 </details>
 
@@ -115,3 +117,5 @@ Compilation times:
 | 5,000 variables | 754.27 ms | 391.27 ms |
 
 Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
+
+The Intl rows use Release builds, 500 ms warmup and seven fresh processes per engine, excluding startup and compilation; the full test suite was running in the background. Region-name lookup is encouraging, while word segmentation still trails Node; these two workloads do not establish overall application speed.
