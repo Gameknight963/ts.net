@@ -84,6 +84,12 @@ func (b *irBuilder) moduleFiles(s *session) []*ast.SourceFile {
 			if (n.Kind == ast.KindImportDeclaration || n.Kind == ast.KindExportDeclaration) && n.ModuleSpecifier() != nil && b.runtimeImport(n) {
 				dependency(n.ModuleSpecifier(), true)
 			}
+			if n.Kind == ast.KindImportEqualsDeclaration && !n.AsImportEqualsDeclaration().IsTypeOnly && b.c.GetEmitResolver().IsReferencedAliasDeclaration(n) {
+				reference := n.AsImportEqualsDeclaration().ModuleReference
+				if reference.Kind == ast.KindExternalModuleReference {
+					dependency(reference.Expression(), true)
+				}
+			}
 		}
 		var scan func(*ast.Node)
 		scan = func(n *ast.Node) {

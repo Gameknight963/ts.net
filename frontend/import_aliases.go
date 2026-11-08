@@ -31,7 +31,8 @@ func (b *irBuilder) importEquals(n *ast.Node) int {
 	}
 	reference := n.AsImportEqualsDeclaration().ModuleReference
 	if reference.Kind == ast.KindExternalModuleReference {
-		b.unsupported(n)
+		// External aliases read the compiled module's exported value or namespace.
+		return 0
 	}
 	symbol := b.symbol(n.Name())
 	id := b.node(13, n, n.Name().Text())

@@ -55,7 +55,7 @@ func loadWithOptions(path string, legacy bool) (*session, string, int) {
 	absolute = tspath.NormalizeSlashes(absolute)
 	options := &core.CompilerOptions{
 		Strict: core.TSTrue, NoEmit: core.TSTrue,
-		Target: core.ScriptTargetESNext, Module: core.ModuleKindESNext,
+		Target: core.ScriptTargetESNext, Module: core.ModuleKindPreserve,
 		ModuleResolution:  core.ModuleResolutionKindBundler,
 		Types:             []string{},
 		ResolveJsonModule: core.TSTrue,

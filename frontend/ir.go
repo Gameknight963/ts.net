@@ -74,6 +74,7 @@ type irBuilder struct {
 	namespaceOwners       map[*ast.Symbol]int
 	moduleNamespaces      map[*ast.Node]int
 	moduleNamespaceOrder  []*ast.Symbol
+	moduleAssignments     map[*ast.SourceFile]int
 	thisSymbol            int
 	thisScope             bool
 	newTargetUsed         bool
@@ -440,13 +441,16 @@ func (b *irBuilder) lower(n *ast.Node) int {
 	case ast.KindEnumDeclaration:
 		return b.enumDeclaration(n)
 	case ast.KindExportAssignment:
+		name := "default"
+		symbol := n.Symbol()
 		if n.AsExportAssignment().IsExportEquals {
-			b.unsupported(n)
+			name = "export="
+			symbol = b.file.AsNode().Symbol().Exports[ast.InternalSymbolNameExportEquals]
 		}
-		id = b.node(13, n, "default")
+		id = b.node(13, n, name)
 		row = b.nodes[id-1]
-		row.name = b.text("default")
-		row.symbol = b.symbolFor(n.Symbol(), "default")
+		row.name = b.text(name)
+		row.symbol = b.symbolFor(symbol, name)
 		row.typ = b.symbols[row.symbol-1].typ
 		row.constant = 1
 		row.left = b.lower(n.Expression())
@@ -526,6 +530,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			text = strconv.FormatFloat(value, 'g', -1, 64)
 		}
 		id = b.node(0, n, text)
+		b.nodes[id-1].typ = b.typ(b.c.GetNumberType())
 	case ast.KindRegularExpressionLiteral:
 		text := n.Text()
 		split := strings.LastIndex(text, "/")
@@ -579,6 +584,7 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		return result
 	case ast.KindTrueKeyword, ast.KindFalseKeyword:
 		id = b.node(2, n, map[bool]string{true: "true", false: "false"}[n.Kind == ast.KindTrueKeyword])
+		b.nodes[id-1].typ = b.typ(b.c.GetBooleanType())
 	case ast.KindIdentifier:
 		if symbol := b.c.GetSymbolAtLocation(n); n.Text() == "globalThis" && symbol != nil && len(symbol.Declarations) == 0 {
 			id = b.node(66, n, "globalThis")
@@ -595,6 +601,9 @@ func (b *irBuilder) lower(n *ast.Node) int {
 			break
 		}
 		if symbol := b.c.GetSymbolAtLocation(n); symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
+			if reference := b.exportAssignmentReference(n, symbol); reference != 0 {
+				return reference
+			}
 			if module := b.jsonNamespaceAlias(symbol); module != nil {
 				return b.moduleNamespaceReference(n, module.AsNode().Symbol())
 			}
@@ -1342,6 +1351,7 @@ func exportIR(s *session) (result []byte, err error) {
 	defer release()
 	b.c = c
 	b.prepareJSONModules(files)
+	b.prepareExportAssignments(files)
 	b.prepareDeletion(files)
 	b.prepareEnumNamespaces(files)
 	b.prepareDynamicModules(files)
@@ -1414,8 +1424,13 @@ func exportIR(s *session) (result []byte, err error) {
 			b.usingStack = b.newUsingStack()
 		}
 		child := 0
+		var exportAssignment *ast.Node
 		for _, n := range file.Statements.Nodes {
 			if n.Kind == ast.KindFunctionDeclaration {
+				continue
+			}
+			if n.Kind == ast.KindExportAssignment && n.AsExportAssignment().IsExportEquals {
+				exportAssignment = n
 				continue
 			}
 			id := b.lower(n)
@@ -1428,6 +1443,14 @@ func exportIR(s *session) (result []byte, err error) {
 				b.nodes[child-1].next = id
 			}
 			child = id
+		}
+		if exportAssignment != nil {
+			id := b.lower(exportAssignment)
+			if child == 0 {
+				b.nodes[block-1].children = id
+			} else {
+				b.nodes[child-1].next = id
+			}
 		}
 		if b.usingStack != previousUsing {
 			b.nodes[block-1].children = b.wrapUsing(file.AsNode(), b.usingStack, b.nodes[block-1].children)

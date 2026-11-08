@@ -80,8 +80,10 @@ func (b *irBuilder) initializeModuleNamespaces() {
 			if target.Flags&ast.SymbolFlagsValue == 0 || target.Flags&ast.SymbolFlagsConstEnum != 0 {
 				continue
 			}
-			reference := 0
-			if json := b.jsonNamespaceAlias(export); json != nil {
+			reference := b.exportAssignmentReference(n, export)
+			if reference != 0 {
+				// Read the property from the compiled export assignment.
+			} else if json := b.jsonNamespaceAlias(export); json != nil {
 				reference = b.moduleNamespaceReference(n, json.AsNode().Symbol())
 			} else if target.IsExternalModule() {
 				reference = b.moduleNamespaceReference(n, target)
