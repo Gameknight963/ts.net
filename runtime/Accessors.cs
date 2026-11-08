@@ -20,14 +20,16 @@ public abstract partial class TsObject
     {
         accessor = null; return accessors is not null && accessors.TryGetValue(key, out accessor);
     }
-    public void DefineAccessor(string key, object function, int mode)
+    public void DefineAccessor(string key, object function, int mode) => DefineAccessor(key, function, mode, true);
+    internal void DefineAccessor(string key, object function, int mode, bool inferName)
     {
         if (!TryOwnAccessor(key, out var accessor))
         {
             accessor = new JsAccessor(); (accessors ??= new())[key] = accessor;
             (extra ??= new OwnProperties())[key] = Js.Undefined;
         }
-        var callable = (JsFunction)function; callable.InferPropertyName((mode == 1 ? "get " : "set ") + key);
+        var callable = (JsFunction)function;
+        if (inferName) callable.InferPropertyName((mode == 1 ? "get " : "set ") + key);
         if (mode == 1) accessor.Getter = callable; else accessor.Setter = callable;
     }
     public virtual object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? Get(key) : InheritedValue(key, receiver);

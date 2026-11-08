@@ -10,8 +10,8 @@ internal sealed class JsCreatedObject : JsDynamicObject
     {
         descriptors.Add(descriptor.Key, descriptor);
         DefineOwn(descriptor.Key, descriptor.Value);
-        if (descriptor.Getter != null) DefineAccessor(descriptor.Key, descriptor.Getter, 1);
-        if (descriptor.Setter != null) DefineAccessor(descriptor.Key, descriptor.Setter, 2);
+        if (descriptor.Getter != null) DefineAccessor(descriptor.Key, descriptor.Getter, 1, false);
+        if (descriptor.Setter != null) DefineAccessor(descriptor.Key, descriptor.Setter, 2, false);
     }
     internal void DefineJsonData(string key, object value) { descriptors.Remove(key); DefineOwn(key, value); }
     internal override bool IsReadOnlyOwnProperty(string key) => descriptors.TryGetValue(key, out var descriptor) &&
