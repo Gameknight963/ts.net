@@ -32,14 +32,14 @@ public static partial class Js
                 unicodeSeen = true;
                 int index = 0;
                 while (index < values.Count && values[index].Length != 2)
-                    if (!attributes.Add(values[index++])) throw new ArgumentOutOfRangeException(nameof(parts), "Duplicate locale attribute");
+                    attributes.Add(values[index++]);
                 while (index < values.Count) {
                     string key = values[index++];
                     if (!char.IsAsciiLetter(key[1])) throw new ArgumentOutOfRangeException(nameof(parts), "Invalid Unicode locale key");
                     var types = new List<string>();
                     while (index < values.Count && values[index].Length != 2) types.Add(values[index++]);
                     string type = string.Join('-', types);
-                    if (!Keywords.TryAdd(key, type == "true" ? "" : type)) throw new ArgumentOutOfRangeException(nameof(parts), "Duplicate locale keyword");
+                    Keywords.TryAdd(key, type == "true" ? "" : type);
                 }
             }
         }
