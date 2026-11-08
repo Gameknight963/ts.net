@@ -11,9 +11,10 @@ public class JsCaughtError : TsObject
     readonly TsObject prototype;
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : prototype;
     readonly string stack = Environment.StackTrace;
+    bool hasStack = true;
     readonly HashSet<string> hidden = ["stack"];
-    internal override object OwnPropertyNames() => Js.MergeOwnNames(this, base.OwnKeys(), "stack");
-    internal override object ForInOwnKeys() => Js.ForInNames(base.OwnKeys(), "stack");
+    internal override object OwnPropertyNames() => hasStack ? Js.MergeOwnNames(this, base.OwnKeys(), "stack") : base.OwnKeys();
+    internal override object ForInOwnKeys() => hasStack ? Js.ForInNames(base.OwnKeys(), "stack") : base.OwnKeys();
     internal override bool ForInEnumerable(string key) => !hidden.Contains(key);
     public JsCaughtError(string name, string message, bool hasMessage = true, object cause = null, bool hasCause = false)
     {
@@ -22,8 +23,21 @@ public class JsCaughtError : TsObject
         if (hasCause) DefineHidden("cause", cause);
     }
     public void DefineHidden(string key, object value) { DefineOwn(key, value); hidden.Add(key); }
-    public override bool HasOwn(string key) => key == "stack" || base.HasOwn(key);
-    public override object Get(string key) => key == "stack" && !base.HasOwn(key) ? Js.ErrorText(this) + "\n" + stack : base.Get(key);
+    public override bool HasOwn(string key) => key == "stack" && hasStack || base.HasOwn(key);
+    public override object Get(string key) => key == "stack" && hasStack && !base.HasOwn(key) ? Js.ErrorText(this) + "\n" + stack : base.Get(key);
+    public override bool DeleteOwn(string key)
+    {
+        if (key == "stack" && hasStack && !base.HasOwn(key))
+        {
+            hasStack = false;
+            hidden.Remove(key);
+            return true;
+        }
+        if (!base.DeleteOwn(key)) return false;
+        if (key == "stack") hasStack = false;
+        hidden.Remove(key);
+        return true;
+    }
     public override object OwnKeys()
     {
         var keys = (JsArray)base.OwnKeys(); var result = new JsArray(0);
