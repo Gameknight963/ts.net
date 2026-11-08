@@ -361,12 +361,13 @@ public static partial class Js
             offset = double.IsNaN(offset) ? 0 : Math.Truncate(offset);
             if (offset < 0) throw new ArgumentOutOfRangeException(null, "Typed array offset is negative");
             if (array.OutOfBounds) throw new InvalidOperationException("Target typed array is out of bounds");
+            int targetLength = array.Count;
             var source = ToObject(FunctionArgument(args, 0));
             if (source is TypedArrayValue typed)
             {
                 if (typed.OutOfBounds) throw new InvalidOperationException("Source typed array is out of bounds");
                 int length = typed.Count;
-                if (length > array.Count - offset) throw new ArgumentOutOfRangeException(null, "Typed array set exceeds target length");
+                if (length > targetLength - offset) throw new ArgumentOutOfRangeException(null, "Typed array set exceeds target length");
                 int targetOffset = (int)offset;
                 if (typed.Kind.StartsWith("Big", StringComparison.Ordinal) != array.Kind.StartsWith("Big", StringComparison.Ordinal))
                     throw new InvalidOperationException("Typed array content types do not match");
@@ -385,7 +386,7 @@ public static partial class Js
             else
             {
                 long length = IndexedLength(source);
-                if (length > array.Count - offset) throw new ArgumentOutOfRangeException(null, "Typed array set exceeds target length");
+                if (length > targetLength - offset) throw new ArgumentOutOfRangeException(null, "Typed array set exceeds target length");
                 int targetOffset = (int)offset;
                 for (int i = 0; i < length; i++) array.Write(targetOffset + i, IndexedValue(source, i));
             }
