@@ -1,5 +1,5 @@
 export {};
-for (const name of ['$value', '_name', 'caf\\u00e9', '\\u{10400}', '\\u0061', 'a\\u200c']) {
+for (const name of ['$value', '_name', 'caf\\u00e9', '\\u{10400}', '\\u0061', 'a\\u200c', 'a\\u30fb', 'a\\uff65', 'a\\u0301', '\\u005f', '\\uD800\\uDC00']) {
     const expression = new RegExp('(?<' + name + '>a)(b)\\k<' + name + '>', 'd');
     const match = expression.exec('aba')!;
     const key = Object.keys(match.groups!)[0];
@@ -7,7 +7,7 @@ for (const name of ['$value', '_name', 'caf\\u00e9', '\\u{10400}', '\\u0061', 'a
     console.log('replace', 'aba'.replace(expression, '$<' + key + '>:$2'));
     'aba'.replace(expression, (...args: any[]) => {console.log('callback', args[1], args[2], args[5][key]); return '';});
 }
-for (const name of ['', '1name', 'a-b', 'a b', '\\u002d', '\\u{}', '\\u{110000}']) {
+for (const name of ['', '1name', 'a-b', 'a b', '\\u30fb', '\\uff65', '\\u200c', '\\u0301', '\\uD800', '\\u002d', '\\u{}', '\\u{110000}']) {
     try {new RegExp('(?<' + name + '>a)'); console.log('unexpected');}
     catch (error) {console.log('invalid', (error as Error).name);}
 }

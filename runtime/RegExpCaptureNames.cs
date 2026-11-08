@@ -24,7 +24,7 @@ public static partial class Js
             bool start = rune.Value is '$' or '_' or 0x1885 or 0x1886 or 0x2118 or 0x212e or 0x309b or 0x309c ||
                 category is UnicodeCategory.UppercaseLetter or UnicodeCategory.LowercaseLetter or UnicodeCategory.TitlecaseLetter or UnicodeCategory.ModifierLetter or UnicodeCategory.OtherLetter or UnicodeCategory.LetterNumber;
             bool continuation = start || category is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.DecimalDigitNumber or UnicodeCategory.ConnectorPunctuation ||
-                rune.Value is 0x200c or 0x200d or 0x00b7 or 0x0387 or 0x19da || rune.Value is >= 0x1369 and <= 0x1371;
+                rune.Value is 0x200c or 0x200d or 0x00b7 or 0x0387 or 0x19da or 0x30fb or 0xff65 || rune.Value is >= 0x1369 and <= 0x1371;
             if (first ? !start : !continuation) throw InvalidCaptureName();
             first = false;
         }
