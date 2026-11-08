@@ -55,8 +55,10 @@ public static partial class Js
                     object result = iterator.Callback.InvokeWithReceiver(Undefined, new object[] { value, iterator.Index++ });
                     if (iterator.Mode == "flatMap")
                     {
-                        if (result is not TsObject) throw new InvalidOperationException("Iterator flatMap result must be an object");
-                        iterator.Inner = (JsProtocolIterator)StartIteratorObject((TsObject)IteratorFrom(result));
+                        if (result is not TsObject inner) throw new InvalidOperationException("Iterator flatMap result must be an object");
+                        var method = CustomIterableMethod(inner);
+                        if (method != null) inner = InvokeIterableMethod(method, inner);
+                        iterator.Inner = (JsProtocolIterator)StartIteratorObject(inner);
                         continue;
                     }
                     if (iterator.Mode == "filter") { if (!Truthy(result)) continue; }
