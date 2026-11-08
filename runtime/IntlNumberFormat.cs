@@ -41,10 +41,11 @@ public static partial class Js
                     Part(type, token); position += token.Length; return true;
                 }
                 if (settings.style == "currency" && !settings.CurrencyName && Token(info.CurrencySymbol, "currency")) continue;
-                if (!exponent && settings.notation != "standard" && Token("E", "exponentSeparator")) { exponent = true; fraction = false; continue; }
+                if (!exponent && settings.notation is ("scientific" or "engineering") && Token("E", "exponentSeparator")) { exponent = true; fraction = false; continue; }
+                if (settings.notation == "compact" && (Token(settings.CompactLabel(3), "compact") || Token(settings.CompactLabel(6), "compact") || Token(settings.CompactLabel(9), "compact") || Token(settings.CompactLabel(12), "compact"))) continue;
                 if (exponent && Token(info.NegativeSign, "exponentMinusSign")) continue;
                 if (Token(info.NumberDecimalSeparator, "decimal")) { fraction = true; continue; }
-                if (settings.style == "percent" && Token(info.PercentSymbol, "percentSign")) continue;
+                if (settings.style == "percent" && Token(info.PercentSymbol, settings.notation == "compact" ? "unit" : "percentSign")) continue;
                 if (Token(info.NumberGroupSeparator, "group") || Token(info.NegativeSign, "minusSign") || Token(info.PositiveSign, "plusSign")
                     || Token(info.NaNSymbol, "nan") || Token(info.PositiveInfinitySymbol, "infinity")) continue;
                 int start = position;
@@ -81,6 +82,7 @@ public static partial class Js
                 result.DefineOwn("maximumSignificantDigits", (double)settings.maximumSignificant);
             }
             result.DefineOwn("useGrouping", settings.groupingOption); result.DefineOwn("notation", settings.notation);
+            if (settings.notation == "compact") result.DefineOwn("compactDisplay", settings.compactDisplay);
             result.DefineOwn("signDisplay", settings.signDisplay);
             result.DefineOwn("roundingIncrement", (double)settings.roundingIncrement); result.DefineOwn("roundingMode", settings.roundingMode);
             result.DefineOwn("roundingPriority", settings.roundingPriority); result.DefineOwn("trailingZeroDisplay", settings.trailingZeroDisplay);

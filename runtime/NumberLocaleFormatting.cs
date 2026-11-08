@@ -66,7 +66,7 @@ public static partial class Js
         internal readonly bool grouping;
         internal readonly object groupingOption;
         internal readonly string signDisplay;
-        internal readonly string roundingMode, trailingZeroDisplay, roundingPriority, notation;
+        internal readonly string roundingMode, trailingZeroDisplay, roundingPriority, notation, compactDisplay;
         internal readonly string style;
         internal readonly string unit, unitDisplay;
         internal readonly string currency, currencyDisplay, currencySign;
@@ -158,8 +158,7 @@ public static partial class Js
                 }
                 object requestedNotation = options.Get("notation");
                 if (!IsUndefined(requestedNotation)) notation = StringValue(requestedNotation);
-                if (notation == "compact") throw new NotSupportedException("Compact notation is not supported");
-                if (notation is not ("standard" or "scientific" or "engineering")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number notation");
+                if (notation is not ("standard" or "scientific" or "engineering" or "compact")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number notation");
                 integerDigits = Digits("minimumIntegerDigits", 1, 1, 21);
                 object minimumSetting = options.Get("minimumFractionDigits"), maximumSetting = options.Get("maximumFractionDigits");
                 object minimumSignificantSetting = options.Get("minimumSignificantDigits"), maximumSignificantSetting = options.Get("maximumSignificantDigits");
@@ -211,8 +210,13 @@ public static partial class Js
                     if (roundingIncrement != 1 && minimum != maximum)
                         throw new ArgumentOutOfRangeException(nameof(optionValue), "Rounding increments require equal minimum and maximum fraction digits");
                 }
-                string compactDisplay = CurrencyOption("compactDisplay", "short");
+                if (notation == "compact" && roundingPriority == "auto" && IsUndefined(minimumSetting) && IsUndefined(maximumSetting) && IsUndefined(minimumSignificantSetting) && IsUndefined(maximumSignificantSetting)) {
+                    minimum = maximum = 0; minimumSignificant = 1; maximumSignificant = 2; roundingPriority = "morePrecision";
+                    if (roundingIncrement != 1) throw new InvalidOperationException("Compact significant digits cannot be combined with rounding increments");
+                }
+                compactDisplay = CurrencyOption("compactDisplay", "short");
                 if (compactDisplay is not ("short" or "long")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid compact display");
+                if (notation == "compact") groupingOption = "min2";
                 object group = options.Get("useGrouping");
                 if (!IsUndefined(group))
                 {
@@ -220,7 +224,7 @@ public static partial class Js
                     groupingOption = !grouping ? BoxBoolean(false) : group is string text ? text switch
                     {
                         "auto" or "always" => text,
-                        "true" or "false" => "auto",
+                        "true" or "false" => notation == "compact" ? "min2" : "auto",
                         "min2" => text,
                         _ => throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid grouping option")
                     } : "always";
@@ -243,6 +247,7 @@ public static partial class Js
                 positivePattern = (0.01d).ToString("P0", culture);
                 negativePattern = (-0.01d).ToString("P0", culture);
             }
+            if (notation == "compact" && culture.Name is not ("en" or "en-US")) throw new NotSupportedException("Compact notation currently supports US English");
             if (style == "unit" && culture.Name is not ("en" or "en-US")) throw new NotSupportedException("Unit formatting currently supports US English");
             minimumGrouping = groupingOption is "min2" || groupingOption is "auto" && culture.Name is "es" or "es-ES";
             minimumGroupingWidth = int.MaxValue;
@@ -289,7 +294,7 @@ public static partial class Js
             BigInteger digits = BigInteger.Parse(coefficient.Replace(".", ""), CultureInfo.InvariantCulture);
             return NumericText(digits, exponent - scale + (style == "percent" ? 2 : 0), double.IsNegative(value), out fractionMinimum, out fractionMaximum, out notationExponent);
         }
-        int ExponentFor(int magnitude) => notation == "engineering" ? (int)Math.Floor(magnitude / 3d) * 3 : magnitude;
+        int ExponentFor(int magnitude) => notation == "compact" ? Math.Clamp((int)Math.Floor(magnitude / 3d) * 3, 0, 12) : notation == "engineering" ? (int)Math.Floor(magnitude / 3d) * 3 : magnitude;
         string NumericText(BigInteger digits, int exponent, bool negative, out int fractionMinimum, out int fractionMaximum, out int notationExponent)
         {
             if (notation == "standard")
@@ -366,6 +371,11 @@ public static partial class Js
             if (fractionDigits != 0) result += culture.NumberFormat.NumberDecimalSeparator + fraction.ToString(CultureInfo.InvariantCulture).PadLeft(fractionDigits, '0');
             return negative ? culture.NumberFormat.NegativeSign + result : result;
         }
+        internal bool LongCompact => compactDisplay == "long" && (style != "currency" || CurrencyName);
+        internal string CompactLabel(int exponent) => (LongCompact, exponent) switch {
+            (false, 3) => "K", (false, 6) => "M", (false, 9) => "B", (false, 12) => "T",
+            (true, 3) => "thousand", (true, 6) => "million", (true, 9) => "billion", (true, 12) => "trillion", _ => ""
+        };
         bool EnglishSingularNumber(string number)
         {
             var info = culture.NumberFormat;
@@ -446,7 +456,8 @@ public static partial class Js
                     if (integer) result = result[..point];
                 }
             }
-            if (finite && notation != "standard")
+            if (finite && notation == "compact") { string compact = CompactLabel(notationExponent); if (compact.Length != 0) result += (LongCompact ? " " : "") + compact; }
+            else if (finite && notation != "standard")
                 result += "E" + (notationExponent < 0 ? culture.NumberFormat.NegativeSign : "") + Math.Abs(notationExponent).ToString(CultureInfo.InvariantCulture);
             if (CurrencyName) return includeAffix ? result + " " + CurrencyNameAffix(result) : result;
             if (style == "unit") { if (!includeAffix) return result; var affix = UnitAffix(result); return result + affix.Gap + affix.Name; }
