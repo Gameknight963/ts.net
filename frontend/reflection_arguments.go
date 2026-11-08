@@ -32,7 +32,7 @@ func (b *irBuilder) prepareReflectionSources(files []*ast.SourceFile) {
 						signature = signature.Target()
 					}
 					parameters := signature.Parameters()
-					for index, argument := range n.Arguments() {
+					for index, argument := range reflectionLiteralArguments(n.Arguments()) {
 						// A spread changes subsequent positions; rest parameters hold
 						// arrays, not individual callback or namespace values.
 						if argument.Kind == ast.KindSpreadElement || index >= len(parameters) {
@@ -51,6 +51,38 @@ func (b *irBuilder) prepareReflectionSources(files []*ast.SourceFile) {
 	for _, file := range files {
 		visit(file.AsNode())
 	}
+}
+
+// Expand fresh array literals without executing their elements. Unknown
+// spreads remain barriers because subsequent parameter positions are unknown.
+func reflectionLiteralArguments(arguments []*ast.Node) []*ast.Node {
+	expands := false
+	for _, argument := range arguments {
+		if argument.Kind == ast.KindSpreadElement {
+			expands = true
+			break
+		}
+	}
+	if !expands {
+		return arguments
+	}
+	var result []*ast.Node
+	for _, argument := range arguments {
+		if argument.Kind != ast.KindSpreadElement {
+			result = append(result, argument)
+			continue
+		}
+		value := argument.Expression()
+		for value.Kind == ast.KindParenthesizedExpression || value.Kind == ast.KindAsExpression || value.Kind == ast.KindSatisfiesExpression || value.Kind == ast.KindTypeAssertionExpression || value.Kind == ast.KindNonNullExpression {
+			value = value.Expression()
+		}
+		if value.Kind == ast.KindArrayLiteralExpression {
+			result = append(result, reflectionLiteralArguments(value.AsArrayLiteralExpression().Elements.Nodes)...)
+		} else {
+			result = append(result, argument)
+		}
+	}
+	return result
 }
 
 func (b *irBuilder) reflectionBindingValue(parameter *ast.Node, seen map[*ast.Node]bool, classify func(*ast.Node, map[*ast.Node]bool) int) int {
