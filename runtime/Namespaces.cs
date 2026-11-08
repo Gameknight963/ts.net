@@ -32,11 +32,17 @@ public static partial class Js
             }), null, "assert", 0));
         }
     }
-    sealed class PerformanceNamespace : TsObject
+    sealed class PerformanceNamespace : EventTargetValue
     {
-        static readonly JsFunction NowFunction = new((FunctionBody)(static _ => Now()), (RawNumberFunction0)Now, "now", 0);
-        public override object Get(string key) => base.HasOwn(key) ? base.Get(key) : key == "now" ? NowFunction : base.Get(key);
-        public override bool HasProperty(string key) => key == "now" || base.HasProperty(key);
+        static readonly TsObject Prototype = CreatePrototype();
+        internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : Prototype;
+        static TsObject CreatePrototype()
+        {
+            var prototype = new JsClassInstance {ParentPrototype = (TsObject)EventConstructors.Target.Get("prototype")};
+            prototype.DefineOwn("now", new JsFunction((FunctionBody)(static _ => Now()), (RawNumberFunction0)Now, "now", 0));
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Performance", false);
+            return prototype;
+        }
     }
     class NativeNamespaceFunction(string name, FunctionBody body, int length, object numeric = null) : JsFunction(body, numeric, name, length)
     {
