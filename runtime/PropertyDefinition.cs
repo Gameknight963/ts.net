@@ -96,12 +96,12 @@ public static partial class Js
             if (HasElementField(DescriptorFields.Value)) array.Write((int)index, definition.Value);
             return true;
         }
-        if (obj.IsModuleNamespace || obj is not JsDescriptorObject && obj is not JsArray && obj is not JsRawJson)
+        if (!obj.IsModuleNamespace && obj is not JsDescriptorObject && obj is not JsArray && obj is not JsRawJson)
             throw new NotSupportedException("Property definition on this object layout is not implemented yet");
         if (obj is JsArray indexed && JsArray.Index(key, out uint element) && element >= indexed.Length() && !indexed.LengthWritable) return false;
         object existing = obj.OwnPropertyDescriptor(key);
         if (IsUndefined(existing)) {
-            if (!obj.IsExtensible) return false;
+            if (obj.IsModuleNamespace || !obj.IsExtensible) return false;
             InstallPropertyDefinition(obj, definition.Complete(key)); return true;
         }
         var current = (TsObject)existing;
@@ -122,6 +122,13 @@ public static partial class Js
             {
                 if (Has(DescriptorFields.Writable) && definition.Writable || Has(DescriptorFields.Value) && !SameValue(current.Get("value"), definition.Value)) return false;
             }
+        }
+        if (obj.IsModuleNamespace) {
+            // Export descriptors advertise writable values, but definitions may
+            // neither change the binding nor make that binding read-only.
+            if (Has(DescriptorFields.Writable) && !definition.Writable && Truthy(current.Get("writable")) ||
+                Has(DescriptorFields.Value) && !SameValue(current.Get("value"), definition.Value)) return false;
+            return true;
         }
         // Raw JSON properties are immutable; compatible definitions need no storage update.
         if (obj is JsRawJson) return true;
