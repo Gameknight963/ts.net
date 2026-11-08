@@ -9,6 +9,7 @@ internal static partial class CompilerFunctions
     internal static bool il_object_needs_entries(int entry, Compiler c)
     {
         Node n = get_node(entry, c); if (n.kind != NodeKind.Object) { return false; }
+        if (get_type(n.type, c).kind is TypeKind.Any or TypeKind.Unknown) return true;
         int property = n.children;
         while (property != 0) { Node p = get_node(property, c); if (p.kind == NodeKind.Spread || (p.kind == NodeKind.Property && (p.right != 0 || p.third != 0 || p.fourth != 0))) { return true; } property = p.next; }
         return false;
@@ -145,7 +146,7 @@ void il_spread_shapes(Compiler c, IlBackend b)
     {
         Node n = get_node(entry, c); bool typed = get_type(n.type, c).kind == TypeKind.Shape;
         int constructor = typed ? b.spread_constructors.at(n.type) : b.spread_any_constructor;
-        Node first = get_node(n.children, c); int cached = -1; int done = b.label();
+        Node first = n.children == 0 ? default : get_node(n.children, c); int cached = -1; int done = b.label();
         // The exact runtime class check keeps wider objects on the copy path.
         if (first.kind == NodeKind.Spread && first.next == 0 && il_same_spread_fields(get_node(first.left, c).type, n.type, c))
         {
@@ -212,7 +213,7 @@ void il_spread_clone(int type, int klass, int constructor, Compiler c, IlBackend
         for (int i = 1; i <= c.node_store.count(); i++)
         {
             if (!il_object_needs_entries(i, c)) { continue; }
-            Node literal = get_node(i, c); Node spread = get_node(literal.children, c); Node source = get_node(spread.left, c);
+            Node literal = get_node(i, c); if (literal.children == 0) continue; Node spread = get_node(literal.children, c); Node source = get_node(spread.left, c);
             if (spread.kind != NodeKind.Spread || spread.next != 0 || !il_same_spread_fields(source.type, literal.type, c)) { continue; }
             candidates.push(b.classes.at(source.type));
             if (source.kind == NodeKind.Name) { candidates.push(b.spread_source_classes.at(source.symbol)); }

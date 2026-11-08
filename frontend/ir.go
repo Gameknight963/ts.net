@@ -133,7 +133,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
-	if b.arrayLikeType(t) {
+	if b.arrayLikeType(t) || b.thenableType(t) || b.collectionInterfaceType(t) {
 		t = b.c.GetAnyType()
 	}
 	if symbol := t.Symbol(); symbol != nil && strings.HasSuffix(symbol.Name, "DecoratorContext") {
