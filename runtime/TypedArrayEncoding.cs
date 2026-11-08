@@ -3,7 +3,12 @@ using System;
 public static partial class Js
 {
     static Exception InvalidByteText() => MakeThrown(new JsCaughtError("SyntaxError", "Invalid byte encoding"));
-    static TypedArrayValue RequireByteArray(object receiver) => receiver is TypedArrayValue { Name: "Uint8Array", OutOfBounds: false } array ? array : throw new InvalidOperationException("Uint8Array receiver required");
+    static TypedArrayValue RequireByteArray(object receiver) => receiver is TypedArrayValue { Name: "Uint8Array" } array ? array : throw new InvalidOperationException("Uint8Array receiver required");
+    static Span<byte> ByteArrayBytes(TypedArrayValue array)
+    {
+        if (array.OutOfBounds) throw new InvalidOperationException("Uint8Array is out of bounds");
+        return array.Buffer.Bytes.AsSpan(array.Offset, array.Count);
+    }
     static string ByteText(object value) => value as string ?? throw new InvalidOperationException("Byte encoding input must be a string");
     static TsObject ByteEncodingOptions(object value) => IsUndefined(value) ? null : value as TsObject ?? throw new InvalidOperationException("Byte encoding options must be an object");
     static string ByteEncodingOption(TsObject options, string key, string fallback, string first, string second, string third = null)
@@ -15,11 +20,15 @@ public static partial class Js
     }
     static bool Base64Space(char value) => value is ' ' or '\t' or '\n' or '\r' or '\f';
     static int Base64Digit(char value, bool url) => value is >= 'A' and <= 'Z' ? value - 'A' : value is >= 'a' and <= 'z' ? value - 'a' + 26 : value is >= '0' and <= '9' ? value - '0' + 52 : value == (url ? '-' : '+') ? 62 : value == (url ? '_' : '/') ? 63 : value == '=' ? 64 : -1;
-    static (int Read, int Written) DecodeByteBase64(string text, object settings, Span<byte> destination)
+    static (bool Url, string Mode) ByteBase64Options(object settings)
     {
         var options = ByteEncodingOptions(settings);
         bool url = ByteEncodingOption(options, "alphabet", "base64", "base64", "base64url") == "base64url";
         string mode = ByteEncodingOption(options, "lastChunkHandling", "loose", "loose", "strict", "stop-before-partial");
+        return (url, mode);
+    }
+    static (int Read, int Written) DecodeByteBase64(string text, bool url, string mode, Span<byte> destination)
+    {
         int position = 0, read = 0, written = 0;
         Span<int> chunk = stackalloc int[4];
         // Inspect the next chunk after a write before deciding it cannot fit.
@@ -68,38 +77,41 @@ public static partial class Js
         constructor.Member("fromBase64", new JsFunction((FunctionBody)(static args =>
         {
             string text = ByteText(FunctionArgument(args, 0));
+            var options = ByteBase64Options(FunctionArgument(args, 1));
             var bytes = new byte[checked(text.Length / 4 * 3 + 3)];
-            var decoded = DecodeByteBase64(text, FunctionArgument(args, 1), bytes);
+            var decoded = DecodeByteBase64(text, options.Url, options.Mode, bytes);
             var result = AllocateTypedArray("Uint8Array", decoded.Written); bytes.AsSpan(0, decoded.Written).CopyTo(result.Buffer.Bytes); return result;
         }), null, "fromBase64", 1));
         prototype.DefineMethod("toHex", new CollectionMethod("toHex", 0, static (receiver, _) =>
         {
-            var array = RequireByteArray(receiver); return Convert.ToHexStringLower(array.Buffer.Bytes.AsSpan(array.Offset, array.Count));
+            var array = RequireByteArray(receiver); return Convert.ToHexStringLower(ByteArrayBytes(array));
         }));
         prototype.DefineMethod("toBase64", new CollectionMethod("toBase64", 0, static (receiver, args) =>
         {
             var array = RequireByteArray(receiver); var options = ByteEncodingOptions(FunctionArgument(args, 0));
             bool url = ByteEncodingOption(options, "alphabet", "base64", "base64", "base64url") == "base64url";
             bool omit = options != null && Truthy(options.Get("omitPadding"));
-            string text = Convert.ToBase64String(array.Buffer.Bytes.AsSpan(array.Offset, array.Count));
+            string text = Convert.ToBase64String(ByteArrayBytes(array));
             if (omit) text = text.TrimEnd('=');
             return url ? text.Replace('+', '-').Replace('/', '_') : text;
         }));
         prototype.DefineMethod("setFromBase64", new CollectionMethod("setFromBase64", 1, static (receiver, args) =>
         {
             var array = RequireByteArray(receiver); string text = ByteText(FunctionArgument(args, 0));
-            var decoded = DecodeByteBase64(text, FunctionArgument(args, 1), array.Buffer.Bytes.AsSpan(array.Offset, array.Count));
+            var options = ByteBase64Options(FunctionArgument(args, 1));
+            var decoded = DecodeByteBase64(text, options.Url, options.Mode, ByteArrayBytes(array));
             return ByteReadResult(decoded.Read, decoded.Written);
         }));
         prototype.DefineMethod("setFromHex", new CollectionMethod("setFromHex", 1, static (receiver, args) =>
         {
             var array = RequireByteArray(receiver); string text = ByteText(FunctionArgument(args, 0));
+            Span<byte> bytes = ByteArrayBytes(array);
             if (text.Length % 2 != 0) throw InvalidByteText();
-            int count = Math.Min(text.Length / 2, array.Count);
+            int count = Math.Min(text.Length / 2, bytes.Length);
             for (int i = 0; i < count; i++)
             {
                 int high = UriHex(text[2 * i]), low = UriHex(text[2 * i + 1]); if (high < 0 || low < 0) throw InvalidByteText();
-                array.Buffer.Bytes[array.Offset + i] = (byte)((high << 4) | low);
+                bytes[i] = (byte)((high << 4) | low);
             }
             return ByteReadResult(count * 2, count);
         }));
