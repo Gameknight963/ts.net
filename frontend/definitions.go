@@ -93,7 +93,12 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 func (b *irBuilder) prepareDefinition(n *ast.Node) {
 	arguments := b.reflectionDefinitionArguments(n)
 	if len(arguments) < 2 {
-		return
+		owner, method := deletionAccess(n.Expression())
+		bound := n.AsCallExpression().Arguments.Nodes
+		if method != "bind" || len(bound) < 2 || b.reflectionDefinitionValue(owner, map[*ast.Node]bool{}) != 2 {
+			return
+		}
+		arguments = bound[1:]
 	}
 	properties := b.c.GetPropertiesOfType(b.c.GetTypeAtLocation(arguments[0]))
 	if len(properties) == 0 {
