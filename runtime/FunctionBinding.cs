@@ -40,18 +40,19 @@ internal sealed class JsBoundFunction : JsFunction
     readonly TsObject inheritedPrototype;
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : inheritedPrototype;
     JsFunction InheritedStatics => target is JsClassFunction cls ? cls.Parent : target is JsBoundFunction bound ? bound.InheritedStatics : null;
-    JsBoundFunction(JsFunction target, object receiver, object[] prefix, string name, double length)
+    JsBoundFunction(JsFunction target, object receiver, object[] prefix, string name, double length, TsObject prototype)
         : base((FunctionBody)(arguments => Js.CallMethod(target, receiver, Combine(prefix, arguments))), null, name, 0)
     {
         this.target = target; this.prefix = prefix; boundReceiver = receiver; boundLength = length;
-        inheritedPrototype = target.PropertyPrototype;
+        inheritedPrototype = prototype;
     }
     internal static JsBoundFunction Create(JsFunction target, object receiver, object[] prefix)
     {
-        object lengthValue = target.Get("length");
+        TsObject prototype = target.PropertyPrototype;
+        object lengthValue = target.HasOwn("length") ? target.Get("length") : Js.Undefined;
         double length = lengthValue is double number && !double.IsNaN(number) ? Math.Max(0, Math.Truncate(number) - prefix.Length) : 0;
         string name = target.Get("name") as string ?? "";
-        return new(target, receiver, prefix, "bound " + name, length);
+        return new(target, receiver, prefix, "bound " + name, length, prototype);
     }
     static object[] Combine(object[] first, object[] second)
     {
