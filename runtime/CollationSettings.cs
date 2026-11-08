@@ -19,13 +19,15 @@ public static partial class Js
                 object value = options == null ? Undefined : options.Get(name);
                 return IsUndefined(value) ? fallback : StringValue(value);
             }
-            string matcher = Option("localeMatcher", "best fit");
-            if (matcher is not ("lookup" or "best fit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
             Usage = Option("usage", "sort");
             if (Usage is not ("sort" or "search")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid collator usage");
+            string matcher = Option("localeMatcher", "best fit");
+            if (matcher is not ("lookup" or "best fit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
             string collation = Option("collation", collationDefault ?? "default");
             if (!ValidCollation(collation)) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid collation identifier");
             collation = collation.ToLowerInvariant();
+            object numericOption = options == null ? Undefined : options.Get("numeric");
+            Numeric = IsUndefined(numericOption) ? numericDefault ?? false : Truthy(numericOption);
             string caseFirst = Option("caseFirst", caseFirstDefault);
             if (caseFirst is not (null or "false" or "upper" or "lower")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid case order");
             Sensitivity = Option("sensitivity", "variant");
@@ -36,8 +38,6 @@ public static partial class Js
                 "variant" => CompareOptions.None,
                 _ => throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid comparison sensitivity")
             };
-            object numericOption = options == null ? Undefined : options.Get("numeric");
-            Numeric = IsUndefined(numericOption) ? numericDefault ?? false : Truthy(numericOption);
             IgnorePunctuation = options != null && Truthy(options.Get("ignorePunctuation"));
             if (Numeric) flags |= CompareOptions.NumericOrdering;
             bool configure = caseFirst != null || Usage == "search" || collation != "default";
