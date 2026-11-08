@@ -56,7 +56,8 @@ public static partial class Js
         }
         internal static readonly JsFunction ArrayNext = NextMethod(false), StringNext = NextMethod(true);
         static JsFunction NextMethod(bool text) => new CollectionMethod("next", 0, (receiver, _) =>
-            receiver is JsSequenceIterator iterator && iterator.IsString == text ? iterator.Next() : throw new InvalidOperationException("Incompatible iterator receiver"));
+            receiver is JsSequenceIterator iterator && iterator.IsString == text ? iterator.Next()
+            : !text && receiver is TypedArrayIterator typed ? typed.Next() : throw new InvalidOperationException("Incompatible iterator receiver"));
         internal static readonly TsObject Array = Create(false), String = Create(true);
         static TsObject Create(bool text)
         {
