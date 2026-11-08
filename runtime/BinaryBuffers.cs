@@ -4,7 +4,7 @@ using System.Buffers.Binary;
 
 public static partial class Js
 {
-    class BinaryBuffer(int length, int maximum = -1) : TsObject
+    class BinaryBuffer(int length, int maximum = -1) : JsDescriptorObject
     {
         internal byte[] Bytes = length == 0 ? Array.Empty<byte>() : new byte[length];
         internal bool Detached;
@@ -13,7 +13,7 @@ public static partial class Js
         internal bool Resizable => Maximum >= 0;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)RuntimeNamespaces.ArrayBuffer.Get("prototype");
     }
-    sealed class BinaryView(BinaryBuffer buffer, int offset, int length, bool tracking = false) : TsObject
+    sealed class BinaryView(BinaryBuffer buffer, int offset, int length, bool tracking = false) : JsDescriptorObject
     {
         internal readonly BinaryBuffer Buffer = buffer;
         internal readonly int Offset = offset, FixedLength = length;

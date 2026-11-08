@@ -1,0 +1,22 @@
+/// <reference lib="es2024" />
+export {};
+const buffer = new ArrayBuffer(4, {maxByteLength: 16});
+Object.defineProperty(buffer, 'label', {value: 'buffer', enumerable: true, configurable: true});
+const view = new DataView(buffer);
+Object.defineProperty(view, 'label', {get() {return this.byteLength;}, enumerable: true});
+Object.freeze(view);
+view.setUint8(0, 7);
+console.log('view', Object.isFrozen(view), view.getUint8(0), (view as any).label, Reflect.set(view, 'extra', 1));
+Object.freeze(buffer);
+buffer.resize(8);
+console.log('resize', Object.isFrozen(buffer), buffer.byteLength, view.byteLength, (view as any).label, view.getUint8(0));
+console.log('buffer properties', Object.keys(buffer).join(','), Reflect.deleteProperty(buffer, 'label'));
+const moved = buffer.transfer();
+console.log('transfer', buffer.detached, moved.byteLength, new Uint8Array(moved)[0], Object.isExtensible(moved), Object.hasOwn(moved, 'label'));
+const shared = new SharedArrayBuffer(4, {maxByteLength: 8});
+Object.seal(shared);
+shared.grow(8);
+console.log('shared', Object.isSealed(shared), Object.isFrozen(shared), shared.byteLength, Reflect.defineProperty(shared, 'extra', {value: 1}));
+const shadow = new ArrayBuffer(4);
+Object.defineProperty(shadow, 'byteLength', {value: 99, enumerable: true});
+console.log('internal length', shadow.byteLength, new DataView(shadow).byteLength, new Uint8Array(shadow).length);
