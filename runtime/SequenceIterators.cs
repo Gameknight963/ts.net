@@ -14,10 +14,9 @@ public sealed class JsSequenceIterator : TsObject
     internal JsSequenceIterator(object source, uint position) { this.source = source; text = source is string; this.position = position; }
     internal JsSequenceIterator(TsObject source, int mode) { this.source = source; this.mode = mode; }
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.SequenceIteratorPrototype(IsString);
-    internal object Next()
+    internal bool TryNext(out object value)
     {
-        if (Done || position >= (source is TsObject indexed ? (double)Js.IndexedLength(indexed) : Iteration.Length(source))) { Done = true; source = null; return Js.IteratorResult(Js.Undefined, true); }
-        object value;
+        if (Done || position >= (source is TsObject indexed ? (double)Js.IndexedLength(indexed) : Iteration.Length(source))) { Done = true; source = null; value = Js.Undefined; return false; }
         if (source is string text)
         {
             int index = (int)position, step = Iteration.Step(text, index); position += (uint)step;
@@ -29,8 +28,9 @@ public sealed class JsSequenceIterator : TsObject
             value = mode == 1 ? (double)index : Js.IndexedValue((TsObject)source, (long)index);
             if (mode == 2) value = new JsArray(new object[] { (double)index, value });
         }
-        return Js.IteratorResult(value, false);
+        return true;
     }
+    internal object Next() => TryNext(out var value) ? Js.IteratorResult(value,false) : Js.IteratorResult(Js.Undefined,true);
 }
 
 public static partial class Js
@@ -49,17 +49,20 @@ public static partial class Js
             prototype.DefineMethod(PropertyKey(IteratorSymbol), Self);
             return prototype;
         }
+        internal static readonly JsFunction ArrayNext = NextMethod(false), StringNext = NextMethod(true);
+        static JsFunction NextMethod(bool text) => new CollectionMethod("next", 0, (receiver, _) =>
+            receiver is JsSequenceIterator iterator && iterator.IsString == text ? iterator.Next() : throw new InvalidOperationException("Incompatible iterator receiver"));
         internal static readonly TsObject Array = Create(false), String = Create(true);
         static TsObject Create(bool text)
         {
             var prototype = new JsClassInstance { ParentPrototype = Common };
-            prototype.DefineMethod("next", new CollectionMethod("next", 0, (receiver, _) =>
-                receiver is JsSequenceIterator iterator && iterator.IsString == text ? iterator.Next() : throw new InvalidOperationException("Incompatible iterator receiver")));
+            prototype.DefineMethod("next", text ? StringNext : ArrayNext);
             return prototype;
         }
     }
     internal static TsObject NativeIteratorPrototype => NativeIteratorPrototypes.Common;
     internal static TsObject SequenceIteratorPrototype(bool text) => text ? NativeIteratorPrototypes.String : NativeIteratorPrototypes.Array;
+    internal static JsFunction SequenceIteratorIntrinsicNext(bool text) => text ? NativeIteratorPrototypes.StringNext : NativeIteratorPrototypes.ArrayNext;
     internal static object StartSequenceIterator(JsSequenceIterator iterator)
     {
         object next = iterator.Get("next");

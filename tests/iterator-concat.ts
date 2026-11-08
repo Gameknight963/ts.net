@@ -64,3 +64,11 @@ throwsReturn.next();
 try {throwsReturn.return();} catch (error) {console.log("return failed", (error as Error).message, throwsReturn.next().done);}
 const invalidReturn = concat({[Symbol.iterator]() {return {next() {return {value: 1, done: false};}, return() {return 1;}};}});
 invalidReturn.next();try {invalidReturn.return();} catch (error) {console.log("invalid return", (error as Error).name, invalidReturn.next().done);}
+const overridden = concat([1, 2]); const originalNext = overridden.next; let calls = 0;
+overridden.next = function() {calls++;return originalNext.call(this);};
+console.log("override", Array.from(overridden).join(","), calls);
+const capturedNext = concat([3, 4]); const mapped = capturedNext.map((value: number) => value);
+capturedNext.next = function() {return {done: true};};
+console.log("captured next", mapped.toArray().join(","));
+const results = concat([1, 2]); const firstResult = results.next(); firstResult.value = 99;
+const secondResult = results.next(); console.log("result objects", firstResult !== secondResult, firstResult.value, secondResult.value, Object.keys(secondResult).join(","));

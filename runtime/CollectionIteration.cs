@@ -5,6 +5,7 @@ internal sealed class JsProtocolIterator(TsObject source, JsFunction next)
     internal readonly TsObject Source = source;
     internal bool Done;
     bool cached;
+    bool direct;
     object result;
     internal bool Ensure()
     {
@@ -12,6 +13,15 @@ internal sealed class JsProtocolIterator(TsObject source, JsFunction next)
         if (Done) return false;
         try
         {
+            if (Source is JsSequenceIterator sequence && ReferenceEquals(next,Js.SequenceIteratorIntrinsicNext(sequence.IsString))) {
+                direct = true;
+                if (!sequence.TryNext(out result)) {Done = true; result = null; return false;}
+                cached = true; return true;
+            }
+            if (Js.TryReadConcatIterator(Source,next,out var value,out bool done)) {
+                direct = true; Done = done; result = done ? null : value; cached = !done; return !done;
+            }
+            direct = false;
             result = Js.RequireIteratorResult(next.InvokeWithReceiver(Source, Array.Empty<object>()));
             if (Js.Truthy(Js.Get(result, "done"))) { Done = true; result = null; return false; }
             cached = true; return true;
@@ -22,7 +32,7 @@ internal sealed class JsProtocolIterator(TsObject source, JsFunction next)
     {
         if (!Ensure()) return Js.Undefined;
         object current = result; result = null; cached = false;
-        try { return Js.Get(current, "value"); }
+        try { return direct ? current : Js.Get(current, "value"); }
         catch { Done = true; throw; }
     }
 }

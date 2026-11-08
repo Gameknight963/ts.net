@@ -10,18 +10,19 @@ public static partial class Js
         internal bool Done, Running;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : ConcatIteratorMethods.Prototype;
         internal void Finish() {Done = true; Inputs = null; Current = null;}
-        internal object Next()
+        internal object Next() => TryNext(out var value) ? IteratorResult(value,false) : IteratorResult(Undefined,true);
+        internal bool TryNext(out object value)
         {
             if (Running) throw new InvalidOperationException("Iterator helper is already running");
-            if (Done) return IteratorResult(Undefined,true);
+            if (Done) {value = Undefined;return false;}
             Running = true;
             try {
                 while (true) {
                     if (Current != null) {
-                        if (Current.Ensure()) return IteratorResult(Current.TakeValue(),false);
+                        if (Current.Ensure()) {value = Current.TakeValue();return true;}
                         Current = null;
                     }
-                    if (Position == Inputs.Length) {Finish();return IteratorResult(Undefined,true);}
+                    if (Position == Inputs.Length) {Finish();value = Undefined;return false;}
                     var input = Inputs[Position]; Inputs[Position++] = default;
                     if (input.Open.InvokeWithReceiver(input.Source,Array.Empty<object>()) is not TsObject iterator)
                         throw new InvalidOperationException("Iterator must be an object");
@@ -43,14 +44,22 @@ public static partial class Js
     }
     static class ConcatIteratorMethods
     {
+        internal static readonly JsFunction Next = new CollectionMethod("next",0,(receiver,_) => receiver is ConcatIterator iterator ? iterator.Next() : throw new InvalidOperationException("Incompatible iterator helper receiver"));
         internal static readonly TsObject Prototype = Create();
         static TsObject Create()
         {
             var result = new JsClassInstance {ParentPrototype = NativeIteratorPrototype};
-            result.DefineMethod("next",new CollectionMethod("next",0,(receiver,_) => receiver is ConcatIterator iterator ? iterator.Next() : throw new InvalidOperationException("Incompatible iterator helper receiver")));
+            result.DefineMethod("next",Next);
             result.DefineMethod("return",new CollectionMethod("return",0,(receiver,_) => receiver is ConcatIterator iterator ? iterator.Return() : throw new InvalidOperationException("Incompatible iterator helper receiver")));
             return result;
         }
+    }
+    internal static bool TryReadConcatIterator(TsObject source, JsFunction next, out object value, out bool done)
+    {
+        if (source is ConcatIterator iterator && ReferenceEquals(next,ConcatIteratorMethods.Next)) {
+            done = !iterator.TryNext(out value); return true;
+        }
+        value = null; done = false; return false;
     }
     static class ConcatIntrinsicIterator
     {
