@@ -44,7 +44,7 @@ public static partial class Js
         return ReferenceEquals(prototype, RegExpPrototype) && !prototype.TryOwnAccessor("exec", out _) &&
             prototype.HasOwn("exec") && ReferenceEquals(prototype.Get("exec"), RegExpMethods.Exec);
     }
-    static TsObject ExecuteRegExp(TsObject source, string text)
+    internal static TsObject ExecuteRegExp(TsObject source, string text)
     {
         object exec = source.Get("exec");
         object result = exec is JsFunction method ? method.InvokeWithReceiver(source, new object[] { text })

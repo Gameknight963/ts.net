@@ -6,6 +6,8 @@ public static partial class Js
     {
         internal object Execute(object receiver, object input, object second)
         {
+            if (kind == 1)
+                return receiver is TsObject matcher ? MatchAllRegExp(StringValue(input), matcher) : throw new InvalidOperationException("RegExp method requires an object");
             if (kind is 0 or 2 or 3 && receiver is not JsRegExp)
             {
                 if (receiver is not TsObject source) throw new InvalidOperationException("RegExp method requires an object");

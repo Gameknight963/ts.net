@@ -18,7 +18,7 @@ public static partial class Js
         internal static readonly StringSearchFunction LastIndexOf = new(StringSearchKind.LastIndexOf, "lastIndexOf");
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static string StringValue(object value) => value is string text ? text : StringValueConverted(value);
+    internal static string StringValue(object value) => value is string text ? text : StringValueConverted(value);
     static string StringValueConverted(object value)
     {
         object primitive = value is TsObject obj ? ToPrimitive(obj, "string") : value;
