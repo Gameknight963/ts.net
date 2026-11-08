@@ -284,17 +284,33 @@ public static partial class Js
         if (method == "set")
         {
             int offset = BinaryIndex(FunctionArgument(args, 1));
+            if (array.OutOfBounds) throw new InvalidOperationException("Target typed array is out of bounds");
             var source = ToObject(FunctionArgument(args, 0));
-            if (source is TypedArrayValue invalid && invalid.OutOfBounds) throw new InvalidOperationException("Source typed array is out of bounds");
-            long length = IndexedLength(source);
-            if (length > array.Count - offset) throw new ArgumentOutOfRangeException(null, "Typed array set exceeds target length");
             if (source is TypedArrayValue typed)
             {
-                var copy = new object[(int)length];
-                for (int i = 0; i < copy.Length; i++) copy[i] = typed.Read(i);
-                for (int i = 0; i < copy.Length; i++) array.Write(offset + i, copy[i]);
+                if (typed.OutOfBounds) throw new InvalidOperationException("Source typed array is out of bounds");
+                int length = typed.Count;
+                if (length > array.Count - offset) throw new ArgumentOutOfRangeException(null, "Typed array set exceeds target length");
+                if (typed.Kind.StartsWith("Big", StringComparison.Ordinal) != array.Kind.StartsWith("Big", StringComparison.Ordinal))
+                    throw new InvalidOperationException("Typed array content types do not match");
+                var bytes = typed.Buffer.Bytes.AsSpan(typed.Offset, length * typed.Size);
+                if (typed.Kind == array.Kind)
+                    bytes.CopyTo(array.Buffer.Bytes.AsSpan(array.Offset + offset * array.Size, length * array.Size));
+                else
+                {
+                    // Different element widths can overlap in either direction.
+                    // Snapshot raw bytes only when the source and target share storage.
+                    if (ReferenceEquals(typed.Buffer.Bytes, array.Buffer.Bytes)) bytes = bytes.ToArray();
+                    for (int i = 0; i < length; i++)
+                        array.Write(offset + i, ReadBinary(bytes.Slice(i * typed.Size, typed.Size), typed.Kind, BitConverter.IsLittleEndian));
+                }
             }
-            else for (int i = 0; i < length; i++) array.Write(offset + i, IndexedValue(source, i));
+            else
+            {
+                long length = IndexedLength(source);
+                if (length > array.Count - offset) throw new ArgumentOutOfRangeException(null, "Typed array set exceeds target length");
+                for (int i = 0; i < length; i++) array.Write(offset + i, IndexedValue(source, i));
+            }
             return Undefined;
         }
         if (method == "toLocaleString") return CallMethod(ArrayMethodValue(method), array, args);
