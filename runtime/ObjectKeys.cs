@@ -52,17 +52,21 @@ partial struct ArrayStorage<T>
 public partial class JsArray
 {
     internal virtual double ElementKeyCount() => values.CountPresent(static value => !ReferenceEquals(value, Hole));
-    public override double OwnKeyCount() => ElementKeyCount() + ExtraKeyCount - (LengthWritable ? 0 : 1);
+    public override double OwnKeyCount() => HasOwnAccessors ? Js.StringPropertyKeyCount(OwnKeys()) : ElementKeyCount() + ExtraKeyCount - (LengthWritable ? 0 : 1);
     internal virtual List<uint> PresentIndices() => values.PresentIndices(static value => !ReferenceEquals(value, Hole));
-    public override object OwnKeys()
+    internal object ArrayPropertyNames()
     {
         var indices = PresentIndices();
         var names = new object[indices.Count];
         for (int i = 0; i < names.Length; i++) names[i] = indices[i].ToString(CultureInfo.InvariantCulture);
-        var keys = (JsArray)KeysFromFixed(names);
-        if (LengthWritable) return keys;
+        return KeysFromFixed(names);
+    }
+    public override object OwnKeys()
+    {
+        var keys = (JsArray)ArrayPropertyNames();
+        if (LengthWritable && !HasOwnAccessors) return keys;
         var result = new JsArray(0);
-        for (uint i = 0; i < keys.Length(); i++) if ((string)keys.ElementAt(i) != "length") result.Append(keys.ElementAt(i));
+        for (uint i = 0; i < keys.Length(); i++) if (ForInEnumerable((string)keys.ElementAt(i))) result.Append(keys.ElementAt(i));
         return result;
     }
 }

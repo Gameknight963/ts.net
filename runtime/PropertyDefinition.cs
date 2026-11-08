@@ -80,6 +80,11 @@ public static partial class Js
         if (!TryApplyPropertyDefinition(obj, key, definition)) throw new InvalidOperationException("Cannot redefine a non-configurable property");
         return obj;
     }
+    static void InstallPropertyDefinition(TsObject target, JsDescriptorObject.Descriptor descriptor)
+    {
+        if (target is JsArray array) array.DefineNamedProperty(descriptor);
+        else ((JsDescriptorObject)target).Define(descriptor);
+    }
     static bool TryApplyPropertyDefinition(TsObject obj, string key, PropertyDefinition definition)
     {
         if (obj is JsArray ordinaryArray && key == "length") return DefineArrayLength(ordinaryArray, definition);
@@ -91,11 +96,12 @@ public static partial class Js
             if (HasElementField(DescriptorFields.Value)) array.Write((int)index, definition.Value);
             return true;
         }
-        if (obj is not JsDescriptorObject created || obj.IsModuleNamespace) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
+        if (obj.IsModuleNamespace || obj is not JsDescriptorObject && (obj is not JsArray || JsArray.Index(key, out _)))
+            throw new NotSupportedException("Property definition on this object layout is not implemented yet");
         object existing = obj.OwnPropertyDescriptor(key);
         if (IsUndefined(existing)) {
             if (!obj.IsExtensible) return false;
-            created.Define(definition.Complete(key)); return true;
+            InstallPropertyDefinition(obj, definition.Complete(key)); return true;
         }
         var current = (TsObject)existing;
         bool Has(DescriptorFields field) => (definition.Fields & field) != 0;
@@ -121,7 +127,7 @@ public static partial class Js
         bool writable = Has(DescriptorFields.Writable) ? definition.Writable : !accessor && Truthy(current.Get("writable"));
         JsFunction getter = !nextAccessor ? null : Has(DescriptorFields.Get) ? definition.Getter : accessor ? current.Get("get") as JsFunction : null;
         JsFunction setter = !nextAccessor ? null : Has(DescriptorFields.Set) ? definition.Setter : accessor ? current.Get("set") as JsFunction : null;
-        created.Define(new(key, value, getter, setter, nextAccessor, writable,
+        InstallPropertyDefinition(obj, new(key, value, getter, setter, nextAccessor, writable,
             Has(DescriptorFields.Enumerable) ? definition.Enumerable : enumerable,
             Has(DescriptorFields.Configurable) ? definition.Configurable : configurable));
         return true;

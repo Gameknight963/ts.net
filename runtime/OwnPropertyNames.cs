@@ -13,7 +13,7 @@ public partial class JsFunction
 }
 public partial class JsArray
 {
-    internal override object OwnPropertyNames() => Js.MergeOwnNames(this, OwnKeys(), "length");
+    internal override object OwnPropertyNames() => Js.MergeOwnNames(this, ArrayPropertyNames(), "length");
 }
 public static partial class Js
 {

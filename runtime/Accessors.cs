@@ -15,6 +15,7 @@ internal sealed class JsAccessor
 public abstract partial class TsObject
 {
     Dictionary<string, JsAccessor> accessors;
+    internal bool HasOwnAccessors => accessors != null;
     internal bool HasPropertyOverrides => extra != null || accessors != null;
     internal bool TryOwnAccessor(string key, out JsAccessor accessor)
     {

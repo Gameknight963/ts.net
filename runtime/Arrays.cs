@@ -128,7 +128,7 @@ public partial class JsArray : TsObject
     {
         if(key=="length")return false;
         if(Index(key,out uint index)){DeleteElement(index);return true;}
-        return base.DeleteOwn(key);
+        return DeleteNamedProperty(key);
     }
     public virtual bool HasElement(uint index) => index < Count && !ReferenceEquals(values.Get(index), Hole);
     protected virtual void Write(uint index, object value) { CheckGrowth(index); values.Set(index, value); }
@@ -185,8 +185,11 @@ public partial class JsArray : TsObject
         base.Get(key);
     public override object SetOwnValue(string key, object value)
     {
+        if (TrySetNamedData(key, value)) return value;
         if (TryOwnAccessor(key, out _)) throw new InvalidOperationException("Cannot replace accessor through assignment");
-        return Set(key, value);
+        if (key == "length" || Index(key, out _)) return Set(key, value);
+        DefineOwn(key, value);
+        return value;
     }
     public override object Set(string key, object value)
     {

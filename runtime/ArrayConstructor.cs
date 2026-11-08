@@ -17,10 +17,11 @@ public static partial class Js
         readonly HashSet<string> hidden = new();
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : DefaultClassObjectPrototype;
         internal void Member(string key, object value) { DefineOwn(key, value); hidden.Add(key); }
+        internal override void DefineNamedProperty(JsDescriptorObject.Descriptor descriptor) { base.DefineNamedProperty(descriptor); hidden.Remove(descriptor.Key); }
         public override bool DeleteOwn(string key) { bool removed = base.DeleteOwn(key); if (removed) hidden.Remove(key); return removed; }
         internal override bool ForInEnumerable(string key) => !hidden.Contains(key) && base.ForInEnumerable(key);
-        internal override object ForInOwnKeys() => ForInNames(base.OwnKeys(), "length");
-        internal override object OwnPropertyNames() => MergeOwnNames(this, base.OwnKeys(), "length");
+        internal override object ForInOwnKeys() => ForInNames(ArrayPropertyNames(), "length");
+        internal override object OwnPropertyNames() => MergeOwnNames(this, ArrayPropertyNames(), "length");
         public override double OwnKeyCount() => Js.StringPropertyKeyCount(OwnKeys());
         public override object OwnKeys()
         {

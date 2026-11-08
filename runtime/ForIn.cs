@@ -21,8 +21,8 @@ public partial class JsFunction
 
 public partial class JsArray
 {
-    internal override object ForInOwnKeys() => Js.ForInNames(OwnKeys(), "length");
-    internal override bool ForInEnumerable(string key) => key != "length";
+    internal override object ForInOwnKeys() => Js.ForInNames(ArrayPropertyNames(), "length");
+    internal override bool ForInEnumerable(string key) => key != "length" && NamedPropertyEnumerable(key);
 }
 
 internal sealed class JsForIn

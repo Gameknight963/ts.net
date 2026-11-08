@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 internal sealed class JsTemplateArray(object[] items, JsTemplateArray raw = null) : JsArray(items)
 {
+    internal override bool IsExtensible => false;
     static InvalidOperationException Frozen() => new("Template strings arrays are frozen");
     public override bool HasOwn(string key) => key == "raw" && raw != null || base.HasOwn(key);
     public override object Get(string key) => key == "raw" && raw != null ? raw : base.Get(key);
