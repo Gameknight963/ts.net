@@ -106,7 +106,8 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 // A deleted fixed field cannot retain its CLR layout. Conservatively keep all
 // literals containing a potentially deleted name in dynamic storage, including
 // aliases passed across functions and modules. Unknown delete-expression keys
-// cover every literal. Dynamic reflection uses the target's known field names.
+// cover every literal. Dynamic reflection uses the target's known field names,
+// or covers every literal when an object/any parameter hides those names.
 func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 	b.deletedNames = map[string]bool{}
 	var visit func(*ast.Node)
@@ -119,7 +120,11 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 				if key.Kind == ast.KindStringLiteral {
 					b.deletedNames[key.Text()] = true
 				} else {
-					for _, property := range b.c.GetPropertiesOfType(b.c.GetTypeAtLocation(arguments[0])) {
+					properties := b.c.GetPropertiesOfType(b.c.GetTypeAtLocation(arguments[0]))
+					if len(properties) == 0 {
+						b.deleteAnyName = true
+					}
+					for _, property := range properties {
 						b.deletedNames[ast.SymbolName(property)] = true
 					}
 				}
