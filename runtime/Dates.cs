@@ -12,7 +12,7 @@ public static partial class Js
     internal static TsObject DatePrototype => (TsObject)RuntimeNamespaces.Date.Get("prototype");
     static double ClipDate(double value) => double.IsFinite(value) && Math.Abs(value) <= 8640000000000000d ? Math.Truncate(value) + 0d : double.NaN;
     static double DateNow() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-    static double ParseDate(string text) => DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed) ? ClipDate(parsed.ToUnixTimeMilliseconds()) : double.NaN;
+    static double ParseDate(string text) => TryParseIsoDate(text, out double iso) ? iso : DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed) ? ClipDate(parsed.ToUnixTimeMilliseconds()) : double.NaN;
     static JsDate RequireDate(object receiver) => receiver as JsDate ?? throw new InvalidOperationException("Date method requires a date");
     static DateTimeOffset NativeDate(JsDate date) => NativeDate(date.Timestamp);
     static DateTimeOffset NativeDate(double timestamp)
