@@ -13,6 +13,7 @@ public static partial class Js
             settings = new NumberLocaleSettings(locales, options);
             Format = new JsFunction((FunctionBody)(args => Text(FunctionArgument(args, 0))), null, "", 1);
         }
+        internal string DecimalSeparator => settings.culture.NumberFormat.NumberDecimalSeparator;
         internal string Text(object value) => settings.LocalizeDigits(LatinText(value));
         string LatinText(object value)
         {

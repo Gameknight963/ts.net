@@ -65,6 +65,13 @@ public static partial class Js
             var requestedLocales = (JsArray)CollatorSupportedLocales(locales, Undefined);
             LocaleValue selectedLocale = IndexedLength(requestedLocales) == 0 ? null : new LocaleValue(IndexedValue(requestedLocales, 0), Undefined);
             culture = selectedLocale == null ? CultureInfo.CurrentCulture : LocaleCulture(CollatorLocale(selectedLocale.BaseName));
+            // Windows culture data can retain the older French grouping space.
+            if (culture.TwoLetterISOLanguageName == "fr" && culture.NumberFormat.NumberGroupSeparator == "\u00a0") {
+                culture = (CultureInfo)culture.Clone();
+                culture.NumberFormat.NumberGroupSeparator = "\u202f";
+                if (culture.NumberFormat.CurrencyGroupSeparator == "\u00a0") culture.NumberFormat.CurrencyGroupSeparator = "\u202f";
+                if (culture.NumberFormat.PercentGroupSeparator == "\u00a0") culture.NumberFormat.PercentGroupSeparator = "\u202f";
+            }
             numberingSystem = ResolveNumberingSystem(selectedLocale?.Keyword("nu") as string ?? "latn");
             localeName = culture.Name + (selectedLocale?.Keyword("nu") as string == numberingSystem ? "-u-nu-" + numberingSystem : "");
             notation = "standard"; roundingPriority = "auto";

@@ -1,12 +1,13 @@
 using System;
+using System.Globalization;
 
 public static partial class Js
 {
     static string RelativeTimeLocale(string name)
     {
         var locale = new LocaleValue(name, Undefined);
-        if (locale.Language != "en") return null;
-        string selected = locale.BaseName == "en-US" ? "en-US" : "en";
+        if (locale.Language is not ("en" or "de" or "fr")) return null;
+        string selected = locale.BaseName is "en-US" or "de-DE" or "fr-FR" ? locale.BaseName : locale.Language;
         return locale.Keyword("nu") is string digits ? selected + "-u-nu-" + digits : selected;
     }
     static object RelativeTimeSupportedLocales(object locales, object optionValue)
@@ -22,7 +23,7 @@ public static partial class Js
     }
     sealed class RelativeTimeFormatValue : JsDescriptorObject
     {
-        readonly string locale, style, numeric, numberingSystem, one;
+        readonly string locale, style, numeric, numberingSystem, one, zero, onePrefix, zeroPrefix;
         readonly NumberFormatValue numbers;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)IntlRelativeTimeFormat.Constructor.Get("prototype");
         internal RelativeTimeFormatValue(object locales, object optionValue)
@@ -32,7 +33,8 @@ public static partial class Js
             IntlLocaleMatcher(options);
             object system = options == null ? Undefined : options.Get("numberingSystem");
             if (!IsUndefined(system)) {system = StringValue(system); ValidateNumberingSystem((string)system);}
-            string selected = "en-US";
+            string current = CultureInfo.CurrentCulture.Name;
+            string selected = (current.Length == 0 ? null : RelativeTimeLocale(current)) ?? "en-US";
             for (uint index = 0; index < requested.Length(); index++) {
                 string supported = RelativeTimeLocale((string)requested.ElementAt(index));
                 if (supported != null) {selected = supported; break;}
@@ -50,27 +52,17 @@ public static partial class Js
             numbers = new NumberFormatValue(selected, numberOptions);
             var resolved = (TsObject)numbers.Options();
             locale = (string)resolved.Get("locale"); numberingSystem = (string)resolved.Get("numberingSystem");
-            one = numbers.Text(1d);
+            one = numbers.Text(1d); zero = numbers.Text(0d);
+            onePrefix = one + numbers.DecimalSeparator; zeroPrefix = zero + numbers.DecimalSeparator;
         }
-        string UnitName(string unit, bool singular, bool automatic = false)
+        bool Singular(string number, JsArray parts)
         {
-            if (style == "long") return unit + (singular ? "" : "s");
-            if (style == "narrow" && !automatic) return unit switch {
-                "year" => "y", "quarter" => "q", "month" => "mo", "week" => "w", "day" => "d", "hour" => "h", "minute" => "m", _ => "s"
-            };
-            return unit switch {
-                "year" => "yr.", "quarter" => singular ? "qtr." : "qtrs.", "month" => "mo.", "week" => "wk.", "day" => singular ? "day" : "days",
-                "hour" => "hr.", "minute" => "min.", _ => "sec."
-            };
-        }
-        string Automatic(double value, string unit)
-        {
-            if (numeric != "auto") return null;
-            if (unit == "second") return value == 0 ? "now" : null;
-            if (unit == "day") return value == -1 ? "yesterday" : value == 0 ? "today" : value == 1 ? "tomorrow" : null;
-            if (unit is "hour" or "minute") return value == 0 ? "this " + unit : null;
-            if (value is not (-1 or 0 or 1)) return null;
-            return (value < 0 ? "last " : value > 0 ? "next " : "this ") + UnitName(unit, true, true);
+            bool french = locale.StartsWith("fr", StringComparison.Ordinal);
+            if (parts == null) return number == one || french && (number == zero || number.StartsWith(onePrefix, StringComparison.Ordinal) || number.StartsWith(zeroPrefix, StringComparison.Ordinal));
+            string first = (string)((TsObject)parts.ElementAt(0)).Get("value");
+            if (!french) return parts.Length() == 1 && first == one;
+            bool plainInteger = parts.Length() == 1 || parts.Length() == 3 && (string)((TsObject)parts.ElementAt(1)).Get("type") == "decimal";
+            return plainInteger && (first == one || first == zero);
         }
         internal object Format(object input, object requestedUnit, bool parts)
         {
@@ -80,7 +72,7 @@ public static partial class Js
             if (unit.EndsWith('s')) unit = unit[..^1];
             if (unit is not ("year" or "quarter" or "month" or "week" or "day" or "hour" or "minute" or "second"))
                 throw new ArgumentOutOfRangeException(nameof(requestedUnit), "Invalid relative-time unit");
-            string automatic = Automatic(value, unit);
+            string automatic = numeric == "auto" ? RelativeTimeAutomatic(locale, style, value, unit) : null;
             var result = parts ? new JsArray(0) : null;
             void Literal(string text) {
                 if (text.Length == 0) return;
@@ -92,9 +84,8 @@ public static partial class Js
             }
             var numericParts = parts ? (JsArray)numbers.Parts(Math.Abs(value)) : null;
             string number = parts ? null : numbers.Text(Math.Abs(value));
-            bool singular = parts ? numericParts.Length() == 1 && (string)((TsObject)numericParts.ElementAt(0)).Get("value") == one : number == one;
-            string prefix = double.IsNegative(value) ? "" : "in ";
-            string suffix = (style == "narrow" ? "" : " ") + UnitName(unit, singular) + (double.IsNegative(value) ? " ago" : "");
+            bool singular = Singular(number, numericParts);
+            var (prefix, suffix) = RelativeTimeAffixes(locale, style, unit, singular, double.IsNegative(value));
             if (!parts) return prefix + number + suffix;
             Literal(prefix);
             for (uint index = 0; index < numericParts.Length(); index++) {
