@@ -146,10 +146,10 @@ public static partial class Js
     {
         internal BigIntFunction() : base("BigInt", static args => BigIntValue(FunctionArgument(args, 0), true), 1)
         {
-            var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
+            var prototype = new JsCreatedObject();
             UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "BigInt");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "BigInt", false);
             prototype.DefineMethod("valueOf", new CollectionMethod("valueOf", 0, (receiver, _) => RequireBigInt(receiver)));
             prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, args) => BigIntText(RequireBigInt(receiver), FunctionArgument(args, 0))));
             prototype.DefineMethod("toLocaleString", new NumberLocaleFunction(true));
