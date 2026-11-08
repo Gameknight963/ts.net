@@ -55,7 +55,7 @@ public static partial class Js
         internal double? ReadNumberProperty(string key)
         {
             if (key is "length" or "byteLength" or "byteOffset" or "buffer") {
-                if (!base.HasOwn(key) && PropertyPrototype is TsObject prototype && prototype.TryOwnAccessor(key, out var accessor) && accessor.Getter is TypedArrayGetter getter)
+                if (!base.HasOwn(key) && TryTypedArrayGetter(PropertyPrototype, key, out var getter))
                     return getter.ReadNumber(this);
             }
             return Cast<double?>(Get(key), "checked conversion failed");
@@ -64,7 +64,7 @@ public static partial class Js
         {
             if (key is "length" or "byteLength" or "byteOffset" or "buffer")
             {
-                if (!base.HasOwn(key) && PropertyPrototype is TsObject prototype && prototype.TryOwnAccessor(key, out var accessor) && accessor.Getter is TypedArrayGetter getter)
+                if (!base.HasOwn(key) && TryTypedArrayGetter(PropertyPrototype, key, out var getter))
                     return getter.Read(this);
             }
             return NumericKey(key, out double index) ? Valid(index) ? Read((int)index) : Undefined : base.Get(key);
@@ -91,11 +91,21 @@ public static partial class Js
         internal override object ForInOwnKeys() => OwnPropertyNames();
         internal bool CanPreventExtensions => !Buffer.Resizable || Buffer is SharedBuffer && !Tracking;
     }
+    static bool TryTypedArrayGetter(TsObject prototype, string key, out TypedArrayGetter getter)
+    {
+        for (var current = prototype; current != null; current = current.PropertyPrototype) {
+            if (!current.HasOwn(key)) continue;
+            getter = current.TryOwnAccessor(key, out var accessor) ? accessor.Getter as TypedArrayGetter : null;
+            return getter != null;
+        }
+        getter = null;
+        return false;
+    }
     public static int Float64BufferLength(byte[] bytes) => bytes.Length / 8;
     public static byte[] TryFloat64Buffer(object value)
     {
         if (value is not TypedArrayValue array || array.Kind != "Float64" || array.Offset != 0 || array.Buffer.Detached || array.Buffer.Resizable || (long)array.FixedCount * 8 != array.Buffer.Bytes.Length || array.HasOwn("length")) return null;
-        return array.PropertyPrototype is TsObject parent && parent.TryOwnAccessor("length", out var accessor) && accessor.Getter is TypedArrayGetter getter && getter.IsLength ? array.Buffer.Bytes : null;
+        return TryTypedArrayGetter(array.PropertyPrototype, "length", out var getter) && getter.IsLength ? array.Buffer.Bytes : null;
     }
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
     public static double ReadFloat64Buffer(byte[] bytes, int index) => BitConverter.ToDouble(bytes.AsSpan(index * 8, 8));

@@ -20,3 +20,10 @@ const growable=new ArrayBuffer(24,{maxByteLength:32}),tracked=new Float64Array(g
 
 function sumLocal(values:Float64Array){let result=0;for(let i=0;i<values.length;i++){const value=values[i];result+=value;}return result;}
 console.log("local binding",sumLocal(new Float64Array([2,3,4])));
+
+const shadowed = new Float64Array([10, 20, 30]);
+const direct = Object.getPrototypeOf(shadowed);
+Object.defineProperty(direct, 'length', {value: 1, configurable: true});
+try {console.log('prototype data shadow', sum(shadowed));}
+finally {Reflect.deleteProperty(direct, 'length');}
+console.log('prototype data restored', sum(shadowed));
