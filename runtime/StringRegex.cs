@@ -33,7 +33,7 @@ public static partial class Js
             var match = regex.Engine.Match(text, position);
             if (!match.Success || sticky && match.Index != position) break;
             result.Append(match.Value);
-            position = match.Index + Math.Max(1, match.Length);
+            position = match.Length != 0 ? match.Index + match.Length : RegExpAdvanceIndex(text, match.Index, regex.Flags.Contains('u'));
         }
         return result.Length() == 0 ? null : result;
     }

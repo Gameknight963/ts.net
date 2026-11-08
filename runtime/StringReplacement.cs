@@ -64,6 +64,7 @@ public static partial class Js
         double start = Number(regex.LastIndex);
         start = double.IsNaN(start) || start <= 0 ? 0 : Math.Truncate(start);
         if (!sticky) start = 0;
+        if (start <= text.Length) start = RegExpStartIndex(text, (int)start, regex.Flags.Contains('u'));
         var matches = new List<Match>();
         if (start <= text.Length)
         {
@@ -74,7 +75,7 @@ public static partial class Js
                 start = match.Index + match.Length;
                 if (sticky || global) regex.LastIndex = start;
                 if (!global) break;
-                if (match.Length == 0) start++;
+                if (match.Length == 0) start = RegExpAdvanceIndex(text, (int)start, regex.Flags.Contains('u'));
                 if (start > text.Length) break;
                 match = regex.Engine.Match(text, (int)start);
             }

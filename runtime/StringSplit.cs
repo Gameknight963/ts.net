@@ -69,7 +69,7 @@ public static partial class Js
             var match = regex.Engine.Match(text, search);
             if (!match.Success || match.Index == text.Length) break;
             int end = match.Index + match.Length;
-            if (end == copied) { search = match.Index + 1; continue; }
+            if (end == copied) { search = RegExpAdvanceIndex(text, match.Index, regex.Flags.Contains('u')); continue; }
             result.Append(text.Substring(copied, match.Index - copied));
             if (result.Length() == limit) return result;
             for (int group = 1; group < match.Groups.Count; group++)

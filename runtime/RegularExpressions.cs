@@ -42,7 +42,7 @@ public static partial class Js
     const string RegExpNonWhitespace = "\\u0000-\\u0008\\u000e-\\u001f\\u0021-\\u009f\\u00a1-\\u167f\\u1681-\\u1fff\\u200b-\\u2027\\u202a-\\u202e\\u2030-\\u205e\\u2060-\\u2fff\\u3001-\\ufefe\\uff00-\\uffff";
     internal static TsObject RegExpPrototype => (TsObject)RuntimeNamespaces.RegExp.Get("prototype");
     static readonly Dictionary<(string, RegexOptions), Regex> regexEngines = new();
-    static Regex RegExpEngine(string pattern, RegexOptions options, bool dotAll, out string[] namedGroups)
+    static Regex RegExpEngine(string pattern, RegexOptions options, bool dotAll, bool unicode, out string[] namedGroups)
     {
         bool inClass = false;
         bool previousClassSet = false;
@@ -51,6 +51,7 @@ public static partial class Js
         var names = new List<string>();
         string prefix = "tsnetCapture";
         while (pattern.Contains(prefix, StringComparison.Ordinal)) prefix += "X";
+        var unicodeCaptures = unicode ? UnicodeRegExpCaptureNames(pattern, prefix) : null;
         int captures = 0;
         bool namedBackReferences = pattern.Contains("\\k", StringComparison.Ordinal) && RegExpHasNamedCapture(pattern);
         var rewritten = new StringBuilder(pattern.Length);
@@ -59,6 +60,14 @@ public static partial class Js
             char ch = pattern[i];
             if (ch == '\\')
             {
+                if (unicode && !inClass && i + 1 < pattern.Length && pattern[i + 1] is >= '1' and <= '9') {
+                    int begin = ++i; while (i + 1 < pattern.Length && char.IsAsciiDigit(pattern[i + 1])) i++;
+                    int reference = int.Parse(pattern.AsSpan(begin, i - begin + 1), System.Globalization.CultureInfo.InvariantCulture);
+                    string capture = unicodeCaptures[reference - 1];
+                    // A nonparticipating group, including a forward reference, matches the empty string.
+                    rewritten.Append("(?(").Append(capture).Append(")\\k<").Append(capture).Append(">|)"); continue;
+                }
+
                 previousClassSet = inClass && i + 1 < pattern.Length && pattern[i + 1] is 'd' or 'D' or 'w' or 'W' or 's' or 'S';
                 if (i + 1 < pattern.Length && pattern[i + 1] is 's' or 'S')
                 {
@@ -85,7 +94,9 @@ public static partial class Js
                     int end = pattern.IndexOf('>', i + 3);
                     if (end < 0) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid named back reference"));
                     string name = ReadRegExpCaptureName(pattern[(i + 3)..end]);
-                    rewritten.Append("\\k<").Append(RegExpEngineCaptureName(name)).Append('>');
+                    string capture = RegExpEngineCaptureName(name);
+                    if (unicode) rewritten.Append("(?(").Append(capture).Append(")\\k<").Append(capture).Append(">|)");
+                    else rewritten.Append("\\k<").Append(capture).Append('>');
                     i = end; continue;
                 }
                 if (i + 1 < pattern.Length && pattern[i + 1] is 'x' or 'u')
@@ -127,7 +138,7 @@ public static partial class Js
                 }
             }
             else if (!inClass && ch == ')' && modes.Count != 0) (currentDotAll, currentMultiline) = modes.Pop();
-            if (!inClass && ch == '.') { rewritten.Append(currentDotAll ? "[\\s\\S]" : "[^\\n\\r\\u2028\\u2029]"); continue; }
+            if (!inClass && ch == '.') { rewritten.Append(unicode ? currentDotAll ? UnicodeRegExpDotAll : UnicodeRegExpDot : currentDotAll ? "[\\s\\S]" : "[^\\n\\r\\u2028\\u2029]"); continue; }
             if (!inClass && ch == '^') { rewritten.Append(currentMultiline ? "(?<![^\\n\\r\\u2028\\u2029])" : "\\A"); continue; }
             if (!inClass && ch == '$') { rewritten.Append(currentMultiline ? "(?![^\\n\\r\\u2028\\u2029])" : "\\z"); continue; }
             bool lookbehind = i + 3 < pattern.Length && pattern[i + 2] == '<' && pattern[i + 3] is '=' or '!';
@@ -225,12 +236,14 @@ public static partial class Js
         foreach (char flag in requested)
             if ("dgimsuvy".IndexOf(flag) < 0 || !seen.Add(flag)) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid regular-expression flags"));
         if (seen.Contains('u') && seen.Contains('v')) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid regular-expression flags"));
-        foreach (char flag in "uv") if (seen.Contains(flag)) throw new NotSupportedException("Regular-expression flags u and v are not supported");
+        if (seen.Contains('v')) throw new NotSupportedException("Regular-expression flag v is not supported");
+        bool unicode = seen.Contains('u');
+        if (unicode && seen.Contains('i')) throw new NotSupportedException("Unicode case-insensitive regular expressions are not supported yet");
         var options = RegexOptions.ECMAScript | RegexOptions.CultureInvariant | RegexOptions.Compiled;
         if (seen.Contains('i')) options |= RegexOptions.IgnoreCase;
         if (seen.Contains('m')) options |= RegexOptions.Multiline;
-        string canonical = ""; foreach (char flag in "dgimsy") if (seen.Contains(flag)) canonical += flag;
-        var engine = RegExpEngine(text, options, seen.Contains('s'), out var names);
+        string canonical = ""; foreach (char flag in "dgimsuy") if (seen.Contains(flag)) canonical += flag;
+        var engine = RegExpEngine(unicode ? new UnicodeRegExpReader(text).Rewrite() : text, options, seen.Contains('s'), unicode, out var names);
         return new JsRegExp(text, canonical, engine, names);
     }
     static string RegExpSource(string pattern)
@@ -253,6 +266,7 @@ public static partial class Js
         position = double.IsNaN(position) || position <= 0 ? 0 : Math.Truncate(position);
         if (!global && !sticky) position = 0;
         if (position > text.Length) { regex.LastIndex = 0d; return test ? BoxBoolean(false) : null; }
+        position = RegExpStartIndex(text, (int)position, regex.Flags.Contains('u'));
         if (test)
         {
             if (!global && !sticky) return BoxBoolean(regex.Engine.IsMatch(text));
