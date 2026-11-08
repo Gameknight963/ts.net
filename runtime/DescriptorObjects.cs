@@ -25,7 +25,7 @@ public abstract class JsDescriptorObject : TsObject
             ? Js.AccessorDescriptor(descriptor.Getter, descriptor.Setter, descriptor.Enumerable, descriptor.Configurable)
             : Js.DataDescriptor(Get(key), descriptor.Writable, descriptor.Enumerable, descriptor.Configurable);
     }
-    internal override bool ForInEnumerable(string key) => descriptors == null || !descriptors.TryGetValue(key, out var descriptor) || descriptor.Enumerable;
+    internal override bool ForInEnumerable(string key) => base.ForInEnumerable(key) && (descriptors == null || !descriptors.TryGetValue(key, out var descriptor) || descriptor.Enumerable);
     internal override object ForInOwnKeys() => base.OwnKeys();
     public override object OwnKeys()
     {
