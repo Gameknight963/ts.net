@@ -27,6 +27,8 @@ public static partial class Js
     static Regex RegExpEngine(string pattern, RegexOptions options, bool dotAll, out string[] namedGroups)
     {
         bool inClass = false;
+        bool currentDotAll = dotAll, currentMultiline = (options & RegexOptions.Multiline) != 0;
+        var modes = new Stack<(bool DotAll, bool Multiline)>();
         var names = new List<string>();
         string prefix = "tsnetCapture";
         while (pattern.Contains(prefix, StringComparison.Ordinal)) prefix += "X";
@@ -72,6 +74,22 @@ public static partial class Js
                 continue;
             }
             if (ch == '[') inClass = true; else if (ch == ']') inClass = false;
+            if (!inClass && ch == '(')
+            {
+                modes.Push((currentDotAll, currentMultiline));
+                if (i + 2 < pattern.Length && pattern[i + 1] == '?' && RegExpModifierGroup(pattern, i + 2))
+                {
+                    bool enable = true;
+                    for (int flag = i + 2; pattern[flag] != ':'; flag++)
+                        if (pattern[flag] == '-') enable = false;
+                        else if (pattern[flag] == 's') currentDotAll = enable;
+                        else if (pattern[flag] == 'm') currentMultiline = enable;
+                }
+            }
+            else if (!inClass && ch == ')' && modes.Count != 0) (currentDotAll, currentMultiline) = modes.Pop();
+            if (!inClass && ch == '.') { rewritten.Append(currentDotAll ? "[\\s\\S]" : "[^\\n\\r\\u2028\\u2029]"); continue; }
+            if (!inClass && ch == '^') { rewritten.Append(currentMultiline ? "(?<![^\\n\\r\\u2028\\u2029])" : "\\A"); continue; }
+            if (!inClass && ch == '$') { rewritten.Append(currentMultiline ? "(?![^\\n\\r\\u2028\\u2029])" : "\\z"); continue; }
             bool lookbehind = i + 3 < pattern.Length && pattern[i + 2] == '<' && pattern[i + 3] is '=' or '!';
             bool named = !inClass && ch == '(' && i + 3 < pattern.Length && pattern[i + 1] == '?' && pattern[i + 2] == '<' && !lookbehind;
             if (named)
@@ -96,7 +114,6 @@ public static partial class Js
         }
         namedGroups = names.ToArray();
         pattern = rewritten.ToString();
-        if (dotAll) pattern = "(?s:" + pattern + ")";
         lock (regexEngines)
         {
             if (regexEngines.TryGetValue((pattern, options), out var cached)) return cached;
