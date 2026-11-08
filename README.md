@@ -106,8 +106,16 @@ Runtime performance:
 | Object valueOf, 1M numeric conversions | 121 ms | 122 ms | 0.99x |
 | Intl.Segmenter, 100 word-segmentation calls and full traversal | 4.14 ms | 2.59 ms | 0.63x |
 | Intl.DisplayNames, 6K region-name lookups | 7.64 ms | 13.70 ms | 1.79x |
+| ReadableStream, create and drain 1K numbers | 1.80 ms | 0.220 ms | 0.12x |
+| ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | 0.50x |
+| WritableStream, queue and complete 1K numeric writes | 5.11 ms | 0.658 ms | 0.13x |
+| Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | 0.48x |
+| TransformStream pipeline, double 1K numbers | 5.17 ms | 3.57 ms | 0.69x |
+| UTF-8 roundtrip, 1K chunks of 80 UTF-16 code units | 11.23 ms | 16.11 ms | 1.43x |
 
 </details>
+
+UTF-8 roundtrips are encouraging, but queued writes are still much slower than Node.
 
 Compilation times:
 
