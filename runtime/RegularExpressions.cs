@@ -73,6 +73,10 @@ public static partial class Js
                 if (i < pattern.Length) rewritten.Append(pattern[i]);
                 continue;
             }
+            if (!inClass && ch == '[' && i + 1 < pattern.Length && pattern[i + 1] == ']')
+            { rewritten.Append("(?!)"); i++; continue; }
+            if (!inClass && ch == '[' && i + 2 < pattern.Length && pattern[i + 1] == '^' && pattern[i + 2] == ']')
+            { rewritten.Append("[\\s\\S]"); i += 2; continue; }
             if (ch == '[') inClass = true; else if (ch == ']') inClass = false;
             if (!inClass && ch == '(')
             {
