@@ -17,7 +17,7 @@ public static partial class Js
             var parts = name.Split('-');
             int baseEnd = 1;
             while (baseEnd < parts.Length && parts[baseEnd].Length != 1) baseEnd++;
-            _ = LocaleCulture(string.Join("-", parts, 0, baseEnd));
+            _ = LocaleIdentifier(string.Join("-", parts, 0, baseEnd));
             var extensions = new LocaleExtensions(parts, baseEnd);
             int next = 1;
             string language = parts[0], script = null, region = null;
@@ -83,6 +83,8 @@ public static partial class Js
             prototype.DefineMethod("getNumberingSystems", new CollectionMethod("getNumberingSystems", 0, static (receiver, _) => LocaleNumberingSystems(RequireLocale(receiver))));
             prototype.DefineMethod("getCollations", new CollectionMethod("getCollations", 0, static (receiver, _) => LocaleCollations(RequireLocale(receiver))));
             prototype.DefineMethod("getTimeZones", new CollectionMethod("getTimeZones", 0, static (receiver, _) => LocaleTimeZones(RequireLocale(receiver))));
+            prototype.DefineMethod("maximize", new CollectionMethod("maximize", 0, static (receiver, _) => LocaleSubtags(RequireLocale(receiver), false)));
+            prototype.DefineMethod("minimize", new CollectionMethod("minimize", 0, static (receiver, _) => LocaleSubtags(RequireLocale(receiver), true)));
             prototype.DefineMethod("getCalendars", new CollectionMethod("getCalendars", 0, static (receiver, _) =>
             {
                 var locale = RequireLocale(receiver);
