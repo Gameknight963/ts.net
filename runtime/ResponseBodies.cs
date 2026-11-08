@@ -144,6 +144,13 @@ public static partial class Js
     static class BufferedReaderMethods
     {
         internal static readonly TsObject Prototype = Create();
+        internal static readonly JsFunction Constructor = CreateConstructor();
+        static JsFunction CreateConstructor()
+        {
+            var constructor = new BufferedReaderConstructor(Prototype);
+            ((JsDescriptorObject)Prototype).DefineMethod("constructor", constructor);
+            return constructor;
+        }
         static TsObject Create()
         {
             var result = new JsClassInstance {ParentPrototype = DefaultClassObjectPrototype};
