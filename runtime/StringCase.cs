@@ -53,6 +53,7 @@ public static partial class Js
     static string CaseString(string text, bool upper, CultureInfo culture)
     {
         if (upper) return ExpandUppercase(text.ToUpper(culture));
+        text = ApplyFinalSigma(text);
         if (culture.TwoLetterISOLanguageName is not ("tr" or "az"))
             text = text.Replace("\u0130", "i\u0307", StringComparison.Ordinal);
         return text.ToLower(culture);
