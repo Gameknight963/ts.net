@@ -93,9 +93,10 @@ public static partial class Js
                 case JsCaughtError error:
                     string name = error.Get("name") as string;
                     if (name is not ("EvalError" or "RangeError" or "ReferenceError" or "SyntaxError" or "TypeError" or "URIError")) name = "Error";
-                    var errorCopy = new JsCaughtError(name, StringValue(error.Get("message")), error.HasOwn("message"));
+                    bool hasMessage = error.HasOwn("message") && !error.TryOwnAccessor("message", out _);
+                    var errorCopy = new JsCaughtError(name, hasMessage ? StringValue(error.Get("message")) : "", hasMessage);
                     copies.Add(source, errorCopy);
-                    if (error.HasOwn("cause")) errorCopy.DefineHidden("cause", Copy(error.Get("cause")));
+                    if (error.HasOwn("cause") && !error.TryOwnAccessor("cause", out _)) errorCopy.DefineHidden("cause", Copy(error.Get("cause")));
                     errorCopy.DefineHidden("stack", error.Get("stack"));
                     return errorCopy;
                 case FileValue file:
