@@ -16,3 +16,13 @@ for (const compactDisplay of ['short', 'long']) for (const style of ['unit', 'cu
  const f = new Intl.NumberFormat('en-US', {notation: 'compact', compactDisplay, style, currency: 'USD', currencyDisplay: 'name', unit: 'meter', unitDisplay: 'long'} as any);
  for (const value of [1, 1000, 1200, 1e6]) console.log('named', style, compactDisplay, f.format(value), JSON.stringify(f.formatToParts(value)));
 }
+
+for (const roundingMode of ['ceil', 'floor', 'expand', 'trunc', 'halfCeil', 'halfFloor', 'halfExpand', 'halfTrunc', 'halfEven']) {
+ for (const precision of [{}, {maximumFractionDigits: 0}, {maximumSignificantDigits: 1}, {minimumFractionDigits: 0, maximumFractionDigits: 1, roundingIncrement: 5}, {roundingPriority: 'morePrecision', maximumFractionDigits: 1, maximumSignificantDigits: 2}, {roundingPriority: 'lessPrecision', maximumFractionDigits: 1, maximumSignificantDigits: 2}]) {
+  try {
+   const f = new Intl.NumberFormat('en-US', {notation: 'compact', roundingMode, ...precision} as any);
+   console.log('boundary options', JSON.stringify(f.resolvedOptions()));
+   for (const value of [-999950, -999500, -999.5, -1.25, -0.001, 0.001, 1.25, 999.5, 999500, 999950, 1e30, Number.MIN_VALUE]) console.log('boundary', String(value), f.format(value), JSON.stringify(f.formatToParts(value)));
+  } catch (error) {console.log('boundary error', roundingMode, JSON.stringify(precision), (error as Error).name);}
+ }
+}
