@@ -29,6 +29,9 @@ func (a *asyncExpressionLowering) pattern(n irNode, source int, next func() int)
 				value := a.node(75, "destructuring read")
 				a.b.nodes[value-1].left = a.reference(cursor)
 				a.b.nodes[value-1].right = key
+				if binding.kind == 20 {
+					a.b.nodes[value-1].constant = 1
+				}
 				if binding.kind == 37 && binding.constant != 0 {
 					a.b.nodes[value-1].kind = 76
 					a.b.nodes[value-1].constant = n.constant

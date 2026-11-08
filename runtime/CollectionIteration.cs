@@ -35,6 +35,11 @@ internal sealed class JsProtocolIterator(TsObject source, JsFunction next)
         try { return direct ? current : Js.Get(current, "value"); }
         catch { Done = true; throw; }
     }
+    internal void SkipValue()
+    {
+        if (!Ensure()) return;
+        result = null; cached = false;
+    }
 }
 
 public static partial class Js

@@ -56,6 +56,15 @@ public static class Iteration
         }
         throw new InvalidOperationException("Value is not iterable");
     }
+    public static object Skip(object value, int position)
+    {
+        if (value is JsProtocolIterator protocol) protocol.SkipValue();
+        else if (value is JsCollectionIterator collection) collection.TakeValue();
+        // Intrinsic array iterators read the element while producing next().
+        // Only a custom result object's value getter is omitted by an elision.
+        else if (value is JsArray or JsArguments) Value(value,position);
+        return Js.Undefined;
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double? Number(object value, int position) => value is NumberArray array ? array.GetNumberAt(position) :
         Js.Cast<double?>(Value(value, position), "Iteration value violates number binding type");

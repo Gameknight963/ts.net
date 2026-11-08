@@ -27,14 +27,16 @@ public static partial class Js
             (cursor.Excluded ??= new()).Add(name);
             return IndexGet(cursor.Source, name);
         }
-        if (cursor.Finished || cursor.Position >= Iteration.Length(cursor.Source))
-        {
-            cursor.Finished = true;
-            return Undefined;
+        try {
+            if (cursor.Finished || cursor.Position >= Iteration.Length(cursor.Source)) {
+                cursor.Finished = true;
+                return Undefined;
+            }
+            object value = Iteration.Value(cursor.Source, cursor.Position);
+            cursor.Position += Iteration.Step(cursor.Source, cursor.Position);
+            return value;
         }
-        object value = Iteration.Value(cursor.Source, cursor.Position);
-        cursor.Position += Iteration.Step(cursor.Source, cursor.Position);
-        return value;
+        catch {cursor.Finished = true;throw;}
     }
 
     public static object RestDestructuring(object state, object destination)
@@ -54,6 +56,19 @@ public static partial class Js
             cursor.Finished = true;
         }
         return destination;
+    }
+    public static object SkipDestructuring(object state)
+    {
+        var cursor = (DestructuringState)state;
+        try {
+            if (cursor.Finished || cursor.Position >= Iteration.Length(cursor.Source)) {
+                cursor.Finished = true; return Undefined;
+            }
+            Iteration.Skip(cursor.Source,cursor.Position);
+            cursor.Position += Iteration.Step(cursor.Source,cursor.Position);
+            return Undefined;
+        }
+        catch {cursor.Finished = true;throw;}
     }
     public static object CloseDestructuring(object state)
     {

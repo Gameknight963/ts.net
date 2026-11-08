@@ -403,6 +403,7 @@ public static partial class Js
     public static double? ForOfNumber(object value, int position) => Iteration.Number(value, position);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int ForOfStep(object value, int position) => Iteration.Step(value, position);
+    public static object ForOfSkip(object value, int position) => Iteration.Skip(value,position);
 
     public static object Add(object left, object right)
     {

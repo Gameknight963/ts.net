@@ -514,7 +514,9 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.DestructuringRead)
         {
-            il_boxed(n.left, c, b); il_boxed(n.right, c, b); b.call(RuntimeMember.ReadDestructuring);
+            il_boxed(n.left, c, b);
+            if (n.constant) b.call(RuntimeMember.SkipDestructuring);
+            else { il_boxed(n.right, c, b); b.call(RuntimeMember.ReadDestructuring); }
         }
         else if (n.kind == NodeKind.DestructuringRest)
         {

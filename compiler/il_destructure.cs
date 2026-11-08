@@ -51,6 +51,8 @@ internal static partial class CompilerFunctions
         child = literal.children; int count = 0;
         while (child != 0)
         {
+            Node item = get_node(child,c);
+            if (item.kind == NodeKind.Undefined && item.constant) return false;
             if (get_node(child, c).kind == NodeKind.Spread || ++count > 16) { return false; }
             child = get_node(child, c).next;
         }
@@ -149,14 +151,15 @@ internal static partial class CompilerFunctions
         }
         return true;
     }
-    internal static void il_binding_read(int type, int source, int position, int finished, Compiler c, IlBackend b)
+    internal static void il_binding_read(int type, int source, int position, int finished, Compiler c, IlBackend b, bool skip = false)
     {
         if (b.destructure_close >= 0) { b.emit(0x20, 0); b.emit(0xfe0e, b.destructure_close); }
         int missing = b.label(); int done = b.label();
         b.emit(0xfe0c, finished); b.emit(0x3a, missing);
         b.emit(0xfe0c, position); b.op(0x76); b.emit(0xfe0c, source); b.call(RuntimeMember.ForOfLength); b.op(0xfe04); b.emit(0x39, missing);
         b.emit(0xfe0c, source); b.emit(0xfe0c, position);
-        if (get_type(type, c).kind == TypeKind.Number) { b.call(RuntimeMember.ForOfNumber); }
+        if (skip) { b.call(RuntimeMember.ForOfSkip); }
+        else if (get_type(type, c).kind == TypeKind.Number) { b.call(RuntimeMember.ForOfNumber); }
         else { b.call(RuntimeMember.ForOfValue); b.from_object(type, c); }
         if (b.destructure_close >= 0) { b.emit(0x20, 1); b.emit(0xfe0e, b.destructure_close); }
         b.emit(0xfe0c, position); b.emit(0xfe0c, source); b.emit(0xfe0c, position); b.call(RuntimeMember.ForOfStep); b.op(0x58); b.emit(0xfe0e, position);
@@ -192,7 +195,7 @@ internal static partial class CompilerFunctions
             Node binding = get_node(child, c);
             if (binding.kind == NodeKind.Undefined)
             {
-                il_binding_read(binding.type, source, position, finished, c, b); b.op(0x26);
+                il_binding_read(binding.type, source, position, finished, c, b, true); b.op(0x26);
             }
             else
             {
