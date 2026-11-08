@@ -23,6 +23,7 @@ public abstract partial class TsObject
     public void DefineAccessor(string key, object function, int mode) => DefineAccessor(key, function, mode, true);
     internal void DefineAccessor(string key, object function, int mode, bool inferName)
     {
+        if (!IsExtensible && !HasOwn(key)) throw new InvalidOperationException("Object is not extensible");
         if (!TryOwnAccessor(key, out var accessor))
         {
             accessor = new JsAccessor(); (accessors ??= new())[key] = accessor;

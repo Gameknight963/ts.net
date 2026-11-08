@@ -4,7 +4,7 @@ using System.Globalization;
 
 public abstract partial class TsObject
 {
-    public void DefineOwn(string key, object value) {accessors?.Remove(key);(extra ??= new OwnProperties())[key] = value;}
+    public void DefineOwn(string key, object value) {if (!IsExtensible && !HasOwn(key)) throw new InvalidOperationException("Object is not extensible");accessors?.Remove(key);(extra ??= new OwnProperties())[key] = value;}
     public virtual void MarkPresent(string key) { }
     public void CopySpreadExtras(object destination)
     {

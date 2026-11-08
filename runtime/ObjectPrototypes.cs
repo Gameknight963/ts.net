@@ -12,9 +12,11 @@ public abstract partial class TsObject
     }
     internal virtual TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : IsModuleNamespace ? null : Js.DefaultClassObjectPrototype;
     internal virtual bool IsReadOnlyOwnProperty(string key) => false;
+    internal virtual bool IsExtensible => true;
     internal bool CanSetPrototype(TsObject value)
     {
         if (ReferenceEquals(PropertyPrototype, value)) return false;
+        if (!IsExtensible) throw new InvalidOperationException("Object is not extensible");
         if (IsModuleNamespace || ReferenceEquals(this, Js.DefaultClassObjectPrototype)) throw new InvalidOperationException("Object prototype is immutable");
         for (var ancestor = value; ancestor != null; ancestor = ancestor.PropertyPrototype)
             if (ReferenceEquals(ancestor, this)) throw new InvalidOperationException("Cyclic prototype value");
@@ -23,6 +25,7 @@ public abstract partial class TsObject
     internal virtual bool TrySetPrototype(TsObject value)
     {
         if (ReferenceEquals(PropertyPrototype, value)) return true;
+        if (!IsExtensible) return false;
         if (IsModuleNamespace || ReferenceEquals(this, Js.DefaultClassObjectPrototype)) return false;
         for (var ancestor = value; ancestor != null; ancestor = ancestor.PropertyPrototype)
             if (ReferenceEquals(ancestor, this)) return false;

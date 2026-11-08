@@ -77,7 +77,10 @@ public static partial class Js
     {
         if (obj is not JsDynamicObject created || obj.IsModuleNamespace) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
         object existing = obj.OwnPropertyDescriptor(key);
-        if (IsUndefined(existing)) { created.Define(definition.Complete(key)); return true; }
+        if (IsUndefined(existing)) {
+            if (!obj.IsExtensible) return false;
+            created.Define(definition.Complete(key)); return true;
+        }
         var current = (TsObject)existing;
         bool Has(DescriptorFields field) => (definition.Fields & field) != 0;
         bool configurable = Truthy(current.Get("configurable")), enumerable = Truthy(current.Get("enumerable"));

@@ -23,6 +23,7 @@ public abstract partial class TsObject
         if(TryOwnAccessor(key,out var accessor))return accessor.Write(this,value);
         if (IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Property is read-only");
         if (SetInheritedProperty(key, value)) return value;
+        if (!IsExtensible && !HasOwn(key)) throw new InvalidOperationException("Object is not extensible");
         (extra ??= new OwnProperties())[key] = value;
         return value;
     }

@@ -20,6 +20,7 @@ public static partial class Js
         }
         if (receiver is not TsObject destination || destination.IsModuleNamespace || destination is JsRawJson or JsTemplateArray) return false;
         object existing = destination.OwnPropertyDescriptor(key);
+        if (IsUndefined(existing) && !destination.IsExtensible) return false;
         if (!IsUndefined(existing)) {
             var descriptor = (TsObject)existing;
             if (!descriptor.HasOwn("writable") || !Truthy(descriptor.Get("writable"))) return false;

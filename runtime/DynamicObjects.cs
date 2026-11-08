@@ -3,6 +3,8 @@
 public partial class JsDynamicObject : TsObject
 {
     private TsObject prototype = Js.DefaultClassObjectPrototype;
+    internal bool Extensible = true;
+    internal override bool IsExtensible => Extensible;
     internal override TsObject PropertyPrototype => IsModuleNamespace ? null : prototype;
     internal override void SetPrototype(TsObject value)
     {
