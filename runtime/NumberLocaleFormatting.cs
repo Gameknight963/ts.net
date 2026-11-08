@@ -68,6 +68,7 @@ public static partial class Js
         internal readonly string signDisplay;
         internal readonly string roundingMode, trailingZeroDisplay, roundingPriority, notation;
         internal readonly string style;
+        internal readonly string unit, unitDisplay;
         internal readonly string currency, currencyDisplay, currencySign;
         readonly string positivePattern, negativePattern;
         readonly string format;
@@ -111,8 +112,7 @@ public static partial class Js
                 }
                 object requestedStyle = options.Get("style");
                 if (!IsUndefined(requestedStyle)) style = StringValue(requestedStyle);
-                if (style == "unit") throw new NotSupportedException("Number locale formatting option style is not supported");
-                if (style is not ("decimal" or "percent" or "currency")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number formatting style");
+                if (style is not ("decimal" or "percent" or "currency" or "unit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number formatting style");
                 object requestedCurrency = options.Get("currency");
                 if (!IsUndefined(requestedCurrency))
                 {
@@ -130,9 +130,11 @@ public static partial class Js
                 if (currencyDisplay is not ("symbol" or "narrowSymbol" or "code" or "name")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid currency display");
                 if (currencySign is not ("standard" or "accounting")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid currency sign");
                 object requestedUnit = options.Get("unit");
-                if (!IsUndefined(requestedUnit) && !WellFormedNumberUnit(StringValue(requestedUnit)))
+                unit = IsUndefined(requestedUnit) ? null : StringValue(requestedUnit);
+                if (style == "unit" && unit == null) throw new InvalidOperationException("Unit is required");
+                if (unit != null && !WellFormedNumberUnit(unit))
                     throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number formatting unit");
-                string unitDisplay = CurrencyOption("unitDisplay", "short");
+                unitDisplay = CurrencyOption("unitDisplay", "short");
                 if (unitDisplay is not ("short" or "narrow" or "long")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid unit display");
                 if (style == "currency")
                 {
@@ -241,6 +243,7 @@ public static partial class Js
                 positivePattern = (0.01d).ToString("P0", culture);
                 negativePattern = (-0.01d).ToString("P0", culture);
             }
+            if (style == "unit" && culture.Name is not ("en" or "en-US")) throw new NotSupportedException("Unit formatting currently supports US English");
             minimumGrouping = groupingOption is "min2" || groupingOption is "auto" && culture.Name is "es" or "es-ES";
             minimumGroupingWidth = int.MaxValue;
             if (minimumGrouping)
@@ -276,7 +279,7 @@ public static partial class Js
         {
             notationExponent = 0; fractionMinimum = minimum; fractionMaximum = maximum;
             // Safe integers need no decimal rounding and retain native formatting.
-            if (notation == "standard" && maximumSignificant == 0 && !minimumGrouping && roundingIncrement == 1 && style == "decimal" && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
+            if (notation == "standard" && maximumSignificant == 0 && !minimumGrouping && roundingIncrement == 1 && style is ("decimal" or "unit") && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
             string raw = Math.Abs(value).ToString("R", CultureInfo.InvariantCulture);
             int split = raw.IndexOf('E');
             int exponent = split < 0 ? 0 : int.Parse(raw.AsSpan(split + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
@@ -363,9 +366,26 @@ public static partial class Js
             if (fractionDigits != 0) result += culture.NumberFormat.NumberDecimalSeparator + fraction.ToString(CultureInfo.InvariantCulture).PadLeft(fractionDigits, '0');
             return negative ? culture.NumberFormat.NegativeSign + result : result;
         }
+        internal (string Gap, string Name) UnitAffix(string number)
+        {
+            var info = culture.NumberFormat;
+            string magnitude = number;
+            if (magnitude.StartsWith(info.NegativeSign, StringComparison.Ordinal)) magnitude = magnitude[info.NegativeSign.Length..];
+            else if (magnitude.StartsWith(info.PositiveSign, StringComparison.Ordinal)) magnitude = magnitude[info.PositiveSign.Length..];
+            if (magnitude.EndsWith("E0", StringComparison.Ordinal)) magnitude = magnitude[..^2];
+            bool singular = magnitude.TrimStart('0') == "1";
+            int separator = unit.IndexOf("-per-", StringComparison.Ordinal);
+            if (separator < 0) return EnglishNumberUnit(unit, unitDisplay, singular);
+            var numerator = EnglishNumberUnit(unit[..separator], unitDisplay, singular);
+            string denominatorUnit = unit[(separator + 5)..];
+            var denominator = EnglishNumberUnit(denominatorUnit, unitDisplay, true);
+            string denominatorName = unitDisplay == "long" ? denominator.Name : denominatorUnit switch {"second" => "s", "minute" => "min", "hour" => "h", "day" => "d", "week" => "w", "month" => "m", "year" => "y", _ => denominator.Name};
+            if (unitDisplay != "long" && unit == "mile-per-hour") return (numerator.Gap, "mph");
+            return (numerator.Gap, numerator.Name + (unitDisplay == "long" ? " per " : "/") + denominatorName);
+        }
         internal string LocalizeDigits(string text) => LocalizeNumberDigits(text, digitCharacters);
         internal string Format<T>(T value, bool finite) where T : struct, IFormattable => LocalizeDigits(FormatLatin(value, finite));
-        internal string FormatLatin<T>(T value, bool finite) where T : struct, IFormattable
+        internal string FormatLatin<T>(T value, bool finite, bool includeUnit = true) where T : struct, IFormattable
         {
             int fractionMinimum = minimum, fractionMaximum = maximum, notationExponent = 0;
             string result = value is LocaleDecimal exact ? NumericText(exact.Digits, exact.Exponent + (style == "percent" ? 2 : 0), exact.Negative, out fractionMinimum, out fractionMaximum, out notationExponent)
@@ -422,6 +442,7 @@ public static partial class Js
             }
             if (finite && notation != "standard")
                 result += "E" + (notationExponent < 0 ? culture.NumberFormat.NegativeSign : "") + Math.Abs(notationExponent).ToString(CultureInfo.InvariantCulture);
+            if (style == "unit") { if (!includeUnit) return result; var affix = UnitAffix(result); return result + affix.Gap + affix.Name; }
             if (style == "decimal") return result;
             var info = culture.NumberFormat;
             bool negativeSign = result.StartsWith(info.NegativeSign, StringComparison.Ordinal);

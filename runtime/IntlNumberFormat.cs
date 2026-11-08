@@ -15,17 +15,17 @@ public static partial class Js
         }
         internal string DecimalSeparator => settings.culture.NumberFormat.NumberDecimalSeparator;
         internal string Text(object value) => settings.LocalizeDigits(LatinText(value));
-        string LatinText(object value)
+        string LatinText(object value, bool includeUnit = true)
         {
             value = IntlNumericValue(value);
-            if (value is LocaleDecimal exact) return settings.FormatLatin(exact, true);
-            if (value is BigInteger integer) return settings.FormatLatin(integer, true);
+            if (value is LocaleDecimal exact) return settings.FormatLatin(exact, true, includeUnit);
+            if (value is BigInteger integer) return settings.FormatLatin(integer, true, includeUnit);
             double number = Number(value);
-            return settings.FormatLatin(number, double.IsFinite(number));
+            return settings.FormatLatin(number, double.IsFinite(number), includeUnit);
         }
         internal object Parts(object value)
         {
-            string text = LatinText(value);
+            string text = LatinText(value, false);
             var info = settings.culture.NumberFormat;
             var result = new JsArray(0);
             void Part(string type, string contents)
@@ -56,6 +56,7 @@ public static partial class Js
                 }
                 else { Part("literal", text.Substring(position, 1)); position++; }
             }
+            if (settings.style == "unit") { var affix = settings.UnitAffix(text); if (affix.Gap.Length != 0) Part("literal", affix.Gap); Part("unit", affix.Name); }
             return result;
         }
         internal object Options()
@@ -67,6 +68,7 @@ public static partial class Js
             {
                 result.DefineOwn("currency", settings.currency); result.DefineOwn("currencyDisplay", settings.currencyDisplay); result.DefineOwn("currencySign", settings.currencySign);
             }
+            if (settings.style == "unit") { result.DefineOwn("unit", settings.unit); result.DefineOwn("unitDisplay", settings.unitDisplay); }
             result.DefineOwn("minimumIntegerDigits", (double)settings.integerDigits);
             if (settings.maximumSignificant == 0 || settings.roundingPriority != "auto")
             {
