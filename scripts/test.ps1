@@ -174,7 +174,7 @@ try {
         if ($name.StartsWith('stack-location')) { $referenceOptions += '--sourceMap' }
         if ($legacyDecorators) { $referenceOptions += '--experimentalDecorators' }
         if ($name -eq 'export-assignment-interop') { $referenceOptions += '--esModuleInterop' }
-        $referenceTarget = if ($name -eq 'regex-modifiers') { 'esnext' } elseif ($name.StartsWith('resizable-buffer') -or $name.StartsWith('buffer-transfer') -or $name.StartsWith('shared-buffer') -or $name.StartsWith('atomic-') -or $name -eq 'hmac-keys' -or $name -eq 'numeric-read-paths' -or $name -eq 'typed-array-loop-guards') { 'es2024' } else { 'es2022' }
+        $referenceTarget = if ($name -eq 'regex-modifiers') { 'esnext' } elseif ($name.StartsWith('resizable-buffer') -or $name.StartsWith('buffer-transfer') -or $name.StartsWith('shared-buffer') -or $name.StartsWith('growable-shared-') -or $name.StartsWith('atomic-') -or $name -eq 'hmac-keys' -or $name -eq 'numeric-read-paths' -or $name -eq 'typed-array-loop-guards') { 'es2024' } else { 'es2022' }
         & tsc.cmd @referenceOptions --strict --target $referenceTarget --module $moduleKind --outDir "$testRoot/node/$name" $fixture
         if ($moduleKind -eq 'es2022') { '{"type":"module"}' | Set-Content "$testRoot/node/$name/package.json" }
         else { '{"type":"commonjs"}' | Set-Content "$testRoot/node/$name/package.json" }
