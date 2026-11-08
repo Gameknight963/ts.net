@@ -48,6 +48,7 @@ public static partial class Js
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments) => ObjectBrand(receiver);
     }
+    static class ArrayStringMethod { internal static readonly JsFunction Value = new ArrayStringFunction(); }
     sealed class ArrayStringFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("toString requires a receiver")), null, "toString", 0)
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)

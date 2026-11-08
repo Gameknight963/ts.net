@@ -170,7 +170,7 @@ public static partial class Js
                     return method is "fill" or "copyWithin" or "reverse" ? array : result;
                 }));
             prototype.DefineMethod(PropertyKey(IteratorSymbol), prototype.Get("values"));
-            prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) => ArrayJoin(RequireTypedArrayMethod(receiver), Undefined)));
+            prototype.DefineMethod("toString", ArrayStringMethod.Value);
             foreach (string method in new[] { "slice", "subarray", "set", "map", "filter", "toReversed", "with", "sort", "toSorted", "toLocaleString" })
                 prototype.DefineMethod(method, new CollectionMethod(method, method is "slice" or "subarray" or "with" ? 2 : method is "toLocaleString" or "toReversed" ? 0 : 1, (receiver, args) => TypedArrayMethod(RequireTypedArrayMethod(receiver), method, args)));
             Member("of", new CollectionMethod("of", 0, (receiver, args) => TypedArrayFromValues(receiver, args)));

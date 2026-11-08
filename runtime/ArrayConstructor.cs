@@ -36,7 +36,7 @@ public static partial class Js
             string speciesKey = PropertyKey(SpeciesSymbol); var getter = new ConstructorSpeciesGetter();
             Member(speciesKey, Undefined); DefineAccessor(speciesKey, getter, 1); getter.InferPropertyName("get [Symbol.species]");
             var prototype = new ArrayPrototypeObject();
-            UseObjectPrototype(prototype); prototype.Member("constructor", this); prototype.Member("toString", new ArrayStringFunction());
+            UseObjectPrototype(prototype); prototype.Member("constructor", this); prototype.Member("toString", ArrayStringMethod.Value);
             foreach (string name in new[] { "at", "push", "pop", "slice", "reverse", "indexOf", "includes", "join", "map", "filter", "forEach", "every", "some", "reduce", "reduceRight", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "lastIndexOf", "toReversed", "toSorted", "sort", "toLocaleString", "keys", "values", "entries", "concat", "splice", "shift", "unshift", "toSpliced", "with", "fill", "copyWithin" })
                 prototype.Member(name, ArrayMethodValue(name));
             Member("isArray", new JsFunction((FunctionBody)(static args => BoxBoolean(FunctionArgument(args, 0) is JsArray)), null, "isArray", 1));
