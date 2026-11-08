@@ -54,8 +54,8 @@ public static partial class Js
     {
         if (upper) return ExpandUppercase(text.ToUpper(culture));
         text = ApplyFinalSigma(text);
-        if (culture.TwoLetterISOLanguageName is not ("tr" or "az"))
-            text = text.Replace("\u0130", "i\u0307", StringComparison.Ordinal);
+        if (culture.TwoLetterISOLanguageName is "tr" or "az") text = ApplyTurkicDotContext(text);
+        else text = text.Replace("\u0130", "i\u0307", StringComparison.Ordinal);
         return text.ToLower(culture);
     }
     sealed class StringCaseFunction(bool upper, bool localized = false) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("String method requires a receiver")), null, localized ? upper ? "toLocaleUpperCase" : "toLocaleLowerCase" : upper ? "toUpperCase" : "toLowerCase", 0)
