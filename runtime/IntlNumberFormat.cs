@@ -15,13 +15,13 @@ public static partial class Js
         }
         internal string DecimalSeparator => settings.culture.NumberFormat.NumberDecimalSeparator;
         internal string Text(object value) => settings.LocalizeDigits(LatinText(value));
-        string LatinText(object value, bool includeUnit = true)
+        string LatinText(object value, bool includeAffix = true)
         {
             value = IntlNumericValue(value);
-            if (value is LocaleDecimal exact) return settings.FormatLatin(exact, true, includeUnit);
-            if (value is BigInteger integer) return settings.FormatLatin(integer, true, includeUnit);
+            if (value is LocaleDecimal exact) return settings.FormatLatin(exact, true, includeAffix);
+            if (value is BigInteger integer) return settings.FormatLatin(integer, true, includeAffix);
             double number = Number(value);
-            return settings.FormatLatin(number, double.IsFinite(number), includeUnit);
+            return settings.FormatLatin(number, double.IsFinite(number), includeAffix);
         }
         internal object Parts(object value)
         {
@@ -40,7 +40,7 @@ public static partial class Js
                     if (token.Length == 0 || !text.AsSpan(position).StartsWith(token, StringComparison.Ordinal)) return false;
                     Part(type, token); position += token.Length; return true;
                 }
-                if (settings.style == "currency" && Token(info.CurrencySymbol, "currency")) continue;
+                if (settings.style == "currency" && !settings.CurrencyName && Token(info.CurrencySymbol, "currency")) continue;
                 if (!exponent && settings.notation != "standard" && Token("E", "exponentSeparator")) { exponent = true; fraction = false; continue; }
                 if (exponent && Token(info.NegativeSign, "exponentMinusSign")) continue;
                 if (Token(info.NumberDecimalSeparator, "decimal")) { fraction = true; continue; }
@@ -56,6 +56,7 @@ public static partial class Js
                 }
                 else { Part("literal", text.Substring(position, 1)); position++; }
             }
+            if (settings.CurrencyName) { Part("literal", " "); Part("currency", settings.CurrencyNameAffix(text)); }
             if (settings.style == "unit") { var affix = settings.UnitAffix(text); if (affix.Gap.Length != 0) Part("literal", affix.Gap); Part("unit", affix.Name); }
             return result;
         }

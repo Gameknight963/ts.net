@@ -139,7 +139,7 @@ public static partial class Js
                 if (style == "currency")
                 {
                     if (currency == null) throw new InvalidOperationException("Currency code is required");
-                    if (currencyDisplay == "name") throw new NotSupportedException("Currency display names are not supported");
+                    if (currencyDisplay == "name" && culture.Name is not ("en" or "en-US")) throw new NotSupportedException("Currency names currently support US English");
                     var metadata = CurrencyFor(currency, culture, currencyDisplay);
                     currencyDigits = metadata.Digits;
                     culture = (CultureInfo)culture.Clone();
@@ -366,14 +366,20 @@ public static partial class Js
             if (fractionDigits != 0) result += culture.NumberFormat.NumberDecimalSeparator + fraction.ToString(CultureInfo.InvariantCulture).PadLeft(fractionDigits, '0');
             return negative ? culture.NumberFormat.NegativeSign + result : result;
         }
-        internal (string Gap, string Name) UnitAffix(string number)
+        bool EnglishSingularNumber(string number)
         {
             var info = culture.NumberFormat;
             string magnitude = number;
             if (magnitude.StartsWith(info.NegativeSign, StringComparison.Ordinal)) magnitude = magnitude[info.NegativeSign.Length..];
             else if (magnitude.StartsWith(info.PositiveSign, StringComparison.Ordinal)) magnitude = magnitude[info.PositiveSign.Length..];
             if (magnitude.EndsWith("E0", StringComparison.Ordinal)) magnitude = magnitude[..^2];
-            bool singular = magnitude.TrimStart('0') == "1";
+            return magnitude.TrimStart('0') == "1";
+        }
+        internal bool CurrencyName => style == "currency" && currencyDisplay == "name";
+        internal string CurrencyNameAffix(string number) => EnglishCurrencyName(currency, EnglishSingularNumber(number));
+        internal (string Gap, string Name) UnitAffix(string number)
+        {
+            bool singular = EnglishSingularNumber(number);
             int separator = unit.IndexOf("-per-", StringComparison.Ordinal);
             if (separator < 0) return EnglishNumberUnit(unit, unitDisplay, singular);
             var numerator = EnglishNumberUnit(unit[..separator], unitDisplay, singular);
@@ -385,7 +391,7 @@ public static partial class Js
         }
         internal string LocalizeDigits(string text) => LocalizeNumberDigits(text, digitCharacters);
         internal string Format<T>(T value, bool finite) where T : struct, IFormattable => LocalizeDigits(FormatLatin(value, finite));
-        internal string FormatLatin<T>(T value, bool finite, bool includeUnit = true) where T : struct, IFormattable
+        internal string FormatLatin<T>(T value, bool finite, bool includeAffix = true) where T : struct, IFormattable
         {
             int fractionMinimum = minimum, fractionMaximum = maximum, notationExponent = 0;
             string result = value is LocaleDecimal exact ? NumericText(exact.Digits, exact.Exponent + (style == "percent" ? 2 : 0), exact.Negative, out fractionMinimum, out fractionMaximum, out notationExponent)
@@ -442,7 +448,8 @@ public static partial class Js
             }
             if (finite && notation != "standard")
                 result += "E" + (notationExponent < 0 ? culture.NumberFormat.NegativeSign : "") + Math.Abs(notationExponent).ToString(CultureInfo.InvariantCulture);
-            if (style == "unit") { if (!includeUnit) return result; var affix = UnitAffix(result); return result + affix.Gap + affix.Name; }
+            if (CurrencyName) return includeAffix ? result + " " + CurrencyNameAffix(result) : result;
+            if (style == "unit") { if (!includeAffix) return result; var affix = UnitAffix(result); return result + affix.Gap + affix.Name; }
             if (style == "decimal") return result;
             var info = culture.NumberFormat;
             bool negativeSign = result.StartsWith(info.NegativeSign, StringComparison.Ordinal);
