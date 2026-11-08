@@ -112,11 +112,11 @@ public static partial class Js
         return promise;
     }
     static object CryptoImport(object[] args) => CryptoAlgorithm(FunctionArgument(args, 2)) switch {
-        "RSASSA-PKCS1-V1_5" => RsaImport(args), "ECDH" => EcImport(args, "ECDH"), "ECDSA" => EcImport(args), "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "AES-CBC" => AesImport(args, "AES-CBC"), "AES-CTR" => AesImport(args, "AES-CTR"), "AES-KW" => AesImport(args, "AES-KW"), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
+        "RSA-PSS" => RsaImport(args, "RSA-PSS"), "RSASSA-PKCS1-V1_5" => RsaImport(args), "ECDH" => EcImport(args, "ECDH"), "ECDSA" => EcImport(args), "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "AES-CBC" => AesImport(args, "AES-CBC"), "AES-CTR" => AesImport(args, "AES-CTR"), "AES-KW" => AesImport(args, "AES-KW"), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object CryptoGenerate(object[] args) => CryptoAlgorithm(FunctionArgument(args, 0)) switch {
-        "RSASSA-PKCS1-V1_5" => RsaGenerate(args), "ECDH" => EcGenerate(args, "ECDH"), "ECDSA" => EcGenerate(args), "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args), "AES-CBC" => AesGenerate(args, "AES-CBC"), "AES-CTR" => AesGenerate(args, "AES-CTR"), "AES-KW" => AesGenerate(args, "AES-KW"),
+        "RSA-PSS" => RsaGenerate(args, "RSA-PSS"), "RSASSA-PKCS1-V1_5" => RsaGenerate(args), "ECDH" => EcGenerate(args, "ECDH"), "ECDSA" => EcGenerate(args), "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args), "AES-CBC" => AesGenerate(args, "AES-CBC"), "AES-CTR" => AesGenerate(args, "AES-CTR"), "AES-KW" => AesGenerate(args, "AES-KW"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object HmacImport(object[] args)
@@ -197,7 +197,7 @@ public static partial class Js
     static object HmacSign(object[] args, bool verify)
     {
         string algorithm = CryptoAlgorithm(FunctionArgument(args, 0)); var key = RequireCryptoKey(FunctionArgument(args, 1));
-        if (algorithm == "RSASSA-PKCS1-V1_5") return RsaSign(args, verify);
+        if (algorithm is "RSASSA-PKCS1-V1_5" or "RSA-PSS") return RsaSign(args, verify, algorithm == "RSA-PSS" ? "RSA-PSS" : RsaSigningName);
         if (algorithm == "ECDSA") return EcSign(args, verify);
         if (algorithm != "HMAC") throw CryptoError("NotSupportedError", "Unsupported signing algorithm");
         if (key.Name != "HMAC" || !Array.Exists(key.Usages, usage => usage == (verify ? "verify" : "sign"))) throw CryptoError("InvalidAccessError", "Key does not permit this operation");
