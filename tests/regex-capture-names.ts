@@ -35,3 +35,29 @@ for (const flags of ['d', 'du']) {
         catch (error) {console.log('invalid identifier', flags, (error as Error).name);}
     }
 }
+
+// Sample across Unicode, plus the boundaries of surrogate encodings.
+for (const flags of ['', 'u']) {
+    let accepted = 0, rejected = 0, checksum = 0;
+    const points = [0, 36, 48, 65, 95, 0x2E2F, 0xD7FF, 0xD800, 0xDBFF, 0xDC00, 0xDFFF, 0xE000, 0xFFFF, 0x10000, 0x10FFFF];
+    for (let point = 128; point <= 0x10FFFF; point += 997) points.push(point);
+    for (const point of points) {
+        const character = String.fromCodePoint(point);
+        for (const prefix of ['', 'a']) {
+            for (const spelling of [character, '\\u{' + point.toString(16) + '}']) {
+                try {
+                    const expression = new RegExp('(?<' + prefix + spelling + '>x)', flags);
+                    const match = expression.exec('x')!;
+                    const key = Object.keys(match.groups!)[0];
+                    if (key !== prefix + character || match.groups![key] !== 'x') throw new Error('Incorrect capture name');
+                    accepted++;
+                    checksum = (checksum + point) % 1000000007;
+                } catch (error) {
+                    if ((error as Error).name !== 'SyntaxError') throw error;
+                    rejected++;
+                }
+            }
+        }
+    }
+    console.log('identifier samples', flags, accepted, rejected, checksum);
+}
