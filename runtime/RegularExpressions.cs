@@ -87,6 +87,7 @@ public static partial class Js
             if (inClass && ch == '-' && (previousClassSet || i + 2 < pattern.Length && pattern[i + 1] == '\\' && pattern[i + 2] is 'd' or 'D' or 'w' or 'W' or 's' or 'S'))
             { rewritten.Append("\\-"); previousClassSet = false; continue; }
             previousClassSet = false;
+            if (inClass && ch == '[') { rewritten.Append("\\["); continue; }
             if (!inClass && ch == '[' && i + 1 < pattern.Length && pattern[i + 1] == ']')
             { rewritten.Append("(?!)"); i++; continue; }
             if (!inClass && ch == '[' && i + 2 < pattern.Length && pattern[i + 1] == '^' && pattern[i + 2] == ']')
