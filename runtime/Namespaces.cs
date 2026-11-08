@@ -40,6 +40,10 @@ public static partial class Js
         {
             var prototype = new JsClassInstance {ParentPrototype = (TsObject)EventConstructors.Target.Get("prototype")};
             prototype.DefineOwn("now", new JsFunction((FunctionBody)(static _ => Now()), (RawNumberFunction0)Now, "now", 0));
+            prototype.DefineClassAccessor("timeOrigin", new CollectionMethod("get timeOrigin", 0, (receiver, _) => {
+                if (receiver is not PerformanceNamespace) throw new InvalidOperationException("Performance receiver required");
+                return PerformanceClock.Origin;
+            }), 1);
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Performance", false);
             return prototype;
         }

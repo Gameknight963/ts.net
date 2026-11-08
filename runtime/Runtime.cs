@@ -75,7 +75,16 @@ public static partial class Js
         Delegate => "function",
         _ => ReferenceEquals(value, Undefined) ? "undefined" : "object"
     };
-    public static double Now() => Stopwatch.GetTimestamp() * (1000.0 / Stopwatch.Frequency);
+    static class PerformanceClock
+    {
+        internal static readonly long Start = Stopwatch.GetTimestamp();
+        internal static readonly double Origin = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    }
+    public static double Now()
+    {
+        long start = PerformanceClock.Start;
+        return (Stopwatch.GetTimestamp() - start) * (1000.0 / Stopwatch.Frequency);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int ToInt32(double value)

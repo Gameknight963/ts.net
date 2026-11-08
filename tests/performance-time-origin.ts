@@ -1,0 +1,13 @@
+export {};
+const first = performance.now();
+const origin = performance.timeOrigin;
+const second = performance.now();
+console.log('clock', Number.isFinite(origin), origin > 0, first >= 0, second >= first, performance.timeOrigin === origin);
+console.log('epoch', Math.abs(origin + performance.now() - Date.now()) < 2000);
+const event = new Event('clock');
+console.log('event', event.timeStamp >= first, event.timeStamp <= performance.now());
+console.log('readonly', Reflect.set(performance, 'timeOrigin', 1), performance.timeOrigin === origin, Object.hasOwn(performance, 'timeOrigin'));
+Object.defineProperty(performance, 'timeOrigin', {value: 42, configurable: true});
+console.log('shadow', performance.timeOrigin);
+Reflect.deleteProperty(performance, 'timeOrigin');
+console.log('restore', performance.timeOrigin === origin);
