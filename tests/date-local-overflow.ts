@@ -9,7 +9,7 @@ const cases: number[][] = [
 for(const values of cases) {
  const [year,month,day=1,hour=0,minute=0,second=0,millisecond=0]=values;
  const date=new Date(year,month,day,hour,minute,second,millisecond);
- console.log('construct',Number.isNaN(date.getTime()),date.toString(),(date as any).toJSON());
+ console.log('construct',Number.isNaN(date.getTime()),date.toString(),date.toJSON());
 }
 for(const method of ['setFullYear','setMonth','setDate','setHours','setMinutes','setSeconds','setMilliseconds','setYear']) {
  const date=new Date(0);const result=(date as any)[method](1e100);

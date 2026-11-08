@@ -99,13 +99,14 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T Cast<T>(object value, string message)
     {
+        if (value == null && !typeof(T).IsValueType) return default;
         if (ReferenceEquals(value, Undefined) && Nullable.GetUnderlyingType(typeof(T)) != null) return default;
         return value is T result ? result : throw new InvalidCastException(message);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object Check<T>(object value, string message) where T : class =>
-        ReferenceEquals(value, Undefined) || value is T ? value : throw new InvalidCastException(message);
+        value == null || ReferenceEquals(value, Undefined) || value is T ? value : throw new InvalidCastException(message);
     public static int StringLength(object value) =>
         value is string text ? text.Length : throw new InvalidOperationException("Expected string");
 
