@@ -10,8 +10,9 @@ public static partial class Js
         var key = RequireCryptoKey(FunctionArgument(args, 1));
         var wrappingKey = RequireCryptoKey(FunctionArgument(args, 2));
         object algorithm = FunctionArgument(args, 3);
-        if (CryptoAlgorithm(algorithm) != "AES-GCM") throw CryptoError("NotSupportedError", "Unsupported key wrapping algorithm");
-        if (wrappingKey.Name != "AES-GCM" || !Array.Exists(wrappingKey.Usages, value => value == "wrapKey")) throw CryptoError("InvalidAccessError", "Key does not permit wrapping");
+        string name = CryptoAlgorithm(algorithm);
+        if (name is not ("AES-GCM" or "AES-CBC")) throw CryptoError("NotSupportedError", "Unsupported key wrapping algorithm");
+        if (wrappingKey.Name != name || !Array.Exists(wrappingKey.Usages, value => value == "wrapKey")) throw CryptoError("InvalidAccessError", "Key does not permit wrapping");
         object exported = CryptoExport(new object[] { format, key });
         BinaryBuffer bytes;
         if (exported is BinaryBuffer buffer) bytes = buffer;

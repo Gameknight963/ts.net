@@ -21,7 +21,7 @@ public static partial class Js
                 if (Name == "HMAC") {
                     var hash = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; hash.Set("name", Hash); result.Set("hash", hash);
                 }
-                if (Name is "HMAC" or "AES-GCM") result.Set("length", (double)Bytes.Length * 8);
+                if (Name is "HMAC" or "AES-GCM" or "AES-CBC") result.Set("length", (double)Bytes.Length * 8);
                 return algorithm = result;
             }
         }
@@ -90,11 +90,11 @@ public static partial class Js
         return promise;
     }
     static object CryptoImport(object[] args) => CryptoAlgorithm(FunctionArgument(args, 2)) switch {
-        "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
+        "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "AES-CBC" => AesImport(args, "AES-CBC"), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object CryptoGenerate(object[] args) => CryptoAlgorithm(FunctionArgument(args, 0)) switch {
-        "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args),
+        "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args), "AES-CBC" => AesGenerate(args, "AES-CBC"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object HmacImport(object[] args)
@@ -131,7 +131,7 @@ public static partial class Js
             result.Set("key_ops", new JsArray(Array.ConvertAll(key.Usages, static usage => (object)usage)));
             result.Set("ext", BoxBoolean(key.Extractable)); result.Set("kty", "oct");
             result.Set("k", Convert.ToBase64String(key.Bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_'));
-            result.Set("alg", key.Name == "HMAC" ? HmacJwkAlgorithm(key.Hash) : AesJwkAlgorithm(key.Bytes.Length)); return result;
+            result.Set("alg", key.Name == "HMAC" ? HmacJwkAlgorithm(key.Hash) : AesJwkAlgorithm(key.Bytes.Length, key.Name)); return result;
         }
         if (format != "raw") throw CryptoError("NotSupportedError", "Unsupported HMAC key format");
         var buffer = new BinaryBuffer(key.Bytes.Length); key.Bytes.CopyTo(buffer.Bytes, 0); return buffer;
