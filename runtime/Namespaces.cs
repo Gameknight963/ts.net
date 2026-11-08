@@ -42,6 +42,7 @@ public static partial class Js
         internal override bool IsReadOnlyOwnProperty(string key) => key == "prototype" || base.IsReadOnlyOwnProperty(key);
         public override object Set(string key, object value) => key == "prototype" ? throw new InvalidOperationException("Function prototype is read-only") : base.Set(key, value);
         readonly HashSet<string> hidden = new();
+        internal override void Define(Descriptor descriptor) { base.Define(descriptor); hidden.Remove(descriptor.Key); }
         public override bool DeleteOwn(string key) { bool removed = base.DeleteOwn(key); if (removed) hidden.Remove(key); return removed; }
         internal override bool ForInEnumerable(string key) => !hidden.Contains(key) && base.ForInEnumerable(key);
         internal void Member(string name, object value) { DefineOwn(name, value); hidden.Add(name); }

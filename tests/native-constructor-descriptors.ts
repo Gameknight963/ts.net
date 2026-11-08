@@ -1,0 +1,18 @@
+export {};
+const original = Number.isFinite;
+Object.defineProperty(Number, 'isFinite', {enumerable: true});
+console.log('keys', Object.keys(Number).join(','), Number.isFinite === original);
+Object.defineProperty(Number, 'isFinite', {enumerable: false, writable: false});
+console.log('hidden', Object.keys(Number).length, Number.isFinite(3));
+console.log('readonly', Reflect.set(Number, 'isFinite', () => false));
+const epsilon = Object.getOwnPropertyDescriptor(Number, 'EPSILON')!;
+console.log('constant', epsilon.writable, epsilon.enumerable, epsilon.configurable);
+console.log('same constant', Reflect.defineProperty(Number, 'EPSILON', {value: Number.EPSILON}));
+console.log('changed constant', Reflect.defineProperty(Number, 'EPSILON', {value: 0}));
+Object.defineProperty(Array, 'isArray', {enumerable: true});
+console.log('array keys', Object.keys(Array).join(','), Array.isArray([]));
+Object.seal(Number);
+console.log('sealed', Object.isSealed(Number), Object.isFrozen(Number), Reflect.deleteProperty(Number, 'isFinite'));
+Object.freeze(Array);
+console.log('array frozen', Object.isFrozen(Array), Reflect.defineProperty(Array, 'of', {value: () => []}), Array.of(1, 2).join(','));
+console.log('species accessor', Object.getOwnPropertyDescriptor(Array, Symbol.species)!.configurable, Array[Symbol.species] === Array);
