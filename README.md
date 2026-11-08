@@ -38,10 +38,6 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current performance
 
-Rows from the first Numeric loop through String ordering, and compilation times, measured at [395e8ad](https://github.com/Gameknight963/ts.net/commit/395e8ade44a27da41ba17b08a7dbe7baa4862c0e). Other measurements remain from [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9), except typed-array traversal, measured at [e3c9b8a](https://github.com/Gameknight963/ts.net/commit/e3c9b8a):
-
-Updated execution rows use Release builds and the median of 35 samples across five fresh processes, after at least 100 warmup calls and 500 ms of warmup per process; startup is excluded. Compilation uses medians of seven fresh processes and includes startup; the full test suite ran concurrently.
-
 Runtime performance:
 
 <details>
@@ -117,7 +113,5 @@ Compilation times:
 |---|---|---|
 | Small numeric benchmark | 503.72 ms | 354.32 ms |
 | 5,000 variables | 754.27 ms | 391.27 ms |
-
-Arithmetic and small typed-object loops look healthy; mixed arrays and stored object copies still need work.
 
 Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
