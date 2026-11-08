@@ -11,6 +11,7 @@ public static partial class Js
         ClearKeptWeakTargets();
         while (promiseJobs != null && promiseJobs.TryDequeue(out var job))
             try { job(); } finally { ClearKeptWeakTargets(); }
+        CheckFinalizationRegistries();
         if (unhandledPromises != null)
             foreach (var promise in unhandledPromises)
                 if (!promise.Handled) throw MakeThrown(promise.Result);
