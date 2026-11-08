@@ -22,4 +22,20 @@ public static partial class Js
         }
         return true;
     }
+    static object SetObjectIntegrity(object value, bool frozen)
+    {
+        if (value is not TsObject target || ObjectIntegrity(value, frozen)) return value;
+        ObjectPreventExtensions(value);
+        var names = (JsArray)target.OwnPropertyNames();
+        for (uint index = 0; index < names.Length(); index++)
+        {
+            string key = (string)names.ElementAt(index);
+            var descriptor = target.OwnPropertyDescriptor(key) as TsObject;
+            if (descriptor == null) continue;
+            DescriptorFields fields = DescriptorFields.Configurable;
+            if (frozen && descriptor.HasOwn("writable")) fields |= DescriptorFields.Writable;
+            ApplyPropertyDefinition(target, key, new(Undefined, null, null, false, false, false, fields));
+        }
+        return value;
+    }
 }

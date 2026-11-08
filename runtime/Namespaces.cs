@@ -147,6 +147,8 @@ public static partial class Js
         result.Member("is", new JsFunction((FunctionBody)(static args => BoxBoolean(SameValue(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "is", 2));
         result.Member("isExtensible", new JsFunction((FunctionBody)(static args => BoxBoolean(ObjectExtensible(FunctionArgument(args, 0)))), null, "isExtensible", 1));
         result.Member("preventExtensions", new JsFunction((FunctionBody)(static args => ObjectPreventExtensions(FunctionArgument(args, 0))), null, "preventExtensions", 1));
+        result.Member("seal", new JsFunction((FunctionBody)(static args => SetObjectIntegrity(FunctionArgument(args, 0), false)), null, "seal", 1));
+        result.Member("freeze", new JsFunction((FunctionBody)(static args => SetObjectIntegrity(FunctionArgument(args, 0), true)), null, "freeze", 1));
         result.Member("isSealed", new JsFunction((FunctionBody)(static args => BoxBoolean(ObjectIntegrity(FunctionArgument(args, 0), false))), null, "isSealed", 1));
         result.Member("isFrozen", new JsFunction((FunctionBody)(static args => BoxBoolean(ObjectIntegrity(FunctionArgument(args, 0), true))), null, "isFrozen", 1));
         result.Member("getOwnPropertyDescriptor", new JsFunction((FunctionBody)(static args => ObjectOwnDescriptor(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "getOwnPropertyDescriptor", 2));

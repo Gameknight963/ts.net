@@ -62,7 +62,7 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 				name = name.Expression()
 			}
 			owner := declaration.Parent.Parent
-			if (name.Kind == ast.KindIdentifier || name.Kind == ast.KindStringLiteral) && (name.Text() == "defineProperty" || name.Text() == "defineProperties" || name.Text() == "preventExtensions") && owner != nil &&
+			if (name.Kind == ast.KindIdentifier || name.Kind == ast.KindStringLiteral) && (name.Text() == "defineProperty" || name.Text() == "defineProperties" || name.Text() == "preventExtensions" || name.Text() == "seal" || name.Text() == "freeze") && owner != nil &&
 				(owner.Kind == ast.KindVariableDeclaration || owner.Kind == ast.KindParameter) && b.reflectionDefinitionValue(owner.Initializer(), seen) == 1 {
 				return 2
 			}
@@ -77,13 +77,18 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 		if expression.OperatorToken.Kind == ast.KindCommaToken {
 			return b.reflectionDefinitionValue(expression.Right, seen)
 		}
+	case ast.KindConditionalExpression:
+		expression := n.AsConditionalExpression()
+		if b.reflectionDefinitionValue(expression.WhenTrue, seen) == 2 || b.reflectionDefinitionValue(expression.WhenFalse, seen) == 2 {
+			return 2
+		}
 	case ast.KindPropertyAccessExpression:
-		if (n.Name().Text() == "defineProperty" || n.Name().Text() == "defineProperties" || n.Name().Text() == "preventExtensions") && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
+		if (n.Name().Text() == "defineProperty" || n.Name().Text() == "defineProperties" || n.Name().Text() == "preventExtensions" || n.Name().Text() == "seal" || n.Name().Text() == "freeze") && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
 			return 2
 		}
 	case ast.KindElementAccessExpression:
 		key := n.AsElementAccessExpression().ArgumentExpression
-		if key.Kind == ast.KindStringLiteral && (key.Text() == "defineProperty" || key.Text() == "defineProperties" || key.Text() == "preventExtensions") && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
+		if key.Kind == ast.KindStringLiteral && (key.Text() == "defineProperty" || key.Text() == "defineProperties" || key.Text() == "preventExtensions" || key.Text() == "seal" || key.Text() == "freeze") && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
 			return 2
 		}
 	}
