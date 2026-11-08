@@ -7,6 +7,8 @@ public static partial class Js
     {
         internal readonly SortedDictionary<string, List<string>> Fields = new(StringComparer.Ordinal);
         List<KeyValuePair<string,string>> rows;
+        internal bool Immutable;
+        internal void CheckMutable() { if (Immutable) throw new InvalidOperationException("Headers are immutable"); }
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)HeaderConstructors.Value.Get("prototype");
         internal List<KeyValuePair<string,string>> Rows {
             get {
@@ -22,12 +24,12 @@ public static partial class Js
         internal static string Joined(string name, List<string> values) => values.Count == 1 ? values[0] : string.Join(name == "cookie" ? "; " : ", ",values);
         internal void Append(string name, string value, bool replace = false)
         {
-            name = HeaderName(name); value = HeaderValue(value);
+            CheckMutable(); name = HeaderName(name); value = HeaderValue(value);
             if (replace || !Fields.TryGetValue(name,out var values)) Fields[name] = new List<string> {value};
             else values.Add(value);
             rows = null;
         }
-        internal void Remove(string name) { if (Fields.Remove(name)) rows = null; }
+        internal void Remove(string name) { CheckMutable(); if (Fields.Remove(name)) rows = null; }
     }
     static HeadersValue RequireHeaders(object receiver) => receiver as HeadersValue ?? throw new InvalidOperationException("Headers receiver required");
     static void HeaderArguments(object[] arguments, int count) { if (arguments.Length < count) throw new InvalidOperationException("Missing Headers argument"); }
