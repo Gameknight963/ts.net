@@ -19,3 +19,16 @@ Object.defineProperty(value, 'zero', {value: -0});
 try {Object.defineProperty(value, 'zero', {value: 0});} catch (error) {console.log('zero', (error as Error).name);}
 Object.defineProperty(value, 'a', {});
 console.log('order', Object.getOwnPropertyNames(value).join(','));
+const accessor = Object.create(null, {item: {get: read}});
+console.log('same getter', Reflect.defineProperty(accessor, 'item', {get: read}));
+console.log('different getter', Reflect.defineProperty(accessor, 'item', {get() {return 10;}}));
+console.log('add setter', Reflect.defineProperty(accessor, 'item', {set(next: number) {stored = next;}}));
+console.log('remove getter', Reflect.defineProperty(accessor, 'item', {get: undefined}));
+console.log('empty accessor', Reflect.defineProperty(accessor, 'item', {}), accessor.item);
+const changing = Object.create(null, {item: {value: 1, writable: true, enumerable: true, configurable: true}});
+Object.defineProperty(changing, 'item', {get: read});
+let descriptor = Object.getOwnPropertyDescriptor(changing, 'item')!;
+console.log('to accessor', descriptor.get === read, descriptor.set === undefined, 'value' in descriptor, descriptor.enumerable, descriptor.configurable);
+Object.defineProperty(changing, 'item', {writable: true});
+descriptor = Object.getOwnPropertyDescriptor(changing, 'item')!;
+console.log('to data', descriptor.value === undefined, descriptor.writable, 'get' in descriptor, descriptor.enumerable, descriptor.configurable);
