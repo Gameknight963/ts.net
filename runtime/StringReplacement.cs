@@ -53,10 +53,12 @@ public static partial class Js
     }
     static object ReplaceRegExp(string text, JsRegExp regex, object replacement, bool all)
     {
-        bool global = regex.Flags.Contains('g'), sticky = regex.Flags.Contains('y');
-        if (all && !global) throw new InvalidOperationException("replaceAll requires a global regular expression");
         var function = replacement as JsFunction;
         string template = function == null ? StringValue(replacement) : null;
+        string flags = StringValue(regex.Get("flags"));
+        bool global = flags.Contains('g'), sticky = regex.Flags.Contains('y');
+        if (all && !global) throw new InvalidOperationException("replaceAll requires a global regular expression");
+        if (!HasBuiltinRegExpExec(regex) || flags != regex.Flags) return ReplaceCustomRegExp(text, regex, function, template, flags);
         if (global) regex.LastIndex = 0d;
         double start = Number(regex.LastIndex);
         start = double.IsNaN(start) || start <= 0 ? 0 : Math.Truncate(start);
@@ -100,7 +102,7 @@ public static partial class Js
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
             object searchValue = FunctionArgument(arguments, 0);
-            if (all && searchValue is JsRegExp checkedRegex && !checkedRegex.Flags.Contains('g')) throw new InvalidOperationException("replaceAll requires a global regular expression");
+            if (all && searchValue is JsRegExp checkedRegex && !StringValue(checkedRegex.Get("flags")).Contains('g')) throw new InvalidOperationException("replaceAll requires a global regular expression");
             if (TryStringProtocol(receiver, searchValue, ReplaceSymbol, FunctionArgument(arguments, 1), true, out var custom)) return custom;
             string text = AtString(receiver);
             if (searchValue is JsRegExp regex) return ReplaceRegExp(text, regex, FunctionArgument(arguments, 1), all);

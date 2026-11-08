@@ -6,10 +6,17 @@ public static partial class Js
     {
         internal object Execute(object receiver, object input, object second)
         {
-            if (kind is 0 or 3 && receiver is not JsRegExp)
+            if (kind is 0 or 2 or 3 && receiver is not JsRegExp)
             {
                 if (receiver is not TsObject source) throw new InvalidOperationException("RegExp method requires an object");
-                return MatchCustomRegExp(StringValue(input), source, kind == 3);
+                string converted = StringValue(input);
+                if (kind == 2)
+                {
+                    var function = second as JsFunction;
+                    string template = function == null ? StringValue(second) : null;
+                    return ReplaceCustomRegExp(converted, source, function, template, StringValue(source.Get("flags")));
+                }
+                return MatchCustomRegExp(converted, source, kind == 3);
             }
             if (receiver is not JsRegExp regex) throw new InvalidOperationException("RegExp receiver required");
             string text = StringValue(input);
