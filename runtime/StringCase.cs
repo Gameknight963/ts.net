@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Text;
 
 public static partial class Js
 {
@@ -27,9 +28,31 @@ public static partial class Js
         }
         return first ?? CultureInfo.CurrentCulture;
     }
+    static string ExpandUppercase(string text)
+    {
+        int first = text.AsSpan().IndexOfAnyInRange('\u0080', '\uffff');
+        if (first < 0) return text;
+        StringBuilder result = null;
+        int copied = 0;
+        for (int index = first; index < text.Length; index++)
+        {
+            string expansion = text[index] switch
+            {
+                '\u00df' => "SS", '\u0131' => "I", '\u0149' => "\u02bcN", '\u01f0' => "J\u030c",
+                '\ufb00' => "FF", '\ufb01' => "FI", '\ufb02' => "FL", '\ufb03' => "FFI",
+                '\ufb04' => "FFL", '\ufb05' or '\ufb06' => "ST",
+                _ => null
+            };
+            if (expansion == null) continue;
+            result ??= new StringBuilder(text.Length + 8);
+            result.Append(text, copied, index - copied).Append(expansion);
+            copied = index + 1;
+        }
+        return result == null ? text : result.Append(text, copied, text.Length - copied).ToString();
+    }
     static string CaseString(string text, bool upper, CultureInfo culture)
     {
-        if (upper) return text.ToUpper(culture).Replace("\u00df", "SS", StringComparison.Ordinal).Replace('\u0131', 'I');
+        if (upper) return ExpandUppercase(text.ToUpper(culture));
         if (culture.TwoLetterISOLanguageName is not ("tr" or "az"))
             text = text.Replace("\u0130", "i\u0307", StringComparison.Ordinal);
         return text.ToLower(culture);
