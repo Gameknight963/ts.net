@@ -13,13 +13,18 @@ public static partial class Js
             settings = new NumberLocaleSettings(locales, options);
             Format = new JsFunction((FunctionBody)(args => Text(FunctionArgument(args, 0))), null, "", 1);
         }
-        internal string Text(object value) => value is BigInteger integer ? settings.Format(integer, true) : FormatNumber(Number(value));
-        string FormatNumber(double value) => settings.Format(value, double.IsFinite(value));
+        internal string Text(object value) => settings.LocalizeDigits(LatinText(value));
+        string LatinText(object value)
+        {
+            value = IntlNumericValue(value);
+            if (value is LocaleDecimal exact) return settings.FormatLatin(exact, true);
+            if (value is BigInteger integer) return settings.FormatLatin(integer, true);
+            double number = Number(value);
+            return settings.FormatLatin(number, double.IsFinite(number));
+        }
         internal object Parts(object value)
         {
-            string text;
-            if (value is BigInteger integer) text = settings.FormatLatin(integer, true);
-            else { double number = Number(value); text = settings.FormatLatin(number, double.IsFinite(number)); }
+            string text = LatinText(value);
             var info = settings.culture.NumberFormat;
             var result = new JsArray(0);
             void Part(string type, string contents)

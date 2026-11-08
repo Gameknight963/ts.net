@@ -342,7 +342,8 @@ public static partial class Js
         internal string FormatLatin<T>(T value, bool finite) where T : struct, IFormattable
         {
             int fractionMinimum = minimum, fractionMaximum = maximum, notationExponent = 0;
-            string result = finite && value is double numberValue ? FiniteNumber(numberValue, out fractionMinimum, out fractionMaximum, out notationExponent)
+            string result = value is LocaleDecimal exact ? NumericText(exact.Digits, exact.Exponent + (style == "percent" ? 2 : 0), exact.Negative, out fractionMinimum, out fractionMaximum, out notationExponent)
+                : finite && value is double numberValue ? FiniteNumber(numberValue, out fractionMinimum, out fractionMaximum, out notationExponent)
                 : (maximumSignificant != 0 || notation != "standard") && value is BigInteger significantInteger
                     ? NumericText(BigInteger.Abs(significantInteger), style == "percent" ? 2 : 0, significantInteger.Sign < 0, out fractionMinimum, out fractionMaximum, out notationExponent)
                 : (roundingIncrement != 1 || groupingOption is "min2") && value is BigInteger quantizedInteger
@@ -362,7 +363,7 @@ public static partial class Js
             }
             if (signDisplay != "auto")
             {
-                bool negative = value is double number ? !double.IsNaN(number) && double.IsNegative(number) : value is System.Numerics.BigInteger integer && integer.Sign < 0;
+                bool negative = value is LocaleDecimal decimalValue ? decimalValue.Negative : value is double number ? !double.IsNaN(number) && double.IsNegative(number) : value is System.Numerics.BigInteger integer && integer.Sign < 0;
                 // Sign selection uses the rounded value; exceptZero also leaves NaN unsigned.
                 bool zero = value is double numeric && double.IsNaN(numeric);
                 if (finite)
