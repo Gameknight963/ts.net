@@ -38,9 +38,11 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current performance
 
-Measurements from [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9), except typed-array traversal, measured at [e3c9b8a](https://github.com/Gameknight963/ts.net/commit/e3c9b8a):
+Most measurements are from [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9). Typed-array traversal was measured at [e3c9b8a](https://github.com/Gameknight963/ts.net/commit/e3c9b8a), copying at [40bb34e](https://github.com/Gameknight963/ts.net/commit/40bb34e), ECDSA at [8757bf3](https://github.com/Gameknight963/ts.net/commit/8757bf3), ECDH at [f6db42d](https://github.com/Gameknight963/ts.net/commit/f6db42d), and RSA signing at [18ba164](https://github.com/Gameknight963/ts.net/commit/18ba164).
 
 Runtime performance:
+
+The traversal, copy, and crypto rows use Release builds and medians of seven fresh processes, excluding startup and compilation. Traversal and copying have three warmup calls; crypto has ten warmup operations and excludes key generation. Crypto rows time 100 sequential operations, signing 32-byte messages or deriving 256 bits; the new copy and crypto measurements ran alongside the full test suite. Result is Node time divided by ts.net time, so larger is better.
 
 <details>
 <summary>Click to expand large table</summary>
@@ -48,6 +50,10 @@ Runtime performance:
 | Workload | ts.net | Node | Result |
 |---|---|---|---|
 | Float64Array traversal, 10K elements and 100 passes | 0.784 ms | 0.718 ms | 0.92x |
+| Uint8Array copy, 20 copies of 16 KiB | 0.143 ms | 0.124 ms | 0.87x |
+| ECDSA P-256/SHA-256, 100 signatures | 25.33 ms | 9.68 ms | 0.38x |
+| ECDH P-256, 100 derivations | 65.99 ms | 13.21 ms | 0.20x |
+| RSA-2048 PKCS1/SHA-256, 100 signatures | 51.17 ms | 56.60 ms | 1.11x |
 | Numeric loop, 20M iterations | 14.44 ms | 74.71 ms | 5.17x |
 | Typed-object loop, 500K iterations | 0.38 ms | 0.66 ms | 1.74x |
 | `any` property loop, 350K iterations | 0.27 ms | 0.43 ms | 1.59x |
@@ -89,7 +95,7 @@ Runtime performance:
 | map, filter and sum, 10 passes over 10K numbers | 23 ms | 2 ms | 0.09x |
 | reduce and reduceRight, 10 pairs over 10K numbers | 7 ms | 1 ms | 0.19x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
-| copyWithin, 1K copies of 5K entries in a 10K packed array | 1 ms | 269 ms | 0.0031x |
+| copyWithin, 1K copies of 5K entries in a 10K packed array | 1 ms | 269 ms | 321x |
 | Object.assign, create 1K objects with 3 fields | 1 ms | 0 ms | 0.10x |
 | Split 10K comma-separated strings, keep three parts, and sum lengths | 4 ms | 2 ms | 0.50x |
 | Create/read a two-field object in a 100K-iteration loop, with a read-only Reflect alias in the program | 8 ms | 0.077 ms | 0.01x |
@@ -118,4 +124,4 @@ Compilation times:
 
 Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
 
-Eligible read-only Float64Array traversal improved from 18.79 ms to 0.784 ms, with zero allocations during the loop. Node measured 0.718 ms, so this workload is now close to Node; loops with calls, writes, custom lengths, or other view layouts keep the ordinary path. These new measurements are medians of seven fresh processes after three warmup calls, with startup and compilation excluded.
+Eligible read-only Float64Array traversal improved from 18.79 ms to 0.784 ms with zero loop allocations; loops with calls, writes, custom lengths, or other view layouts keep the ordinary path. Typed-array copying fell from 63.0 ms to 0.143 ms in this workload, which is encouraging: both copying and traversal are now close to Node. RSA signing is also close, but ECDSA and ECDH remain noticeably slower; equivalent C# ECDH measured 62.9 ms, suggesting most of that gap is in the platform crypto path.
