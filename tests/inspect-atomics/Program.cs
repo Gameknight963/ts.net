@@ -3,6 +3,11 @@ try{
  var buffer=constructor.Construct(new object[]{16d});var clone=((JsFunction)Js.BuiltinNamespace("structuredClone")).InvokeWithReceiver(Js.Undefined,new object[]{buffer});
  var first=integers.Construct(new[]{buffer});var second=integers.Construct(new[]{clone});var byteView=bytes.Construct(new[]{buffer});
  var atomics=(TsObject)Js.BuiltinNamespace("Atomics");var add=(JsFunction)atomics.Get("add");var load=(JsFunction)atomics.Get("load");var store=(JsFunction)atomics.Get("store");
+ var pause=(JsFunction)atomics.Get("pause");
+ // The current API has no parameters; extra arguments must not be converted.
+ foreach(object argument in new object[]{Js.Undefined,null,0d,-1d,1.5d,double.NaN,double.PositiveInfinity,"1",System.Numerics.BigInteger.One,new PauseArgument()})
+  if(!Js.IsUndefined(pause.InvokeWithReceiver(null,new[]{argument})))throw new Exception("Atomics.pause did not return undefined");
+ Console.WriteLine("PASS Atomics.pause ignores extra arguments without coercion");
  const int workers=8,iterations=50000;
  Parallel.For(0,workers,worker=>{var view=worker%2==0?first:second;for(int index=0;index<iterations;index++)add.InvokeWithReceiver(atomics,new object[]{view,0d,1d});});
  if((double)load.InvokeWithReceiver(atomics,new object[]{first,0d})!=workers*iterations)throw new Exception("Lost updates through cloned shared buffers");
@@ -29,3 +34,6 @@ try{
  Console.WriteLine("PASS cross-wrapper and cross-width wakeups and concurrent timeout/notify accounting");
  Console.WriteLine("PASS 800000 concurrent updates through cloned buffers and overlapping integer widths; lock-free query is honest");
 }catch(Exception error){Console.Error.WriteLine(error);Environment.ExitCode=1;}
+sealed class PauseArgument:TsObject{
+ public override object Get(string key)=>throw new Exception("Atomics.pause accessed an argument property");
+}

@@ -60,6 +60,9 @@ public static partial class Js
         }
         result.DefineMethod("wait", new JsFunction((FunctionBody)AtomicWait, null, "wait", 4));
         result.DefineMethod("notify", new JsFunction((FunctionBody)AtomicNotify, null, "notify", 3));
+        result.DefineMethod("pause", new JsFunction((FunctionBody)(static _ => {
+            System.Threading.Thread.SpinWait(1); return Undefined;
+        }), null, "pause", 0));
         // The current implementation uses CLR locks for every integer width.
         result.DefineMethod("isLockFree", new JsFunction((FunctionBody)(static args => { _ = Number(FunctionArgument(args, 0)); return BoxBoolean(false); }), null, "isLockFree", 1));
         result.DefineMethod(PropertyKey(ToStringTagSymbol), "Atomics"); return result;
