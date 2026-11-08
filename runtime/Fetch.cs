@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 public static partial class Js
 {
-    sealed record FetchInput(Uri Url, string Method, byte[] Body, List<KeyValuePair<string, string[]>> Headers, string Redirect);
+    sealed record FetchInput(Uri Url, string Method, byte[] Body, List<KeyValuePair<string, string[]>> Headers, string Redirect, string Integrity);
     sealed record FetchOutput(int Status, string StatusText, string Url, bool Redirected, List<KeyValuePair<string, string[]>> Headers, byte[] Body);
     static class FetchFunctions
     {
@@ -36,11 +36,10 @@ public static partial class Js
             if (request.Signal.Aborted) { result.Settle(request.Signal.Reason, true); return result; }
             var uri = new Uri(request.Url);
             if (uri.Scheme is not ("http" or "https")) throw new InvalidOperationException("Fetch currently supports HTTP and HTTPS URLs");
-            if (request.Integrity.Length != 0) throw new NotSupportedException("Fetch integrity checks are not supported");
             var headers = new List<KeyValuePair<string, string[]>>();
             foreach (var header in request.Headers.Fields) headers.Add(new(header.Key, header.Value.ToArray()));
             byte[] body = request.Body?.Consume();
-            var input = new FetchInput(new UriBuilder(uri) { Fragment = "" }.Uri, request.Method, body, headers, request.Redirect);
+            var input = new FetchInput(new UriBuilder(uri) { Fragment = "" }.Uri, request.Method, body, headers, request.Redirect, request.Integrity);
             new FetchWork(result, request.Signal, CaptureHostEvents()).Start(input);
         }
         catch (Exception error) { result.Settle(CaughtValue(error), true); }
@@ -160,6 +159,7 @@ public static partial class Js
                     using var output = new MemoryStream(); await decoded.CopyToAsync(output, cancellation).ConfigureAwait(false); bytes = output.ToArray();
                 }
             }
+            CheckFetchIntegrity(input.Integrity, bytes);
             return new FetchOutput(status, response.ReasonPhrase ?? "", url.AbsoluteUri, redirects != 0, resultHeaders, bytes);
         }
     }
