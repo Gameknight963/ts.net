@@ -1,0 +1,16 @@
+export {};
+const output = console.log;
+let messages = '';
+console.log = function(this: unknown, ...values: any[]) {messages += String(this === console) + ':' + values.join('|'); return 'returned';};
+const result = console.log('wrapped', 3);
+output('console', messages, result);
+const originalNow = performance.now;
+performance.now = () => 123;
+output('clock', performance.now(), performance.now.call(performance));
+performance.now = originalNow;
+output('clock restored', performance.now() >= 0);
+const originalHasOwn = Object.hasOwn;
+Object.hasOwn = (_value: unknown, key: PropertyKey) => key === 'override';
+output('hasOwn', Object.hasOwn({a: 1}, 'a'), Object.hasOwn({}, 'override'));
+Object.hasOwn = originalHasOwn;
+output('hasOwn restored', Object.hasOwn({a: 1}, 'a'));

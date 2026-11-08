@@ -6,6 +6,9 @@ import (
 )
 
 func (b *irBuilder) isBuiltinHasOwn(n *ast.Node) bool {
+	if b.mutableObjectMethods {
+		return false
+	}
 	if n.Kind != ast.KindPropertyAccessExpression || n.Name().Text() != "hasOwn" || n.Expression().Kind != ast.KindIdentifier || n.Expression().Text() != "Object" {
 		return false
 	}
@@ -192,7 +195,7 @@ func (b *irBuilder) intrinsicVoidCall(callee int) bool {
 }
 
 func (b *irBuilder) objectEnumeration(n *ast.Node) int {
-	if b.mutableObjectEnumeration {
+	if b.mutableObjectMethods {
 		return -1
 	}
 	name := ""

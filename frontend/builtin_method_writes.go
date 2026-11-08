@@ -56,11 +56,16 @@ func builtinNamespaceMayChange(n *ast.Node) bool {
 func (b *irBuilder) prepareBuiltinMethodWrites(files []*ast.SourceFile) {
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
-		if n.Kind == ast.KindIdentifier && (n.Text() == "Number" || n.Text() == "Object") && b.isBuiltinIdentifier(n) && builtinNamespaceMayChange(n) {
-			if n.Text() == "Number" {
+		if n.Kind == ast.KindIdentifier && (n.Text() == "Number" || n.Text() == "Object" || n.Text() == "console" || n.Text() == "performance") && b.isBuiltinIdentifier(n) && builtinNamespaceMayChange(n) {
+			switch n.Text() {
+			case "Number":
 				b.mutableNumberMethods = true
-			} else {
-				b.mutableObjectEnumeration = true
+			case "Object":
+				b.mutableObjectMethods = true
+			case "console":
+				b.mutableConsoleLog = true
+			case "performance":
+				b.mutablePerformanceNow = true
 			}
 		}
 		n.ForEachChild(func(child *ast.Node) bool { visit(child); return false })
