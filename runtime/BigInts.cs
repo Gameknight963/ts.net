@@ -101,11 +101,12 @@ public static partial class Js
     {
         double bits = Number(FunctionArgument(args, 0));
         bits = double.IsNaN(bits) ? 0 : Math.Truncate(bits);
-        if (bits < 0 || bits > int.MaxValue) throw new ArgumentOutOfRangeException(nameof(args), "BigInt width exceeds the supported range");
+        if (bits < 0 || bits > 9007199254740991d) throw new ArgumentOutOfRangeException(nameof(args), "BigInt width is out of range");
         BigInteger value = BigIntValue(FunctionArgument(args, 1), false);
+        if (bits == 0) return BigInteger.Zero;
+        if (signed && value.GetBitLength() < bits || !signed && value.Sign >= 0 && value.GetBitLength() <= bits) return value;
+        if (bits > int.MaxValue) throw new ArgumentOutOfRangeException(nameof(args), "BigInt result exceeds the supported size");
         int count = (int)bits;
-        if (count == 0) return BigInteger.Zero;
-        if (signed && value.GetBitLength() < count || !signed && value.Sign >= 0 && value.GetBitLength() <= count) return value;
         BigInteger modulus = BigInteger.One << count;
         BigInteger result = value % modulus;
         if (result.Sign < 0) result += modulus;
