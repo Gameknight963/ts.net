@@ -37,6 +37,13 @@ public static partial class Js
             char ch = pattern[i];
             if (ch == '\\')
             {
+                if (i + 1 < pattern.Length && pattern[i + 1] is 'x' or 'u')
+                {
+                    int digits = pattern[i + 1] == 'x' ? 2 : 4;
+                    bool valid = pattern.Length - i - 2 >= digits;
+                    for (int digit = 0; valid && digit < digits; digit++) valid = char.IsAsciiHexDigit(pattern[i + 2 + digit]);
+                    if (!valid) { rewritten.Append(pattern[++i]); continue; }
+                }
                 if (i + 1 < pattern.Length && pattern[i + 1] is 'a' or 'e' or 'A' or 'G' or 'Z' or 'z' or 'p' or 'P')
                 {
                     // These are identity escapes without u/v, but .NET assigns
