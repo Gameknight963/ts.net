@@ -72,6 +72,18 @@ public static partial class Js
             if (!IsUndefined(optionValue))
             {
                 var options = ToObject(optionValue);
+                object requestedNumberingSystem = options.Get("numberingSystem");
+                if (!IsUndefined(requestedNumberingSystem))
+                {
+                    string system = StringValue(requestedNumberingSystem);
+                    foreach (string part in system.Split('-'))
+                    {
+                        if (part.Length is < 3 or > 8) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid numbering system");
+                        foreach (char ch in part)
+                            if (!char.IsAsciiLetterOrDigit(ch)) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid numbering system");
+                    }
+                    if (system != "latn") throw new NotSupportedException("The requested numbering system is not supported");
+                }
                 object requestedStyle = options.Get("style");
                 if (!IsUndefined(requestedStyle)) style = StringValue(requestedStyle);
                 if (style == "unit") throw new NotSupportedException("Number locale formatting option style is not supported");
@@ -112,7 +124,7 @@ public static partial class Js
                     positivePattern = SpaceCurrencyTemplate(1d.ToString("C0", culture));
                     negativePattern = SpaceCurrencyTemplate((-1d).ToString("C0", culture));
                 }
-                foreach (string key in new[] { "compactDisplay", "unit", "numberingSystem" })
+                foreach (string key in new[] { "compactDisplay", "unit" })
                     if (!IsUndefined(options.Get(key))) throw new NotSupportedException("Number locale formatting option " + key + " is not supported");
                 object requestedNotation = options.Get("notation");
                 if (!IsUndefined(requestedNotation)) notation = StringValue(requestedNotation);
