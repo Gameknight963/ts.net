@@ -6,21 +6,7 @@ import (
 )
 
 func (b *irBuilder) functionName(n *ast.Node) string {
-	name := ""
-	parent := n.Parent
-	for parent != nil && (parent.Kind == ast.KindParenthesizedExpression || parent.Kind == ast.KindAsExpression || parent.Kind == ast.KindTypeAssertionExpression || parent.Kind == ast.KindSatisfiesExpression) {
-		parent = parent.Parent
-	}
-	if parent != nil {
-		switch parent.Kind {
-		case ast.KindVariableDeclaration, ast.KindPropertyAssignment, ast.KindPropertyDeclaration:
-			if property, known := b.literalPropertyName(parent.Name()); known {
-				name = property
-			}
-		case ast.KindExportAssignment:
-			name = "default"
-		}
-	}
+	name := b.inferredExpressionName(n)
 	if n.Name() != nil {
 		if n.Kind == ast.KindMethodDeclaration || n.Kind == ast.KindGetAccessor || n.Kind == ast.KindSetAccessor {
 			name, _ = b.literalPropertyName(n.Name())

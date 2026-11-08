@@ -28,7 +28,7 @@ func (b *irBuilder) className(n *ast.Node) string {
 			return name
 		}
 	}
-	return ""
+	return b.inferredExpressionName(n)
 }
 func (b *irBuilder) newFunction(n *ast.Node, name string) (int, int) {
 	typ := b.typ(b.c.GetAnyType())
