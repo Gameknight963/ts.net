@@ -90,21 +90,22 @@ public static partial class Js
     static class BufferedBodyMethods
     {
         internal static readonly TsObject Prototype = Create();
+        internal static readonly JsFunction Constructor = new CustomStreamConstructor();
         static TsObject Create()
         {
             var result = new JsClassInstance {ParentPrototype = DefaultClassObjectPrototype};
             result.DefineMethod(PropertyKey(ToStringTagSymbol),"ReadableStream",false);
-            result.DefineAccessor("locked",new CollectionMethod("get locked",0,(receiver,_) => BoxBoolean(RequireBufferedBody(receiver).Locked)),1);
-            result.DefineOwn("getReader",new CollectionMethod("getReader",0,(receiver,args) => RequireBufferedBody(receiver).GetReader(FunctionArgument(args,0))));
+            result.DefineAccessor("locked",new CollectionMethod("get locked",0,(receiver,_) => BoxBoolean(StreamLocked(receiver))),1);
+            result.DefineOwn("getReader",new CollectionMethod("getReader",0,(receiver,args) => GetDefaultStreamReader(receiver,FunctionArgument(args,0))));
             var values = new CollectionMethod("values",0,(receiver,args) => {
-                var body = RequireBufferedBody(receiver); object options = FunctionArgument(args,0);
+                object options = FunctionArgument(args,0);
                 if (!IsNullish(options) && options is not TsObject) throw new InvalidOperationException("Iterator options must be an object");
                 bool preventCancel = options is TsObject settings && Truthy(settings.Get("preventCancel"));
-                return new BufferedBodyIterator(body.GetReader(Undefined),preventCancel);
+                return receiver is CustomReadableStream stream ? new CustomStreamIterator(stream.GetReader(Undefined),preventCancel) : new BufferedBodyIterator(RequireBufferedBody(receiver).GetReader(Undefined),preventCancel);
             });
             result.DefineOwn("values",values); result.DefineMethod(PropertyKey(AsyncIteratorSymbol),values);
             result.DefineOwn("tee",new CollectionMethod("tee",0,(receiver,_) => TeeBufferedBody(RequireBufferedBody(receiver))));
-            result.DefineOwn("cancel",new CollectionMethod("cancel",0,(receiver,_) => CancelBufferedBody(receiver,false)));
+            result.DefineOwn("cancel",new CollectionMethod("cancel",0,(receiver,args) => receiver is CustomReadableStream stream ? BodyPromiseOperation(() => stream.CancelUnlocked(FunctionArgument(args,0))) : CancelBufferedBody(receiver,false)));
             return result;
         }
     }
@@ -159,10 +160,10 @@ public static partial class Js
         {
             var result = new JsClassInstance {ParentPrototype = DefaultClassObjectPrototype};
             result.DefineMethod(PropertyKey(ToStringTagSymbol),"ReadableStreamDefaultReader",false);
-            result.DefineAccessor("closed",new CollectionMethod("get closed",0,(receiver,_) => RequireBufferedReader(receiver).ClosedPromise),1);
-            result.DefineOwn("read",new CollectionMethod("read",0,(receiver,_) => BodyOperation(() => RequireBufferedReader(receiver).Read())));
-            result.DefineOwn("cancel",new CollectionMethod("cancel",1,(receiver,_) => CancelBufferedBody(receiver,true)));
-            result.DefineOwn("releaseLock",new CollectionMethod("releaseLock",0,(receiver,_) => {RequireBufferedReader(receiver).Release();return Undefined;}));
+            result.DefineAccessor("closed",new CollectionMethod("get closed",0,(receiver,_) => BodyPromiseOperation(() => receiver is CustomStreamReader reader ? reader.ClosedPromise : RequireBufferedReader(receiver).ClosedPromise)),1);
+            result.DefineOwn("read",new CollectionMethod("read",0,(receiver,_) => receiver is CustomStreamReader reader ? reader.Read() : BodyOperation(() => RequireBufferedReader(receiver).Read())));
+            result.DefineOwn("cancel",new CollectionMethod("cancel",1,(receiver,args) => receiver is CustomStreamReader reader ? BodyPromiseOperation(() => reader.Cancel(FunctionArgument(args,0))) : CancelBufferedBody(receiver,true)));
+            result.DefineOwn("releaseLock",new CollectionMethod("releaseLock",0,(receiver,_) => {if(receiver is CustomStreamReader reader)reader.Release();else RequireBufferedReader(receiver).Release();return Undefined;}));
             return result;
         }
     }
@@ -174,6 +175,7 @@ public static partial class Js
             if (stream.Locked || stream.Disturbed) throw new InvalidOperationException("Body stream has already been consumed or locked");
             return (stream.Bytes,null,stream);
         }
+        if (input is CustomReadableStream) throw new NotSupportedException("Response and Request bodies from custom streams are not supported yet");
         if (input is BlobValue blob) return (blob.Bytes,blob.Type.Length == 0 ? null : blob.Type,null);
         if (input is SearchParamsValue query) return (Encoding.UTF8.GetBytes(query.Serialize()),"application/x-www-form-urlencoded;charset=UTF-8",null);
         if (input is BinaryBuffer or BinaryView or TypedArrayValue) {

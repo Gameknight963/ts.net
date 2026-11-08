@@ -8,7 +8,7 @@ public static partial class Js
         {
             UseObjectPrototype(prototype);
         }
-        public override object Construct(object[] args) => RequireBufferedBody(FunctionArgument(args, 0)).GetReader(Undefined);
+        public override object Construct(object[] args) => GetDefaultStreamReader(FunctionArgument(args, 0), Undefined);
         internal override bool CanInitializeDerived => true;
         internal override object InitializeDerived(object instance, object[] args)
         {
