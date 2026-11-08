@@ -90,6 +90,12 @@ public static partial class Js
             return new BinaryBuffer(length, maximum);
         }
         internal override bool CanInitializeDerived => true;
+        internal override object InitializeDerived(object instance, object[] args, JsFunction newTarget)
+        {
+            var result = (TsObject)Construct(args);
+            result.SetPrototype(ConstructionPrototype(newTarget));
+            return result;
+        }
         internal override object InitializeDerived(object instance, object[] args) { var result = (TsObject)Construct(args); result.SetPrototype(((TsObject)instance).PropertyPrototype); return result; }
     }
     static int BufferSliceIndex(object value, int length)

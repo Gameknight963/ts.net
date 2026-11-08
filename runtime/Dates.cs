@@ -77,6 +77,12 @@ public static partial class Js
         }
         public override object Construct(object[] arguments) => CreateDate(arguments);
         internal override bool CanInitializeDerived => true;
+        internal override object InitializeDerived(object instance, object[] arguments, JsFunction newTarget)
+        {
+            var result = CreateDate(arguments);
+            result.SetPrototype(ConstructionPrototype(newTarget));
+            return result;
+        }
         internal override object InitializeDerived(object instance, object[] arguments) { var result = CreateDate(arguments); result.SetPrototype(((TsObject)instance).PropertyPrototype); return result; }
     }
 }
