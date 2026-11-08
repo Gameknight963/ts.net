@@ -153,23 +153,6 @@ public static partial class Js
             var prototype = new JsClassInstance {ParentPrototype = DefaultClassObjectPrototype};
             prototype.DefineClassAccessor(PropertyKey(ToStringTagSymbol), new CollectionMethod("get [Symbol.toStringTag]", 0,
                 (receiver, _) => receiver is TypedArrayValue value ? value.Name : Undefined), 1);
-            return prototype;
-        }
-    }
-    sealed class TypedArrayConstructor : NativeNamespaceFunction
-    {
-        readonly string name;
-        internal TypedArrayConstructor(string name) : base(name, static _ => throw new InvalidOperationException("Typed array requires new"), 3)
-        {
-            this.name = name;
-            string speciesKey = PropertyKey(SpeciesSymbol); var speciesGetter = new ConstructorSpeciesGetter();
-            Member(speciesKey, Undefined); DefineAccessor(speciesKey, speciesGetter, 1); speciesGetter.InferPropertyName("get [Symbol.species]");
-            var prototype = new JsClassInstance { ParentPrototype = TypedArrayPrototypeMethods.Prototype }; UseObjectPrototype(prototype);
-            int size = BinarySize(name == "Uint8ClampedArray" ? "Uint8" : name[..^5]);
-            Define(new Descriptor("BYTES_PER_ELEMENT", (double)size, null, null, false, false, false, false));
-            prototype.Define(new Descriptor("BYTES_PER_ELEMENT", (double)size, null, null, false, false, false, false));
-            prototype.DefineMethod("constructor", this);
-            if (name == "Uint8Array") DefineByteEncoding(this, prototype);
             void Getter(string key, Func<TypedArrayValue, object> read) => prototype.DefineClassAccessor(key, new TypedArrayGetter(key, read), 1);
             Getter("length", a => (double)a.Count); Getter("byteLength", a => (double)(a.Count * a.Size));
             Getter("byteOffset", a => (double)(a.OutOfBounds ? 0 : a.Offset)); Getter("buffer", a => a.Buffer);
@@ -186,6 +169,22 @@ public static partial class Js
             prototype.DefineMethod("toString", ArrayStringMethod.Value);
             foreach (string method in new[] { "slice", "subarray", "set", "map", "filter", "toReversed", "with", "sort", "toSorted", "toLocaleString" })
                 prototype.DefineMethod(method, new CollectionMethod(method, method is "slice" or "subarray" or "with" ? 2 : method is "toLocaleString" or "toReversed" ? 0 : 1, (receiver, args) => TypedArrayMethod(RequireTypedArrayMethod(receiver), method, args)));
+            return prototype;
+        }
+    }
+    static class TypedArrayBaseConstructor
+    {
+        internal static readonly JsFunction Value = new AbstractTypedArrayConstructor();
+    }
+    sealed class AbstractTypedArrayConstructor : NativeNamespaceFunction
+    {
+        internal AbstractTypedArrayConstructor() : base("TypedArray", static _ => throw new InvalidOperationException("Abstract typed array constructor"), 0)
+        {
+            var prototype = (JsClassInstance)TypedArrayPrototypeMethods.Prototype;
+            prototype.DefineMethod("constructor", this);
+            Member("prototype", prototype);
+            string speciesKey = PropertyKey(SpeciesSymbol); var speciesGetter = new ConstructorSpeciesGetter();
+            Member(speciesKey, Undefined); DefineAccessor(speciesKey, speciesGetter, 1); speciesGetter.InferPropertyName("get [Symbol.species]");
             Member("of", new CollectionMethod("of", 0, (receiver, args) => TypedArrayFromValues(receiver, args)));
             Member("from", new CollectionMethod("from", 1, (receiver, args) =>
             {
@@ -201,6 +200,23 @@ public static partial class Js
                 }
                 return result;
             }));
+        }
+        public override object Construct(object[] args) => throw new InvalidOperationException("Abstract typed array constructor");
+        internal override bool CanInitializeDerived => true;
+    }
+    sealed class TypedArrayConstructor : NativeNamespaceFunction
+    {
+        readonly string name;
+        internal TypedArrayConstructor(string name) : base(name, static _ => throw new InvalidOperationException("Typed array requires new"), 3)
+        {
+            this.name = name;
+            SetPrototype(TypedArrayBaseConstructor.Value);
+            var prototype = new JsClassInstance { ParentPrototype = TypedArrayPrototypeMethods.Prototype }; UseObjectPrototype(prototype);
+            int size = BinarySize(name == "Uint8ClampedArray" ? "Uint8" : name[..^5]);
+            Define(new Descriptor("BYTES_PER_ELEMENT", (double)size, null, null, false, false, false, false));
+            prototype.Define(new Descriptor("BYTES_PER_ELEMENT", (double)size, null, null, false, false, false, false));
+            prototype.DefineMethod("constructor", this);
+            if (name == "Uint8Array") DefineByteEncoding(this, prototype);
         }
         public override object Construct(object[] args)
         {
