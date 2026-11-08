@@ -52,6 +52,7 @@ public static partial class Js
     }
     static string CaseString(string text, bool upper, CultureInfo culture)
     {
+        if (culture.TwoLetterISOLanguageName == "lt") text = ApplyLithuanianCasing(text, upper);
         if (upper) return ExpandUppercase(text.ToUpper(culture));
         text = ApplyFinalSigma(text);
         if (culture.TwoLetterISOLanguageName is "tr" or "az") text = ApplyTurkicDotContext(text);

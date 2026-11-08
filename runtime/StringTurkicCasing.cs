@@ -5,22 +5,25 @@ using System.Text;
 
 public static partial class Js
 {
-    [ThreadStatic] static Dictionary<int, bool> dotContextBoundaries;
-    static bool DotContextBoundary(Rune rune)
+    [ThreadStatic] static Dictionary<int, int> dotContextClasses;
+    static bool DotContextBoundary(Rune rune) => CaseCombiningClass(rune) != -1;
+    // Only starter (0), above (230), and other (-1) classes affect casing contexts.
+    static int CaseCombiningClass(Rune rune)
     {
-        if (Rune.GetUnicodeCategory(rune) is not (UnicodeCategory.NonSpacingMark or UnicodeCategory.EnclosingMark or UnicodeCategory.SpacingCombiningMark)) return true;
-        if (rune.Value is >= 0x300 and <= 0x314 or >= 0x33d and <= 0x344) return true;
+        if (Rune.GetUnicodeCategory(rune) is not (UnicodeCategory.NonSpacingMark or UnicodeCategory.EnclosingMark or UnicodeCategory.SpacingCombiningMark)) return 0;
+        if (rune.Value is >= 0x300 and <= 0x314 or >= 0x33d and <= 0x344) return 230;
         // Canonical ordering commutes with a class-230 mark exactly when this
         // mark has a different nonzero class. Two distinct reference marks
         // also handle a character that decomposes to one of the references.
-        var cache = dotContextBoundaries ??= new Dictionary<int, bool>();
-        if (cache.TryGetValue(rune.Value, out bool cached)) return cached;
+        var cache = dotContextClasses ??= new Dictionary<int, int>();
+        if (cache.TryGetValue(rune.Value, out int cached)) return cached;
         string mark = rune.ToString();
         bool Commutes(string reference) => (reference + mark).Normalize(NormalizationForm.FormD) == (mark + reference).Normalize(NormalizationForm.FormD);
         bool boundary = !Commutes("\u0300") || !Commutes("\u0301");
+        int classification = !boundary ? -1 : Commutes("\u0334") ? 230 : 0;
         if (cache.Count >= 256) cache.Clear();
-        cache.Add(rune.Value, boundary);
-        return boundary;
+        cache.Add(rune.Value, classification);
+        return classification;
     }
     static bool TurkicDotContext(string text, int index, bool backward)
     {
