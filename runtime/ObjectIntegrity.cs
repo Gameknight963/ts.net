@@ -8,7 +8,7 @@ public static partial class Js
         if (value is not TsObject target || !ObjectExtensible(value)) return value;
         if (target is TypedArrayValue array && !array.CanPreventExtensions) throw new InvalidOperationException("Cannot prevent extensions on this typed array");
         if (target is not JsDescriptorObject dictionary) throw new NotSupportedException("Preventing extensions on this object layout is not implemented yet");
-        dictionary.Extensible = false;
+        dictionary.PreventExtensions();
         return value;
     }
     static object ReflectPreventExtensions(object value)

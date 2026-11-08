@@ -3,9 +3,20 @@ using System.Collections.Generic;
 
 public abstract class JsDescriptorObject : TsObject
 {
-    internal bool Extensible = true;
-    internal override bool IsExtensible => Extensible;
     internal sealed record Descriptor(string Key, object Value, JsFunction Getter, JsFunction Setter, bool Accessor, bool Writable, bool Enumerable, bool Configurable);
+    // Keep the common object layout small; non-extensibility shares the
+    // descriptor dictionary instead of adding a flag to every instance.
+    sealed class NonExtensibleProperties : Dictionary<string, Descriptor>
+    {
+        internal NonExtensibleProperties() { }
+        internal NonExtensibleProperties(Dictionary<string, Descriptor> source) : base(source) { }
+    }
+    internal override bool IsExtensible => descriptors is not NonExtensibleProperties;
+    internal void PreventExtensions()
+    {
+        if (descriptors is not NonExtensibleProperties)
+            descriptors = descriptors == null ? new NonExtensibleProperties() : new NonExtensibleProperties(descriptors);
+    }
     Dictionary<string, Descriptor> descriptors;
     internal bool HasPropertyDescriptors => descriptors != null;
     internal void DefineMethod(string key, object value, bool writable = true) => Define(new(key, value, null, null, false, writable, false, true));
