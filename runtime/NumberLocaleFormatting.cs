@@ -78,6 +78,9 @@ public static partial class Js
             if (!IsUndefined(optionValue))
             {
                 var options = ToObject(optionValue);
+                object requestedMatcher = options.Get("localeMatcher");
+                if (!IsUndefined(requestedMatcher) && StringValue(requestedMatcher) is not ("lookup" or "best fit"))
+                    throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
                 object requestedNumberingSystem = options.Get("numberingSystem");
                 if (!IsUndefined(requestedNumberingSystem))
                 {
@@ -158,9 +161,6 @@ public static partial class Js
                 if (!IsUndefined(requestedZeros)) trailingZeroDisplay = StringValue(requestedZeros);
                 if (trailingZeroDisplay is not ("auto" or "stripIfInteger"))
                     throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid trailing zero display");
-                object matcher = options.Get("localeMatcher");
-                if (!IsUndefined(matcher) && StringValue(matcher) is not ("lookup" or "best fit"))
-                    throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
                 int Digits(string key, int fallback, int lower = 0, int upper = 100)
                 {
                     return DigitValue(options.Get(key), fallback, lower, upper);
