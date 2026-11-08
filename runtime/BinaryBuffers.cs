@@ -22,12 +22,18 @@ public static partial class Js
         internal int Length => OutOfBounds ? throw new InvalidOperationException("DataView is out of bounds") : Tracking ? Buffer.Bytes.Length - Offset : FixedLength;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)RuntimeNamespaces.DataView.Get("prototype");
     }
-    static int BinaryIndex(object value)
+    static double BinarySafeIndex(object value)
     {
         double number = Number(value);
         if (double.IsNaN(number)) return 0;
         number = Math.Truncate(number);
-        if (number < 0 || number > Array.MaxLength) throw new ArgumentOutOfRangeException(null, "Binary buffer index is out of range");
+        if (number < 0 || number > 9007199254740991d) throw new ArgumentOutOfRangeException(null, "Binary buffer index is out of range");
+        return number;
+    }
+    static int BinaryIndex(object value)
+    {
+        double number = BinarySafeIndex(value);
+        if (number > Array.MaxLength) throw new ArgumentOutOfRangeException(null, "Binary buffer index is out of range");
         return (int)number;
     }
     static BinaryBuffer RequireBufferSource(object receiver) => receiver as BinaryBuffer ?? throw new InvalidOperationException("Buffer receiver required");
@@ -132,14 +138,14 @@ public static partial class Js
     static object AccessView(object receiver, object[] args, string type, bool write)
     {
         var view = RequireView(receiver);
-        int offset = BinaryIndex(FunctionArgument(args, 0));
+        double offset = BinarySafeIndex(FunctionArgument(args, 0));
         bool bigint = type.StartsWith("Big", StringComparison.Ordinal);
         BigInteger integer = write && bigint ? BigIntValue(FunctionArgument(args, 1), false) : default;
         double value = write && !bigint ? Number(FunctionArgument(args, 1)) : 0;
         bool little = Truthy(FunctionArgument(args, write ? 2 : 1));
         int size = BinarySize(type);
         if (offset > view.Length - size) throw new ArgumentOutOfRangeException(null, "DataView access is out of range");
-        var bytes = view.Buffer.Bytes.AsSpan(view.Offset + offset, size);
+        var bytes = view.Buffer.Bytes.AsSpan(view.Offset + (int)offset, size);
         if (write) { WriteBinary(bytes, type, little, value, integer); return Undefined; }
         return ReadBinary(bytes, type, little);
     }
