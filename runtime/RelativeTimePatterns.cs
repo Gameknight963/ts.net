@@ -29,6 +29,7 @@ public static partial class Js
     }
     static (string Prefix, string Suffix) RelativeTimeAffixes(string locale, string style, string unit, bool singular, bool past)
     {
+        if (locale.StartsWith("zh", StringComparison.Ordinal)) return ChineseRelativeTimeAffixes(locale, style, unit, past);
         if (EastAsianRelativeTime(locale)) return EastAsianRelativeTimeAffixes(locale, style, unit, past);
         string noun = RelativeTimeUnitName(locale, style, unit, singular);
         if (locale.StartsWith("de", StringComparison.Ordinal)) {
@@ -44,6 +45,7 @@ public static partial class Js
     static string RelativeTimeChoice(double value, string past, string current, string future) => value == -1 ? past : value == 0 ? current : value == 1 ? future : null;
     static string RelativeTimeAutomatic(string locale, string style, double value, string unit)
     {
+        if (locale.StartsWith("zh", StringComparison.Ordinal)) return ChineseRelativeTimeAutomatic(locale, value, unit);
         if (EastAsianRelativeTime(locale)) return EastAsianRelativeTimeAutomatic(locale, value, unit);
         if (locale.StartsWith("de", StringComparison.Ordinal)) return unit switch {
             "year" => RelativeTimeChoice(value, "letztes Jahr", "dieses Jahr", "n\u00e4chstes Jahr"),

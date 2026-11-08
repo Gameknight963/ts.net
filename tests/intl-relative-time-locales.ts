@@ -1,5 +1,5 @@
 export {};
-for (const locale of ['de', 'de-DE', 'fr', 'fr-FR', 'ja', 'ja-JP', 'ko', 'ko-KR']) {
+for (const locale of ['de', 'de-DE', 'fr', 'fr-FR', 'ja', 'ja-JP', 'ko', 'ko-KR', 'zh', 'zh-CN', 'zh-TW', 'zh-Hans', 'zh-Hant', 'zh-Hant-CN', 'zh-Hans-TW']) {
     for (const style of ['long', 'short', 'narrow']) {
         for (const numeric of ['always', 'auto']) {
             const formatter = new Intl.RelativeTimeFormat(locale, {style, numeric} as any);
