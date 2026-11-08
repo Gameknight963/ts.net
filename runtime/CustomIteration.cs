@@ -15,11 +15,15 @@ public static partial class Js
         return true;
     }
 
-    static JsFunction CustomIterableMethod(object value)
+    static JsFunction CustomIterableMethod(object value) => CustomIterableMethod(value, out _);
+    static JsFunction CustomIterableMethod(object value, out bool disabled)
     {
+        disabled = false;
         if (value is not TsObject source) return null;
-        object method = source.Get(PropertyKey(IteratorSymbol));
-        if (IsNullish(method) || ReferenceEquals(method, NativeIteratorPrototypes.Self) && IsIteratorObject(source)) return null;
+        string key = PropertyKey(IteratorSymbol);
+        object method = source.Get(key);
+        if (IsNullish(method)) { disabled = source.HasInProperty(key); return null; }
+        if (ReferenceEquals(method, NativeIteratorPrototypes.Self) && IsIteratorObject(source)) return null;
         return method as JsFunction ?? throw new InvalidOperationException("Symbol.iterator is not callable");
     }
     static TsObject InvokeIterableMethod(JsFunction method, object source) =>

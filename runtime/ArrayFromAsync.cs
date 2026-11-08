@@ -27,11 +27,15 @@ public static partial class Js
                 object input = FunctionArgument(arguments, 0);
                 mapper = FunctionArgument(arguments, 1); thisArg = FunctionArgument(arguments, 2);
                 if (!IsUndefined(mapper) && mapper is not JsFunction) throw new InvalidOperationException("Array.fromAsync mapper is not callable");
-                object iterable = input is JsBoxedPrimitive { Value: string text } ? text : input;
+                object iterable = input;
+                bool disabled = false;
                 if (TryGetAsyncIterator(iterable, out var asyncSource, out var asyncNext))
                     asyncCursor = new AsyncIterationState { Source = asyncSource, AsyncNext = asyncNext, Asynchronous = true, Started = true };
-                else if (TryStartCustomIterable(iterable, out var custom)) iterable = custom;
-                iterating = asyncCursor != null || iterable is JsProtocolIterator or JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator || IsIteratorObject(iterable);
+                else {
+                    var method = CustomIterableMethod(iterable, out disabled);
+                    if (method != null) iterable = StartIteratorObject(InvokeIterableMethod(method, iterable));
+                }
+                iterating = asyncCursor != null || !disabled && (iterable is JsProtocolIterator or JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator || iterable is JsBoxedPrimitive { Value: string } || IsIteratorObject(iterable));
                 if (iterating) { if (asyncCursor == null) iterator = Iteration.Start(iterable); }
                 else { source = ToObject(input); length = IndexedLength(source); }
                 target = receiver is JsFunction constructor && constructor.CanInitializeDerived

@@ -12,9 +12,9 @@ public static partial class Js
         object input = FunctionArgument(arguments, 0), mapper = FunctionArgument(arguments, 1), thisArg = FunctionArgument(arguments, 2);
         bool mapping = !IsUndefined(mapper);
         if (mapping && mapper is not JsFunction) throw new InvalidOperationException("Array.from mapper is not callable");
-        object iterable = input is JsBoxedPrimitive { Value: string text } ? text : input;
-        var iteratorMethod = CustomIterableMethod(iterable);
-        bool iterating = iteratorMethod != null || iterable is JsProtocolIterator or JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator || IsIteratorObject(iterable);
+        object iterable = input;
+        var iteratorMethod = CustomIterableMethod(iterable, out bool disabled);
+        bool iterating = iteratorMethod != null || !disabled && (iterable is JsProtocolIterator or JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator || iterable is JsBoxedPrimitive { Value: string } || IsIteratorObject(iterable));
         TsObject source = iterating ? null : ToObject(input);
         long length = iterating ? 0 : IndexedLength(source);
         TsObject result;
