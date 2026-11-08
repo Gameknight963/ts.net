@@ -41,7 +41,7 @@ internal sealed class JsArguments : JsDynamicObject
         assignedLength = null;
     }
     internal override void Define(Descriptor descriptor) { ExpandProperties(); base.Define(descriptor); }
-    static readonly JsFunction CalleeThrower = new((FunctionBody)(static _ => throw CalleeError()), null, "", 0);
+    static JsFunction CalleeThrower => Js.StrictFunctionThrower;
     internal override object LookupOwnAccessor(string key, bool setter) => key == "callee" ? CalleeThrower : base.LookupOwnAccessor(key, setter);
     internal override object OwnPropertyDescriptor(string key) => key == "callee"
         ? Js.AccessorDescriptor(CalleeThrower, CalleeThrower, false, false) : base.OwnPropertyDescriptor(key);
