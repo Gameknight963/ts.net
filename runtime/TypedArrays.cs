@@ -183,6 +183,7 @@ public static partial class Js
                 {
                     var array = RequireTypedArrayMethod(receiver);
                     if (method is "keys" or "values" or "entries") return new TypedArrayIterator(array, method);
+                    if (method == "fill") return FillTypedArray(array, args);
                     object result = method is "forEach" or "every" or "some" or "find" or "findIndex" or "findLast" or "findLastIndex" or "reduce" or "reduceRight"
                         ? TypedArrayCallback(array, method, args) : CallMethod(ArrayMethodValue(method), new TypedArrayMethodView(array), args);
                     return method is "fill" or "copyWithin" or "reverse" ? array : result;
