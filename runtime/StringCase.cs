@@ -27,13 +27,19 @@ public static partial class Js
         }
         return first ?? CultureInfo.CurrentCulture;
     }
+    static string CaseString(string text, bool upper, CultureInfo culture)
+    {
+        if (upper) return text.ToUpper(culture).Replace("\u00df", "SS", StringComparison.Ordinal).Replace('\u0131', 'I');
+        if (culture.TwoLetterISOLanguageName is not ("tr" or "az"))
+            text = text.Replace("\u0130", "i\u0307", StringComparison.Ordinal);
+        return text.ToLower(culture);
+    }
     sealed class StringCaseFunction(bool upper, bool localized = false) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("String method requires a receiver")), null, localized ? upper ? "toLocaleUpperCase" : "toLocaleLowerCase" : upper ? "toUpperCase" : "toLowerCase", 0)
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
             string text = AtString(receiver);
-            if (localized) { var culture = CaseCulture(FunctionArgument(arguments, 0)); return upper ? text.ToUpper(culture) : text.ToLower(culture); }
-            return upper ? text.ToUpperInvariant() : text.ToLowerInvariant();
+            return CaseString(text, upper, localized ? CaseCulture(FunctionArgument(arguments, 0)) : CultureInfo.InvariantCulture);
         }
     }
 }
