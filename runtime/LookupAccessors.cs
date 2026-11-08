@@ -15,6 +15,19 @@ public abstract partial class TsObject
 
 public static partial class Js
 {
+    sealed class DefineAccessorFunction(bool setter) : JsFunction(
+        (FunctionBody)(static _ => throw new InvalidOperationException("Accessor definition requires a receiver")), null, setter ? "__defineSetter__" : "__defineGetter__", 2)
+    {
+        public override object InvokeWithReceiver(object receiver, object[] arguments)
+        {
+            var target = ToObject(receiver);
+            if (FunctionArgument(arguments, 1) is not JsFunction function) throw new InvalidOperationException("Accessor must be callable");
+            string key = PropertyKey(FunctionArgument(arguments, 0));
+            var fields = DescriptorFields.Enumerable | DescriptorFields.Configurable | (setter ? DescriptorFields.Set : DescriptorFields.Get);
+            ApplyPropertyDefinition(target, key, new(Undefined, setter ? null : function, setter ? function : null, false, true, true, fields));
+            return Undefined;
+        }
+    }
     sealed class LookupAccessorFunction(bool setter) : JsFunction(
         (FunctionBody)(static _ => throw new InvalidOperationException("Accessor lookup requires a receiver")), null, setter ? "__lookupSetter__" : "__lookupGetter__", 1)
     {
