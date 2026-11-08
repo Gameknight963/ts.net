@@ -38,6 +38,16 @@ public static partial class Js
             char ch = pattern[i];
             if (ch == '\\')
             {
+                if (i + 1 < pattern.Length && pattern[i + 1] == 'c')
+                {
+                    if (i + 2 < pattern.Length && (char.IsAsciiLetter(pattern[i + 2]) || inClass && (char.IsAsciiDigit(pattern[i + 2]) || pattern[i + 2] == '_')))
+                    {
+                        rewritten.Append("\\x").Append(((int)pattern[i + 2] % 32).ToString("X2", System.Globalization.CultureInfo.InvariantCulture));
+                        i += 2; continue;
+                    }
+                    // Invalid legacy control escapes retain the backslash.
+                    rewritten.Append("\\\\c"); i++; continue;
+                }
                 if (i + 1 < pattern.Length && pattern[i + 1] == 'k')
                 {
                     if (!namedBackReferences) { rewritten.Append('k'); i++; continue; }
