@@ -132,13 +132,36 @@ func (b *irBuilder) prepareNativeShapeViews(files []*ast.SourceFile) {
 			if n.Kind == ast.KindCallExpression || n.Kind == ast.KindNewExpression {
 				if signature := b.c.GetResolvedSignature(n); signature != nil && signature.Target() != nil {
 					parameters := signature.Target().Parameters()
-					arguments := n.Arguments()
-					if arguments != nil {
-						for i, argument := range arguments {
-							if i < len(parameters) {
-								targets(b.c.GetTypeAtLocation(argument), b.c.GetTypeOfSymbol(parameters[i]))
-							}
+					var arguments []*checker.Type
+					for _, argument := range n.Arguments() {
+						if argument.Kind != ast.KindSpreadElement {
+							arguments = append(arguments, b.c.GetTypeAtLocation(argument))
+							continue
 						}
+						source := b.c.GetTypeAtLocation(argument.Expression())
+						if checker.IsTupleType(source) {
+							parts := b.c.GetTypeArguments(source)
+							for i := range parts {
+								arguments = append(arguments, b.nativeRestElement(source, i, len(parts)-i-1))
+							}
+						} else {
+							arguments = append(arguments, b.nativeRestElement(source, 0, 0))
+						}
+					}
+					for i, source := range arguments {
+						index := i
+						rest := signature.Target().HasRestParameter() && len(parameters) > 0 && i >= len(parameters)-1
+						if rest {
+							index = len(parameters) - 1
+						}
+						if index >= len(parameters) {
+							continue
+						}
+						parameter := b.c.GetTypeOfSymbol(parameters[index])
+						if rest {
+							parameter = b.nativeRestElement(parameter, i-index, len(arguments)-i-1)
+						}
+						targets(source, parameter)
 					}
 				}
 			}
@@ -178,4 +201,44 @@ func (b *irBuilder) prepareNativeShapeViews(files []*ast.SourceFile) {
 			}
 		}
 	}
+}
+
+// Tuple metadata distinguishes fixed parameters from repeated or variadic parts.
+func (b *irBuilder) nativeRestElement(t *checker.Type, position, remaining int) *checker.Type {
+	if t == nil {
+		return nil
+	}
+	if t.Flags()&checker.TypeFlagsTypeParameter != 0 {
+		t = b.c.GetBaseConstraintOfType(t)
+		if t == nil {
+			return nil
+		}
+	}
+	if b.c.IsArrayType(t) {
+		return b.c.GetElementTypeOfArrayType(t)
+	}
+	if !checker.IsTupleType(t) {
+		return nil
+	}
+	parts := b.c.GetTypeArguments(t)
+	flags := t.TargetTupleType().ElementFlags()
+	index := position
+	for i, flag := range flags {
+		if flag&checker.ElementFlagsVariable != 0 && position >= i {
+			tail := len(parts) - i - 1
+			if remaining < tail {
+				index = len(parts) - remaining - 1
+			} else {
+				index = i
+			}
+			break
+		}
+	}
+	if index < 0 || index >= len(parts) {
+		return nil
+	}
+	if flags[index]&checker.ElementFlagsVariadic != 0 {
+		return b.nativeRestElement(parts[index], position-index, remaining-(len(parts)-index-1))
+	}
+	return parts[index]
 }
