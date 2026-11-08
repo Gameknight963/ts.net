@@ -86,6 +86,7 @@ public static partial class Js
                 var array = AllocateTypedArray("Uint8Array", bytes.Length); bytes.CopyTo(array.Buffer.Bytes, 0);
                 var promise = new JsPromise(); promise.Settle(array, false); return promise;
             }));
+            prototype.DefineMethod("stream", new CollectionMethod("stream", 0, (receiver, _) => new BufferedBody(RequireBlob(receiver).Bytes)));
         }
         public override object Construct(object[] args) => NewBlob(args);
         internal override bool CanInitializeDerived => true;
