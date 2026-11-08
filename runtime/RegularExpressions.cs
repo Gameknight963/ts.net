@@ -31,12 +31,19 @@ public static partial class Js
         string prefix = "tsnetCapture";
         while (pattern.Contains(prefix, StringComparison.Ordinal)) prefix += "X";
         int captures = 0;
+        bool namedBackReferences = pattern.Contains("\\k", StringComparison.Ordinal) && RegExpHasNamedCapture(pattern);
         var rewritten = new StringBuilder(pattern.Length);
         for (int i = 0; i < pattern.Length; i++)
         {
             char ch = pattern[i];
             if (ch == '\\')
             {
+                if (i + 1 < pattern.Length && pattern[i + 1] == 'k')
+                {
+                    if (!namedBackReferences) { rewritten.Append('k'); i++; continue; }
+                    if (inClass || i + 2 >= pattern.Length || pattern[i + 2] != '<')
+                        throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid named back reference"));
+                }
                 if (i + 1 < pattern.Length && pattern[i + 1] is 'x' or 'u')
                 {
                     int digits = pattern[i + 1] == 'x' ? 2 : 4;
@@ -89,6 +96,19 @@ public static partial class Js
             if (regexEngines.Count >= 64) regexEngines.Clear();
             regexEngines.Add((pattern, options), result); return result;
         }
+    }
+    static bool RegExpHasNamedCapture(string pattern)
+    {
+        bool inClass = false;
+        for (int index = 0; index < pattern.Length; index++)
+        {
+            char character = pattern[index];
+            if (character == '\\') { index++; continue; }
+            if (character == '[') inClass = true;
+            else if (character == ']') inClass = false;
+            else if (!inClass && character == '(' && index + 3 < pattern.Length && pattern[index + 1] == '?' && pattern[index + 2] == '<' && pattern[index + 3] is not ('=' or '!')) return true;
+        }
+        return false;
     }
     static bool RegExpModifierGroup(string pattern, int start)
     {
