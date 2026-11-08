@@ -64,7 +64,7 @@ public static partial class Js
         var result = new JsCreatedObject(); result.SetPrototype((TsObject)prototype);
         if (IsUndefined(properties)) return result;
         TsObject source = ToObject(properties);
-        var keys = (JsArray)source.OwnKeys();
+        var keys = (JsArray)source.OwnPropertyNames();
         var descriptors = new List<JsCreatedObject.Descriptor>();
         for (uint index = 0; index < keys.Length(); index++)
         {
