@@ -102,7 +102,8 @@ public static partial class Js
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
             object searchValue = FunctionArgument(arguments, 0);
-            if (all && searchValue is JsRegExp checkedRegex && !StringValue(checkedRegex.Get("flags")).Contains('g')) throw new InvalidOperationException("replaceAll requires a global regular expression");
+            if (IsNullish(receiver)) throw new InvalidOperationException("String method requires a receiver");
+            if (all) RequireGlobalRegExp(searchValue, "replaceAll");
             if (TryStringProtocol(receiver, searchValue, ReplaceSymbol, FunctionArgument(arguments, 1), true, out var custom)) return custom;
             string text = AtString(receiver);
             if (searchValue is JsRegExp regex) return ReplaceRegExp(text, regex, FunctionArgument(arguments, 1), all);
