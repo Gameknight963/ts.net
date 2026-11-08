@@ -90,6 +90,16 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 		if expression.OperatorToken.Kind == ast.KindCommaToken {
 			return b.reflectionDeletionValue(expression.Right, seen)
 		}
+	case ast.KindConditionalExpression:
+		expression := n.AsConditionalExpression()
+		left := b.reflectionDeletionValue(expression.WhenTrue, seen)
+		right := b.reflectionDeletionValue(expression.WhenFalse, seen)
+		if left == 2 || right == 2 {
+			return 2
+		}
+		if left == 1 || right == 1 {
+			return 1
+		}
 	case ast.KindPropertyAccessExpression:
 		if n.Name().Text() == "deleteProperty" && b.reflectionDeletionValue(n.Expression(), seen) == 1 {
 			return 2
