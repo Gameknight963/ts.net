@@ -10,7 +10,7 @@ public static partial class Js
         internal GlobalObject()
         {
             ParentPrototype = DefaultClassObjectPrototype;
-            void Binding(string name, object value) { DefineMethod(name, value); native.Add(name); }
+            void Binding(string name, object value) { Define(new(name, value, null, null, false, false, false, false)); native.Add(name); }
             foreach (string name in new[] {
                 "Object", "Number", "String", "Boolean", "Array", "BigInt", "Symbol", "Date", "RegExp", "Math", "JSON", "Reflect", "Intl",
                 "console", "performance", "Promise", "queueMicrotask", "Map", "Set", "WeakMap", "WeakSet", "WeakRef", "Iterator",
@@ -22,7 +22,7 @@ public static partial class Js
             foreach (string name in new[] { "Error", "TypeError", "RangeError", "ReferenceError", "SyntaxError", "URIError", "EvalError", "AggregateError", "SuppressedError" }) Binding(name, GetErrorConstructor(name));
             Binding("undefined", Undefined); Binding("NaN", double.NaN); Binding("Infinity", double.PositiveInfinity); Binding("globalThis", this);
         }
-        internal override bool IsReadOnlyOwnProperty(string key) => native.Contains(key);
+        internal override bool IsReadOnlyOwnProperty(string key) => native.Contains(key) || base.IsReadOnlyOwnProperty(key);
         public override object SetOwnValue(string key, object value)
         {
             if (native.Contains(key)) throw new InvalidOperationException("Native global bindings are read-only");
