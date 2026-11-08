@@ -8,6 +8,7 @@ public static partial class Js
         (FunctionBody)(static _ => throw new InvalidOperationException("String character method requires a receiver")), null, name, 1)
     {
         internal readonly CharacterKind Kind = kind;
+        public override object InvokeWithReceiver(object receiver, object[] arguments) => CharacterConverted(this, receiver, FunctionArgument(arguments, 0));
     }
     static class CharacterFunctions
     {

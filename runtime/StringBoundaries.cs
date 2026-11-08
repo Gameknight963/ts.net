@@ -31,6 +31,12 @@ public static partial class Js
     }
     static void DefineStringBoundaries(JsBoxedPrimitive prototype)
     {
+        prototype.DefineHidden("at", RelativeAtFunctions.String);
+        prototype.DefineHidden("slice", StringRangeFunctions.Slice);
+        prototype.DefineHidden("substring", StringRangeFunctions.Substring);
+        prototype.DefineHidden("charAt", CharacterFunctions.CharAt);
+        prototype.DefineHidden("charCodeAt", CharacterFunctions.CharCodeAt);
+        prototype.DefineHidden("codePointAt", CharacterFunctions.CodePointAt);
         prototype.DefineHidden("indexOf", StringSearchFunctions.IndexOf);
         prototype.DefineHidden("includes", StringSearchFunctions.Includes);
         prototype.DefineHidden("lastIndexOf", StringSearchFunctions.LastIndexOf);

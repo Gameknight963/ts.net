@@ -7,6 +7,7 @@ public static partial class Js
         throw new InvalidOperationException("at requires a receiver")), null, "at", 1)
     {
         internal readonly bool Text = text;
+        public override object InvokeWithReceiver(object receiver, object[] arguments) => AtConverted(receiver, FunctionArgument(arguments, 0), Text);
     }
     static class RelativeAtFunctions
     {
