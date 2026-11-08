@@ -79,6 +79,25 @@ public static partial class Js
             Getter("script", value => value.Script ?? Undefined); Getter("region", value => value.Region ?? Undefined);
             foreach (var pair in new[] { ("calendar", "ca"), ("collation", "co"), ("firstDayOfWeek", "fw"), ("hourCycle", "hc"), ("caseFirst", "kf"), ("numberingSystem", "nu") }) Getter(pair.Item1, value => value.Keyword(pair.Item2));
             Getter("numeric", static value => BoxBoolean(value.Numeric));
+            prototype.DefineMethod("getHourCycles", new CollectionMethod("getHourCycles", 0, static (receiver, _) =>
+            {
+                var locale = RequireLocale(receiver);
+                object cycle = locale.Keyword("hc");
+                if (IsUndefined(cycle))
+                {
+                    string pattern = LocaleCulture(locale.BaseName).DateTimeFormat.ShortTimePattern;
+                    bool quoted = false;
+                    cycle = "h23";
+                    for (int index = 0; index < pattern.Length; index++)
+                    {
+                        char character = pattern[index];
+                        if (character == '\\') { index++; continue; }
+                        if (character == '\'') { quoted = !quoted; continue; }
+                        if (!quoted && character is 'H' or 'h') { cycle = character == 'h' ? "h12" : "h23"; break; }
+                    }
+                }
+                return new JsArray(new[] { cycle });
+            }));
             prototype.DefineMethod("getTextInfo", new CollectionMethod("getTextInfo", 0, static (receiver, _) =>
             {
                 var locale = RequireLocale(receiver);
