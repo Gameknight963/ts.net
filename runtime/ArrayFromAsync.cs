@@ -29,7 +29,7 @@ public static partial class Js
                 if (!IsUndefined(mapper) && mapper is not JsFunction) throw new InvalidOperationException("Array.fromAsync mapper is not callable");
                 object iterable = input is JsBoxedPrimitive { Value: string text } ? text : input;
                 if (TryGetAsyncIterator(iterable, out var asyncSource, out var asyncNext))
-                    asyncCursor = new AsyncIterationState { Source = asyncSource, AsyncNext = asyncNext, Started = true };
+                    asyncCursor = new AsyncIterationState { Source = asyncSource, AsyncNext = asyncNext, Asynchronous = true, Started = true };
                 else if (TryStartCustomIterable(iterable, out var custom)) iterable = custom;
                 iterating = asyncCursor != null || iterable is JsProtocolIterator or JsArray or JsArguments or string or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator || IsIteratorObject(iterable);
                 if (iterating) { if (asyncCursor == null) iterator = Iteration.Start(iterable); }

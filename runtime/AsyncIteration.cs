@@ -4,7 +4,8 @@ public static partial class Js
     {
         internal object Source;
         internal bool Started;
-        internal JsFunction AsyncNext;
+        internal object AsyncNext;
+        internal bool Asynchronous;
         internal bool Keys;
         internal uint Position;
         internal object Current;

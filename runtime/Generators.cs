@@ -8,7 +8,7 @@ public static partial class Js
     sealed class GeneratorDelegate(TsObject iterator, JsFunction continuation, bool asyncIterator = false, object next = null)
     {
         internal readonly TsObject Iterator = iterator;
-        internal readonly object Next = next ?? iterator.Get("next");
+        internal readonly object Next = asyncIterator ? next : iterator.Get("next");
         internal readonly bool AsyncIterator = asyncIterator;
         internal readonly JsFunction Continuation = continuation;
     }

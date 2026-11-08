@@ -15,10 +15,10 @@ public static partial class Js
         var cursor = (AsyncIterationState)state;
         cursor.NeedsClose = false;
         if (!cursor.Started && TryGetAsyncIterator(cursor.Source, out var asyncSource, out var asyncNext)) {
-            cursor.Source = asyncSource; cursor.AsyncNext = asyncNext; cursor.Started = true;
+            cursor.Source = asyncSource; cursor.AsyncNext = asyncNext; cursor.Asynchronous = true; cursor.Started = true;
         }
-        if (cursor.AsyncNext != null)
-            return PromiseResolve(RuntimeNamespaces.Promise, cursor.AsyncNext.InvokeWithReceiver(cursor.Source, Array.Empty<object>()));
+        if (cursor.Asynchronous)
+            return PromiseResolve(RuntimeNamespaces.Promise, CallMethod(cursor.AsyncNext, cursor.Source, Array.Empty<object>()));
         var result = new JsPromise();
         var pair = new PromiseResolvingFunctions(result);
         bool more = false;
@@ -54,7 +54,7 @@ public static partial class Js
     {
         var cursor = (AsyncIterationState)state;
         cursor.NeedsClose = false;
-        if (cursor.AsyncNext != null) {
+        if (cursor.Asynchronous) {
             object close = ((TsObject)cursor.Source).Get("return");
             return PromiseResolve(RuntimeNamespaces.Promise, IsNullish(close)
                 ? IteratorResult(Undefined, true) : CallMethod(close, cursor.Source, Array.Empty<object>()));
