@@ -26,7 +26,7 @@ public static partial class Js
         "mathmono" => "\U0001d7f6\U0001d7f7\U0001d7f8\U0001d7f9\U0001d7fa\U0001d7fb\U0001d7fc\U0001d7fd\U0001d7fe\U0001d7ff",
         "adlm" => "\U0001e950\U0001e951\U0001e952\U0001e953\U0001e954\U0001e955\U0001e956\U0001e957\U0001e958\U0001e959",
         "osma" => "\U000104a0\U000104a1\U000104a2\U000104a3\U000104a4\U000104a5\U000104a6\U000104a7\U000104a8\U000104a9",
-        _ => throw new NotSupportedException("The requested numbering system is not supported")
+        _ => AdditionalNumberDigitCharacters(system)
     };
     static string LocalizeNumberDigits(string text, string digitCharacters)
     {
