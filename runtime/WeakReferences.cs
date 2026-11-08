@@ -13,10 +13,14 @@ public static partial class Js
     internal static TsObject WeakRefPrototype => (TsObject)RuntimeNamespaces.WeakRef.Get("prototype");
     static void KeepWeakTarget(object target) => (keptWeakTargets ??= new(ReferenceEqualityComparer.Instance)).Add(target);
     static void ClearKeptWeakTargets() => keptWeakTargets?.Clear();
-    static JsWeakRef CreateWeakRef(object[] arguments)
+    static object WeakRefTarget(object[] arguments)
     {
         object target = FunctionArgument(arguments, 0);
         if (!CanBeWeakKey(target)) throw new InvalidOperationException("WeakRef target must be an object or non-registered symbol");
+        return target;
+    }
+    static JsWeakRef CreateWeakRef(object target)
+    {
         var result = new JsWeakRef(target); KeepWeakTarget(target); return result;
     }
     sealed class WeakRefConstructor : NativeNamespaceFunction
@@ -33,8 +37,16 @@ public static partial class Js
                 KeepWeakTarget(target); return target;
             }));
         }
-        public override object Construct(object[] arguments) => CreateWeakRef(arguments);
+        public override object Construct(object[] arguments) => CreateWeakRef(WeakRefTarget(arguments));
         internal override bool CanInitializeDerived => true;
-        internal override object InitializeDerived(object instance, object[] arguments) { var result = CreateWeakRef(arguments); result.SetPrototype(((TsObject)instance).PropertyPrototype); return result; }
+        internal override object InitializeDerived(object instance, object[] arguments, JsFunction newTarget)
+        {
+            object target = WeakRefTarget(arguments);
+            var prototype = ConstructionPrototype(newTarget);
+            var result = CreateWeakRef(target);
+            result.SetPrototype(prototype);
+            return result;
+        }
+        internal override object InitializeDerived(object instance, object[] arguments) { var result = CreateWeakRef(WeakRefTarget(arguments)); result.SetPrototype(((TsObject)instance).PropertyPrototype); return result; }
     }
 }

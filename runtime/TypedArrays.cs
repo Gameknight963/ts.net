@@ -144,6 +144,18 @@ public static partial class Js
         if (length > Array.MaxLength) throw new ArgumentOutOfRangeException(null, "Typed array is too large");
         return (int)length;
     }
+    // Generic array algorithms see the typed array's captured internal length,
+    // while all element access still goes through its buffer checks.
+    sealed class TypedArrayMethodView(TypedArrayValue array) : TsObject
+    {
+        readonly int length = array.Count;
+        internal override TsObject PropertyPrototype => null;
+        public override bool HasOwn(string key) => key == "length" || array.HasOwn(key);
+        public override object Get(string key) => key == "length" ? (double)length : array.Get(key);
+        public override object SetOwnValue(string key, object value) => array.SetOwnValue(key, value);
+        public override object Set(string key, object value) => array.Set(key, value);
+        public override bool DeleteOwn(string key) => array.DeleteOwn(key);
+    }
     sealed class TypedArrayGetter(string name, Func<TypedArrayValue, object> read) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Typed array getter requires a receiver")), null, "get " + name, 0)
     {
         internal bool IsLength => name == "length";
@@ -172,7 +184,7 @@ public static partial class Js
                     var array = RequireTypedArrayMethod(receiver);
                     if (method is "keys" or "values" or "entries") return new TypedArrayIterator(array, method);
                     object result = method is "forEach" or "every" or "some" or "find" or "findIndex" or "findLast" or "findLastIndex" or "reduce" or "reduceRight"
-                        ? TypedArrayCallback(array, method, args) : CallMethod(ArrayMethodValue(method), array, args);
+                        ? TypedArrayCallback(array, method, args) : CallMethod(ArrayMethodValue(method), new TypedArrayMethodView(array), args);
                     return method is "fill" or "copyWithin" or "reverse" ? array : result;
                 }));
             prototype.DefineMethod(PropertyKey(IteratorSymbol), prototype.Get("values"));
@@ -228,15 +240,22 @@ public static partial class Js
             prototype.DefineMethod("constructor", this);
             if (name == "Uint8Array") DefineByteEncoding(this, prototype);
         }
-        public override object Construct(object[] args)
+        public override object Construct(object[] args) => ConstructArray(args, null);
+        static TypedArrayValue WithPrototype(TypedArrayValue value, TsObject prototype)
+        {
+            if (prototype != null) value.SetPrototype(prototype);
+            return value;
+        }
+        TypedArrayValue ConstructArray(object[] args, JsFunction newTarget)
         {
             object input = FunctionArgument(args, 0);
             if (input is TypedArrayValue source)
             {
+                var prototype = newTarget == null ? null : ConstructionPrototype(newTarget);
                 if (source.OutOfBounds) throw new InvalidOperationException("Typed array is out of bounds");
                 if (source.Kind.StartsWith("Big", StringComparison.Ordinal) != name.StartsWith("Big", StringComparison.Ordinal))
                     throw new InvalidOperationException("Typed array content types do not match");
-                var copy = AllocateTypedArray(name, source.Count);
+                var copy = WithPrototype(AllocateTypedArray(name, source.Count), prototype);
                 // Typed-array construction copies internal elements, without consulting
                 // iterator or length overrides. Same-kind copies preserve NaN payload bits.
                 if (source.Kind == copy.Kind)
@@ -247,6 +266,7 @@ public static partial class Js
             }
             if (input is BinaryBuffer buffer)
             {
+                var prototype = newTarget == null ? null : ConstructionPrototype(newTarget);
                 int size = BinarySize(name == "Uint8ClampedArray" ? "Uint8" : name[..^5]);
                 double requestedOffset = BinarySafeIndex(FunctionArgument(args, 1));
                 if (requestedOffset % size != 0) throw new ArgumentOutOfRangeException(null, "Typed array offset is not aligned");
@@ -266,16 +286,22 @@ public static partial class Js
                     length = (int)requestedLength;
                 }
                 if (length > (buffer.Bytes.Length - offset) / size) throw new ArgumentOutOfRangeException(null, "Typed array length is invalid");
-                return new TypedArrayValue(name, buffer, offset, length, buffer.Resizable && IsUndefined(FunctionArgument(args, 2)));
+                return WithPrototype(new TypedArrayValue(name, buffer, offset, length, buffer.Resizable && IsUndefined(FunctionArgument(args, 2))), prototype);
             }
-            if (input is not TsObject) return AllocateTypedArray(name, BinaryIndex(input));
+            if (input is not TsObject) {
+                int length = BinaryIndex(input);
+                var prototype = newTarget == null ? null : ConstructionPrototype(newTarget);
+                return WithPrototype(AllocateTypedArray(name, length), prototype);
+            }
             int count = TypedArrayInput(input, out var values, out var indexed);
-            var result = AllocateTypedArray(name, count);
+            var arrayPrototype = newTarget == null ? null : ConstructionPrototype(newTarget);
+            var result = WithPrototype(AllocateTypedArray(name, count), arrayPrototype);
             for (int i = 0; i < count; i++) result.Write(i, values != null ? values[i] : IndexedValue(indexed, i));
             return result;
         }
         internal override bool CanInitializeDerived => true;
         internal override object InitializeDerived(object instance, object[] args) { var result = (TsObject)Construct(args); result.SetPrototype(((TsObject)instance).PropertyPrototype); return result; }
+        internal override object InitializeDerived(object instance, object[] args, JsFunction newTarget) => ConstructArray(args, newTarget);
     }
     static TypedArrayValue CreateTypedArrayResult(object receiver, int count)
     {
