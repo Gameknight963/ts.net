@@ -121,6 +121,7 @@ public static partial class Js
         result.DefineMethod("NumberFormat", IntlNumberFormat.Constructor);
         result.DefineMethod("DateTimeFormat", IntlDateTimeFormat.Constructor);
         result.DefineMethod("Segmenter", IntlSegmenter.Constructor);
+        result.DefineMethod("ListFormat", IntlListFormat.Constructor);
         result.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl", false);
         return result;
     }
