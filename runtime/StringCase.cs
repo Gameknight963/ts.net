@@ -45,7 +45,8 @@ public static partial class Js
         int copied = 0;
         for (int index = first; index < text.Length; index++)
         {
-            string expansion = text[index] switch
+            char mapped = RecentCase(text[index], true);
+            string expansion = mapped switch
             {
                 '\u00df' => "SS", '\u0131' => "I", '\u0149' => "\u02bcN", '\u01f0' => "J\u030c",
                 '\ufb00' => "FF", '\ufb01' => "FI", '\ufb02' => "FL", '\ufb03' => "FFI",
@@ -64,9 +65,10 @@ public static partial class Js
                 '\u0587' => "\u0535\u0552", '\ufb13' => "\u0544\u0546", '\ufb14' => "\u0544\u0535", '\ufb15' => "\u0544\u053b", '\ufb16' => "\u054e\u0546", '\ufb17' => "\u0544\u053d",
                 _ => null
             };
-            if (expansion == null) continue;
+            if (expansion == null && mapped == text[index]) continue;
             result ??= new StringBuilder(text.Length + 8);
-            result.Append(text, copied, index - copied).Append(expansion);
+            result.Append(text, copied, index - copied);
+            if (expansion == null) result.Append(mapped); else result.Append(expansion);
             copied = index + 1;
         }
         return result == null ? text : result.Append(text, copied, text.Length - copied).ToString();
@@ -78,7 +80,7 @@ public static partial class Js
         text = ApplyFinalSigma(text);
         if (culture.TwoLetterISOLanguageName is "tr" or "az") text = ApplyTurkicDotContext(text);
         else text = text.Replace("\u0130", "i\u0307", StringComparison.Ordinal);
-        return text.ToLower(culture);
+        return RecentLowercase(text.ToLower(culture));
     }
     sealed class StringCaseFunction(bool upper, bool localized = false) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("String method requires a receiver")), null, localized ? upper ? "toLocaleUpperCase" : "toLocaleLowerCase" : upper ? "toUpperCase" : "toLowerCase", 0)
     {
