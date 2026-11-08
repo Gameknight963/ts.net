@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/microsoft/typescript-go/internal/ast"
 	"github.com/microsoft/typescript-go/internal/checker"
+	"strings"
 )
 
 func (b *irBuilder) nativeStorageType(t *checker.Type, seen map[*checker.Type]bool) bool {
@@ -129,6 +130,22 @@ func (b *irBuilder) prepareNativeShapeViews(files []*ast.SourceFile) {
 	for _, file := range files {
 		var visit func(*ast.Node) bool
 		visit = func(n *ast.Node) bool {
+			if n.Kind == ast.KindCallExpression && len(n.Arguments()) > 0 {
+				if signature := b.c.GetResolvedSignature(n); signature != nil {
+					declaration := signature.Declaration()
+					if declaration != nil && declaration.Name() != nil && declaration.Parent != nil && declaration.Parent.Kind == ast.KindInterfaceDeclaration && declaration.Parent.Name().Text() == "ObjectConstructor" {
+						file := ast.GetSourceFileOfNode(declaration)
+						if file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
+							switch declaration.Name().Text() {
+							case "freeze", "seal", "preventExtensions", "defineProperty", "defineProperties":
+								// These methods return the original object, including native objects
+								// viewed through a mapped return type such as Readonly<Error>.
+								targets(b.c.GetTypeAtLocation(n.Arguments()[0]), b.c.GetTypeAtLocation(n))
+							}
+						}
+					}
+				}
+			}
 			if n.Kind == ast.KindCallExpression || n.Kind == ast.KindNewExpression {
 				if signature := b.c.GetResolvedSignature(n); signature != nil && signature.Target() != nil {
 					parameters := signature.Target().Parameters()

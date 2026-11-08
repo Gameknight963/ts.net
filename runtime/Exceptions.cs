@@ -6,44 +6,42 @@ public sealed class JsThrownException(object value) : Exception("JavaScript exce
     public object Value { get; } = value;
     public override string ToString() => Value is JsCaughtError error ? Js.ErrorText(error) : Js.Text(Value);
 }
-public class JsCaughtError : TsObject
+public class JsCaughtError : JsDescriptorObject
 {
     readonly TsObject prototype;
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : prototype;
     readonly string stack = Environment.StackTrace;
-    bool hasStack = true;
-    readonly HashSet<string> hidden = ["stack"];
-    internal override object OwnPropertyNames() => hasStack ? Js.MergeOwnNames(this, base.OwnKeys(), "stack") : base.OwnKeys();
-    internal override object ForInOwnKeys() => hasStack ? Js.ForInNames(base.OwnKeys(), "stack") : base.OwnKeys();
-    internal override bool ForInEnumerable(string key) => !hidden.Contains(key);
+    bool hasStack = true, stackMaterialized;
+    internal override object OwnPropertyNames() => hasStack ? Js.MergeOwnNames(this, base.ForInOwnKeys(), "stack") : base.ForInOwnKeys();
+    internal override object ForInOwnKeys() => hasStack ? Js.ForInNames(base.ForInOwnKeys(), "stack") : base.ForInOwnKeys();
     public JsCaughtError(string name, string message, bool hasMessage = true, object cause = null, bool hasCause = false)
     {
         prototype = (TsObject)((JsFunction)Js.GetErrorConstructor(name)).Get("prototype");
+        base.Define(new("stack", Js.Undefined, null, null, false, true, false, true));
         if (hasMessage) DefineHidden("message", message);
         if (hasCause) DefineHidden("cause", cause);
     }
-    public void DefineHidden(string key, object value) { DefineOwn(key, value); hidden.Add(key); }
+    internal override void Define(Descriptor descriptor)
+    {
+        base.Define(descriptor);
+        if (descriptor.Key == "stack") stackMaterialized = true;
+    }
+    public void DefineHidden(string key, object value) => DefineMethod(key, value);
     public override bool HasOwn(string key) => key == "stack" && hasStack || base.HasOwn(key);
-    public override object Get(string key) => key == "stack" && hasStack && !base.HasOwn(key) ? Js.ErrorText(this) + "\n" + stack : base.Get(key);
+    public override object Get(string key) => key == "stack" && hasStack && !stackMaterialized ? Js.ErrorText(this) + "\n" + stack : base.Get(key);
     public override bool DeleteOwn(string key)
     {
-        if (key == "stack" && hasStack && !base.HasOwn(key))
-        {
-            hasStack = false;
-            hidden.Remove(key);
-            return true;
-        }
         if (!base.DeleteOwn(key)) return false;
         if (key == "stack") hasStack = false;
-        hidden.Remove(key);
         return true;
     }
-    public override object OwnKeys()
+    public override object Set(string key, object value)
     {
-        var keys = (JsArray)base.OwnKeys(); var result = new JsArray(0);
-        for (uint i = 0; i < keys.Length(); i++) { object key = keys.ElementAt(i); if (!hidden.Contains((string)key)) result.Append(key); }
-        return result;
+        if (key == "stack" && hasStack && !stackMaterialized) { DefineHidden(key, value); return value; }
+        return base.Set(key, value);
     }
+    public override object SetOwnValue(string key, object value) => key == "stack" && hasStack && !stackMaterialized ? Set(key, value) : base.SetOwnValue(key, value);
+
 }
 public static partial class Js
 {
