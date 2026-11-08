@@ -6,8 +6,8 @@ public static partial class Js
     static string RelativeTimeLocale(string name)
     {
         var locale = new LocaleValue(name, Undefined);
-        if (locale.Language is not ("en" or "de" or "fr")) return null;
-        string selected = locale.BaseName is "en-US" or "de-DE" or "fr-FR" ? locale.BaseName : locale.Language;
+        if (locale.Language is not ("en" or "de" or "fr" or "ja" or "ko")) return null;
+        string selected = locale.BaseName is "en-US" or "de-DE" or "fr-FR" or "ja-JP" or "ko-KR" ? locale.BaseName : locale.Language;
         return locale.Keyword("nu") is string digits ? selected + "-u-nu-" + digits : selected;
     }
     static object RelativeTimeSupportedLocales(object locales, object optionValue)
