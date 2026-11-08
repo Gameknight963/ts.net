@@ -79,8 +79,13 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 		}
 	case ast.KindConditionalExpression:
 		expression := n.AsConditionalExpression()
-		if b.reflectionDefinitionValue(expression.WhenTrue, seen) == 2 || b.reflectionDefinitionValue(expression.WhenFalse, seen) == 2 {
+		left := b.reflectionDefinitionValue(expression.WhenTrue, seen)
+		right := b.reflectionDefinitionValue(expression.WhenFalse, seen)
+		if left == 2 || right == 2 {
 			return 2
+		}
+		if left == 1 || right == 1 {
+			return 1
 		}
 	case ast.KindPropertyAccessExpression:
 		if (n.Name().Text() == "defineProperty" || n.Name().Text() == "defineProperties" || n.Name().Text() == "preventExtensions" || n.Name().Text() == "seal" || n.Name().Text() == "freeze") && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
