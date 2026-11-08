@@ -3,7 +3,7 @@ using System.Numerics;
 
 public static partial class Js
 {
-    sealed class NumberFormatValue : JsDescriptorObject
+    sealed partial class NumberFormatValue : JsDescriptorObject
     {
         readonly NumberLocaleSettings settings;
         internal readonly JsFunction Format;
@@ -98,6 +98,8 @@ public static partial class Js
             prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.NumberFormat", false);
             prototype.DefineClassAccessor("format", new CollectionMethod("get format", 0, static (receiver, _) => RequireNumberFormat(receiver).Format), 1);
             prototype.DefineMethod("formatToParts", new CollectionMethod("formatToParts", 1, static (receiver, args) => RequireNumberFormat(receiver).Parts(FunctionArgument(args, 0))));
+            prototype.DefineMethod("formatRange", new CollectionMethod("formatRange", 2, static (receiver, args) => RequireNumberFormat(receiver).Range(FunctionArgument(args, 0), FunctionArgument(args, 1), false)));
+            prototype.DefineMethod("formatRangeToParts", new CollectionMethod("formatRangeToParts", 2, static (receiver, args) => RequireNumberFormat(receiver).Range(FunctionArgument(args, 0), FunctionArgument(args, 1), true)));
             prototype.DefineMethod("resolvedOptions", new CollectionMethod("resolvedOptions", 0, static (receiver, _) => RequireNumberFormat(receiver).Options()));
             Member("supportedLocalesOf", new JsFunction((FunctionBody)(static args => CollatorSupportedLocales(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "supportedLocalesOf", 1));
         }
