@@ -27,7 +27,6 @@ public abstract class JsDescriptorObject : TsObject
         if (descriptor.Getter != null) DefineAccessor(descriptor.Key, descriptor.Getter, 1, false);
         if (descriptor.Setter != null) DefineAccessor(descriptor.Key, descriptor.Setter, 2, false);
     }
-    internal void DefineJsonData(string key, object value) { descriptors?.Remove(key); DefineOwn(key, value); }
     internal override bool IsReadOnlyOwnProperty(string key) => descriptors != null && descriptors.TryGetValue(key, out var descriptor) &&
         (descriptor.Accessor ? descriptor.Setter == null : !descriptor.Writable);
     internal override object OwnPropertyDescriptor(string key)
