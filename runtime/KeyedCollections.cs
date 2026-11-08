@@ -162,11 +162,13 @@ public static partial class Js
             var speciesGetter = new ConstructorSpeciesGetter();
             Member(speciesKey, Undefined); DefineAccessor(speciesKey, speciesGetter, 1);
             speciesGetter.InferPropertyName("get [Symbol.species]");
-            var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
+            var prototype = new JsCreatedObject();
+            prototype.SetPrototype(DefaultClassObjectPrototype);
             prototype.DefineMethod("constructor", this);
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), set ? "Set" : "Map", false);
             CollectionMethod Method(string name, int length, Func<JsKeyedCollection, object[], object> action) =>
                 new(name, length, (receiver, arguments) => action(CollectionReceiver(receiver, set), arguments));
-            prototype.DefineClassAccessor("size", Method("get size", 0, (collection, _) => (double)collection.Size), 1);
+            prototype.Define(new("size", Undefined, Method("get size", 0, (collection, _) => (double)collection.Size), null, true, false, false, true));
             prototype.DefineMethod("has", Method("has", 1, (collection, args) => BoxBoolean(collection.Contains(FunctionArgument(args, 0)))));
             prototype.DefineMethod("delete", Method("delete", 1, (collection, args) => BoxBoolean(collection.Remove(FunctionArgument(args, 0)))));
             prototype.DefineMethod("clear", Method("clear", 0, (collection, _) => { collection.ClearEntries(); return Undefined; }));
@@ -251,9 +253,10 @@ public static partial class Js
         static JsFunction Next(bool set) => new CollectionMethod("next", 0, (receiver, _) => receiver is JsCollectionIterator iterator && iterator.IsSetIterator == set ? iterator.Next() : throw new InvalidOperationException("Incompatible iterator receiver"));
         static TsObject Create(bool set)
         {
-            var prototype = new JsClassInstance { ParentPrototype = NativeIteratorPrototype };
+            var prototype = new JsCreatedObject();
+            prototype.SetPrototype(NativeIteratorPrototype);
             prototype.DefineMethod("next", set ? SetNext : MapNext);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), set ? "Set Iterator" : "Map Iterator");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), set ? "Set Iterator" : "Map Iterator", false);
             return prototype;
         }
     }

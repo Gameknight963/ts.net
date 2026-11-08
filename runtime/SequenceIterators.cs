@@ -51,6 +51,16 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
             prototype.DefineMethod(PropertyKey(IteratorSymbol), Self);
+            string tagKey = PropertyKey(ToStringTagSymbol);
+            prototype.DefineClassAccessor(tagKey, new CollectionMethod("get [Symbol.toStringTag]", 0, (_, _) => "Iterator"), 1);
+            prototype.DefineClassAccessor(tagKey, new CollectionMethod("set [Symbol.toStringTag]", 1, (receiver, arguments) =>
+            {
+                if (receiver is not TsObject target || ReferenceEquals(target, prototype)) throw new InvalidOperationException("Cannot assign the Iterator prototype tag");
+                object value = FunctionArgument(arguments, 0);
+                if (target.HasOwn(tagKey)) target.Set(tagKey, value);
+                else target.DefineOwn(tagKey, value);
+                return Undefined;
+            }), 2);
             prototype.DefineMethod(PropertyKey(DisposeSymbol),new CollectionMethod("[Symbol.dispose]",0,(receiver,_)=>DisposeIterator(receiver)));
             return prototype;
         }
