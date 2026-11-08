@@ -15,7 +15,8 @@ public static partial class Js
     }
     static object MatchRegExp(string text, JsRegExp regex, bool search)
     {
-        if (!HasBuiltinRegExpExec(regex)) return MatchCustomRegExp(text, regex, search);
+        string flags = search ? null : StringValue(regex.Get("flags"));
+        if (!HasBuiltinRegExpExec(regex) || !search && flags != regex.Flags) return MatchCustomRegExp(text, regex, search, flags);
         bool sticky = regex.Flags.Contains('y');
         if (search)
         {
@@ -51,18 +52,20 @@ public static partial class Js
             : throw new InvalidOperationException("RegExp.exec requires a regular expression");
         return result == null ? null : result as TsObject ?? throw new InvalidOperationException("RegExp.exec must return an object or null");
     }
-    static object MatchCustomRegExp(string text, JsRegExp regex, bool search)
+    static object MatchCustomRegExp(string text, TsObject regex, bool search, string flags = null)
     {
         if (search)
         {
-            object previous = regex.LastIndex;
-            if (!SameValue(previous, 0d)) regex.LastIndex = 0d;
+            object previous = regex.Get("lastIndex");
+            if (!SameValue(previous, 0d)) regex.Set("lastIndex", 0d);
             var match = ExecuteRegExp(regex, text);
-            if (!SameValue(regex.LastIndex, previous)) regex.LastIndex = previous;
+            if (!SameValue(regex.Get("lastIndex"), previous)) regex.Set("lastIndex", previous);
             return match == null ? -1d : match.Get("index");
         }
-        if (!regex.Flags.Contains('g')) return ExecuteRegExp(regex, text);
-        regex.LastIndex = 0d;
+        flags ??= StringValue(regex.Get("flags"));
+        if (!flags.Contains('g')) return ExecuteRegExp(regex, text);
+        bool unicode = flags.Contains('u') || flags.Contains('v');
+        regex.Set("lastIndex", 0d);
         var result = new JsArray(0);
         while (true)
         {
@@ -72,8 +75,10 @@ public static partial class Js
             result.Append(value);
             if (value.Length == 0)
             {
-                double index = Number(regex.LastIndex);
-                regex.LastIndex = (double.IsNaN(index) || index <= 0 ? 0 : Math.Min(9007199254740991d, Math.Floor(index))) + 1;
+                double index = Number(regex.Get("lastIndex"));
+                index = double.IsNaN(index) || index <= 0 ? 0 : Math.Min(9007199254740991d, Math.Floor(index));
+                int step = unicode && index < text.Length - 1 && char.IsHighSurrogate(text[(int)index]) && char.IsLowSurrogate(text[(int)index + 1]) ? 2 : 1;
+                regex.Set("lastIndex", index + step);
             }
         }
     }
