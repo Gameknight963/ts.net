@@ -1,33 +1,26 @@
 using System;
 using System.Collections.Generic;
 
-public class JsClassInstance : TsObject
+public class JsClassInstance : JsDescriptorObject
 {
     internal JsClassFunction Owner;
     internal TsObject ParentPrototype;
     internal TsObject InheritedPrototype => TryExplicitPrototype(out var value) ? value : Owner is null ? ParentPrototype : Owner.Prototype;
     internal override TsObject PropertyPrototype => InheritedPrototype;
-    HashSet<string> hidden;
     internal override object ForInOwnKeys() => base.OwnKeys();
-    internal override bool ForInEnumerable(string key) => hidden == null || !hidden.Contains(key);
-    public override bool DeleteOwn(string key) { bool removed = base.DeleteOwn(key); if (removed) hidden?.Remove(key); return removed; }
     internal override bool HasInProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasInProperty(key);
     public override bool HasProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasProperty(key);
     public override object Get(string key) => GetWithReceiver(key, this);
     public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? base.Get(key) : InheritedPrototype is null ? Js.Undefined : InheritedPrototype.GetWithReceiver(key, receiver);
     public override object Set(string key, object value) => SetWithReceiver(key, value, this);
-    public override object SetWithReceiver(string key, object value, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Write(receiver, value) : HasOwn(key) || InheritedPrototype is null ? ((TsObject)receiver).SetOwnValue(key, value) : InheritedPrototype.SetWithReceiver(key, value, receiver);
-    public override object SetOwnValue(string key, object value) { if (TryOwnAccessor(key, out _)) throw Js.MakeThrown(new JsCaughtError("TypeError", "Cannot replace accessor through assignment")); DefineOwn(key, value); return value; }
-    internal void DefineClassAccessor(string key, object function, int mode) { DefineAccessor(key, function, mode); (hidden ??= new()).Add(key); }
-    internal void DefineMethod(string name, object value) { DefineOwn(name, value); (hidden ??= new()).Add(name); }
-    internal void DefineField(string name, object value) { DefineOwn(name, value); hidden?.Remove(name); }
-    public override object OwnKeys()
+    internal void DefineClassAccessor(string key, object function, int mode)
     {
-        if (hidden is null) return base.OwnKeys();
-        var keys = (JsArray)base.OwnKeys(); var result = new JsArray(0);
-        for (uint i = 0; i < keys.Length(); i++) { object key = keys.ElementAt(i); if (!hidden.Contains((string)key)) result.Append(key); }
-        return result;
+        TryOwnAccessor(key, out var previous);
+        Define(new(key, Js.Undefined, mode == 1 ? (JsFunction)function : previous?.Getter,
+            mode == 2 ? (JsFunction)function : previous?.Setter, true, false, false, true));
+        ((JsFunction)function).InferPropertyName((mode == 1 ? "get " : "set ") + Js.PropertyFunctionName(key));
     }
+    internal void DefineField(string name, object value) => Js.DefineDictionaryField(this, name, value);
 }
 public sealed class JsClassFunction : JsFunction
 {

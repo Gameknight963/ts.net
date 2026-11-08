@@ -9,7 +9,7 @@ public static partial class Js
         bool Writable, bool Enumerable, bool Configurable, DescriptorFields Fields)
     {
         internal bool Accessor => (Fields & (DescriptorFields.Get | DescriptorFields.Set)) != 0;
-        internal JsDynamicObject.Descriptor Complete(string key) => new(key, Value, Getter, Setter, Accessor, Writable, Enumerable, Configurable);
+        internal JsDescriptorObject.Descriptor Complete(string key) => new(key, Value, Getter, Setter, Accessor, Writable, Enumerable, Configurable);
     }
     static PropertyDefinition ReadPropertyDefinition(object input)
     {
@@ -59,7 +59,7 @@ public static partial class Js
         foreach (var entry in definitions) ApplyPropertyDefinition(obj, entry.Key, entry.Definition);
         return obj;
     }
-    static void DefineDictionaryField(JsDynamicObject target, string key, object value) => ApplyPropertyDefinition(target, key,
+    internal static void DefineDictionaryField(JsDescriptorObject target, string key, object value) => ApplyPropertyDefinition(target, key,
         new(value, null, null, true, true, true, DescriptorFields.Value | DescriptorFields.Writable | DescriptorFields.Enumerable | DescriptorFields.Configurable));
     static object ReflectDefineProperty(object target, object property, object attributes)
     {
@@ -75,7 +75,7 @@ public static partial class Js
     }
     static bool TryApplyPropertyDefinition(TsObject obj, string key, PropertyDefinition definition)
     {
-        if (obj is not JsDynamicObject created || obj.IsModuleNamespace) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
+        if (obj is not JsDescriptorObject created || obj.IsModuleNamespace) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
         object existing = obj.OwnPropertyDescriptor(key);
         if (IsUndefined(existing)) {
             if (!obj.IsExtensible) return false;
