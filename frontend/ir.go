@@ -144,7 +144,7 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			}
 		}
 	}
-	if b.nativeShapeViews[t] || b.arrayLikeType(t) || b.thenableType(t) || b.collectionInterfaceType(t) {
+	if b.nativeShapeViews[t] || b.nativeMappedStorageType(t, map[*checker.Type]bool{}) || b.arrayLikeType(t) || b.thenableType(t) || b.collectionInterfaceType(t) {
 		t = b.c.GetAnyType()
 	}
 	if nativeObjectType(t) {

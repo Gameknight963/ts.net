@@ -31,6 +31,9 @@ func (b *irBuilder) nativeStorageType(t *checker.Type, seen map[*checker.Type]bo
 	if nativeObjectType(t) || b.c.IsArrayType(t) || checker.IsTupleType(t) || b.arrayLikeType(t) || b.thenableType(t) || b.collectionInterfaceType(t) {
 		return true
 	}
+	if b.nativeMappedStorageType(t, seen) {
+		return true
+	}
 	if t.ObjectFlags()&checker.ObjectFlagsReference != 0 {
 		t = t.Target()
 	}
@@ -39,6 +42,21 @@ func (b *irBuilder) nativeStorageType(t *checker.Type, seen map[*checker.Type]bo
 			if b.nativeStorageType(base, seen) {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+// Mapped views such as Readonly<T> retain native storage when T itself
+// satisfies the view. Inspect assignability so changed property types do not
+// inherit the representation merely because they share a type argument.
+func (b *irBuilder) nativeMappedStorageType(t *checker.Type, seen map[*checker.Type]bool) bool {
+	if t == nil || t.ObjectFlags()&checker.ObjectFlagsMapped == 0 || t.Alias() == nil {
+		return false
+	}
+	for _, argument := range t.Alias().TypeArguments() {
+		if b.nativeStorageType(argument, seen) && b.c.IsTypeAssignableTo(argument, t) {
+			return true
 		}
 	}
 	return false
