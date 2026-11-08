@@ -5,8 +5,10 @@ public abstract partial class TsObject
 {
     private sealed class PrototypeState { internal TsObject Value; }
     private static readonly ConditionalWeakTable<TsObject, PrototypeState> prototypes = new();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal bool TryExplicitPrototype(out TsObject value)
     {
+        if (accessors is not {HasExplicitPrototype: true}) {value = null; return false;}
         bool found = prototypes.TryGetValue(this, out var state);
         value = found ? state.Value : null; return found;
     }
@@ -33,7 +35,10 @@ public abstract partial class TsObject
     }
     internal virtual void SetPrototype(TsObject value)
     {
-        if (CanSetPrototype(value)) prototypes.GetValue(this, static _ => new PrototypeState()).Value = value;
+        if (CanSetPrototype(value)) {
+            (accessors ??= new JsAccessors()).HasExplicitPrototype = true;
+            prototypes.GetValue(this, static _ => new PrototypeState()).Value = value;
+        }
     }
     private object InheritedValue(string key, object receiver)
     {
