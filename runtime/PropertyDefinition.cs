@@ -59,8 +59,15 @@ public static partial class Js
         foreach (var entry in definitions) ApplyPropertyDefinition(obj, entry.Key, entry.Definition);
         return obj;
     }
-    internal static void DefineDictionaryField(JsDescriptorObject target, string key, object value) => ApplyPropertyDefinition(target, key,
-        new(value, null, null, true, true, true, DescriptorFields.Value | DescriptorFields.Writable | DescriptorFields.Enumerable | DescriptorFields.Configurable));
+    internal static void DefineDictionaryField(JsDescriptorObject target, string key, object value)
+    {
+        if (!target.HasPropertyDescriptors && target is JsDynamicObject or JsClassInstance) {
+            target.DefineOwn(key, value);
+            return;
+        }
+        ApplyPropertyDefinition(target, key,
+            new(value, null, null, true, true, true, DescriptorFields.Value | DescriptorFields.Writable | DescriptorFields.Enumerable | DescriptorFields.Configurable));
+    }
     static object ReflectDefineProperty(object target, object property, object attributes)
     {
         if (target is not TsObject obj) throw new InvalidOperationException("Property target must be an object");
