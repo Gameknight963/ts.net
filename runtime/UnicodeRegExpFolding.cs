@@ -315,21 +315,7 @@ public static partial class Js
             return MergeRegExpRanges(result);
         }
     }
-    internal static bool RegExpNeedsFoldInput(string pattern, string flags)
-    {
-        if (!(flags.Contains('u') || flags.Contains('v')) || !flags.Contains('i')) return false;
-        bool characterClass = false;
-        for (int index = 0; index < pattern.Length; index++) {
-            char unit = pattern[index];
-            if (unit == '\\') {
-                if (++index == pattern.Length) break;
-                if (!characterClass && (pattern[index] is >= '1' and <= '9' || pattern[index] == 'k')) return true;
-            }
-            else if (unit == '[') characterClass = true;
-            else if (unit == ']') characterClass = false;
-        }
-        return false;
-    }
+    internal static bool RegExpNeedsFoldInput(System.Text.RegularExpressions.Regex engine) => UnicodeRegExpEngines.FoldsInput(engine);
     // Expanded character sets handle ordinary matching. Only backreferences need
     // canonical input, because the CLR compares their captured text directly.
     static string RegExpInput(JsRegExp regex, string text) => regex.FoldInput ? UnicodeRegExpFolding.Text(text) : text;

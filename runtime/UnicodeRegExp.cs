@@ -3,18 +3,25 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Runtime.CompilerServices;
 
 public static partial class Js
 {
     static class UnicodeRegExpEngines
     {
         static readonly Dictionary<(string Source, RegexOptions Options, bool DotAll, bool UnicodeSets), (Regex Engine, string[] Names)> Values = new();
+        static readonly ConditionalWeakTable<Regex, object> FoldedInputEngines = new();
+        static readonly object Folded = new();
+        internal static bool FoldsInput(Regex engine) => FoldedInputEngines.TryGetValue(engine, out _);
         internal static (Regex Engine, string[] Names) Compile(string source, RegexOptions options, bool dotAll, bool unicodeSets)
         {
             lock (Values) {
                 var key = (source, options, dotAll, unicodeSets);
                 if (Values.TryGetValue(key, out var compiled)) return compiled;
-                var engine = RegExpEngine(new UnicodeRegExpReader(source, (options & RegexOptions.IgnoreCase) != 0, unicodeSets).Rewrite(), options & ~RegexOptions.IgnoreCase, dotAll, true, out var names);
+                var reader = new UnicodeRegExpReader(source, (options & RegexOptions.IgnoreCase) != 0, unicodeSets);
+                var engine = RegExpEngine(reader.Rewrite(), options & ~RegexOptions.IgnoreCase, dotAll, true, out var names);
+                reader.ValidateCaseModes();
+                if (reader.NeedsFoldInput) FoldedInputEngines.Add(engine, Folded);
                 if (Values.Count >= 64) Values.Clear();
                 compiled = (engine, names); Values.Add(key, compiled);
                 return compiled;
@@ -183,7 +190,9 @@ public static partial class Js
             if (position == source.Length) throw UnicodeRegExpSyntax();
             position++;
             if (ignoreCase) ranges = UnicodeRegExpFolding.Close(ranges);
-            return RegExpCodePointAtom(invert ? InvertRegExpRanges(ranges) : ranges);
+            if (invert) ranges = InvertRegExpRanges(ranges);
+            TrackSensitiveRanges(ranges);
+            return RegExpCodePointAtom(ranges);
         }
         int CaptureCount()
         {
@@ -201,16 +210,22 @@ public static partial class Js
         {
             var result = new StringBuilder(); int captures = CaptureCount();
             var assertions = new Stack<bool>(); bool previousAssertion = false;
+            var caseModes = new Stack<bool>();
             while (position < source.Length) {
                 char ch = source[position];
                 if (previousAssertion && ch is '*' or '+' or '?' or '{') throw UnicodeRegExpSyntax();
                 previousAssertion = false;
-                if (ch == '[') {result.Append(unicodeSets ? SetExpressionAtom(SetClass()) : CharacterClass()); continue;}
+                if (ch == '[') {
+                    if (unicodeSets) {var set = SetClass(); TrackSensitiveSet(set); result.Append(SetExpressionAtom(set));}
+                    else result.Append(CharacterClass());
+                    continue;
+                }
                 if (ch == '\\') {
-                    if (TryStringProperty(out var strings)) {result.Append(SetExpressionAtom(strings)); continue;}
+                    if (TryStringProperty(out var strings)) {TrackSensitiveSet(strings); result.Append(SetExpressionAtom(strings)); continue;}
                     if (position + 1 < source.Length && source[position + 1] is 'b' or 'B') {
                         string word = ignoreCase ? "[A-Za-z0-9_\\u017F\\u212A]" : "[A-Za-z0-9_]";
                         bool boundary = source[position + 1] == 'b';
+                        if (!ignoreCase && trackSensitiveAtoms) sensitiveAtoms = true;
                         result.Append(boundary
                             ? "(?:(?<=" + word + ")(?!" + word + ")|(?<!" + word + ")(?=" + word + "))"
                             : "(?:(?<=" + word + ")(?=" + word + ")|(?<!" + word + ")(?!" + word + "))");
@@ -220,23 +235,26 @@ public static partial class Js
                         int begin = ++position;
                         while (position < source.Length && char.IsAsciiDigit(source[position])) position++;
                         if (!int.TryParse(source.AsSpan(begin, position - begin), out int reference) || reference > captures) throw UnicodeRegExpSyntax();
+                        TrackReference();
                         result.Append('\\').Append(source, begin, position - begin); continue;
                     }
                     if (position + 2 < source.Length && source[position + 1] == 'k' && source[position + 2] == '<') {
                         int end = source.IndexOf('>', position + 3);
                         if (end < 0 || !RegExpHasNamedCapture(source)) throw UnicodeRegExpSyntax();
+                        TrackReference();
                         result.Append(source, position, end - position + 1); position = end + 1; continue;
                     }
                     var ranges = Atom(false);
+                    TrackSensitiveRanges(ranges);
                     result.Append(RegExpCodePointAtom(ignoreCase ? UnicodeRegExpFolding.Close(ranges) : ranges)); continue;
                 }
                 if (ch == '(') {
                     bool assertion = position + 2 < source.Length && source[position + 1] == '?' && (source[position + 2] is '=' or '!' || position + 3 < source.Length && source[position + 2] == '<' && source[position + 3] is '=' or '!');
                     assertions.Push(assertion);
+                    caseModes.Push(ignoreCase);
                     if (position + 2 < source.Length && source[position + 1] == '?' && RegExpModifierGroup(source, position + 2)) {
                         int end = source.IndexOf(':', position + 2);
-                        if (source.AsSpan(position, end - position).Contains('i')) throw new NotSupportedException("Unicode regular-expression case modifiers are not supported yet");
-                        result.Append(source, position, end - position + 1); position = end + 1; continue;
+                        CaseModifiers(end, result); position = end + 1; continue;
                     }
                     if (position + 3 < source.Length && source[position + 1] == '?' && source[position + 2] == '<' && source[position + 3] is not ('=' or '!')) {
                         int end = source.IndexOf('>', position + 3); if (end < 0) throw UnicodeRegExpSyntax();
@@ -249,7 +267,10 @@ public static partial class Js
                         result.Append(source, position, 4); position += 4; continue;
                     }
                 }
-                if (ch == ')') previousAssertion = assertions.Count != 0 && assertions.Pop();
+                if (ch == ')') {
+                    previousAssertion = assertions.Count != 0 && assertions.Pop();
+                    if (caseModes.Count != 0) ignoreCase = caseModes.Pop();
+                }
                 if (ch is '^' or '$') previousAssertion = true;
                 if (ch == '{') {
                     int begin = position++;
@@ -260,8 +281,11 @@ public static partial class Js
                     result.Append(source, begin, position - begin); continue;
                 }
                 if (ch is '}' or ']') throw UnicodeRegExpSyntax();
+                if (!ignoreCase && trackSensitiveAtoms && !sensitiveAtoms && !char.IsSurrogate(ch) && !"^$.*+?()|".Contains(ch))
+                    TrackSensitiveRanges([new(ch, ch)]);
                 if (char.IsSurrogate(ch) || ignoreCase && !"^$.*+?()|".Contains(ch)) {
                     var ranges = Atom(false);
+                    TrackSensitiveRanges(ranges);
                     result.Append(RegExpCodePointAtom(ignoreCase ? UnicodeRegExpFolding.Close(ranges) : ranges)); continue;
                 }
                 result.Append(ch); position++;

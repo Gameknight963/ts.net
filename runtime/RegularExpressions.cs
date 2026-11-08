@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 internal sealed class JsRegExp(string pattern, string flags, Regex engine, string[] namedGroups) : JsDescriptorObject
 {
     internal string Pattern = pattern, Flags = flags;
-    internal bool FoldInput = Js.RegExpNeedsFoldInput(pattern, flags);
+    internal bool FoldInput = Js.RegExpNeedsFoldInput(engine);
     internal Regex Engine = engine;
     internal string[] NamedGroups = namedGroups;
     internal int[] NamedCaptureIndices = Js.RegExpCaptureIndices(engine, namedGroups);
