@@ -81,6 +81,11 @@ public static partial class Js
                     if (!namedBackReferences) { rewritten.Append('k'); i++; continue; }
                     if (inClass || i + 2 >= pattern.Length || pattern[i + 2] != '<')
                         throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid named back reference"));
+                    int end = pattern.IndexOf('>', i + 3);
+                    if (end < 0) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid named back reference"));
+                    string name = ReadRegExpCaptureName(pattern[(i + 3)..end]);
+                    rewritten.Append("\\k<").Append(RegExpEngineCaptureName(name)).Append('>');
+                    i = end; continue;
                 }
                 if (i + 1 < pattern.Length && pattern[i + 1] is 'x' or 'u')
                 {
@@ -130,10 +135,11 @@ public static partial class Js
             {
                 int end = pattern.IndexOf('>', i + 3);
                 if (end < 0) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid named capture"));
-                string name = pattern[(i + 3)..end];
-                if (name.Length == 0 || char.IsDigit(name[0])) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid capture name"));
+                string name = ReadRegExpCaptureName(pattern[(i + 3)..end]);
                 if (names.Contains(name)) throw new NotSupportedException("Duplicate named captures are not supported");
                 names.Add(name); captures++;
+                rewritten.Append("(?<").Append(RegExpEngineCaptureName(name)).Append('>');
+                i = end; continue;
             }
             if (!inClass && ch == '(' && (i + 1 >= pattern.Length || pattern[i + 1] != '?'))
             {
@@ -267,9 +273,9 @@ public static partial class Js
         var result = new JsDynamicObject(); result.SetPrototype(null);
         foreach (string name in regex.NamedGroups)
         {
-            var group = match.Groups[name];
+            var group = match.Groups[RegExpEngineCaptureName(name)];
             result.DefineOwn(name, !group.Success ? Undefined : indices != null
-                ? indices.Get(regex.Engine.GroupNumberFromName(name).ToString(System.Globalization.CultureInfo.InvariantCulture))
+                ? indices.Get(regex.Engine.GroupNumberFromName(RegExpEngineCaptureName(name)).ToString(System.Globalization.CultureInfo.InvariantCulture))
                 : group.Value);
         }
         return result;

@@ -19,7 +19,7 @@ public static partial class Js
                 {
                     result.Append(template, literal, index - literal);
                     string name = template[(index + 2)..end];
-                    if (Array.IndexOf(regex.NamedGroups, name) >= 0) result.Append(captures.Groups[name].Value);
+                    if (Array.IndexOf(regex.NamedGroups, name) >= 0) result.Append(captures.Groups[RegExpEngineCaptureName(name)].Value);
                     index = end; literal = end + 1; continue;
                 }
             }
