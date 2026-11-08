@@ -23,7 +23,7 @@ public static partial class Js
         if (source == null && value is not string) return null;
         string key = PropertyKey(IteratorSymbol);
         object method = source == null ? Get(value, key) : source.Get(key);
-        if (IsNullish(method)) { disabled = value is string or JsArray or JsArguments or JsKeyedCollection or JsBoxedPrimitive { Value: string } || source.HasInProperty(key); return null; }
+        if (IsNullish(method)) { disabled = value is string or JsArray or JsArguments or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator or JsBoxedPrimitive { Value: string } || IsIteratorObject(source) || source.HasInProperty(key); return null; }
         if (ReferenceEquals(method, NativeIteratorPrototypes.Self) && IsIteratorObject(source)) return null;
         return method as JsFunction ?? throw new InvalidOperationException("Symbol.iterator is not callable");
     }
