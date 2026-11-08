@@ -134,9 +134,6 @@ func (b *irBuilder) typ(t *checker.Type) int {
 			t = b.c.GetStringType()
 		}
 	}
-	if b.nativeShapeViews[t] || b.arrayLikeType(t) || b.thenableType(t) || b.collectionInterfaceType(t) {
-		t = b.c.GetAnyType()
-	}
 	if symbol := t.Symbol(); symbol != nil && strings.HasSuffix(symbol.Name, "DecoratorContext") {
 		for _, declaration := range symbol.Declarations {
 			if file := ast.GetSourceFileOfNode(declaration); file != nil && strings.HasPrefix(file.FileName(), "bundled:///libs/") {
@@ -146,6 +143,9 @@ func (b *irBuilder) typ(t *checker.Type) int {
 				break
 			}
 		}
+	}
+	if b.nativeShapeViews[t] || b.arrayLikeType(t) || b.thenableType(t) || b.collectionInterfaceType(t) {
+		t = b.c.GetAnyType()
 	}
 	if nativeObjectType(t) {
 		t = b.c.GetAnyType()
