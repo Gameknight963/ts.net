@@ -42,8 +42,13 @@ public static partial class Js
                     iterator.Inner = null; closeable = false;
                 }
                 if (!iterator.Cursor.Ensure()) return EndLazyIterator(iterator, false);
+                if (iterator.Mode == "drop" && iterator.Remaining > 0)
+                {
+                    iterator.Cursor.SkipValue();
+                    iterator.Remaining--;
+                    continue;
+                }
                 object value = iterator.Cursor.TakeValue(); closeable = true;
-                if (iterator.Mode == "drop" && iterator.Remaining > 0) { iterator.Remaining--; continue; }
                 if (iterator.Mode == "take") iterator.Remaining--;
                 if (iterator.Callback != null)
                 {
