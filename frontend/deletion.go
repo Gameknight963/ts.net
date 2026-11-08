@@ -125,10 +125,18 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 		if n.Kind == ast.KindCallExpression {
 			b.prepareDefinition(n)
 			arguments := b.reflectionDeletionArguments(n)
-			if len(arguments) >= 2 {
-				key := arguments[1]
-				if key.Kind == ast.KindStringLiteral {
-					b.deletedNames[key.Text()] = true
+			// Binding a target hides it from the eventual invocation. Prepare
+			// its layout here, even when the property key is supplied later.
+			if len(arguments) == 0 {
+				owner, method := deletionAccess(n.Expression())
+				bound := n.AsCallExpression().Arguments.Nodes
+				if method == "bind" && len(bound) >= 2 && b.reflectionDeletionValue(owner, map[*ast.Node]bool{}) == 2 {
+					arguments = bound[1:]
+				}
+			}
+			if len(arguments) >= 1 {
+				if len(arguments) >= 2 && arguments[1].Kind == ast.KindStringLiteral {
+					b.deletedNames[arguments[1].Text()] = true
 				} else {
 					properties := b.c.GetPropertiesOfType(b.c.GetTypeAtLocation(arguments[0]))
 					if len(properties) == 0 {
