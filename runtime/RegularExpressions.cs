@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 internal sealed class JsRegExp(string pattern, string flags, Regex engine, string[] namedGroups) : JsDescriptorObject
 {
     internal string Pattern = pattern, Flags = flags;
+    internal bool FoldInput = Js.RegExpNeedsFoldInput(pattern, flags);
     internal Regex Engine = engine;
     internal string[] NamedGroups = namedGroups;
     internal int[] NamedCaptureIndices = Js.RegExpCaptureIndices(engine, namedGroups);
@@ -241,7 +242,6 @@ public static partial class Js
         if (seen.Contains('u') && seen.Contains('v')) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid regular-expression flags"));
         if (seen.Contains('v')) throw new NotSupportedException("Regular-expression flag v is not supported");
         bool unicode = seen.Contains('u');
-        if (unicode && seen.Contains('i')) throw new NotSupportedException("Unicode case-insensitive regular expressions are not supported yet");
         var options = RegexOptions.ECMAScript | RegexOptions.CultureInvariant | RegexOptions.Compiled;
         if (seen.Contains('i')) options |= RegexOptions.IgnoreCase;
         if (seen.Contains('m')) options |= RegexOptions.Multiline;
@@ -268,6 +268,7 @@ public static partial class Js
     internal static object RegExpMatch(JsRegExp regex, object input, bool test)
     {
         string text = StringValue(input);
+        string matchingText = RegExpInput(regex, text);
         bool global = regex.Flags.Contains('g'), sticky = regex.Flags.Contains('y');
         double position = Number(regex.LastIndex);
         position = double.IsNaN(position) || position <= 0 ? 0 : Math.Truncate(position);
@@ -276,18 +277,18 @@ public static partial class Js
         position = RegExpStartIndex(text, (int)position, regex.Flags.Contains('u'));
         if (test)
         {
-            if (!global && !sticky) return BoxBoolean(regex.Engine.IsMatch(text));
-            var matches = regex.Engine.EnumerateMatches(text.AsSpan(), (int)position);
+            if (!global && !sticky) return BoxBoolean(regex.Engine.IsMatch(matchingText));
+            var matches = regex.Engine.EnumerateMatches(matchingText.AsSpan(), (int)position);
             if (!matches.MoveNext() || sticky && matches.Current.Index != position) { regex.LastIndex = 0d; return BoxBoolean(false); }
             regex.LastIndex = (double)(matches.Current.Index + matches.Current.Length); return BoxBoolean(true);
         }
-        Match match = regex.Engine.Match(text, (int)position);
+        Match match = regex.Engine.Match(matchingText, (int)position);
         if (!match.Success || sticky && match.Index != position) { if (global || sticky) regex.LastIndex = 0d; return test ? BoxBoolean(false) : null; }
         if (global || sticky) regex.LastIndex = (double)(match.Index + match.Length);
         if (test) return BoxBoolean(true);
         var result = new JsArray(0);
-        foreach (Group group in match.Groups) result.Append(group.Success ? group.Value : Undefined);
-        result.DefineOwn("index", (double)match.Index); result.DefineOwn("input", text); result.DefineOwn("groups", RegExpNamedGroups(regex, match));
+        foreach (Group group in match.Groups) result.Append(group.Success ? RegExpCaptureText(text, group) : Undefined);
+        result.DefineOwn("index", (double)match.Index); result.DefineOwn("input", text); result.DefineOwn("groups", RegExpNamedGroups(regex, match, text: text));
         if (regex.Flags.Contains('d'))
         {
             var indices = new JsArray(0);
@@ -298,7 +299,7 @@ public static partial class Js
         }
         return result;
     }
-    static object RegExpNamedGroups(JsRegExp regex, Match match, JsArray indices = null)
+    static object RegExpNamedGroups(JsRegExp regex, Match match, JsArray indices = null, string text = null)
     {
         if (regex.NamedGroups.Length == 0) return Undefined;
         var result = new JsDynamicObject(); result.SetPrototype(null);
@@ -309,7 +310,7 @@ public static partial class Js
             var group = match.Groups[number];
             result.DefineOwn(name, !group.Success ? Undefined : indices != null
                 ? indices.Get(number.ToString(System.Globalization.CultureInfo.InvariantCulture))
-                : group.Value);
+                : text == null ? group.Value : RegExpCaptureText(text, group));
         }
         return result;
     }
@@ -340,6 +341,7 @@ public static partial class Js
                 var replacement = CreateRegExp(pattern, flags, false);
                 target.Pattern = replacement.Pattern;
                 target.Flags = replacement.Flags;
+                target.FoldInput = replacement.FoldInput;
                 target.Engine = replacement.Engine;
                 target.NamedGroups = replacement.NamedGroups;
                 target.NamedCaptureIndices = replacement.NamedCaptureIndices;

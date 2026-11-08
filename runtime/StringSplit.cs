@@ -56,17 +56,18 @@ public static partial class Js
     }
     static object SplitRegExp(string text, JsRegExp regex, uint limit)
     {
+        string matchingText = RegExpInput(regex, text);
         var result = new JsArray(0);
         if (limit == 0) return result;
         if (text.Length == 0)
         {
-            if (!regex.Engine.IsMatch(text)) result.Append(text);
+            if (!regex.Engine.IsMatch(matchingText)) result.Append(text);
             return result;
         }
         int copied = 0, search = 0;
         while (search < text.Length)
         {
-            var match = regex.Engine.Match(text, search);
+            var match = regex.Engine.Match(matchingText, search);
             if (!match.Success || match.Index == text.Length) break;
             int end = match.Index + match.Length;
             if (end == copied) { search = RegExpAdvanceIndex(text, match.Index, regex.Flags.Contains('u')); continue; }
@@ -74,7 +75,7 @@ public static partial class Js
             if (result.Length() == limit) return result;
             for (int group = 1; group < match.Groups.Count; group++)
             {
-                result.Append(match.Groups[group].Success ? match.Groups[group].Value : Undefined);
+                result.Append(match.Groups[group].Success ? RegExpCaptureText(text, match.Groups[group]) : Undefined);
                 if (result.Length() == limit) return result;
             }
             copied = end; search = end;

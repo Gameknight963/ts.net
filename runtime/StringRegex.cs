@@ -18,10 +18,11 @@ public static partial class Js
         string flags = search ? null : StringValue(regex.Get("flags"));
         if (!HasBuiltinRegExpExec(regex) || search && !regex.LastIndexWritable || !search && flags != regex.Flags) return MatchCustomRegExp(text, regex, search, flags);
         bool sticky = regex.Flags.Contains('y');
+        string matchingText = RegExpInput(regex, text);
         if (search)
         {
             // Searching starts at zero without changing the caller's lastIndex.
-            var match = regex.Engine.Match(text);
+            var match = regex.Engine.Match(matchingText);
             return match.Success && (!sticky || match.Index == 0) ? (double)match.Index : -1d;
         }
         if (!regex.Flags.Contains('g')) return RegExpMatch(regex, text, false);
@@ -30,9 +31,9 @@ public static partial class Js
         int position = 0;
         while (position <= text.Length)
         {
-            var match = regex.Engine.Match(text, position);
+            var match = regex.Engine.Match(matchingText, position);
             if (!match.Success || sticky && match.Index != position) break;
-            result.Append(match.Value);
+            result.Append(RegExpCaptureText(text, match));
             position = match.Length != 0 ? match.Index + match.Length : RegExpAdvanceIndex(text, match.Index, regex.Flags.Contains('u'));
         }
         return result.Length() == 0 ? null : result;

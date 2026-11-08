@@ -14,7 +14,7 @@ public static partial class Js
             lock (Values) {
                 var key = (source, options, dotAll);
                 if (Values.TryGetValue(key, out var compiled)) return compiled;
-                var engine = RegExpEngine(new UnicodeRegExpReader(source).Rewrite(), options, dotAll, true, out var names);
+                var engine = RegExpEngine(new UnicodeRegExpReader(source, (options & RegexOptions.IgnoreCase) != 0).Rewrite(), options & ~RegexOptions.IgnoreCase, dotAll, true, out var names);
                 if (Values.Count >= 64) Values.Clear();
                 compiled = (engine, names); Values.Add(key, compiled);
                 return compiled;
@@ -89,7 +89,7 @@ public static partial class Js
     static int RegExpStartIndex(string text, int index, bool unicode) =>
         unicode && index > 0 && index < text.Length && char.IsLowSurrogate(text[index]) && char.IsHighSurrogate(text[index - 1]) ? index - 1 : index;
 
-    sealed class UnicodeRegExpReader(string source)
+    sealed class UnicodeRegExpReader(string source, bool ignoreCase)
     {
         int position;
         bool atomIsSet;
@@ -131,7 +131,14 @@ public static partial class Js
             if (value == '\\') {
                 if (position == source.Length) throw UnicodeRegExpSyntax();
                 char escape = source[position++];
-                if (escape is 'd' or 'D' or 'w' or 'W' or 's' or 'S') {atomIsSet = true; return UnicodeRegExpClassEscape(escape);}
+                if (escape is 'd' or 'D' or 'w' or 'W' or 's' or 'S') {
+                    atomIsSet = true;
+                    if (ignoreCase && escape is 'w' or 'W') {
+                        var word = UnicodeRegExpFolding.Close(UnicodeRegExpClassEscape('w'));
+                        return escape == 'W' ? InvertRegExpRanges(word) : word;
+                    }
+                    return UnicodeRegExpClassEscape(escape);
+                }
                 if (escape is 'p' or 'P') {
                     atomIsSet = true;
                     if (position == source.Length || source[position++] != '{') throw UnicodeRegExpSyntax();
@@ -173,6 +180,7 @@ public static partial class Js
             }
             if (position == source.Length) throw UnicodeRegExpSyntax();
             position++;
+            if (ignoreCase) ranges = UnicodeRegExpFolding.Close(ranges);
             return RegExpCodePointAtom(invert ? InvertRegExpRanges(ranges) : ranges);
         }
         int CaptureCount()
@@ -197,7 +205,14 @@ public static partial class Js
                 previousAssertion = false;
                 if (ch == '[') {result.Append(CharacterClass()); continue;}
                 if (ch == '\\') {
-                    if (position + 1 < source.Length && source[position + 1] is 'b' or 'B') {result.Append(source, position, 2); position += 2; previousAssertion = true; continue;}
+                    if (position + 1 < source.Length && source[position + 1] is 'b' or 'B') {
+                        string word = ignoreCase ? "[A-Za-z0-9_\\u017F\\u212A]" : "[A-Za-z0-9_]";
+                        bool boundary = source[position + 1] == 'b';
+                        result.Append(boundary
+                            ? "(?:(?<=" + word + ")(?!" + word + ")|(?<!" + word + ")(?=" + word + "))"
+                            : "(?:(?<=" + word + ")(?=" + word + ")|(?<!" + word + ")(?!" + word + "))");
+                        position += 2; previousAssertion = true; continue;
+                    }
                     if (position + 1 < source.Length && source[position + 1] is >= '1' and <= '9') {
                         int begin = ++position;
                         while (position < source.Length && char.IsAsciiDigit(source[position])) position++;
@@ -209,7 +224,8 @@ public static partial class Js
                         if (end < 0 || !RegExpHasNamedCapture(source)) throw UnicodeRegExpSyntax();
                         result.Append(source, position, end - position + 1); position = end + 1; continue;
                     }
-                    result.Append(RegExpCodePointAtom(Atom(false))); continue;
+                    var ranges = Atom(false);
+                    result.Append(RegExpCodePointAtom(ignoreCase ? UnicodeRegExpFolding.Close(ranges) : ranges)); continue;
                 }
                 if (ch == '(') {
                     bool assertion = position + 2 < source.Length && source[position + 1] == '?' && (source[position + 2] is '=' or '!' || position + 3 < source.Length && source[position + 2] == '<' && source[position + 3] is '=' or '!');
@@ -223,6 +239,12 @@ public static partial class Js
                         int end = source.IndexOf('>', position + 3); if (end < 0) throw UnicodeRegExpSyntax();
                         result.Append(source, position, end - position + 1); position = end + 1; continue;
                     }
+                    if (position + 2 < source.Length && source[position + 1] == '?' && source[position + 2] is ':' or '=' or '!') {
+                        result.Append(source, position, 3); position += 3; continue;
+                    }
+                    if (assertion && position + 3 < source.Length && source[position + 2] == '<') {
+                        result.Append(source, position, 4); position += 4; continue;
+                    }
                 }
                 if (ch == ')') previousAssertion = assertions.Count != 0 && assertions.Pop();
                 if (ch is '^' or '$') previousAssertion = true;
@@ -235,7 +257,10 @@ public static partial class Js
                     result.Append(source, begin, position - begin); continue;
                 }
                 if (ch is '}' or ']') throw UnicodeRegExpSyntax();
-                if (char.IsSurrogate(ch)) {result.Append(RegExpCodePointAtom(Atom(false))); continue;}
+                if (char.IsSurrogate(ch) || ignoreCase && !"^$.*+?()|".Contains(ch)) {
+                    var ranges = Atom(false);
+                    result.Append(RegExpCodePointAtom(ignoreCase ? UnicodeRegExpFolding.Close(ranges) : ranges)); continue;
+                }
                 result.Append(ch); position++;
             }
             return "(?:" + result + ")";

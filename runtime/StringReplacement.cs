@@ -20,7 +20,7 @@ public static partial class Js
                     result.Append(template, literal, index - literal);
                     string name = template[(index + 2)..end];
                     int captureIndex = Array.IndexOf(regex.NamedGroups, name);
-                    if (captureIndex >= 0) result.Append(captures.Groups[regex.NamedCaptureIndices[captureIndex]].Value);
+                    if (captureIndex >= 0) result.Append(RegExpCaptureText(text, captures.Groups[regex.NamedCaptureIndices[captureIndex]]));
                     index = end; literal = end + 1; continue;
                 }
             }
@@ -35,7 +35,7 @@ public static partial class Js
                 if (capture > 0 && capture < captures.Groups.Count)
                 {
                     result.Append(template, literal, index - literal);
-                    result.Append(captures.Groups[capture].Value);
+                    result.Append(RegExpCaptureText(text, captures.Groups[capture]));
                     index += digits; literal = index + 1; continue;
                 }
             }
@@ -65,10 +65,11 @@ public static partial class Js
         start = double.IsNaN(start) || start <= 0 ? 0 : Math.Truncate(start);
         if (!sticky) start = 0;
         if (start <= text.Length) start = RegExpStartIndex(text, (int)start, regex.Flags.Contains('u'));
+        string matchingText = RegExpInput(regex, text);
         var matches = new List<Match>();
         if (start <= text.Length)
         {
-            Match match = regex.Engine.Match(text, (int)start);
+            Match match = regex.Engine.Match(matchingText, (int)start);
             while (match.Success && (!sticky || match.Index == start))
             {
                 matches.Add(match);
@@ -77,7 +78,7 @@ public static partial class Js
                 if (!global) break;
                 if (match.Length == 0) start = RegExpAdvanceIndex(text, (int)start, regex.Flags.Contains('u'));
                 if (start > text.Length) break;
-                match = regex.Engine.Match(text, (int)start);
+                match = regex.Engine.Match(matchingText, (int)start);
             }
         }
         if (global || sticky && matches.Count == 0) regex.LastIndex = 0d;
@@ -89,12 +90,12 @@ public static partial class Js
             if (function != null)
             {
                 var args = new object[match.Groups.Count + 2 + (regex.NamedGroups.Length == 0 ? 0 : 1)];
-                for (int i = 0; i < match.Groups.Count; i++) args[i] = match.Groups[i].Success ? match.Groups[i].Value : Undefined;
+                for (int i = 0; i < match.Groups.Count; i++) args[i] = match.Groups[i].Success ? RegExpCaptureText(text, match.Groups[i]) : Undefined;
                 args[match.Groups.Count] = (double)match.Index; args[match.Groups.Count + 1] = text;
-                if (regex.NamedGroups.Length != 0) args[^1] = RegExpNamedGroups(regex, match);
+                if (regex.NamedGroups.Length != 0) args[^1] = RegExpNamedGroups(regex, match, text: text);
                 result.Append(StringValue(function.InvokeWithReceiver(Undefined, args)));
             }
-            else AppendReplacement(result, template, text, match.Value, match.Index, match, regex);
+            else AppendReplacement(result, template, text, RegExpCaptureText(text, match), match.Index, match, regex);
             copied = match.Index + match.Length;
         }
         result.Append(text, copied, text.Length - copied); return result.ToString();
