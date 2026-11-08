@@ -4,11 +4,11 @@ using System.Security.Cryptography;
 public static partial class Js
 {
     static string AesJwkAlgorithm(int bytes, string name = "AES-GCM") => $"A{bytes * 8}{name[4..]}";
-    static string[] AesUsages(object value, bool unique = false) => SecretKeyUsages(value, new[] { "encrypt", "decrypt", "wrapKey", "unwrapKey" }, unique);
+    static string[] AesUsages(object value, bool unique = false, string name = "AES-GCM") => SecretKeyUsages(value, name == "AES-KW" ? new[] {"wrapKey", "unwrapKey"} : new[] { "encrypt", "decrypt", "wrapKey", "unwrapKey" }, unique);
     static object AesImport(object[] args, string name = "AES-GCM")
     {
         string format = StringValue(FunctionArgument(args, 0)); object input = FunctionArgument(args, 1);
-        string[] usages = AesUsages(FunctionArgument(args, 4)); bool extractable = Truthy(FunctionArgument(args, 3));
+        string[] usages = AesUsages(FunctionArgument(args, 4), name: name); bool extractable = Truthy(FunctionArgument(args, 3));
         byte[] bytes;
         if (format == "raw") bytes = CryptoBytes(input);
         else if (format == "jwk") bytes = SecretJwkImport(input, "enc", bytes => AesJwkAlgorithm(bytes, name), extractable, usages);
@@ -22,7 +22,7 @@ public static partial class Js
         object length = options.Get("length"); if (IsUndefined(length)) throw new InvalidOperationException("AES generation requires a length");
         double bits = Math.Truncate(Number(length));
         if (bits is not (128 or 192 or 256)) throw CryptoError("OperationError", "AES keys require 128, 192, or 256 bits");
-        string[] usages = AesUsages(FunctionArgument(args, 2), true);
+        string[] usages = AesUsages(FunctionArgument(args, 2), true, name);
         return new CryptoKeyValue(RandomNumberGenerator.GetBytes((int)bits / 8), null, Truthy(FunctionArgument(args, 1)), usages, name);
     }
     static object AesCrypt(object[] args, bool decrypt, string usage = null)
