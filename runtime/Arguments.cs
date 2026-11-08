@@ -12,7 +12,8 @@ internal sealed class JsArgumentsReceiver(object receiver, object[] values)
 
 internal sealed class JsArguments : JsDynamicObject
 {
-    readonly object[] values;
+    object[] values;
+    bool expanded;
     object assignedLength;
     bool lengthAssigned;
     bool iteratorHidden = true;
@@ -22,46 +23,59 @@ internal sealed class JsArguments : JsDynamicObject
         // before running user code. Keep an independent snapshot of user values.
         values = new object[source.Length - 1];
         Array.Copy(source, 1, values, 0, values.Length);
+        DefineOwn("length", (double)values.Length);
+        DefineOwn("callee", Js.Undefined);
         DefineOwn(Js.ArgumentsIteratorKey, Js.ArrayMethodValue("values"));
     }
+    void ExpandProperties()
+    {
+        if (expanded) return;
+        for (int index = 0; index < values.Length; index++)
+            base.Define(new(index.ToString(CultureInfo.InvariantCulture), values[index], null, null, false, true, true, true));
+        base.Define(new("length", lengthAssigned ? assignedLength : (double)values.Length, null, null, false, true, false, true));
+        base.Define(new("callee", Js.Undefined, CalleeThrower, CalleeThrower, true, false, false, false));
+        if (base.HasOwn(Js.ArgumentsIteratorKey))
+            base.Define(new(Js.ArgumentsIteratorKey, base.Get(Js.ArgumentsIteratorKey), null, null, false, true, !iteratorHidden, true));
+        expanded = true;
+        values = null;
+        assignedLength = null;
+    }
+    internal override void Define(Descriptor descriptor) { ExpandProperties(); base.Define(descriptor); }
     static readonly JsFunction CalleeThrower = new((FunctionBody)(static _ => throw CalleeError()), null, "", 0);
     internal override object LookupOwnAccessor(string key, bool setter) => key == "callee" ? CalleeThrower : base.LookupOwnAccessor(key, setter);
     internal override object OwnPropertyDescriptor(string key) => key == "callee"
         ? Js.AccessorDescriptor(CalleeThrower, CalleeThrower, false, false) : base.OwnPropertyDescriptor(key);
     static Exception CalleeError() => new InvalidOperationException("Strict arguments.callee cannot be accessed");
     internal override bool IsReadOnlyOwnProperty(string key) => key == "callee" || base.IsReadOnlyOwnProperty(key);
-    public override bool HasOwn(string key) => key is "length" or "callee" || JsArray.Index(key, out uint index) && index < values.Length || base.HasOwn(key);
+    public override bool HasOwn(string key) => expanded ? base.HasOwn(key) : key is "length" or "callee" || JsArray.Index(key, out uint index) && index < values.Length || base.HasOwn(key);
     public override object Get(string key)
     {
+        if (expanded) return base.Get(key);
         if (key == "callee") throw CalleeError();
         if (key == "length") return lengthAssigned ? assignedLength : (double)values.Length;
         return JsArray.Index(key, out uint index) && index < values.Length ? values[index] : base.Get(key);
     }
-    public override object SetOwnValue(string key, object value) => key is "length" or "callee" || JsArray.Index(key, out uint index) && index < values.Length ? Set(key, value) : base.SetOwnValue(key, value);
+    public override object SetOwnValue(string key, object value) => expanded ? base.SetOwnValue(key, value) : key is "length" or "callee" || JsArray.Index(key, out uint index) && index < values.Length ? Set(key, value) : base.SetOwnValue(key, value);
     public override object Set(string key, object value)
     {
+        if (expanded) return base.Set(key, value);
         if (key == "callee") throw CalleeError();
         if (key == "length") { assignedLength = value; lengthAssigned = true; return value; }
         if (JsArray.Index(key, out uint index) && index < values.Length) { values[index] = value; return value; }
         return base.Set(key, value);
     }
     public override object SetWithReceiver(string key, object value, object receiver) => key == "callee" ? throw CalleeError() : base.SetWithReceiver(key, value, receiver);
-    internal override object OwnPropertyNames() => AllOwnKeys(true);
-    internal override object ForInOwnKeys() => Js.ForInNames(OwnKeys(), "length", "callee");
-    internal override bool ForInEnumerable(string key) => key is not ("length" or "callee") && (!iteratorHidden || key != Js.ArgumentsIteratorKey);
-    public override bool DeleteOwn(string key)
-    {
-        bool deleted = base.DeleteOwn(key);
-        if (deleted && key == Js.ArgumentsIteratorKey) iteratorHidden = false;
-        return deleted;
-    }
-    public override double OwnKeyCount() => values.Length + ExtraKeyCount;
+    internal override object OwnPropertyNames() => expanded ? base.ForInOwnKeys() : AllOwnKeys(true);
+    internal override object ForInOwnKeys() => expanded ? base.ForInOwnKeys() : Js.ForInNames(OwnKeys(), "length", "callee");
+    internal override bool ForInEnumerable(string key) => expanded ? base.ForInEnumerable(key) : key is not ("length" or "callee") && (!iteratorHidden || key != Js.ArgumentsIteratorKey);
+    public override bool DeleteOwn(string key) { ExpandProperties(); return base.DeleteOwn(key); }
+    public override double OwnKeyCount() => expanded ? base.OwnKeyCount() : values.Length + ExtraKeyCount - 2;
     public override object OwnKeys()
     {
+        if (expanded) return base.OwnKeys();
         var names = (JsArray)AllOwnKeys(false);
-        if (!iteratorHidden) return names;
         var result = new JsArray(0);
-        for (uint index = 0; index < names.Length(); index++) if ((string)names.ElementAt(index) != Js.ArgumentsIteratorKey) result.Append(names.ElementAt(index));
+        for (uint index = 0; index < names.Length(); index++) if ((string)names.ElementAt(index) is not ("length" or "callee") && (!iteratorHidden || (string)names.ElementAt(index) != Js.ArgumentsIteratorKey)) result.Append(names.ElementAt(index));
         return result;
     }
     object AllOwnKeys(bool hidden)
@@ -73,7 +87,7 @@ internal sealed class JsArguments : JsDynamicObject
     }
     internal double IterationLength()
     {
-        double length = lengthAssigned ? Js.Number(assignedLength) : values.Length;
+        double length = expanded ? Js.Number(Get("length")) : lengthAssigned ? Js.Number(assignedLength) : values.Length;
         return double.IsNaN(length) || length <= 0 ? 0 : Math.Min(9007199254740991d, Math.Floor(length));
     }
 }
