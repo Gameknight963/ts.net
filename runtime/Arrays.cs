@@ -209,7 +209,7 @@ public partial class JsArray : TsObject
     public override object Set(string key, object value)
     {
         if (key == "length") SetLength(Js.Number(value));
-        else if (Index(key, out uint index)) { if (!SetThroughNonExtensiblePrototype(index, value)) Write(index, value); }
+        else if (Index(key, out uint index)) { if (!SetThroughPrototype(index, value)) Write(index, value); }
         else return base.Set(key, value);
         return value;
     }
@@ -221,7 +221,7 @@ public partial class JsArray : TsObject
     public void SetAt(int index, object value)
     {
         if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
-        if (!SetThroughNonExtensiblePrototype((uint)index, value)) Write((uint)index, value);
+        if (!SetThroughPrototype((uint)index, value)) Write((uint)index, value);
     }
     public void SetIndex(object key, object value) => Set(Js.PropertyKey(key), value);
     public void Append(object value)
@@ -367,7 +367,7 @@ public sealed partial class NumberArray : JsArray
             ? Js.Cast<double?>(InheritedElement((uint)index), "Array element is not a number") : Decode(stored);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetNumberAt(int index, double? value) { if (!IsExtensible && SetThroughNonExtensiblePrototype((uint)index, Js.BoxNumber(value))) return; Store((uint)index, value); }
+    public void SetNumberAt(int index, double? value) { if (NeedsPrototypeSet((uint)index) && SetThroughPrototype((uint)index, Js.BoxNumber(value))) return; Store((uint)index, value); }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetNumber(double index, double? value)
     {

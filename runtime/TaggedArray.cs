@@ -76,7 +76,7 @@ public sealed partial class TaggedArray : JsArray
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetNumberAt(int index, double? value)
     {
-        if (!IsExtensible && SetThroughNonExtensiblePrototype((uint)index, Js.BoxNumber(value))) return;
+        if (NeedsPrototypeSet((uint)index) && SetThroughPrototype((uint)index, Js.BoxNumber(value))) return;
         if (TryWriteDefinedNumber((uint)index, value)) return;
         if (!value.HasValue) { Write((uint)index, Js.Undefined);return; }
         if (!Prepare((uint)index)) { materialized.SetAt(index, value.Value);return; }
@@ -87,7 +87,7 @@ public sealed partial class TaggedArray : JsArray
     // The compiler uses this entry point only for statically nonnumeric values.
     public void SetReferenceAt(int index, object value)
     {
-        if (SetThroughNonExtensiblePrototype((uint)index, value)) return;
+        if (SetThroughPrototype((uint)index, value)) return;
         if (TryWriteDefinedElement((uint)index, value)) return;
         if (!Prepare((uint)index)) { materialized.SetAt(index, value);return; }
         tags[index] = 2;references[index] = value;

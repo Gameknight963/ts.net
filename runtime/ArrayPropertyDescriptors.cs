@@ -69,9 +69,11 @@ public partial class JsArray
         }
         return base.DeleteOwn(key);
     }
-    protected bool SetThroughNonExtensiblePrototype(uint index, object value)
+    protected bool NeedsPrototypeSet(uint index) => !HasElement(index) &&
+        (!IsExtensible || !ReferenceEquals(PropertyPrototype, Js.ArrayPrototype) || !Js.ArraySlicePrototypesHaveNoIndices());
+    protected bool SetThroughPrototype(uint index, object value)
     {
-        if (IsExtensible || HasElement(index)) return false;
+        if (!NeedsPrototypeSet(index)) return false;
         SetWithReceiver(index.ToString(System.Globalization.CultureInfo.InvariantCulture), value, this);
         return true;
     }
