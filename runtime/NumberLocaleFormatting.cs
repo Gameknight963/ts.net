@@ -65,8 +65,8 @@ public static partial class Js
             var requestedLocales = (JsArray)CollatorSupportedLocales(locales, Undefined);
             LocaleValue selectedLocale = IndexedLength(requestedLocales) == 0 ? null : new LocaleValue(IndexedValue(requestedLocales, 0), Undefined);
             culture = selectedLocale == null ? CultureInfo.CurrentCulture : LocaleCulture(CollatorLocale(selectedLocale.BaseName));
-            numberingSystem = selectedLocale?.Keyword("nu") as string ?? "latn";
-            localeName = culture.Name + (selectedLocale?.Keyword("nu") is string ? "-u-nu-" + numberingSystem : "");
+            numberingSystem = ResolveNumberingSystem(selectedLocale?.Keyword("nu") as string ?? "latn");
+            localeName = culture.Name + (selectedLocale?.Keyword("nu") as string == numberingSystem ? "-u-nu-" + numberingSystem : "");
             notation = "standard"; roundingPriority = "auto";
             minimumSignificant = maximumSignificant = 0;
             roundingIncrement = 1; roundingMode = "halfExpand"; trailingZeroDisplay = "auto";
@@ -86,7 +86,7 @@ public static partial class Js
                 {
                     string system = StringValue(requestedNumberingSystem);
                     ValidateNumberingSystem(system);
-                    numberingSystem = system;
+                    numberingSystem = ResolveNumberingSystem(system);
                     if (selectedLocale?.Keyword("nu") as string != system) localeName = culture.Name;
                 }
                 object requestedStyle = options.Get("style");

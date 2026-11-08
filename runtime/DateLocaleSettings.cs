@@ -32,7 +32,8 @@ public static partial class Js
             string calendarDefault = locale?.Keyword("ca") as string, numberingDefault = locale?.Keyword("nu") as string;
             string cycleDefault = (locale?.Keyword("hc") as string) switch { "h11" => "h11", "h12" => "h12", "h23" => "h23", "h24" => "h24", _ => null };
             string calendar = Option("calendar") ?? calendarDefault;
-            numberingSystem = Option("numberingSystem") ?? numberingDefault ?? "latn";
+            string requestedNumbering = Option("numberingSystem");
+            numberingSystem = requestedNumbering ?? numberingDefault ?? "latn";
             if (calendar != null && calendar != NativeCalendarName(culture))
             {
                 Calendar selected = null;
@@ -44,6 +45,7 @@ public static partial class Js
                 Culture = culture;
             }
             ValidateNumberingSystem(numberingSystem);
+            numberingSystem = ResolveNumberingSystem(numberingSystem);
             try { digitCharacters = NumberDigitCharacters(numberingSystem); }
             catch (NotSupportedException) { throw new NotSupportedException("Date locale formatting option numberingSystem is not supported"); }
             dateFields = new DateLocaleFields(options);
@@ -51,7 +53,7 @@ public static partial class Js
             string extensions = "";
             if (calendarDefault != null && calendarDefault == NativeCalendarName(Culture)) extensions += "-ca-" + calendarDefault;
             if (timeFields.KeepCycleExtension) extensions += "-hc-" + cycleDefault;
-            if (numberingDefault != null && numberingDefault == numberingSystem) extensions += "-nu-" + numberingDefault;
+            if (numberingDefault != null && numberingDefault == numberingSystem && (requestedNumbering == null || requestedNumbering == numberingDefault)) extensions += "-nu-" + numberingDefault;
             localeName = Culture.Name + (extensions.Length == 0 ? "" : "-u" + extensions);
             if ((dateFields.HasFields || timeFields.HasFields) && (dateStyle != null || timeStyle != null))
                 throw new InvalidOperationException("Date styles cannot be combined with component options");

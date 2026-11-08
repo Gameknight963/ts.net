@@ -11,6 +11,14 @@ public static partial class Js
                 if (!char.IsAsciiLetterOrDigit(ch)) throw new ArgumentOutOfRangeException(nameof(system), "Invalid numbering system");
         }
     }
+    static string ResolveNumberingSystem(string requested)
+    {
+        // Arabic digits also require separators and sign patterns. Keep their
+        // existing unsupported path until that formatting is implemented.
+        if (requested is "latn" or "arab" or "arabext") return requested;
+        try {NumberDigitCharacters(requested); return requested;}
+        catch (NotSupportedException) {return "latn";}
+    }
     static string NumberDigitCharacters(string system) => system switch
     {
         "latn" => null,
