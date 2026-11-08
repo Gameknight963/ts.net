@@ -8,7 +8,7 @@ public static partial class Js
         bool Writable, bool Enumerable, bool Configurable, DescriptorFields Fields)
     {
         internal bool Accessor => (Fields & (DescriptorFields.Get | DescriptorFields.Set)) != 0;
-        internal JsCreatedObject.Descriptor Complete(string key) => new(key, Value, Getter, Setter, Accessor, Writable, Enumerable, Configurable);
+        internal JsDynamicObject.Descriptor Complete(string key) => new(key, Value, Getter, Setter, Accessor, Writable, Enumerable, Configurable);
     }
     static PropertyDefinition ReadPropertyDefinition(object input)
     {
@@ -37,7 +37,7 @@ public static partial class Js
         if (target is not TsObject obj) throw new InvalidOperationException("Property target must be an object");
         string key = PropertyKey(property);
         PropertyDefinition definition = ReadPropertyDefinition(attributes);
-        if (obj is not JsCreatedObject created) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
+        if (obj is not JsDynamicObject created || obj.IsModuleNamespace) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
         object existing = obj.OwnPropertyDescriptor(key);
         if (IsUndefined(existing)) { created.Define(definition.Complete(key)); return obj; }
         var current = (TsObject)existing;
