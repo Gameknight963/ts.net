@@ -25,7 +25,7 @@ public static partial class Js
             // conversion already ran, and Array.Copy handles overlapping regions.
             if (source is NumberArray numbers && length <= int.MaxValue)
             {
-                double[] packed = numbers.TryPacked(length);
+                double[] packed = numbers.TryWritablePacked(length);
                 if (packed != null) { Array.Copy(packed, (int)start, packed, (int)target, (int)count); return source; }
             }
             long direction = 1;

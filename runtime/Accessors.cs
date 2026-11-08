@@ -38,7 +38,28 @@ internal class JsAccessors : Dictionary<string, JsAccessor>
 
 public abstract partial class TsObject
 {
+    sealed class NonExtensibleArrayAccessors : JsAccessors
+    {
+        internal bool ElementsSealed, ElementsFrozen;
+        internal NonExtensibleArrayAccessors() { }
+        internal NonExtensibleArrayAccessors(Dictionary<string, JsAccessor> source) : base(source) { }
+    }
     JsAccessors accessors;
+    protected bool ArrayExtensionsAllowed => accessors is not NonExtensibleArrayAccessors;
+    protected bool StoredArrayElementsSealed => accessors is NonExtensibleArrayAccessors {ElementsSealed: true};
+    protected bool StoredArrayElementsFrozen => accessors is NonExtensibleArrayAccessors {ElementsFrozen: true};
+    protected void SealStoredArrayElements(bool frozen)
+    {
+        PreventArrayExtensions();
+        var state = (NonExtensibleArrayAccessors)accessors;
+        state.ElementsSealed = true;
+        state.ElementsFrozen |= frozen;
+    }
+    protected void PreventArrayExtensions()
+    {
+        if (accessors is not NonExtensibleArrayAccessors)
+            accessors = accessors == null ? new NonExtensibleArrayAccessors() : new NonExtensibleArrayAccessors(accessors);
+    }
     internal bool HasIndexedAccessors => accessors != null && accessors.IndexedCount != 0;
     internal bool HasOwnAccessors => accessors != null && accessors.Count != 0;
     internal IEnumerable<string> OwnAccessorKeys => accessors == null ? Array.Empty<string>() : accessors.Keys;
@@ -50,7 +71,7 @@ public abstract partial class TsObject
     public void DefineAccessor(string key, object function, int mode) => DefineAccessor(key, function, mode, true);
     internal void DefineAccessor(string key, object function, int mode, bool inferName)
     {
-        if (!IsExtensible && !HasOwn(key)) throw new InvalidOperationException("Object is not extensible");
+        if (!IsExtensible && !HasOwn(key) && (extra == null || !extra.ContainsKey(key))) throw new InvalidOperationException("Object is not extensible");
         if (!TryOwnAccessor(key, out var accessor))
         {
             accessor = new JsAccessor(); (accessors ??= new())[key] = accessor;

@@ -53,6 +53,7 @@ public partial class JsArray
 {
     internal virtual double ElementKeyCount() => values.CountPresent(static value => !ReferenceEquals(value, Hole));
     public override double OwnKeyCount() => HasOwnAccessors ? Js.StringPropertyKeyCount(OwnKeys()) : ElementKeyCount() + ExtraKeyCount - (LengthWritable ? 0 : 1);
+    internal virtual uint? LastStoredIndex() => values.ExtremePresent(static value => !ReferenceEquals(value, Hole), true);
     internal virtual List<uint> PresentIndices() => values.PresentIndices(static value => !ReferenceEquals(value, Hole));
     internal object ArrayPropertyNames()
     {
@@ -73,12 +74,20 @@ public partial class JsArray
 
 public sealed partial class NumberArray
 {
+    internal override uint? LastStoredIndex() => numbers.ExtremePresent(static value => BitConverter.DoubleToInt64Bits(value) != MissingBits, true);
     internal override double ElementKeyCount() => numbers.CountPresent(static value => BitConverter.DoubleToInt64Bits(value) != MissingBits);
     internal override List<uint> PresentIndices() => numbers.PresentIndices(static value => BitConverter.DoubleToInt64Bits(value) != MissingBits);
 }
 
 public sealed partial class TaggedArray
 {
+    internal override uint? LastStoredIndex()
+    {
+        if (materialized != null) return materialized.LastStoredIndex();
+        uint end = Math.Min(length, (uint)tags.Length);
+        for (uint i = end; i > 0; i--) if (tags[i - 1] != 0) return i - 1;
+        return null;
+    }
     internal override double ElementKeyCount()
     {
         if (materialized != null) return materialized.ElementKeyCount();
@@ -98,6 +107,11 @@ public sealed partial class TaggedArray
 
 public sealed partial class ReversibleArray
 {
+    internal override uint? LastStoredIndex()
+    {
+        uint? index = values.ExtremePresent(static value => !ReferenceEquals(value, HoleValue()), !reversed);
+        return reversed && index.HasValue ? Count - 1 - index.Value : index;
+    }
     internal override List<uint> PresentIndices()
     {
         var result = base.PresentIndices();

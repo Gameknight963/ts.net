@@ -17,7 +17,7 @@ public sealed partial class ReversibleArray : JsArray
     }
     public override JsArray Reverse()
     {
-        if (!CanUseElementStorage) return (JsArray)Js.ReverseArrayLike(this);
+        if (!CanUseElementStorage || !IsExtensible) return (JsArray)Js.ReverseArrayLike(this);
         if (Count > 1) reversed = !reversed;
         return this;
     }

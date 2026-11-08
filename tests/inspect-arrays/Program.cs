@@ -147,3 +147,17 @@ if (args.Length > 1)
     context.Unload();
     Console.WriteLine("PASS selective tagged storage and guarded byte-buffer traversal in emitted IL");
 }
+
+var freezeArray = (JsFunction)((TsObject)Js.BuiltinNamespace("Object")).Get("freeze");
+freezeArray.Invoke(new object[] {new NumberArray(0)});
+var frozenNumbers = new NumberArray(10000);
+for (int i = 0; i < 10000; i++) frozenNumbers.SetNumberAt(i, i);
+long freezeStart = GC.GetAllocatedBytesForCurrentThread();
+freezeArray.Invoke(new object[] {frozenNumbers});
+long freezeAllocated = GC.GetAllocatedBytesForCurrentThread() - freezeStart;
+if (freezeAllocated > 16000 || frozenNumbers.GetNumberAt(9999) != 9999) {
+    Console.Error.WriteLine("Freezing numeric arrays allocated per element or changed values: " + freezeAllocated);
+    Environment.ExitCode = 1;
+    return;
+}
+Console.WriteLine("PASS freezing numeric arrays keeps compact storage: " + freezeAllocated + " bytes");

@@ -7,6 +7,7 @@ public static partial class Js
     {
         if (value is not TsObject target || !ObjectExtensible(value)) return value;
         if (target is TypedArrayValue array && !array.CanPreventExtensions) throw new InvalidOperationException("Cannot prevent extensions on this typed array");
+        if (target is JsArray ordinary) { ordinary.PreventExtensions(); return value; }
         if (target is not JsDescriptorObject dictionary) throw new NotSupportedException("Preventing extensions on this object layout is not implemented yet");
         dictionary.PreventExtensions();
         return value;
@@ -23,7 +24,12 @@ public static partial class Js
         if (value is not TsObject target) return true;
         if (ObjectExtensible(target)) return false;
         if (frozen && target is TypedArrayValue {Count: > 0}) return false;
-        var names = (JsArray)(target is TypedArrayValue array ? array.ExtraPropertyNames() : target.OwnPropertyNames());
+        if (target is JsTemplateArray) return true;
+        if (target is JsArray ordinary) {
+            if (frozen && ordinary.LengthWritable) return false;
+            if ((!ordinary.ElementsSealed || frozen && !ordinary.ElementsFrozen) && ordinary.ElementKeyCount() != 0) return false;
+        }
+        var names = (JsArray)(target is TypedArrayValue array ? array.ExtraPropertyNames() : target is JsArray indexed ? indexed.ExtraPropertyNames() : target.OwnPropertyNames());
         for (uint index = 0; index < names.Length(); index++) {
             string key = (string)names.ElementAt(index);
             var descriptor = (TsObject)target.OwnPropertyDescriptor(key);
@@ -37,7 +43,8 @@ public static partial class Js
         if (value is not TsObject target || ObjectIntegrity(value, frozen)) return value;
         ObjectPreventExtensions(value);
         if (target is TypedArrayValue {Count: > 0}) throw new InvalidOperationException("Cannot change typed-array element attributes");
-        var names = (JsArray)target.OwnPropertyNames();
+        if (target is JsArray ordinary) ordinary.SealElements(frozen);
+        var names = (JsArray)(target is JsArray indexed ? indexed.ExtraPropertyNames() : target.OwnPropertyNames());
         for (uint index = 0; index < names.Length(); index++)
         {
             string key = (string)names.ElementAt(index);
@@ -47,6 +54,7 @@ public static partial class Js
             if (frozen && descriptor.HasOwn("writable")) fields |= DescriptorFields.Writable;
             ApplyPropertyDefinition(target, key, new(Undefined, null, null, false, false, false, fields));
         }
+        if (frozen && target is JsArray frozenArray) frozenArray.MakeLengthReadOnly();
         return value;
     }
 }

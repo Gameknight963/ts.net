@@ -4,11 +4,17 @@ using System.Globalization;
 
 public partial class JsArray
 {
+    internal override bool IsExtensible => ArrayExtensionsAllowed;
+    internal void PreventExtensions() => PreventArrayExtensions();
+    internal bool ElementsSealed => StoredArrayElementsSealed;
+    internal bool ElementsFrozen => StoredArrayElementsFrozen;
+    internal void SealElements(bool frozen) => SealStoredArrayElements(frozen);
+    internal object ExtraPropertyNames() => base.OwnKeys();
     // The length slot is normally implicit. Materialize a hidden marker only
     // when it becomes read-only, keeping ordinary array layouts unchanged.
     internal bool LengthWritable => !base.HasOwn("length");
     internal void MakeLengthReadOnly() => base.DefineOwn("length", Js.Undefined);
-    internal override bool IsReadOnlyOwnProperty(string key) => key == "length" && !LengthWritable || base.IsReadOnlyOwnProperty(key);
+    internal override bool IsReadOnlyOwnProperty(string key) => key == "length" && !LengthWritable || ElementsFrozen && Index(key, out uint index) && HasElement(index) || base.IsReadOnlyOwnProperty(key);
     protected void CheckLengthWritable()
     {
         if (!LengthWritable) throw new InvalidOperationException("Array length is read-only");
@@ -16,10 +22,11 @@ public partial class JsArray
     internal sealed class LengthBlockedException() : InvalidOperationException("Array element is not configurable");
     protected void RemoveDefinedElements(uint length)
     {
-        if (!HasIndexedAccessors || length >= Count) return;
+        if ((!HasIndexedAccessors && !ElementsSealed) || length >= Count) return;
         var indices = new List<uint>();
         foreach (string key in OwnAccessorKeys)
             if (Index(key, out uint index) && index >= length && index < Count) indices.Add(index);
+        if (ElementsSealed && LastStoredIndex() is uint last && last >= length) indices.Add(last);
         indices.Sort(static (left, right) => right.CompareTo(left));
         foreach (uint index in indices) {
             if (DeleteOwn(index.ToString(CultureInfo.InvariantCulture))) continue;
@@ -30,6 +37,8 @@ public partial class JsArray
     protected void CheckGrowth(uint index)
     {
         if (index >= Count) CheckLengthWritable();
+        if (ElementsFrozen && HasElement(index)) throw new InvalidOperationException("Array element is read-only");
+        if (!IsExtensible && !HasElement(index)) throw new InvalidOperationException("Array is not extensible");
     }
 }
 

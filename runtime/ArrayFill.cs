@@ -23,7 +23,7 @@ public static partial class Js
             // invoke inherited setters, and both range conversions already ran.
             if (source is NumberArray numbers && value is double number && end > start && end <= int.MaxValue)
             {
-                double[] packed = numbers.TryPacked(end);
+                double[] packed = numbers.TryWritablePacked(end);
                 if (packed != null)
                 {
                     Array.Fill(packed, double.IsNaN(number) ? double.NaN : number, (int)start, (int)(end - start));

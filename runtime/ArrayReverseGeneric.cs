@@ -5,7 +5,7 @@ public static partial class Js
 {
     internal static object ReverseArrayLike(object receiver)
     {
-        if (receiver is JsArray array && array.CanUseElementStorage) return array.Reverse();
+        if (receiver is JsArray array && array.CanUseElementStorage && array.IsExtensible) return array.Reverse();
         var source = ToObject(receiver);
         long length = IndexedLength(source);
         void Set(long index, object value) => source.SetWithReceiver(index.ToString(CultureInfo.InvariantCulture), value, source);

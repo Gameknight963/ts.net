@@ -93,6 +93,19 @@ partial struct ArrayStorage<T>
         if(index<(uint)dense.Length)dense[index]=missing;
         else sparse?.Remove(index);
     }
+    public uint? ExtremePresent(Func<T, bool> present, bool last)
+    {
+        uint? found = null;
+        uint end = Math.Min(Length, (uint)dense.Length);
+        if (last) {
+            for (uint i = end; i > 0; i--) if (present(dense[i - 1])) { found = i - 1; break; }
+        } else {
+            for (uint i = 0; i < end; i++) if (present(dense[i])) { found = i; break; }
+        }
+        if (sparse != null) foreach (var item in sparse)
+            if (item.Key < Length && present(item.Value) && (!found.HasValue || (last ? item.Key > found.Value : item.Key < found.Value))) found = item.Key;
+        return found;
+    }
     public void Resize(uint length)
     {
         if (length < Length)
@@ -127,7 +140,7 @@ public partial class JsArray : TsObject
     public override bool DeleteOwn(string key)
     {
         if(key=="length")return false;
-        if(Index(key,out uint index)){if (HasOwnAccessors && base.HasOwn(key) && !DeleteDefinedProperty(key)) return false; DeleteElement(index);return true;}
+        if(Index(key,out uint index)){if (ElementsSealed && HasElement(index)) return false; if (HasOwnAccessors && base.HasOwn(key) && !DeleteDefinedProperty(key)) return false; DeleteElement(index);return true;}
         return DeleteDefinedProperty(key);
     }
     public virtual bool HasElement(uint index) => HasDefinedElement(index) || index < Count && !ReferenceEquals(values.Get(index), Hole);
@@ -149,7 +162,7 @@ public partial class JsArray : TsObject
     }
     internal bool CanCopySliceRange(uint start, uint count)
     {
-        if (HasPropertyOverrides) return false;
+        if (HasIndexedAccessors) return false;
         if (this is NumberArray numeric && numeric.TryPacked((double)start + count) != null) return true;
         if (GetType() == typeof(JsArray) && (ulong)start + count <= values.Length && (ulong)start + count <= (ulong)values.Dense.Length)
         {
@@ -188,14 +201,15 @@ public partial class JsArray : TsObject
     {
         if (TrySetDefinedData(key, value)) return value;
         if (TryOwnAccessor(key, out _)) throw new InvalidOperationException("Cannot replace accessor through assignment");
-        if (key == "length" || Index(key, out _)) return Set(key, value);
+        if (key == "length") return Set(key, value);
+        if (Index(key, out uint index)) { Write(index, value); return value; }
         DefineOwn(key, value);
         return value;
     }
     public override object Set(string key, object value)
     {
         if (key == "length") SetLength(Js.Number(value));
-        else if (Index(key, out uint index)) Write(index, value);
+        else if (Index(key, out uint index)) { if (!SetThroughNonExtensiblePrototype(index, value)) Write(index, value); }
         else return base.Set(key, value);
         return value;
     }
@@ -207,7 +221,7 @@ public partial class JsArray : TsObject
     public void SetAt(int index, object value)
     {
         if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
-        Write((uint)index, value);
+        if (!SetThroughNonExtensiblePrototype((uint)index, value)) Write((uint)index, value);
     }
     public void SetIndex(object key, object value) => Set(Js.PropertyKey(key), value);
     public void Append(object value)
@@ -247,6 +261,7 @@ public partial class JsArray : TsObject
     }
     public double PushMany(object[] items)
     {
+        if (!IsExtensible) return Js.ArrayPush(this, items);
         if (items.Length == 0) CheckLengthWritable();
         foreach (object value in items)
         {
@@ -261,6 +276,7 @@ public partial class JsArray : TsObject
         uint length = Count;
         if (length == 0) { CheckLengthWritable(); return Js.Undefined; }
         object value = Read(length - 1);
+        if (ElementsSealed && HasElement(length - 1)) throw new InvalidOperationException("Array element is not configurable");
         if (HasOwnAccessors) {
             if (!DeleteOwn((length - 1).ToString(CultureInfo.InvariantCulture))) throw new InvalidOperationException("Array element is not configurable");
             SetLength(length - 1); return value;
@@ -310,10 +326,14 @@ public sealed partial class NumberArray : JsArray
     }
     public double[] TryPacked(double limit) =>
         limit >= 0 && limit <= packedPrefix && limit <= numbers.Dense.Length ? numbers.Dense : null;
+    internal double[] TryWritablePacked(double limit) => ElementsFrozen ? null : TryPacked(limit);
     public bool AppendPacked(NumberArray source, int extra)
     {
         uint count = source.numbers.Length, start = numbers.Length;
-        if (count != 0) CheckLengthWritable();
+        if (count != 0) {
+            CheckLengthWritable();
+            if (!IsExtensible) return false;
+        }
         double[] buffer = source.TryPacked(count);
         ulong required = (ulong)start + count;
         if (buffer == null || required + (uint)extra > (ulong)Array.MaxLength) return false;
@@ -347,16 +367,17 @@ public sealed partial class NumberArray : JsArray
             ? Js.Cast<double?>(InheritedElement((uint)index), "Array element is not a number") : Decode(stored);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetNumberAt(int index, double? value) => Store((uint)index, value);
+    public void SetNumberAt(int index, double? value) { if (!IsExtensible && SetThroughNonExtensiblePrototype((uint)index, Js.BoxNumber(value))) return; Store((uint)index, value); }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetNumber(double index, double? value)
     {
-        if (index >= 0 && index < uint.MaxValue && index == (uint)index) Store((uint)index, value);
+        if (index >= 0 && index < uint.MaxValue && index == (uint)index) SetNumberAt((int)(uint)index, value);
         else Set(Js.PropertyKey(index), Js.BoxNumber(value));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double PushNumber(double? value)
     {
+        if (!IsExtensible) return Js.ArrayPush(this, new[] {Js.BoxNumber(value)});
         uint index = numbers.Length;
         if (index == uint.MaxValue) throw new InvalidOperationException("Invalid array length");
         Store(index, value);return numbers.Length;
@@ -366,7 +387,8 @@ public sealed partial class NumberArray : JsArray
         if (HasOwnAccessors) return Js.Cast<double?>(Pop(), "Array element is not a number");
         uint length = numbers.Length;
         if (length == 0) { CheckLengthWritable(); return null; }
-        double? value = Decode(numbers.Get(length - 1));
+        double? value = GetNumberAt((int)(length - 1));
+        if (ElementsSealed && HasElement(length - 1)) throw new InvalidOperationException("Array element is not configurable");
         if (!LengthWritable) DeleteElement(length - 1);
         Resize(length - 1);return value;
     }

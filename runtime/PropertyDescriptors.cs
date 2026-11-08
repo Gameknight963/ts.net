@@ -21,7 +21,7 @@ public partial class JsFunction
 
 public partial class JsArray
 {
-    internal override bool OwnPropertyConfigurable(string key) => key != "length" && base.OwnPropertyConfigurable(key);
+    internal override bool OwnPropertyConfigurable(string key) => key != "length" && !(ElementsSealed && Index(key, out uint index) && HasElement(index)) && base.OwnPropertyConfigurable(key);
 }
 
 public static partial class Js

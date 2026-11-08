@@ -35,7 +35,7 @@ public partial class JsArray
     }
     public virtual JsArray Reverse()
     {
-        if (!CanUseElementStorage) return (JsArray)Js.ReverseArrayLike(this);
+        if (!CanUseElementStorage || !IsExtensible) return (JsArray)Js.ReverseArrayLike(this);
         ReverseStorage();
         return this;
     }
@@ -49,7 +49,7 @@ public sealed partial class NumberArray
     }
     public override JsArray Reverse()
     {
-        if (!CanUseElementStorage) return (JsArray)Js.ReverseArrayLike(this);
+        if (!CanUseElementStorage || !IsExtensible) return (JsArray)Js.ReverseArrayLike(this);
         bool packed = packedPrefix == numbers.Length;
         var hole = new NumberHole();
         numbers.Reverse(ref hole);

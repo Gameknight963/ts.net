@@ -38,20 +38,21 @@ public partial class JsArray
     internal virtual void DefineArrayProperty(JsDescriptorObject.Descriptor descriptor)
     {
         if (this is JsTemplateArray) return;
-        if (Index(descriptor.Key, out uint index)) {
-            if (!descriptor.Accessor && descriptor.Writable && descriptor.Enumerable && descriptor.Configurable) {
+        bool indexed = Index(descriptor.Key, out uint index);
+        if (indexed) {
+            if (IsExtensible && !descriptor.Accessor && descriptor.Writable && descriptor.Enumerable && descriptor.Configurable) {
                 if (HasOwnAccessors && base.HasOwn(descriptor.Key)) DeleteDefinedProperty(descriptor.Key);
                 Write(index, descriptor.Value);
                 return;
             }
             if (index >= Count) Resize(index + 1);
-            DeleteElement(index);
         }
         var property = new DefinedProperty(this, descriptor);
         DefineOwn(descriptor.Key, Js.Undefined);
         DefineAccessor(descriptor.Key, new PropertyGetter(property), 1, false);
         if (descriptor.Accessor ? descriptor.Setter != null : descriptor.Writable)
             DefineAccessor(descriptor.Key, new PropertySetter(property), 2, false);
+        if (indexed) DeleteElement(index);
     }
     bool TrySetDefinedData(string key, object value)
     {
@@ -67,6 +68,12 @@ public partial class JsArray
             DefineOwn(key, Js.Undefined);
         }
         return base.DeleteOwn(key);
+    }
+    protected bool SetThroughNonExtensiblePrototype(uint index, object value)
+    {
+        if (IsExtensible || HasElement(index)) return false;
+        SetWithReceiver(index.ToString(System.Globalization.CultureInfo.InvariantCulture), value, this);
+        return true;
     }
     protected bool HasDefinedElement(uint index) => HasIndexedAccessors && TryOwnAccessor(index.ToString(System.Globalization.CultureInfo.InvariantCulture), out _);
     protected bool TryReadDefinedElement(uint index, out object value)

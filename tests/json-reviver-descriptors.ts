@@ -26,3 +26,8 @@ const array = JSON.parse('[1,2]', function(this: any, key: string, value: any) {
     return key === '1' ? value + 1 : value;
 });
 console.log('array accessor replaced', JSON.stringify(array), arraySetters, JSON.stringify(Object.getOwnPropertyDescriptor(array, '1')));
+const frozenArray = JSON.parse('[1,2]', function(this: any, key: string, value: any) {
+    if (key === '0') Object.freeze(this);
+    return typeof value === 'number' ? value + 10 : value;
+});
+console.log('frozen array', JSON.stringify(frozenArray), Object.isFrozen(frozenArray));
