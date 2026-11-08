@@ -31,7 +31,9 @@ public static partial class Js
                 var part = new JsDynamicObject(); part.DefineOwn("type", type); part.DefineOwn("value", value); part.DefineOwn("source", source); result.Append(part);
             }
             void Copy(JsArray list, int from, int to, string source) {for (int i = from; i < to; i++) Add(Type(list, i), Value(list, i), source);}
-            bool equal = leftEnd == rightEnd;
+            bool Negative(object value) => value switch {double number => double.IsNegative(number), BigInteger integer => integer.Sign < 0, LocaleDecimal exact => exact.Negative, _ => false};
+            bool Zero(object value) => value switch {double number => number == 0, BigInteger integer => integer.IsZero, LocaleDecimal exact => exact.Digits.IsZero, _ => false};
+            bool equal = leftEnd == rightEnd && (Negative(start) == Negative(end) || Zero(start) && Zero(end));
             for (int i = 0; equal && i < leftEnd; i++) equal = Type(left, i) == Type(right, i) && Value(left, i) == Value(right, i);
             if (equal) {
                 if (!(Type(left, 0) == "literal" && Value(left, 0) == "(")) Add("approximatelySign", "~", "shared");
@@ -41,7 +43,7 @@ public static partial class Js
             bool accounting = leftEnd > 2 && rightEnd > 2 && Type(left, 0) == "literal" && Value(left, 0) == "(" && Type(right, 0) == "literal" && Value(right, 0) == "(";
             int accountingSuffix = accounting ? leftEnd - 1 : leftEnd;
             bool negativeAffix = !settings.CurrencyName && (settings.style == "currency" || settings.style == "percent" && settings.notation != "compact") && Type(left, 0) == "minusSign" && Type(right, 0) == "minusSign";
-            bool positiveAffix = !settings.CurrencyName && settings.style == "currency" && Type(left, 0) == "plusSign" && Type(right, 0) == "plusSign";
+            bool positiveAffix = !settings.CurrencyName && (settings.style == "currency" || settings.style == "percent" && settings.notation != "compact") && Type(left, 0) == "plusSign" && Type(right, 0) == "plusSign";
             bool codeAffix = settings.style == "currency" && settings.currencyDisplay == "code" && Type(left, 0) == "currency" && Type(right, 0) == "currency";
             if (accounting || negativeAffix || positiveAffix || codeAffix) {
                 while (leftStart < leftEnd && rightStart < rightEnd && Type(left, leftStart) is ("literal" or "currency" or "minusSign" or "plusSign") && Type(left, leftStart) == Type(right, rightStart) && Value(left, leftStart) == Value(right, rightStart)) {
@@ -50,7 +52,7 @@ public static partial class Js
                 }
                 if (accounting) {leftEnd--; rightEnd--;}
             }
-            bool sharedPercent = settings.style == "percent" && (negativeAffix || settings.notation == "compact");
+            bool sharedPercent = settings.style == "percent" && (negativeAffix || positiveAffix || settings.notation == "compact");
             if (sharedPercent) {leftEnd--; rightEnd--;}
             bool sharedUnit = settings.style == "unit" || settings.CurrencyName;
             (string Gap, string Name) unit = default;

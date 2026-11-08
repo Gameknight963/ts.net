@@ -44,3 +44,13 @@ for (const options of [
 
 const typedParts: Intl.NumberRangeFormatPart[] = new Intl.NumberFormat('en-US').formatRangeToParts(1, 2);
 for (const part of typedParts) console.log('typed part', part.type, part.value, part.source);
+
+for (const style of ['decimal', 'percent', 'unit', 'currency']) for (const signDisplay of ['auto', 'always', 'never', 'exceptZero', 'negative']) for (const notation of ['standard', 'compact', 'scientific']) {
+ const f = new Intl.NumberFormat('en-US', {style, currency: 'USD', unit: 'meter', unitDisplay: 'long', signDisplay, notation} as any);
+ for (const start of [-2, -0, 0, 2]) for (const end of [-2, -0, 0, 2]) console.log('sign combinations', style, signDisplay, notation, String(start), String(end), f.formatRange(start, end), JSON.stringify(f.formatRangeToParts(start, end)));
+}
+
+for (const signDisplay of ['never', 'exceptZero', 'negative']) {
+ const f = new Intl.NumberFormat('en-US', {signDisplay} as any);
+ for (const [start, end] of [[-0, 0], [-0.00001, 0], [-0.00001, 0.00001], [-1.00001, 1]]) console.log('hidden signs', signDisplay, String(start), String(end), f.formatRange(start, end), JSON.stringify(f.formatRangeToParts(start, end)));
+}
