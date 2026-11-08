@@ -104,7 +104,7 @@ public static partial class Js
                 return receiver is CustomReadableStream stream ? new CustomStreamIterator(stream.GetReader(Undefined),preventCancel) : new BufferedBodyIterator(RequireBufferedBody(receiver).GetReader(Undefined),preventCancel);
             });
             result.DefineOwn("values",values); result.DefineMethod(PropertyKey(AsyncIteratorSymbol),values);
-            result.DefineOwn("tee",new CollectionMethod("tee",0,(receiver,_) => TeeBufferedBody(RequireBufferedBody(receiver))));
+            result.DefineOwn("tee",new CollectionMethod("tee",0,(receiver,_) => receiver is CustomReadableStream stream ? TeeCustomStream(stream) : TeeBufferedBody(RequireBufferedBody(receiver))));
             result.DefineOwn("cancel",new CollectionMethod("cancel",0,(receiver,args) => receiver is CustomReadableStream stream ? BodyPromiseOperation(() => stream.CancelUnlocked(FunctionArgument(args,0))) : CancelBufferedBody(receiver,false)));
             return result;
         }
