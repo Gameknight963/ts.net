@@ -51,8 +51,10 @@ public static partial class Js
     }
     static void ArraySpeciesSet(TsObject destination, long index, object value)
     {
-        if (destination.GetType() == typeof(JsArray) && !destination.HasPropertyOverrides && !destination.IsModuleNamespace && index <= int.MaxValue)
-        { ((JsArray)destination).SetAt((int)index, value); return; }
+        // Creating an own property ignores inherited setters. Sealed elements
+        // still need descriptor validation because the new property is configurable.
+        if (destination.GetType() == typeof(JsArray) && !((JsArray)destination).ElementsSealed && !destination.HasPropertyOverrides && !destination.IsModuleNamespace && index <= int.MaxValue)
+        { ((JsArray)destination).SetOwnElement((uint)index, value); return; }
         string key = index.ToString(CultureInfo.InvariantCulture);
         if (destination is JsArray or JsDescriptorObject) {
             ApplyPropertyDefinition(destination, key, new(value, null, null, true, true, true,

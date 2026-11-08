@@ -218,6 +218,7 @@ public partial class JsArray : TsObject
     internal virtual void ReserveCapacity(int capacity) => values.Reserve(capacity);
     internal object[] DenseRange(double limit) => limit >= 0 && limit <= values.Length && limit <= values.Dense.Length ? values.Dense : null;
     internal static object DecodeElement(object value) => ReferenceEquals(value, Hole) ? Js.Undefined : value;
+    internal void SetOwnElement(uint index, object value) => Write(index, value);
     public void SetAt(int index, object value)
     {
         if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
