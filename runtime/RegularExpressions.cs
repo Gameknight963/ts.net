@@ -37,8 +37,13 @@ public static partial class Js
             char ch = pattern[i];
             if (ch == '\\')
             {
-                rewritten.Append(ch);
-                if (++i < pattern.Length && pattern[i] is 'A' or 'G' or 'Z' or 'z' or 'p' or 'P') throw new NotSupportedException("This regular-expression escape is not supported");
+                if (i + 1 < pattern.Length && pattern[i + 1] is 'a' or 'e' or 'A' or 'G' or 'Z' or 'z' or 'p' or 'P')
+                {
+                    // These are identity escapes without u/v, but .NET assigns
+                    // them control-character, anchor, or Unicode-property meanings.
+                    rewritten.Append(pattern[++i]); continue;
+                }
+                rewritten.Append(ch); i++;
                 if (i < pattern.Length) rewritten.Append(pattern[i]);
                 continue;
             }
