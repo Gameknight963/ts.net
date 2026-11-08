@@ -38,27 +38,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current performance
 
-Recent additions, measured at [682c077](https://github.com/Gameknight963/ts.net/commit/682c077):
-
-| Workload | ts.net | Node |
-|---|---:|---:|
-| Sum a 10K-element Float64Array 100 times | 42.38 ms | 0.70 ms |
-| Consume ten generators yielding 10K numbers each | 111.74 ms | 1.53 ms |
-| Consume 10K values from an async generator | 24.99 ms | 1.87 ms |
-| UTF-8 encode/decode, 100 round trips of a 28,672-byte payload | 6.71 ms | 5.49 ms |
-| Resolve 1K URLs and update each query through searchParams | 6.98 ms | 2.91 ms |
-
-Structured cloning, measured at [c59dc05](https://github.com/Gameknight963/ts.net/commit/c59dc05):
-
-| Workload | ts.net | Node |
-|---|---:|---:|
-| Clone a cyclic graph with 1K rows and a shared child, 100 times | 154.13 ms | 56.81 ms |
-
-Medians of seven fresh processes after three warmup runs per process, using Release builds on Windows x64, .NET 10.0.11, Node 25.9.0, and TypeScript 7.0.2. Results match Node. Timings exclude startup, compilation, and checksum printing; raw results and benchmark programs are under `artifacts`.
-
-Typed-array and generator loops are still painfully slow here, while text encoding is much closer to Node. URL handling and graph cloning take about 2.4 and 2.7 times as long respectively, so these built-ins still need work. These individual workloads do not establish overall application performance.
-
-Earlier measurements, from [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9):
+As of [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9):
 
 Runtime performance:
 
