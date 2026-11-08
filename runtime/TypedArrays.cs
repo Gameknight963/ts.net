@@ -209,17 +209,23 @@ public static partial class Js
             if (input is BinaryBuffer buffer)
             {
                 int size = BinarySize(name == "Uint8ClampedArray" ? "Uint8" : name[..^5]);
-                int offset = BinaryIndex(FunctionArgument(args, 1));
+                double requestedOffset = BinarySafeIndex(FunctionArgument(args, 1));
+                if (requestedOffset % size != 0) throw new ArgumentOutOfRangeException(null, "Typed array offset is not aligned");
+                bool automatic = IsUndefined(FunctionArgument(args, 2));
+                double requestedLength = automatic ? 0 : BinarySafeIndex(args[2]);
                 EnsureAttached(buffer);
-                if (offset % size != 0 || offset > buffer.Bytes.Length) throw new ArgumentOutOfRangeException(null, "Typed array offset is invalid");
+                if (requestedOffset > buffer.Bytes.Length) throw new ArgumentOutOfRangeException(null, "Typed array offset is invalid");
+                int offset = (int)requestedOffset;
                 int length;
-                if (IsUndefined(FunctionArgument(args, 2)))
+                if (automatic)
                 {
                     if (!buffer.Resizable && (buffer.Bytes.Length - offset) % size != 0) throw new ArgumentOutOfRangeException(null, "Buffer length is not aligned");
                     length = (buffer.Bytes.Length - offset) / size;
                 }
-                else length = BinaryIndex(args[2]);
-                EnsureAttached(buffer);
+                else {
+                    if (requestedLength > (buffer.Bytes.Length - offset) / size) throw new ArgumentOutOfRangeException(null, "Typed array length is invalid");
+                    length = (int)requestedLength;
+                }
                 if (length > (buffer.Bytes.Length - offset) / size) throw new ArgumentOutOfRangeException(null, "Typed array length is invalid");
                 return new TypedArrayValue(name, buffer, offset, length, buffer.Resizable && IsUndefined(FunctionArgument(args, 2)));
             }
