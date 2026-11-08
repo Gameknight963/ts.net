@@ -97,12 +97,16 @@ public static partial class Js
             {
                 if (receiver is not TsObject source) throw new InvalidOperationException("Iterator method requires an object");
                 object argument = FunctionArgument(arguments, 0); JsFunction callback = null; double limit = 0;
-                if (name is "map" or "filter" or "flatMap") callback = argument as JsFunction ?? throw new InvalidOperationException("Iterator callback is not callable");
-                else
+                try
                 {
-                    limit = Math.Truncate(Number(argument));
-                    if (double.IsNaN(limit) || limit < 0) throw new ArgumentOutOfRangeException(nameof(arguments), "Invalid iterator limit");
+                    if (name is "map" or "filter" or "flatMap") callback = argument as JsFunction ?? throw new InvalidOperationException("Iterator callback is not callable");
+                    else
+                    {
+                        limit = Math.Truncate(Number(argument));
+                        if (double.IsNaN(limit) || limit < 0) throw new ArgumentOutOfRangeException(nameof(arguments), "Invalid iterator limit");
+                    }
                 }
+                catch { try { CloseIteratorObject(source); } catch { } throw; }
                 return new JsLazyIterator((JsProtocolIterator)StartIteratorObject(source), name, callback, limit);
             }));
     }

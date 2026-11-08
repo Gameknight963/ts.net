@@ -6,7 +6,11 @@ public static partial class Js
     {
         if (receiver is not TsObject source) throw new InvalidOperationException("Iterator method requires an object");
         object callback = FunctionArgument(arguments, 0);
-        if (mode != "toArray" && callback is not JsFunction) throw new InvalidOperationException("Iterator callback is not callable");
+        if (mode != "toArray" && callback is not JsFunction)
+        {
+            try { CloseIteratorObject(source); } catch { }
+            throw new InvalidOperationException("Iterator callback is not callable");
+        }
         var cursor = (JsProtocolIterator)StartIteratorObject(source);
         var values = mode == "toArray" ? new JsArray(0) : null;
         object accumulator = FunctionArgument(arguments, 1);
