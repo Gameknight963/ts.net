@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Collections.Generic;
 using System.Text;
 
 public static partial class Js
@@ -59,7 +60,7 @@ public static partial class Js
             Field("dayPeriod", dayPeriod); Field("timeZoneName", zoneName);
             if (fractionDigits != 0) target.DefineOwn("fractionalSecondDigits", (double)fractionDigits);
         }
-        internal string Format(DateTimeOffset value, CultureInfo culture, TimeZoneInfo zone, bool defaults = false, string style = null, int? fixedOffset = null)
+        internal string Format(DateTimeOffset value, CultureInfo culture, TimeZoneInfo zone, bool defaults = false, string style = null, int? fixedOffset = null, List<(string Type, string Value)> formattedParts = null)
         {
             string clock = Clock(culture);
             bool use12 = clock is "h11" or "h12";
@@ -67,12 +68,12 @@ public static partial class Js
             string h = defaults ? paddedStyle || !use12 ? "2-digit" : "numeric" : hour;
             string m = defaults ? "2-digit" : minute;
             string s = defaults ? style == "short" ? null : "2-digit" : second;
-            var result = new StringBuilder();
-            void Component(int number, string width)
+            var result = new DateFormatOutput(formattedParts);
+            void Component(string type, int number, string width)
             {
                 if (width == null) return;
-                if (result.Length != 0) result.Append(culture.DateTimeFormat.TimeSeparator);
-                result.Append(number.ToString(width == "2-digit" ? "00" : "0", culture));
+                if (result.Length != 0) result.Append("literal", culture.DateTimeFormat.TimeSeparator);
+                result.Append(type, number.ToString(width == "2-digit" ? "00" : "0", culture));
             }
             int hours = clock switch {
                 "h11" => value.Hour % 12,
@@ -80,13 +81,13 @@ public static partial class Js
                 "h24" => value.Hour == 0 ? 24 : value.Hour,
                 _ => value.Hour
             };
-            Component(hours, h);
+            Component("hour", hours, h);
             // Native multi-component clocks conventionally pad minutes and seconds.
-            Component(value.Minute, m == null ? null : h != null ? "2-digit" : m);
-            Component(value.Second, s == null ? null : h != null || m != null ? "2-digit" : s);
+            Component("minute", value.Minute, m == null ? null : h != null ? "2-digit" : m);
+            Component("second", value.Second, s == null ? null : h != null || m != null ? "2-digit" : s);
             if (fractionDigits != 0) {
-                if (result.Length != 0) result.Append(culture.NumberFormat.NumberDecimalSeparator);
-                result.Append(value.Millisecond.ToString("000", CultureInfo.InvariantCulture).AsSpan(0, fractionDigits));
+                if (result.Length != 0) result.Append("literal", culture.NumberFormat.NumberDecimalSeparator);
+                result.Append("fractionalSecond", value.Millisecond.ToString("000", CultureInfo.InvariantCulture).AsSpan(0, fractionDigits));
             }
             if ((use12 && h != null) || (h == null && dayPeriod != null)) {
                 string period = value.Hour < 12 ? culture.DateTimeFormat.AMDesignator : culture.DateTimeFormat.PMDesignator;
@@ -94,9 +95,9 @@ public static partial class Js
                 if (period.Length != 0) {
                     string pattern = culture.DateTimeFormat.ShortTimePattern;
                     int position = pattern.IndexOf("tt", StringComparison.Ordinal);
-                    if (result.Length == 0) result.Append(period);
-                    else if (position >= 0 && position < pattern.IndexOf('h')) result.Insert(0, period + " ");
-                    else { if (result.Length != 0) result.Append(' '); result.Append(period); }
+                    if (result.Length == 0) result.Append("dayPeriod", period);
+                    else if (position >= 0 && position < pattern.IndexOf('h')) {result.Prepend("literal", " "); result.Prepend("dayPeriod", period);}
+                    else { if (result.Length != 0) result.Append("literal", " "); result.Append("dayPeriod", period); }
                 }
             }
             if (zoneName != null) {
@@ -113,8 +114,8 @@ public static partial class Js
                         if (absolute % 60 != 0 || longOffset) text += ":" + (absolute % 60).ToString("00", CultureInfo.InvariantCulture);
                     }
                 } else text = zoneName is "shortGeneric" or "longGeneric" ? zone.StandardName : zone.IsDaylightSavingTime(value) ? zone.DaylightName : zone.StandardName;
-                if (result.Length != 0) result.Append(' ');
-                result.Append(text);
+                if (result.Length != 0) result.Append("literal", " ");
+                result.Append("timeZoneName", text);
             }
             return result.ToString();
         }

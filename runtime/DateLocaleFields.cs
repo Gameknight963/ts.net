@@ -40,7 +40,7 @@ public static partial class Js
             void Field(string name, string value) { if (value != null) target.DefineOwn(name, value); }
             Field("year", year); Field("month", month); Field("day", day); Field("weekday", weekday); Field("era", era);
         }
-        internal string Format(DateTimeOffset value, CultureInfo culture)
+        internal string Format(DateTimeOffset value, CultureInfo culture, List<(string Type, string Value)> formattedParts = null)
         {
             bool textual = month is "long" or "short" or "narrow";
             string pattern = textual ? culture.DateTimeFormat.LongDatePattern : culture.DateTimeFormat.ShortDatePattern;
@@ -62,29 +62,29 @@ public static partial class Js
                 if (ch == 'd' && count >= 3) ch = 'w';
                 parts.Add((ch, literal.ToString())); literal.Clear();
             }
-            var output = new StringBuilder();
+            var output = new DateFormatOutput(formattedParts);
             bool skipped = false;
             foreach (var part in parts)
             {
                 string width = part.Field switch { 'y' => year, 'M' => month, 'd' => day, 'w' => weekday, 'g' => era, _ => null };
                 if (width == null) { skipped = true; continue; }
-                if (output.Length != 0) output.Append(skipped ? textual ? " " : culture.DateTimeFormat.DateSeparator : part.Literal);
-                output.Append(Field(part.Field, width, value, culture));
+                if (output.Length != 0) output.Append("literal", skipped ? textual ? " " : culture.DateTimeFormat.DateSeparator : part.Literal);
+                output.Append(part.Field switch {'y' => "year", 'M' => "month", 'd' => "day", 'w' => "weekday", _ => "era"}, Field(part.Field, width, value, culture));
                 skipped = false;
             }
-            if (!skipped && output.Length != 0) output.Append(literal);
+            if (!skipped && output.Length != 0) output.Append("literal", literal.ToString());
             // Short native date patterns generally omit weekday and era.
             bool Contains(char field) => parts.Exists(part => part.Field == field);
             if (weekday != null && !Contains('w'))
             {
                 string text = Field('w', weekday, value, culture);
-                if (output.Length != 0) text += ", ";
-                output.Insert(0, text);
+                if (output.Length != 0) output.Prepend("literal", ", ");
+                output.Prepend("weekday", text);
             }
             if (era != null && !Contains('g'))
             {
-                if (output.Length != 0) output.Append(' ');
-                output.Append(Field('g', era, value, culture));
+                if (output.Length != 0) output.Append("literal", " ");
+                output.Append("era", Field('g', era, value, culture));
             }
             return output.ToString();
         }

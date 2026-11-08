@@ -14,12 +14,15 @@ public static partial class Js
             Settings = new DateLocaleSettings(selected.Culture, options, "intl", selected.Locale);
             Format = new JsFunction((FunctionBody)(args => Text(FunctionArgument(args, 0))), null, "", 1);
         }
-        internal string Text(object value)
+        static double Timestamp(object value)
         {
             double timestamp = IsUndefined(value) ? DateNow() : ClipDate(Number(value));
             if (double.IsNaN(timestamp)) throw new ArgumentOutOfRangeException(nameof(value), "Invalid time value");
-            return Settings.Format(timestamp);
+            return timestamp;
         }
+        internal string Text(object value) => Settings.Format(Timestamp(value));
+        internal JsArray Parts(object value) => Settings.Parts(Timestamp(value));
+
     }
     static (CultureInfo Culture, LocaleValue Locale) SelectDateLocale(object locales)
     {
@@ -36,6 +39,7 @@ public static partial class Js
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.DateTimeFormat", false);
             prototype.DefineClassAccessor("format", new CollectionMethod("get format", 0, static (receiver, _) => RequireDateTimeFormat(receiver).Format), 1);
+            prototype.DefineMethod("formatToParts", new CollectionMethod("formatToParts", 1, static (receiver, args) => RequireDateTimeFormat(receiver).Parts(FunctionArgument(args, 0))));
             prototype.DefineMethod("resolvedOptions", new CollectionMethod("resolvedOptions", 0, static (receiver, _) => RequireDateTimeFormat(receiver).Settings.Options()));
             Member("supportedLocalesOf", new JsFunction((FunctionBody)(static args => CollatorSupportedLocales(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "supportedLocalesOf", 1));
         }

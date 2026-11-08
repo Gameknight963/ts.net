@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Collections.Generic;
 
 public static partial class Js
 {
@@ -104,24 +105,44 @@ public static partial class Js
             return result;
         }
         internal string Format(double timestamp) => LocalizeNumberDigits(FormatLatin(timestamp), digitCharacters);
-        string FormatLatin(double timestamp)
+        internal JsArray Parts(double timestamp)
+        {
+            var parts = new List<(string Type, string Value)>();
+            FormatLatin(timestamp, parts);
+            var result = new JsArray(0);
+            foreach (var part in parts) {
+                var entry = new JsDynamicObject();
+                entry.DefineOwn("type", part.Type);
+                entry.DefineOwn("value", LocalizeNumberDigits(part.Value, digitCharacters));
+                result.Append(entry);
+            }
+            return result;
+        }
+        string FormatLatin(double timestamp, List<(string Type, string Value)> parts = null)
         {
             var culture = Culture; var zone = Zone;
             var native = NativeDate(timestamp);
             var local = fixedOffset.HasValue ? NativeDate(timestamp + fixedOffset.Value * 60000d) : TimeZoneInfo.ConvertTime(native, zone);
             if (dateFields.HasFields || timeFields.HasFields || (timeFields.HasClockOption && dateStyle == null && timeStyle == null)) {
                 bool noComponents = !dateFields.HasFields && !timeFields.HasClockFields;
-                string datePart = dateFields.HasFields ? dateFields.Format(local, culture)
-                    : mode == "d" || mode == "G" && noComponents ? local.ToString("d", culture) : null;
-                string timePart = timeFields.HasFields ? timeFields.Format(local, culture, zone, !timeFields.HasClockFields && (mode == "G" || mode == "T"), fixedOffset: fixedOffset)
-                    : mode == "T" || mode == "G" && noComponents ? timeFields.Format(local, culture, zone, true, fixedOffset: fixedOffset) : null;
+                string datePart = dateFields.HasFields ? dateFields.Format(local, culture, parts)
+                    : mode == "d" || mode == "G" && noComponents ? NativeDateFormat(local, "d", culture, parts) : null;
+                bool hasTime = timeFields.HasFields || mode == "T" || mode == "G" && noComponents;
+                if (datePart != null && hasTime) parts?.Add(("literal", " "));
+                string timePart = timeFields.HasFields ? timeFields.Format(local, culture, zone, !timeFields.HasClockFields && (mode == "G" || mode == "T"), fixedOffset: fixedOffset, formattedParts: parts)
+                    : mode == "T" || mode == "G" && noComponents ? timeFields.Format(local, culture, zone, true, fixedOffset: fixedOffset, formattedParts: parts) : null;
                 return datePart == null ? timePart : timePart == null ? datePart : datePart + " " + timePart;
             }
-            if (dateStyle == null && timeStyle == null) return local.ToString(mode, culture);
+            if (dateStyle == null && timeStyle == null) return NativeDateFormat(local, mode, culture, parts);
             // CLR cultures provide short and long date patterns, rather than Intl's four widths.
-            string dateText = dateStyle == null ? null : local.ToString(dateStyle is "short" or "medium" ? "d" : "D", culture);
-            string timeText = timeStyle == null ? null : timeFields.HasClockOption ? timeFields.Format(local, culture, zone, true, timeStyle, fixedOffset) : local.ToString(timeStyle == "short" ? "t" : "T", culture);
-            if (timeStyle is "long" or "full") timeText += " " + (zone.IsDaylightSavingTime(native) ? zone.DaylightName : zone.StandardName);
+            string dateText = dateStyle == null ? null : NativeDateFormat(local, dateStyle is "short" or "medium" ? "d" : "D", culture, parts);
+            if (dateText != null && timeStyle != null) parts?.Add(("literal", " "));
+            string timeText = timeStyle == null ? null : timeFields.HasClockOption ? timeFields.Format(local, culture, zone, true, timeStyle, fixedOffset, parts) : NativeDateFormat(local, timeStyle == "short" ? "t" : "T", culture, parts);
+            if (timeStyle is "long" or "full") {
+                string zoneText = zone.IsDaylightSavingTime(native) ? zone.DaylightName : zone.StandardName;
+                timeText += " " + zoneText;
+                parts?.Add(("literal", " ")); parts?.Add(("timeZoneName", zoneText));
+            }
             return dateText == null ? timeText : timeText == null ? dateText : dateText + " " + timeText;
         }
     }
