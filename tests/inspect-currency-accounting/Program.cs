@@ -3,6 +3,8 @@ var constructor=(JsFunction)((TsObject)Js.BuiltinNamespace("Intl")).Get("NumberF
 int checks=0;
 foreach(string name in new[]{"en-US","de-DE","fr-FR","tr-TR"}) {
  var culture=(CultureInfo)CultureInfo.GetCultureInfo(name).Clone();
+ // Intl uses the modern French grouping separator even with older Windows culture data.
+ if(name == "fr-FR" && culture.NumberFormat.CurrencyGroupSeparator == "\u00a0") culture.NumberFormat.CurrencyGroupSeparator = "\u202f";
  string currency=new RegionInfo(name).ISOCurrencySymbol;
  culture.NumberFormat.CurrencyNegativePattern=culture.NumberFormat.CurrencyPositivePattern switch{0=>0,1=>4,2=>14,_=>15};
  var options=new JsDynamicObject();options.DefineOwn("style","currency");options.DefineOwn("currency",currency);options.DefineOwn("currencySign","accounting");
