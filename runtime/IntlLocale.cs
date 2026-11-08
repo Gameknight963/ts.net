@@ -78,6 +78,18 @@ public static partial class Js
             Getter("script", value => value.Script ?? Undefined); Getter("region", value => value.Region ?? Undefined);
             foreach (var pair in new[] { ("calendar", "ca"), ("collation", "co"), ("hourCycle", "hc"), ("caseFirst", "kf"), ("numberingSystem", "nu") }) Getter(pair.Item1, value => value.Keyword(pair.Item2));
             Getter("numeric", static value => BoxBoolean(value.Numeric));
+            prototype.DefineMethod("getTextInfo", new CollectionMethod("getTextInfo", 0, static (receiver, _) =>
+            {
+                var locale = RequireLocale(receiver);
+                var result = new JsDynamicObject();
+                bool rtl = locale.Script == null ? LocaleCulture(locale.BaseName).TextInfo.IsRightToLeft : locale.Script is
+                    "Adlm" or "Arab" or "Armi" or "Avst" or "Chrs" or "Elym" or "Gara" or "Hatr" or "Hebr" or "Hung" or
+                    "Khar" or "Lydi" or "Mand" or "Mani" or "Mend" or "Merc" or "Mero" or "Narb" or "Nbat" or "Nkoo" or
+                    "Orkh" or "Ougr" or "Palm" or "Phli" or "Phlp" or "Phnx" or "Prti" or "Rohg" or "Samr" or "Sarb" or
+                    "Sogd" or "Sogo" or "Syrc" or "Thaa" or "Yezi";
+                result.DefineOwn("direction", rtl ? "rtl" : "ltr");
+                return result;
+            }));
         }
         public override object Construct(object[] args) => new LocaleValue(FunctionArgument(args, 0), FunctionArgument(args, 1));
         internal override bool CanInitializeDerived => true;
