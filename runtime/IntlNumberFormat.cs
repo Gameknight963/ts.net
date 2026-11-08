@@ -3,7 +3,7 @@ using System.Numerics;
 
 public static partial class Js
 {
-    sealed class NumberFormatValue : TsObject
+    sealed class NumberFormatValue : JsDescriptorObject
     {
         readonly NumberLocaleSettings settings;
         internal readonly JsFunction Format;
@@ -82,7 +82,7 @@ public static partial class Js
         internal NumberFormatConstructor() : base("NumberFormat", static args => new NumberFormatValue(FunctionArgument(args, 0), FunctionArgument(args, 1)), 0)
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.NumberFormat");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.NumberFormat", false);
             prototype.DefineClassAccessor("format", new CollectionMethod("get format", 0, static (receiver, _) => RequireNumberFormat(receiver).Format), 1);
             prototype.DefineMethod("formatToParts", new CollectionMethod("formatToParts", 1, static (receiver, args) => RequireNumberFormat(receiver).Parts(FunctionArgument(args, 0))));
             prototype.DefineMethod("resolvedOptions", new CollectionMethod("resolvedOptions", 0, static (receiver, _) => RequireNumberFormat(receiver).Options()));

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
-    sealed class LocaleValue : TsObject
+    sealed class LocaleValue : JsDescriptorObject
     {
         internal readonly string Name, BaseName, Language, Script, Region;
         readonly SortedDictionary<string, string> keywords;
@@ -72,7 +72,7 @@ public static partial class Js
         internal LocaleConstructor() : base("Locale", static _ => throw new InvalidOperationException("Locale requires new"), 1)
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.Locale");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.Locale", false);
             prototype.DefineMethod("toString", new CollectionMethod("toString", 0, static (receiver, _) => RequireLocale(receiver).Name));
             void Getter(string key, Func<LocaleValue, object> read) => prototype.DefineClassAccessor(key, new CollectionMethod("get " + key, 0, (receiver, _) => read(RequireLocale(receiver))), 1);
             Getter("baseName", value => value.BaseName); Getter("language", value => value.Language);

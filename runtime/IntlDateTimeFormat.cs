@@ -3,7 +3,7 @@ using System.Globalization;
 
 public static partial class Js
 {
-    sealed class DateTimeFormatValue : TsObject
+    sealed class DateTimeFormatValue : JsDescriptorObject
     {
         internal readonly DateLocaleSettings Settings;
         internal readonly JsFunction Format;
@@ -30,7 +30,7 @@ public static partial class Js
         internal DateTimeFormatConstructor() : base("DateTimeFormat", static args => new DateTimeFormatValue(FunctionArgument(args, 0), FunctionArgument(args, 1)), 0)
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.DateTimeFormat");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.DateTimeFormat", false);
             prototype.DefineClassAccessor("format", new CollectionMethod("get format", 0, static (receiver, _) => RequireDateTimeFormat(receiver).Format), 1);
             prototype.DefineMethod("resolvedOptions", new CollectionMethod("resolvedOptions", 0, static (receiver, _) => RequireDateTimeFormat(receiver).Settings.Options()));
             Member("supportedLocalesOf", new JsFunction((FunctionBody)(static args => CollatorSupportedLocales(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "supportedLocalesOf", 1));

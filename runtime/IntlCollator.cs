@@ -4,7 +4,7 @@ using System.Globalization;
 
 public static partial class Js
 {
-    sealed class CollatorValue : TsObject
+    sealed class CollatorValue : JsDescriptorObject
     {
         readonly CollationSettings settings;
         internal readonly JsFunction Compare;
@@ -39,7 +39,7 @@ public static partial class Js
         internal CollatorConstructor() : base("Collator", static args => new CollatorValue(FunctionArgument(args, 0), FunctionArgument(args, 1)), 0)
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.Collator");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.Collator", false);
             prototype.DefineClassAccessor("compare", new CollectionMethod("get compare", 0, static (receiver, _) => RequireCollator(receiver).Compare), 1);
             prototype.DefineMethod("resolvedOptions", new CollectionMethod("resolvedOptions", 0, static (receiver, _) => RequireCollator(receiver).Options()));
             Member("supportedLocalesOf", new JsFunction((FunctionBody)(static args => CollatorSupportedLocales(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "supportedLocalesOf", 1));
@@ -116,7 +116,7 @@ public static partial class Js
         result.DefineMethod("NumberFormat", IntlNumberFormat.Constructor);
         result.DefineMethod("DateTimeFormat", IntlDateTimeFormat.Constructor);
         result.DefineMethod("Segmenter", IntlSegmenter.Constructor);
-        result.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl");
+        result.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl", false);
         return result;
     }
 }

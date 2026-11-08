@@ -3,7 +3,7 @@ using System.Globalization;
 
 public static partial class Js
 {
-    sealed class SegmenterValue : TsObject
+    sealed class SegmenterValue : JsDescriptorObject
     {
         internal readonly string Locale;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)IntlSegmenter.Constructor.Get("prototype");
@@ -26,7 +26,7 @@ public static partial class Js
             var result = new JsDynamicObject(); result.DefineOwn("locale", Locale); result.DefineOwn("granularity", "grapheme"); return result;
         }
     }
-    sealed class SegmentsValue(string input) : TsObject
+    sealed class SegmentsValue(string input) : JsDescriptorObject
     {
         internal readonly string Input = input;
         internal readonly int[] Starts = StringInfo.ParseCombiningCharacters(input);
@@ -42,7 +42,7 @@ public static partial class Js
             return Data(slot >= 0 ? slot : ~slot - 1);
         }
     }
-    sealed class SegmentIterator(SegmentsValue segments) : TsObject
+    sealed class SegmentIterator(SegmentsValue segments) : JsDescriptorObject
     {
         int position;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : SegmentPrototypes.Iterator;
@@ -66,7 +66,7 @@ public static partial class Js
         static TsObject CreateIterator() {
             var result = new JsClassInstance { ParentPrototype = NativeIteratorPrototype };
             result.DefineMethod("next", new CollectionMethod("next", 0, static (receiver, _) => receiver is SegmentIterator value ? value.Next() : throw new InvalidOperationException("Segment iterator receiver required")));
-            result.DefineMethod(PropertyKey(ToStringTagSymbol), "Segmenter String Iterator");
+            result.DefineMethod(PropertyKey(ToStringTagSymbol), "Segmenter String Iterator", false);
             return result;
         }
     }
@@ -74,7 +74,7 @@ public static partial class Js
     {
         internal SegmenterConstructor() : base("Segmenter", static _ => throw new InvalidOperationException("Segmenter requires new"), 0) {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.Segmenter");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.Segmenter", false);
             prototype.DefineMethod("segment", new CollectionMethod("segment", 1, static (receiver, args) => receiver is SegmenterValue ? new SegmentsValue(StringValue(FunctionArgument(args, 0))) : throw new InvalidOperationException("Segmenter receiver required")));
             prototype.DefineMethod("resolvedOptions", new CollectionMethod("resolvedOptions", 0, static (receiver, _) => receiver is SegmenterValue value ? value.Options() : throw new InvalidOperationException("Segmenter receiver required")));
             Member("supportedLocalesOf", new JsFunction((FunctionBody)(static args => CollatorSupportedLocales(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "supportedLocalesOf", 1));
