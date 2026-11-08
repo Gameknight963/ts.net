@@ -51,7 +51,7 @@ public static partial class Js
             return MatchAllRegExp(text, pattern as JsRegExp ?? CreateRegExp(pattern, "g"));
         }
     }
-    static object MatchAllRegExp(string text, TsObject regex)
+    static JsFunction RegExpSpeciesConstructor(TsObject regex)
     {
         JsFunction species = null;
         object constructor = regex.Get("constructor");
@@ -62,6 +62,11 @@ public static partial class Js
             if (!IsNullish(requested))
                 species = requested is JsFunction function && function.CanInitializeDerived ? function : throw new InvalidOperationException("RegExp species must be a constructor");
         }
+        return species;
+    }
+    static object MatchAllRegExp(string text, TsObject regex)
+    {
+        JsFunction species = RegExpSpeciesConstructor(regex);
         string flags = StringValue(regex.Get("flags"));
         TsObject copy;
         if ((species == null || ReferenceEquals(species, RuntimeNamespaces.RegExp)) && regex is JsRegExp native && flags == native.Flags)

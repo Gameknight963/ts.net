@@ -8,6 +8,8 @@ public static partial class Js
         {
             if (kind == 1)
                 return receiver is TsObject matcher ? MatchAllRegExp(StringValue(input), matcher) : throw new InvalidOperationException("RegExp method requires an object");
+            if (kind == 4)
+                return receiver is TsObject splitter ? SplitRegExpProtocol(StringValue(input), splitter, second) : throw new InvalidOperationException("RegExp method requires an object");
             if (kind is 0 or 2 or 3 && receiver is not JsRegExp)
             {
                 if (receiver is not TsObject source) throw new InvalidOperationException("RegExp method requires an object");

@@ -2,6 +2,55 @@ using System;
 
 public static partial class Js
 {
+    static object SplitRegExpProtocol(string text, TsObject regex, object limitValue)
+    {
+        JsFunction species = RegExpSpeciesConstructor(regex);
+        string flags = StringValue(regex.Get("flags"));
+        bool unicode = flags.Contains('u') || flags.Contains('v');
+        string stickyFlags = flags.Contains('y') ? flags : flags + "y";
+        TsObject splitter;
+        if ((species == null || ReferenceEquals(species, RuntimeNamespaces.RegExp)) && regex is JsRegExp original && flags == original.Flags)
+            splitter = new JsRegExp(original.Pattern, stickyFlags, original.Engine, original.NamedGroups);
+        else splitter = species == null ? CreateRegExp(regex, stickyFlags)
+            : species.Construct(new object[] { regex, stickyFlags }) as TsObject ?? throw new InvalidOperationException("RegExp species returned a primitive");
+        uint limit = IsUndefined(limitValue) ? uint.MaxValue : unchecked((uint)ToInt32(Number(limitValue)));
+        if (splitter is JsRegExp native && native.Flags.Contains('y') && HasBuiltinRegExpExec(native)) return SplitRegExp(text, native, limit);
+        var result = new JsArray(0);
+        if (limit == 0) return result;
+        if (text.Length == 0)
+        {
+            if (ExecuteRegExp(splitter, text) == null) result.Append(text);
+            return result;
+        }
+        int copied = 0, search = 0;
+        while (search < text.Length)
+        {
+            splitter.Set("lastIndex", (double)search);
+            TsObject match = ExecuteRegExp(splitter, text);
+            if (match != null)
+            {
+                double position = Number(splitter.Get("lastIndex"));
+                int end = double.IsNaN(position) || position <= 0 ? 0 : (int)Math.Min(Math.Floor(position), text.Length);
+                if (end != copied)
+                {
+                    result.Append(text.Substring(copied, search - copied));
+                    if (result.Length() == limit) return result;
+                    copied = end;
+                    long length = IndexedLength(match);
+                    for (long index = 1; index < length; index++)
+                    {
+                        result.Append(IndexedValue(match, index));
+                        if (result.Length() == limit) return result;
+                    }
+                    search = copied;
+                    continue;
+                }
+            }
+            search += unicode && search < text.Length - 1 && char.IsHighSurrogate(text[search]) && char.IsLowSurrogate(text[search + 1]) ? 2 : 1;
+        }
+        result.Append(text.Substring(copied));
+        return result;
+    }
     static object SplitRegExp(string text, JsRegExp regex, uint limit)
     {
         var result = new JsArray(0);
