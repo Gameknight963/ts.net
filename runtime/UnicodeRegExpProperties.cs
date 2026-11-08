@@ -124,8 +124,7 @@ public static partial class Js
                 for (int plane = 0; plane <= 16; plane++) ranges.Add(new(plane * 0x10000 + 0xfffe, plane * 0x10000 + 0xffff));
                 return ranges;
         }
-        if (property is "Alphabetic" or "Alpha" or "Bidi_Mirrored" or "Bidi_M" or "Case_Ignorable" or "CI" or "Cased" or "Changes_When_Casefolded" or "CWCF" or "Changes_When_Casemapped" or "CWCM" or "Changes_When_Lowercased" or "CWL" or "Changes_When_NFKC_Casefolded" or "CWKCF" or "Changes_When_Titlecased" or "CWT" or "Changes_When_Uppercased" or "CWU" or "Dash" or "Default_Ignorable_Code_Point" or "DI" or "Deprecated" or "Dep" or "Diacritic" or "Dia" or "Emoji" or "Emoji_Component" or "EComp" or "Emoji_Modifier_Base" or "EBase" or "Emoji_Presentation" or "EPres" or "Extended_Pictographic" or "ExtPict" or "Extender" or "Ext" or "Grapheme_Base" or "Gr_Base" or "Grapheme_Extend" or "Gr_Ext" or "IDS_Binary_Operator" or "IDSB" or "IDS_Trinary_Operator" or "IDST" or "ID_Continue" or "IDC" or "ID_Start" or "IDS" or "Ideographic" or "Ideo" or "Logical_Order_Exception" or "LOE" or "Lowercase" or "Lower" or "Math" or "Pattern_Syntax" or "Pat_Syn" or "Quotation_Mark" or "QMark" or "Radical" or "Sentence_Terminal" or "STerm" or "Soft_Dotted" or "SD" or "Terminal_Punctuation" or "Term" or "Unified_Ideograph" or "UIdeo" or "Uppercase" or "Upper" or "XID_Continue" or "XIDC" or "XID_Start" or "XIDS")
-            throw new NotSupportedException("This Unicode regular-expression property is not supported yet");
+        if (UnicodeRegExpBinaryProperties.TrySelect(property, out var binary)) return binary;
         throw UnicodeRegExpSyntax();
     }
 }
