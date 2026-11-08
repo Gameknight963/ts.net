@@ -6,6 +6,7 @@ public static partial class Js
     static TsObject CreateReflectNamespace()
     {
         var result = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
+        result.DefineMethod(PropertyKey(ToStringTagSymbol), "Reflect", false);
         void Method(string name, int length, FunctionBody body) => result.DefineMethod(name, new JsFunction(body, null, name, length));
         Method("apply", 3, static arguments =>
         {

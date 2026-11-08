@@ -166,6 +166,7 @@ public static partial class Js
     static TsObject CreateJsonNamespace()
     {
         var result = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
+        result.DefineMethod(PropertyKey(ToStringTagSymbol), "JSON", false);
         result.DefineMethod("rawJSON", new JsFunction((FunctionBody)(static arguments => CreateRawJson(FunctionArgument(arguments, 0))), null, "rawJSON", 1));
         result.DefineMethod("isRawJSON", new JsFunction((FunctionBody)(static arguments => BoxBoolean(FunctionArgument(arguments, 0) is JsRawJson)), null, "isRawJSON", 1));
         result.DefineMethod("stringify", new JsFunction((FunctionBody)(static arguments =>

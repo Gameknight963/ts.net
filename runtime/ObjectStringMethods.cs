@@ -20,16 +20,6 @@ public static partial class Js
             string fallback = receiver is JsSymbol ? "Object" : tag;
             return "[object " + (custom is string text ? text : fallback) + "]";
         }
-        if (original is TsObject obj)
-        {
-            // Native tags remain available where intrinsic prototypes do not
-            // yet expose their own Symbol.toStringTag property.
-            for (TsObject current = obj; current != null; current = current.PropertyPrototype)
-            {
-                if (ReferenceEquals(current, RuntimeNamespaces.Reflect)) { tag = "Reflect"; break; }
-                if (ReferenceEquals(current, RuntimeNamespaces.Json)) { tag = "JSON"; break; }
-            }
-        }
         return "[object " + tag + "]";
     }
     static string FunctionDisplayText(JsFunction function)
