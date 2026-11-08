@@ -58,9 +58,12 @@ public static partial class Js
         internal readonly string currency, currencyDisplay, currencySign;
         readonly string positivePattern, negativePattern;
         readonly string format;
+        internal readonly string numberingSystem;
+        readonly string digitCharacters;
         internal NumberLocaleSettings(object locales, object optionValue)
         {
             culture = CaseCulture(locales);
+            numberingSystem = "latn"; digitCharacters = null;
             notation = "standard"; roundingPriority = "auto";
             minimumSignificant = maximumSignificant = 0;
             roundingIncrement = 1; roundingMode = "halfExpand"; trailingZeroDisplay = "auto";
@@ -82,7 +85,17 @@ public static partial class Js
                         foreach (char ch in part)
                             if (!char.IsAsciiLetterOrDigit(ch)) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid numbering system");
                     }
-                    if (system != "latn") throw new NotSupportedException("The requested numbering system is not supported");
+                    numberingSystem = system;
+                    digitCharacters = system switch
+                    {
+                        "latn" => null,
+                        "beng" => "\u09e6\u09e7\u09e8\u09e9\u09ea\u09eb\u09ec\u09ed\u09ee\u09ef",
+                        "deva" => "\u0966\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f",
+                        "thai" => "\u0e50\u0e51\u0e52\u0e53\u0e54\u0e55\u0e56\u0e57\u0e58\u0e59",
+                        "fullwide" => "\uff10\uff11\uff12\uff13\uff14\uff15\uff16\uff17\uff18\uff19",
+                        "hanidec" => "\u3007\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d",
+                        _ => throw new NotSupportedException("The requested numbering system is not supported")
+                    };
                 }
                 object requestedStyle = options.Get("style");
                 if (!IsUndefined(requestedStyle)) style = StringValue(requestedStyle);
@@ -334,7 +347,20 @@ public static partial class Js
             if (fractionDigits != 0) result += culture.NumberFormat.NumberDecimalSeparator + fraction.ToString(CultureInfo.InvariantCulture).PadLeft(fractionDigits, '0');
             return negative ? culture.NumberFormat.NegativeSign + result : result;
         }
-        internal string Format<T>(T value, bool finite) where T : struct, IFormattable
+        internal string LocalizeDigits(string text)
+        {
+            if (digitCharacters == null) return text;
+            return string.Create(text.Length, (Text: text, Digits: digitCharacters), static (output, state) =>
+            {
+                for (int index = 0; index < output.Length; index++)
+                {
+                    char ch = state.Text[index];
+                    output[index] = char.IsAsciiDigit(ch) ? state.Digits[ch - '0'] : ch;
+                }
+            });
+        }
+        internal string Format<T>(T value, bool finite) where T : struct, IFormattable => LocalizeDigits(FormatLatin(value, finite));
+        internal string FormatLatin<T>(T value, bool finite) where T : struct, IFormattable
         {
             int fractionMinimum = minimum, fractionMaximum = maximum, notationExponent = 0;
             string result = finite && value is double numberValue ? FiniteNumber(numberValue, out fractionMinimum, out fractionMaximum, out notationExponent)

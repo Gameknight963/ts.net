@@ -17,12 +17,14 @@ public static partial class Js
         string FormatNumber(double value) => settings.Format(value, double.IsFinite(value));
         internal object Parts(object value)
         {
-            string text = Text(value);
+            string text;
+            if (value is BigInteger integer) text = settings.FormatLatin(integer, true);
+            else { double number = Number(value); text = settings.FormatLatin(number, double.IsFinite(number)); }
             var info = settings.culture.NumberFormat;
             var result = new JsArray(0);
             void Part(string type, string contents)
             {
-                var part = new JsDynamicObject(); part.DefineOwn("type", type); part.DefineOwn("value", contents); result.Append(part);
+                var part = new JsDynamicObject(); part.DefineOwn("type", type); part.DefineOwn("value", type is "integer" or "fraction" or "exponentInteger" ? settings.LocalizeDigits(contents) : contents); result.Append(part);
             }
             int position = 0; bool fraction = false, exponent = false;
             while (position < text.Length)
@@ -53,7 +55,7 @@ public static partial class Js
         internal object Options()
         {
             var result = new JsDynamicObject();
-            result.DefineOwn("locale", settings.culture.Name); result.DefineOwn("numberingSystem", "latn");
+            result.DefineOwn("locale", settings.culture.Name); result.DefineOwn("numberingSystem", settings.numberingSystem);
             result.DefineOwn("style", settings.style);
             if (settings.style == "currency")
             {
