@@ -27,6 +27,7 @@ public static partial class Js
     {
         object algorithm = FunctionArgument(args, 0);
         string name = CryptoAlgorithm(algorithm);
+        if (name == "ECDH") return EcDeriveBits(args, usage);
         if (name is not ("PBKDF2" or "HKDF")) throw CryptoError("NotSupportedError", "Unsupported key derivation algorithm");
         var key = RequireCryptoKey(FunctionArgument(args, 1));
         if (key.Name != name || !Array.Exists(key.Usages, value => value == usage)) throw CryptoError("InvalidAccessError", "Key does not permit this derivation");

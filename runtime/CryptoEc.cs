@@ -20,7 +20,7 @@ public static partial class Js
         _ => throw CryptoError("NotSupportedError", "Unsupported elliptic curve")
     };
     static int EcWidth(string curve) => curve == "P-521" ? 66 : curve == "P-384" ? 48 : 32;
-    static string[] EcUsages(object value, bool? privateKey)
+    static string[] EcUsages(object value, bool? privateKey, string name)
     {
         var usages = new List<string>(); object iterator = Iteration.Start(value); int position = 0;
         try
@@ -28,8 +28,9 @@ public static partial class Js
             while (position < Iteration.Length(iterator))
             {
                 string usage = StringValue(Iteration.Value(iterator, position));
-                if (usage is not ("sign" or "verify") || privateKey == true && usage != "sign" || privateKey == false && usage != "verify")
-                    throw CryptoError("SyntaxError", "Invalid ECDSA key usage");
+                bool valid = name == "ECDSA" ? usage is "sign" or "verify" && (privateKey != true || usage == "sign") && (privateKey != false || usage == "verify")
+                    : usage is "deriveBits" or "deriveKey" && privateKey != false;
+                if (!valid) throw CryptoError("SyntaxError", "Invalid EC key usage");
                 if (!usages.Contains(usage)) usages.Add(usage);
                 position += Iteration.Step(iterator, position);
             }
@@ -38,20 +39,20 @@ public static partial class Js
         if (privateKey == true && usages.Count == 0) throw CryptoError("SyntaxError", "Private key requires a usage");
         return usages.ToArray();
     }
-    static CryptoKeyValue EcKey(ECDsa ec, string curve, bool privateKey, bool extractable, string[] usages) =>
-        new(Array.Empty<byte>(), null, extractable, usages, "ECDSA", ec, curve, privateKey);
-    static object EcGenerate(object[] args)
+    static CryptoKeyValue EcKey(ECDsa ec, string curve, bool privateKey, bool extractable, string[] usages, string name) =>
+        new(Array.Empty<byte>(), null, extractable, usages, name, ec, curve, privateKey);
+    static object EcGenerate(object[] args, string name = "ECDSA")
     {
         string curve = EcCurveName(FunctionArgument(args, 0));
-        string[] usages = EcUsages(FunctionArgument(args, 2), null);
-        if (Array.IndexOf(usages, "sign") < 0) throw CryptoError("SyntaxError", "Private key requires a usage");
+        string[] usages = EcUsages(FunctionArgument(args, 2), null, name);
+        if (name == "ECDSA" ? Array.IndexOf(usages, "sign") < 0 : usages.Length == 0) throw CryptoError("SyntaxError", "Private key requires a usage");
         ECDsa privateKey = null, publicKey = null;
         try
         {
             privateKey = ECDsa.Create(EcCurve(curve)); publicKey = ECDsa.Create(privateKey.ExportParameters(false));
             var result = new JsDynamicObject();
-            result.DefineOwn("privateKey", EcKey(privateKey, curve, true, Truthy(FunctionArgument(args, 1)), new[] { "sign" }));
-            result.DefineOwn("publicKey", EcKey(publicKey, curve, false, true, Array.IndexOf(usages, "verify") < 0 ? Array.Empty<string>() : new[] { "verify" }));
+            result.DefineOwn("privateKey", EcKey(privateKey, curve, true, Truthy(FunctionArgument(args, 1)), name == "ECDSA" ? new[] { "sign" } : usages, name));
+            result.DefineOwn("publicKey", EcKey(publicKey, curve, false, true, name != "ECDSA" || Array.IndexOf(usages, "verify") < 0 ? Array.Empty<string>() : new[] { "verify" }, name));
             return result;
         }
         catch { privateKey?.Dispose(); publicKey?.Dispose(); throw; }
@@ -70,12 +71,12 @@ public static partial class Js
         }
         catch (FormatException) { throw CryptoError("DataError", "Invalid EC coordinate encoding"); }
     }
-    static void EcJwkPermissions(TsObject jwk, string curve, bool extractable, string[] usages)
+    static void EcJwkPermissions(TsObject jwk, string curve, bool extractable, string[] usages, string name)
     {
         object alg = jwk.Get("alg"), use = jwk.Get("use"), ext = jwk.Get("ext");
         string expected = curve == "P-521" ? "ES512" : curve == "P-384" ? "ES384" : "ES256";
-        if (!IsUndefined(alg) && StringValue(alg) != expected) throw CryptoError("DataError", "JWK algorithm does not match curve");
-        if (!IsUndefined(use) && usages.Length != 0 && StringValue(use) != "sig") throw CryptoError("DataError", "JWK does not permit signatures");
+        if (name == "ECDSA" && !IsUndefined(alg) && StringValue(alg) != expected) throw CryptoError("DataError", "JWK algorithm does not match curve");
+        if (!IsUndefined(use) && usages.Length != 0 && StringValue(use) != (name == "ECDSA" ? "sig" : "enc")) throw CryptoError("DataError", "JWK does not permit signatures");
         if (!IsUndefined(ext) && !Truthy(ext) && extractable) throw CryptoError("DataError", "JWK does not permit extraction");
         object operations = jwk.Get("key_ops");
         if (!IsUndefined(operations))
@@ -89,12 +90,12 @@ public static partial class Js
             foreach (string usage in usages) if (!allowed.Contains(usage)) throw CryptoError("DataError", "JWK does not permit requested usage");
         }
     }
-    static object EcImport(object[] args)
+    static object EcImport(object[] args, string name = "ECDSA")
     {
         string format = StringValue(FunctionArgument(args, 0)), curve = EcCurveName(FunctionArgument(args, 2));
         object input = FunctionArgument(args, 1); bool extractable = Truthy(FunctionArgument(args, 3));
         bool privateKey = format == "pkcs8" || format == "jwk" && input is TsObject j && !IsUndefined(j.Get("d"));
-        string[] usages = EcUsages(FunctionArgument(args, 4), privateKey);
+        string[] usages = EcUsages(FunctionArgument(args, 4), privateKey, name);
         ECDsa ec = ECDsa.Create(); byte[] secret = null;
         try
         {
@@ -103,7 +104,7 @@ public static partial class Js
             {
                 if (input is not TsObject jwk) throw new InvalidOperationException("JWK must be an object");
                 if (StringValue(jwk.Get("kty")) != "EC" || StringValue(jwk.Get("crv")) != curve) throw CryptoError("DataError", "JWK curve does not match");
-                EcJwkPermissions(jwk, curve, extractable, usages);
+                EcJwkPermissions(jwk, curve, extractable, usages, name);
                 secret = privateKey ? EcDecode(jwk.Get("d"), width) : null;
                 ec.ImportParameters(new ECParameters { Curve = EcCurve(curve), Q = new ECPoint { X = EcDecode(jwk.Get("x"), width), Y = EcDecode(jwk.Get("y"), width) }, D = secret });
             }
@@ -120,7 +121,7 @@ public static partial class Js
                 else throw CryptoError("NotSupportedError", "Unsupported ECDSA key format");
             }
             if (ec.ExportParameters(false).Curve.Oid.Value != EcCurve(curve).Oid.Value) throw CryptoError("DataError", "EC curve does not match");
-            return EcKey(ec, curve, privateKey, extractable, usages);
+            return EcKey(ec, curve, privateKey, extractable, usages, name);
         }
         catch (CryptographicException) { ec.Dispose(); throw CryptoError("DataError", "Invalid EC key data"); }
         catch { ec.Dispose(); throw; }

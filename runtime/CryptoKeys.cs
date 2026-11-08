@@ -10,6 +10,17 @@ public static partial class Js
         internal readonly ECDsa Ec = ec;
         internal readonly string Curve = curve;
         internal readonly bool PrivateKey = privateKey;
+        ECDiffieHellman agreement;
+        ECDiffieHellmanPublicKey agreementPublic;
+        internal ECDiffieHellmanPublicKey AgreementPublic => agreementPublic ??= Agreement.PublicKey;
+        internal ECDiffieHellman Agreement {
+            get {
+                if (agreement != null) return agreement;
+                var parameters = Ec.ExportParameters(PrivateKey);
+                try { return agreement = ECDiffieHellman.Create(parameters); }
+                finally { if (parameters.D != null) CryptographicOperations.ZeroMemory(parameters.D); }
+            }
+        }
         internal string KeyType => Ec == null ? "secret" : PrivateKey ? "private" : "public";
         internal readonly string Name = name;
         internal readonly string Hash = hash;
@@ -95,11 +106,11 @@ public static partial class Js
         return promise;
     }
     static object CryptoImport(object[] args) => CryptoAlgorithm(FunctionArgument(args, 2)) switch {
-        "ECDSA" => EcImport(args), "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "AES-CBC" => AesImport(args, "AES-CBC"), "AES-CTR" => AesImport(args, "AES-CTR"), "AES-KW" => AesImport(args, "AES-KW"), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
+        "ECDH" => EcImport(args, "ECDH"), "ECDSA" => EcImport(args), "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "AES-CBC" => AesImport(args, "AES-CBC"), "AES-CTR" => AesImport(args, "AES-CTR"), "AES-KW" => AesImport(args, "AES-KW"), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object CryptoGenerate(object[] args) => CryptoAlgorithm(FunctionArgument(args, 0)) switch {
-        "ECDSA" => EcGenerate(args), "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args), "AES-CBC" => AesGenerate(args, "AES-CBC"), "AES-CTR" => AesGenerate(args, "AES-CTR"), "AES-KW" => AesGenerate(args, "AES-KW"),
+        "ECDH" => EcGenerate(args, "ECDH"), "ECDSA" => EcGenerate(args), "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args), "AES-CBC" => AesGenerate(args, "AES-CBC"), "AES-CTR" => AesGenerate(args, "AES-CTR"), "AES-KW" => AesGenerate(args, "AES-KW"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object HmacImport(object[] args)
