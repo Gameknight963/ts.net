@@ -64,14 +64,14 @@ public static partial class Js
         }
         return scale * Math.Sqrt(sum);
     }
-    sealed class MathNamespace : TsObject
+    sealed class MathNamespace : JsDescriptorObject
     {
-        readonly HashSet<string> hidden = new(), constants = new();
-        void Member(string name, object value, bool constant = false) { DefineOwn(name, value); hidden.Add(name); if (constant) constants.Add(name); }
+        void Member(string name, object value, bool constant = false) => Define(new(name, value, null, null, false, !constant, false, !constant));
         void Unary(string name, Func<double, double> operation) => Member(name, new JsFunction((FunctionBody)(args => operation(Number(FunctionArgument(args, 0)))), (RawNumberFunction1)(value => operation(value)), name, 1));
         void Binary(string name, Func<double, double, double> operation) => Member(name, new JsFunction((FunctionBody)(args => operation(Number(FunctionArgument(args, 0)), Number(FunctionArgument(args, 1)))), (RawNumberFunction2)((first, second) => operation(first, second)), name, 2));
         internal MathNamespace()
         {
+            DefineMethod(PropertyKey(ToStringTagSymbol), "Math", false);
             Member("E", Math.E, true); Member("PI", Math.PI, true);
             Member("LN2", Math.Log(2), true); Member("LN10", Math.Log(10), true);
             Member("LOG2E", Math.Log2(Math.E), true); Member("LOG10E", Math.Log10(Math.E), true);
@@ -96,17 +96,5 @@ public static partial class Js
             Member("random", new JsFunction((FunctionBody)(static _ => Random.Shared.NextDouble()), (RawNumberFunction0)(static () => Random.Shared.NextDouble()), "random", 0));
         }
         static object MathHypotBody(object[] arguments) => MathHypot(arguments);
-        internal override bool IsReadOnlyOwnProperty(string key) => constants.Contains(key);
-        public override object Set(string key, object value) => constants.Contains(key) ? throw new InvalidOperationException("Math constant is read-only") : base.Set(key, value);
-        public override bool DeleteOwn(string key) { bool removed = base.DeleteOwn(key); if (removed) hidden.Remove(key); return removed; }
-        internal override bool ForInEnumerable(string key) => !hidden.Contains(key) && base.ForInEnumerable(key);
-        internal override object ForInOwnKeys() => base.OwnKeys();
-        internal override object OwnPropertyNames() => base.OwnKeys();
-        public override object OwnKeys()
-        {
-            var keys = (JsArray)base.OwnKeys(); var result = new JsArray(0);
-            for (uint i = 0; i < keys.Length(); i++) { string key = (string)keys.ElementAt(i); if (!hidden.Contains(key)) result.Append(key); }
-            return result;
-        }
     }
 }

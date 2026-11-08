@@ -1,0 +1,15 @@
+export {};
+const original = Math.abs;
+Object.defineProperty(Math, 'abs', {enumerable: true});
+console.log('enumerable', Object.keys(Math).join(','), Math.abs === original);
+Object.defineProperty(Math, 'abs', {value(value: number) {return value + 10;}, writable: false});
+console.log('replacement', Math.abs(2), original(-3), Object.getOwnPropertyDescriptor(Math, 'abs')!.configurable);
+console.log('readonly', Reflect.set(Math, 'abs', original));
+console.log('constant', Reflect.defineProperty(Math, 'PI', {value: Math.PI}), Reflect.defineProperty(Math, 'PI', {value: 0}), JSON.stringify(Object.getOwnPropertyDescriptor(Math, 'PI')));
+const tag = Object.getOwnPropertyDescriptor(Math, Symbol.toStringTag)!;
+console.log('tag', tag.value, tag.writable, tag.enumerable, tag.configurable, Object.prototype.toString.call(Math));
+console.log('delete tag', Reflect.deleteProperty(Math, Symbol.toStringTag), Object.prototype.toString.call(Math));
+Object.defineProperty(Math, Symbol.toStringTag, {value: 'Custom', configurable: true});
+console.log('new tag', Object.prototype.toString.call(Math));
+Object.freeze(Math);
+console.log('frozen', Object.isFrozen(Math), Reflect.deleteProperty(Math, 'abs'), Reflect.defineProperty(Math, 'extra', {value: 1}), Math.floor(2.9));

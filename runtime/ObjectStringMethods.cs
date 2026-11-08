@@ -28,7 +28,6 @@ public static partial class Js
             {
                 if (ReferenceEquals(current, RuntimeNamespaces.Reflect)) { tag = "Reflect"; break; }
                 if (ReferenceEquals(current, RuntimeNamespaces.Json)) { tag = "JSON"; break; }
-                if (ReferenceEquals(current, RuntimeNamespaces.Math)) { tag = "Math"; break; }
             }
         }
         return "[object " + tag + "]";
