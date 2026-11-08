@@ -47,7 +47,7 @@ public static partial class Js
         if (source != null) {result = CopyRequest(source); result.Referrer = "about:client"; result.ReferrerPolicy = "";}
         else {
             if (!TryUrl(QueryText(input),null,out var uri) || uri.UserInfo.Length != 0) throw new InvalidOperationException("Request requires an absolute URL without credentials");
-            result = new RequestValue {Url=uri.AbsoluteUri,Headers=new HeadersValue()};
+            result = new RequestValue {Url=uri.Scheme == "data" ? DataRequestUrl(uri) : uri.AbsoluteUri,Headers=new HeadersValue()};
         }
         object settings = FunctionArgument(args,1);
         if (!IsNullish(settings) && settings is not TsObject) throw new InvalidOperationException("Request options must be an object");

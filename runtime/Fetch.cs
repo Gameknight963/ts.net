@@ -35,6 +35,7 @@ public static partial class Js
             var request = CreateRequest(args);
             if (request.Signal.Aborted) { result.Settle(request.Signal.Reason, true); return result; }
             var uri = new Uri(request.Url);
+            if (uri.Scheme == "data") { FetchData(request, result); return result; }
             if (uri.Scheme is not ("http" or "https")) throw new InvalidOperationException("Fetch currently supports HTTP and HTTPS URLs");
             var headers = new List<KeyValuePair<string, string[]>>();
             foreach (var header in request.Headers.Fields) headers.Add(new(header.Key, header.Value.ToArray()));
