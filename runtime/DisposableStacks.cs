@@ -2,7 +2,7 @@ using System;
 
 public static partial class Js
 {
-    sealed class DisposableStackValue(bool asynchronous) : TsObject
+    sealed class DisposableStackValue(bool asynchronous) : JsDescriptorObject
     {
         internal readonly bool Asynchronous = asynchronous;
         internal bool Disposed;
@@ -27,7 +27,7 @@ public static partial class Js
             this.asynchronous = asynchronous;
             var prototype = new JsClassInstance {ParentPrototype = DefaultClassObjectPrototype}; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), asynchronous ? "AsyncDisposableStack" : "DisposableStack");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), asynchronous ? "AsyncDisposableStack" : "DisposableStack", false);
             prototype.DefineClassAccessor("disposed", new CollectionMethod("get disposed", 0, (receiver, _) => BoxBoolean(RequireDisposableStack(receiver, asynchronous).Disposed)), 1);
             prototype.DefineMethod("use", new CollectionMethod("use", 1, (receiver, args) => {
                 var stack = RequireDisposableStack(receiver, asynchronous); stack.CheckActive();
