@@ -1306,7 +1306,12 @@ func (b *irBuilder) lower(n *ast.Node) int {
 				row.constant = 1
 			}
 		}
-		row.left = b.lower(s.Initializer)
+		initializer := assignmentPatternNode(s.Initializer)
+		if initializer.Kind == ast.KindArrayLiteralExpression || initializer.Kind == ast.KindObjectLiteralExpression {
+			row.left = b.assignmentPattern(initializer)
+		} else {
+			row.left = b.lower(s.Initializer)
+		}
 		row.right = b.lower(s.Expression)
 		b.beginControl(n, id, true)
 		if s.Initializer.Kind == ast.KindVariableDeclarationList && ast.GetCombinedNodeFlags(s.Initializer)&ast.NodeFlagsUsing != 0 {
