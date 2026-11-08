@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 
 public static partial class Js
 {
-    sealed class CryptoKeyValue(byte[] bytes, string hash, bool extractable, string[] usages, string name = "HMAC", ECDsa ec = null, string curve = null, bool privateKey = false, RSA rsa = null) : TsObject
+    sealed class CryptoKeyValue(byte[] bytes, string hash, bool extractable, string[] usages, string name = "HMAC", ECDsa ec = null, string curve = null, bool privateKey = false, RSA rsa = null) : JsDescriptorObject
     {
         internal readonly byte[] Bytes = bytes;
         internal readonly ECDsa Ec = ec;
@@ -211,7 +211,7 @@ public static partial class Js
         internal CryptoKeyConstructor() : base("CryptoKey", static _ => throw new InvalidOperationException("CryptoKey requires host construction"), 0)
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "CryptoKey");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "CryptoKey", false);
             prototype.DefineClassAccessor("type", new CollectionMethod("get type", 0, static (receiver, _) => RequireCryptoKey(receiver).KeyType), 1);
             prototype.DefineClassAccessor("extractable", new CollectionMethod("get extractable", 0, static (receiver, _) => BoxBoolean(RequireCryptoKey(receiver).Extractable)), 1);
             prototype.DefineClassAccessor("algorithm", new CollectionMethod("get algorithm", 0, static (receiver, _) => RequireCryptoKey(receiver).Algorithm), 1);

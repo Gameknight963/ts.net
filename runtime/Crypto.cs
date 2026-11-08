@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 
 public static partial class Js
 {
-    sealed class CryptoValue(bool subtle) : TsObject
+    sealed class CryptoValue(bool subtle) : JsDescriptorObject
     {
         internal readonly bool Subtle = subtle;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)(Subtle ? RuntimeNamespaces.SubtleCryptoType : RuntimeNamespaces.CryptoType).Get("prototype");
@@ -62,7 +62,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), subtle ? "SubtleCrypto" : "Crypto");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), subtle ? "SubtleCrypto" : "Crypto", false);
             if (subtle) {
                 prototype.DefineOwn("digest", new CollectionMethod("digest", 2, CryptoDigest));
                 prototype.DefineOwn("importKey", new CollectionMethod("importKey", 5, static (receiver, args) => CryptoKeyOperation(receiver, () => CryptoImport(args))));
