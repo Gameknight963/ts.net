@@ -49,7 +49,7 @@ public partial class JsFunction : TsObject
     public virtual object Construct(object[] arguments) => ConstructOrdinary(arguments);
     public virtual bool HasInstance(object value) => OrdinaryHasInstance(value);
     internal override bool IsReadOnlyOwnProperty(string key) => key == "name" && !deletedName || key == "length" && !deletedLength;
-    internal void InferPropertyName(string value) { name = value; }
+    internal void InferPropertyName(string value) { name = Js.PropertyFunctionName(value); }
     public override bool HasOwn(string key) => key == "name" && !deletedName || key == "length" && !deletedLength || key == "prototype" && ordinaryPrototype != null || base.HasOwn(key);
     public override bool HasProperty(string key)=>HasOwn(key) || base.HasProperty(key);
     public override object Get(string key) => key == "prototype" && ordinaryPrototype != null ? ReadOrdinaryPrototype() : base.HasOwn(key)?base.Get(key):key == "name" && !deletedName ? name : key == "length" && !deletedLength ? (double)length : base.Get(key);

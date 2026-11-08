@@ -29,7 +29,7 @@ public abstract partial class TsObject
             (extra ??= new OwnProperties())[key] = Js.Undefined;
         }
         var callable = (JsFunction)function;
-        if (inferName) callable.InferPropertyName((mode == 1 ? "get " : "set ") + key);
+        if (inferName) callable.InferPropertyName((mode == 1 ? "get " : "set ") + Js.PropertyFunctionName(key));
         if (mode == 1) accessor.Getter = callable; else accessor.Setter = callable;
     }
     public virtual object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? Get(key) : InheritedValue(key, receiver);

@@ -22,6 +22,11 @@ public static partial class Js
     }
 
     internal static bool IsSymbolKey(string key) => haveSymbolKeys && key.Length != 0 && key[0] == '\0' && symbolKeys.TryGetValue(key, out _);
+    internal static string PropertyFunctionName(string key)
+    {
+        if (!haveSymbolKeys || key.Length == 0 || key[0] != '\0' || !symbolKeys.TryGetValue(key, out var symbol)) return key;
+        return IsUndefined(symbol.Description) ? "" : "[" + (string)symbol.Description + "]";
+    }
 
     internal static double StringPropertyKeyCount(object names)
     {
