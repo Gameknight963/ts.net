@@ -4,10 +4,11 @@ using System.Security.Cryptography;
 
 public static partial class Js
 {
-    sealed class CryptoKeyValue(byte[] bytes, string hash, bool extractable, string[] usages, string name = "HMAC", ECDsa ec = null, string curve = null, bool privateKey = false) : TsObject
+    sealed class CryptoKeyValue(byte[] bytes, string hash, bool extractable, string[] usages, string name = "HMAC", ECDsa ec = null, string curve = null, bool privateKey = false, RSA rsa = null) : TsObject
     {
         internal readonly byte[] Bytes = bytes;
         internal readonly ECDsa Ec = ec;
+        internal readonly RSA Rsa = rsa;
         internal readonly string Curve = curve;
         internal readonly bool PrivateKey = privateKey;
         ECDiffieHellman agreement;
@@ -21,7 +22,7 @@ public static partial class Js
                 finally { if (parameters.D != null) CryptographicOperations.ZeroMemory(parameters.D); }
             }
         }
-        internal string KeyType => Ec == null ? "secret" : PrivateKey ? "private" : "public";
+        internal string KeyType => Ec == null && Rsa == null ? "secret" : PrivateKey ? "private" : "public";
         internal readonly string Name = name;
         internal readonly string Hash = hash;
         internal readonly bool Extractable = extractable;
@@ -34,7 +35,12 @@ public static partial class Js
                 var result = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
                 result.Set("name", Name);
                 if (Ec != null) result.Set("namedCurve", Curve);
-                if (Name == "HMAC") {
+                if (Rsa != null) {
+                    byte[] exponent = Rsa.ExportParameters(false).Exponent;
+                    result.Set("modulusLength", (double)Rsa.KeySize);
+                    result.Set("publicExponent", new TypedArrayValue("Uint8Array", new BinaryBuffer(0) { Bytes = exponent }, 0, exponent.Length));
+                }
+                if (Name == "HMAC" || Rsa != null) {
                     var hash = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; hash.Set("name", Hash); result.Set("hash", hash);
                 }
                 if (Name is "HMAC" or "AES-GCM" or "AES-CBC" or "AES-CTR" or "AES-KW") result.Set("length", (double)Bytes.Length * 8);
@@ -106,11 +112,11 @@ public static partial class Js
         return promise;
     }
     static object CryptoImport(object[] args) => CryptoAlgorithm(FunctionArgument(args, 2)) switch {
-        "ECDH" => EcImport(args, "ECDH"), "ECDSA" => EcImport(args), "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "AES-CBC" => AesImport(args, "AES-CBC"), "AES-CTR" => AesImport(args, "AES-CTR"), "AES-KW" => AesImport(args, "AES-KW"), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
+        "RSASSA-PKCS1-V1_5" => RsaImport(args), "ECDH" => EcImport(args, "ECDH"), "ECDSA" => EcImport(args), "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "AES-CBC" => AesImport(args, "AES-CBC"), "AES-CTR" => AesImport(args, "AES-CTR"), "AES-KW" => AesImport(args, "AES-KW"), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object CryptoGenerate(object[] args) => CryptoAlgorithm(FunctionArgument(args, 0)) switch {
-        "ECDH" => EcGenerate(args, "ECDH"), "ECDSA" => EcGenerate(args), "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args), "AES-CBC" => AesGenerate(args, "AES-CBC"), "AES-CTR" => AesGenerate(args, "AES-CTR"), "AES-KW" => AesGenerate(args, "AES-KW"),
+        "RSASSA-PKCS1-V1_5" => RsaGenerate(args), "ECDH" => EcGenerate(args, "ECDH"), "ECDSA" => EcGenerate(args), "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args), "AES-CBC" => AesGenerate(args, "AES-CBC"), "AES-CTR" => AesGenerate(args, "AES-CTR"), "AES-KW" => AesGenerate(args, "AES-KW"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object HmacImport(object[] args)
@@ -142,6 +148,7 @@ public static partial class Js
         if (key.Name is "PBKDF2" or "HKDF") throw CryptoError("NotSupportedError", "Derivation base keys cannot be exported");
         if (!key.Extractable) throw CryptoError("InvalidAccessException", "Key is not extractable");
         string format = StringValue(FunctionArgument(args, 0));
+        if (key.Rsa != null) return RsaExport(key, format);
         if (key.Ec != null) return EcExport(key, format);
         if (format == "jwk") {
             var result = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
@@ -190,6 +197,7 @@ public static partial class Js
     static object HmacSign(object[] args, bool verify)
     {
         string algorithm = CryptoAlgorithm(FunctionArgument(args, 0)); var key = RequireCryptoKey(FunctionArgument(args, 1));
+        if (algorithm == "RSASSA-PKCS1-V1_5") return RsaSign(args, verify);
         if (algorithm == "ECDSA") return EcSign(args, verify);
         if (algorithm != "HMAC") throw CryptoError("NotSupportedError", "Unsupported signing algorithm");
         if (key.Name != "HMAC" || !Array.Exists(key.Usages, usage => usage == (verify ? "verify" : "sign"))) throw CryptoError("InvalidAccessError", "Key does not permit this operation");
