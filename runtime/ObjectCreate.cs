@@ -70,22 +70,7 @@ public static partial class Js
         {
             string key = (string)keys.ElementAt(index);
             if (!source.HasOwn(key) || !source.ForInEnumerable(key)) continue;
-            if (source.Get(key) is not TsObject descriptor) throw new InvalidOperationException("Property descriptor must be an object");
-            bool enumerable = descriptor.HasProperty("enumerable") && Truthy(descriptor.Get("enumerable"));
-            bool configurable = descriptor.HasProperty("configurable") && Truthy(descriptor.Get("configurable"));
-            bool hasValue = descriptor.HasProperty("value");
-            object value = hasValue ? descriptor.Get("value") : Undefined;
-            bool hasWritable = descriptor.HasProperty("writable");
-            bool writable = hasWritable && Truthy(descriptor.Get("writable"));
-            bool hasGet = descriptor.HasProperty("get");
-            object getter = hasGet ? descriptor.Get("get") : Undefined;
-            if (!IsUndefined(getter) && getter is not JsFunction) throw new InvalidOperationException("Property getter is not callable");
-            bool hasSet = descriptor.HasProperty("set");
-            object setter = hasSet ? descriptor.Get("set") : Undefined;
-            if (!IsUndefined(setter) && setter is not JsFunction) throw new InvalidOperationException("Property setter is not callable");
-            bool accessor = hasGet || hasSet;
-            if (accessor && (hasValue || hasWritable)) throw new InvalidOperationException("Property descriptor mixes data and accessors");
-            descriptors.Add(new(key, value, getter as JsFunction, setter as JsFunction, accessor, writable, enumerable, configurable));
+            descriptors.Add(ReadPropertyDefinition(source.Get(key)).Complete(key));
         }
         foreach (var descriptor in descriptors) result.Define(descriptor);
         return result;
