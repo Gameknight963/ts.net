@@ -37,10 +37,6 @@ public static partial class Js
             bool isStatic = (flags & 1) != 0, field = (flags & 2) != 0;
             TsObject target = isStatic ? home : home.Prototype;
             object descriptor = field ? Undefined : target.OwnPropertyDescriptor(key);
-            var previous = descriptor as TsObject;
-            bool writable = previous != null && Truthy(previous.Get("writable"));
-            bool enumerable = previous != null && Truthy(previous.Get("enumerable"));
-            bool configurable = previous != null && Truthy(previous.Get("configurable"));
             var decorators = (JsArray)args[3];
             for (long i = (long)decorators.Length() - 1; i >= 0; i--)
             {
@@ -48,24 +44,7 @@ public static partial class Js
                 object result = decorator.InvokeWithReceiver(Undefined, new[] { (object)target, publicKey, descriptor });
                 if (Truthy(result)) descriptor = result;
             }
-            if (Truthy(descriptor))
-            {
-                if (descriptor is not TsObject data) throw new InvalidOperationException("Decorator property descriptor must be an object");
-                bool accessor = data.HasProperty("get") || data.HasProperty("set");
-                if (accessor && (data.HasProperty("value") || data.HasProperty("writable"))) throw new InvalidOperationException("Decorator descriptor mixes data and accessors");
-                if ((data.HasProperty("enumerable") ? Truthy(data.Get("enumerable")) : enumerable)
-                    || !(data.HasProperty("configurable") ? Truthy(data.Get("configurable")) : configurable)
-                    || !accessor && !(data.HasProperty("writable") ? Truthy(data.Get("writable")) : writable))
-                    throw new NotSupportedException("Legacy decorator changes to property attributes are not supported");
-                target.DeleteOwn(key);
-                if (accessor)
-                {
-                    object getter = data.Get("get"), setter = data.Get("set");
-                    if (!IsUndefined(getter)) DefineClassMethod(home, key, getter, isStatic, 1);
-                    if (!IsUndefined(setter)) DefineClassMethod(home, key, setter, isStatic, 2);
-                }
-                else DefineClassMethod(home, key, data.Get("value"), isStatic, 0);
-            }
+            if (Truthy(descriptor)) ApplyPropertyDefinition(target, key, ReadPropertyDefinition(descriptor));
             return Undefined;
         }), null, "", 4);
     }

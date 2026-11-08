@@ -101,7 +101,7 @@ public static partial class Js
             }
         }
         bool nextAccessor = changesKind ? definition.Accessor : accessor;
-        object value = Has(DescriptorFields.Value) ? definition.Value : accessor ? Undefined : current.Get("value");
+        object value = nextAccessor ? Undefined : Has(DescriptorFields.Value) ? definition.Value : accessor ? Undefined : current.Get("value");
         bool writable = Has(DescriptorFields.Writable) ? definition.Writable : !accessor && Truthy(current.Get("writable"));
         JsFunction getter = !nextAccessor ? null : Has(DescriptorFields.Get) ? definition.Getter : accessor ? current.Get("get") as JsFunction : null;
         JsFunction setter = !nextAccessor ? null : Has(DescriptorFields.Set) ? definition.Setter : accessor ? current.Get("set") as JsFunction : null;

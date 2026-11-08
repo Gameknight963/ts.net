@@ -54,3 +54,30 @@ function symbolDecorator(target: any, key: string | symbol, descriptor: Property
 }
 class Symbols { @symbolDecorator [symbolKey]() { return 7; } }
 console.log(new Symbols()[symbolKey]());
+
+function locked(target: any, key: string | symbol, descriptor: PropertyDescriptor): PropertyDescriptor {
+ return {...descriptor, writable: false, enumerable: true, configurable: false};
+}
+function getterOnly(target: any, key: string | symbol, descriptor: PropertyDescriptor): PropertyDescriptor {
+ return {get() {return 21;}, enumerable: true, configurable: true};
+}
+class Attributes {
+ @locked method() {return 11;}
+ @locked static method() {return 12;}
+ @getterOnly converted() {return 0;}
+}
+const attributes = new Attributes();
+console.log('decorator attributes', Object.keys(Attributes.prototype).join(','), Object.keys(Attributes).join(','), attributes.method(), Attributes.method(), (attributes as any).converted);
+try {(attributes as any).method = () => 0;} catch (error) {console.log('decorator readonly', (error as Error).name);}
+console.log('decorator delete', Reflect.deleteProperty(Attributes.prototype, 'method'), Reflect.deleteProperty(Attributes, 'method'));
+console.log('decorator descriptor', JSON.stringify(Object.getOwnPropertyDescriptor(Attributes.prototype, 'method')), JSON.stringify(Object.getOwnPropertyDescriptor(Attributes, 'method')));
+
+function partialDescriptor(target: any, key: string | symbol, descriptor: PropertyDescriptor): PropertyDescriptor {return {writable: false};}
+class PartialAttributes { @partialDescriptor method() {return 31;} }
+console.log('partial descriptor', new PartialAttributes().method(), JSON.stringify(Object.getOwnPropertyDescriptor(PartialAttributes.prototype, 'method')));
+function invalidDescriptor(target: any, key: string | symbol, descriptor: PropertyDescriptor): any {return {value: 1, get() {return 2;}};}
+function invalidClass() {class InvalidAttributes {@invalidDescriptor method() {}} return InvalidAttributes;}
+try {invalidClass();} catch (error) {console.log('invalid descriptor', (error as Error).name);}
+function emptyAccessor(target: any, key: string | symbol, descriptor: PropertyDescriptor): PropertyDescriptor {return {get: undefined, set: undefined};}
+class EmptyAccessor {@emptyAccessor method() {return 1;}}
+console.log('empty accessor', typeof (new EmptyAccessor() as any).method, Object.getOwnPropertyDescriptor(EmptyAccessor.prototype, 'method')!.get === undefined);
