@@ -1,3 +1,4 @@
+/// <reference lib="es2023.collection" />
 export {};
 const registry = new FinalizationRegistry<unknown>(() => {});
 const target = {}, token = {};
