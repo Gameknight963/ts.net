@@ -17,8 +17,11 @@ public static partial class Js
             get {
                 if (algorithm != null) return algorithm;
                 var result = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
-                var hash = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; hash.Set("name", Hash);
-                result.Set("name", Name); if (Name == "HMAC") result.Set("hash", hash); result.Set("length", (double)Bytes.Length * 8);
+                result.Set("name", Name);
+                if (Name == "HMAC") {
+                    var hash = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; hash.Set("name", Hash); result.Set("hash", hash);
+                }
+                if (Name is "HMAC" or "AES-GCM") result.Set("length", (double)Bytes.Length * 8);
                 return algorithm = result;
             }
         }
@@ -87,7 +90,7 @@ public static partial class Js
         return promise;
     }
     static object CryptoImport(object[] args) => CryptoAlgorithm(FunctionArgument(args, 2)) switch {
-        "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args),
+        "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object CryptoGenerate(object[] args) => CryptoAlgorithm(FunctionArgument(args, 0)) switch {
@@ -120,6 +123,7 @@ public static partial class Js
     static object CryptoExport(object[] args)
     {
         var key = RequireCryptoKey(FunctionArgument(args, 1));
+        if (key.Name is "PBKDF2" or "HKDF") throw CryptoError("NotSupportedError", "Derivation base keys cannot be exported");
         if (!key.Extractable) throw CryptoError("InvalidAccessException", "Key is not extractable");
         string format = StringValue(FunctionArgument(args, 0));
         if (format == "jwk") {

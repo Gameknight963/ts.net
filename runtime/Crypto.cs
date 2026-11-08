@@ -70,6 +70,8 @@ public static partial class Js
                 prototype.DefineOwn("exportKey", new CollectionMethod("exportKey", 2, static (receiver, args) => CryptoKeyOperation(receiver, () => CryptoExport(args))));
                 prototype.DefineOwn("encrypt", new CollectionMethod("encrypt", 3, static (receiver, args) => CryptoKeyOperation(receiver, () => AesCrypt(args, false))));
                 prototype.DefineOwn("decrypt", new CollectionMethod("decrypt", 3, static (receiver, args) => CryptoKeyOperation(receiver, () => AesCrypt(args, true))));
+                prototype.DefineOwn("deriveBits", new CollectionMethod("deriveBits", 2, static (receiver, args) => CryptoKeyOperation(receiver, () => CryptoDeriveBits(args))));
+                prototype.DefineOwn("deriveKey", new CollectionMethod("deriveKey", 5, static (receiver, args) => CryptoKeyOperation(receiver, () => CryptoDeriveKey(args))));
                 prototype.DefineOwn("wrapKey", new CollectionMethod("wrapKey", 4, static (receiver, args) => CryptoKeyOperation(receiver, () => CryptoWrap(args))));
                 prototype.DefineOwn("unwrapKey", new CollectionMethod("unwrapKey", 7, static (receiver, args) => CryptoKeyOperation(receiver, () => CryptoUnwrap(args))));
                 prototype.DefineOwn("sign", new CollectionMethod("sign", 3, static (receiver, args) => CryptoKeyOperation(receiver, () => HmacSign(args, false))));
