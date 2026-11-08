@@ -1,5 +1,5 @@
 export {};
-for (const locale of ['en-US-u-nu-deva', 'de-DE-u-nu-fullwide', 'en-US-u-ca-gregory-nu-thai']) {
+for (const locale of ['en-US-u-nu-deva', 'de-DE-u-nu-fullwide', 'en-US-u-ca-gregory-nu-thai', 'en-US-u-nu-mathbold']) {
     for (const numberingSystem of [undefined, 'latn', 'beng', locale.includes('deva') ? 'deva' : 'thai']) {
         const format = new Intl.NumberFormat(locale, {numberingSystem});
         console.log(locale, numberingSystem, format.resolvedOptions().locale, format.resolvedOptions().numberingSystem, format.format(12345.67));
