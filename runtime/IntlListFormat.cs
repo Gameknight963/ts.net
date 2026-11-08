@@ -16,17 +16,10 @@ public static partial class Js
             candidate = candidate[..separator];
         }
     }
-    static string ListLocaleMatcher(TsObject options)
-    {
-        object value = options == null ? Undefined : options.Get("localeMatcher");
-        string matcher = IsUndefined(value) ? "best fit" : StringValue(value);
-        if (matcher is not ("lookup" or "best fit")) throw new ArgumentOutOfRangeException(nameof(options), "Invalid locale matcher");
-        return matcher;
-    }
     static object ListSupportedLocales(object locales, object optionValue)
     {
         var requested = (JsArray)CanonicalLocales(locales);
-        ListLocaleMatcher(IsUndefined(optionValue) ? null : ToObject(optionValue));
+        IntlLocaleMatcher(IsUndefined(optionValue) ? null : ToObject(optionValue));
         var result = new JsArray(0);
         for (uint index = 0; index < requested.Length(); index++) {
             string name = (string)requested.ElementAt(index);
@@ -43,7 +36,7 @@ public static partial class Js
         {
             var requested = (JsArray)CanonicalLocales(locales);
             TsObject options = IsUndefined(optionValue) ? null : ToObject(optionValue);
-            ListLocaleMatcher(options);
+            IntlLocaleMatcher(options);
             string current = CultureInfo.CurrentCulture.Name;
             locale = (current.Length == 0 ? null : SupportedListLocale(current)) ?? "en-US";
             for (uint index = 0; index < requested.Length(); index++) {

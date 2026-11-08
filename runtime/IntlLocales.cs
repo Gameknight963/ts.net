@@ -3,6 +3,13 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
+    static string IntlLocaleMatcher(TsObject options)
+    {
+        object value = options == null ? Undefined : options.Get("localeMatcher");
+        string matcher = IsUndefined(value) ? "best fit" : StringValue(value);
+        if (matcher is not ("lookup" or "best fit")) throw new ArgumentOutOfRangeException(nameof(options), "Invalid locale matcher");
+        return matcher;
+    }
     static string LocaleIdentifier(object value)
     {
         if (value is LocaleValue locale) return locale.Name;

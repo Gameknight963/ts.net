@@ -1,5 +1,5 @@
 export {};
-for (const constructor of [Intl.NumberFormat, Intl.DateTimeFormat, Intl.Collator, Intl.Segmenter, Intl.Locale, Intl.ListFormat] as any[]) {
+for (const constructor of [Intl.NumberFormat, Intl.DateTimeFormat, Intl.Collator, Intl.Segmenter, Intl.Locale, Intl.ListFormat, Intl.RelativeTimeFormat] as any[]) {
     for (const mode of ['normal', 'prototype error', 'invalid locale']) {
         let log = '';
         const prototype = {};
