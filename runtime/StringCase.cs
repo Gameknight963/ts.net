@@ -28,6 +28,7 @@ public static partial class Js
         }
         return first ?? CultureInfo.CurrentCulture;
     }
+    static string UppercaseWithIota(char first) => string.Create(2, first, static (output, value) => { output[0] = value; output[1] = '\u0399'; });
     static string ExpandUppercase(string text)
     {
         int first = text.AsSpan().IndexOfAnyInRange('\u0080', '\uffff');
@@ -41,6 +42,18 @@ public static partial class Js
                 '\u00df' => "SS", '\u0131' => "I", '\u0149' => "\u02bcN", '\u01f0' => "J\u030c",
                 '\ufb00' => "FF", '\ufb01' => "FI", '\ufb02' => "FL", '\ufb03' => "FFI",
                 '\ufb04' => "FFL", '\ufb05' or '\ufb06' => "ST",
+                '\u0390' or '\u1fd3' => "\u0399\u0308\u0301", '\u03b0' or '\u1fe3' => "\u03a5\u0308\u0301",
+                '\u1e96' => "H\u0331", '\u1e97' => "T\u0308", '\u1e98' => "W\u030a", '\u1e99' => "Y\u030a", '\u1e9a' => "A\u02be",
+                '\u1f50' => "\u03a5\u0313", '\u1f52' => "\u03a5\u0313\u0300", '\u1f54' => "\u03a5\u0313\u0301", '\u1f56' => "\u03a5\u0313\u0342",
+                >= '\u1f88' and <= '\u1f8f' => UppercaseWithIota((char)(text[index] - 0x80)),
+                >= '\u1f98' and <= '\u1f9f' => UppercaseWithIota((char)(text[index] - 0x70)),
+                >= '\u1fa8' and <= '\u1faf' => UppercaseWithIota((char)(text[index] - 0x40)),
+                '\u1fb2' => "\u1fba\u0399", '\u1fb4' => "\u0386\u0399", '\u1fb6' => "\u0391\u0342", '\u1fb7' => "\u0391\u0342\u0399", '\u1fbc' => "\u0391\u0399",
+                '\u1fc2' => "\u1fca\u0399", '\u1fc4' => "\u0389\u0399", '\u1fc6' => "\u0397\u0342", '\u1fc7' => "\u0397\u0342\u0399", '\u1fcc' => "\u0397\u0399",
+                '\u1fd2' => "\u0399\u0308\u0300", '\u1fd6' => "\u0399\u0342", '\u1fd7' => "\u0399\u0308\u0342",
+                '\u1fe2' => "\u03a5\u0308\u0300", '\u1fe4' => "\u03a1\u0313", '\u1fe6' => "\u03a5\u0342", '\u1fe7' => "\u03a5\u0308\u0342",
+                '\u1ff2' => "\u1ffa\u0399", '\u1ff4' => "\u038f\u0399", '\u1ff6' => "\u03a9\u0342", '\u1ff7' => "\u03a9\u0342\u0399", '\u1ffc' => "\u03a9\u0399",
+                '\u0587' => "\u0535\u0552", '\ufb13' => "\u0544\u0546", '\ufb14' => "\u0544\u0535", '\ufb15' => "\u0544\u053b", '\ufb16' => "\u054e\u0546", '\ufb17' => "\u0544\u053d",
                 _ => null
             };
             if (expansion == null) continue;
