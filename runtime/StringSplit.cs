@@ -10,7 +10,10 @@ public static partial class Js
         string stickyFlags = flags.Contains('y') ? flags : flags + "y";
         TsObject splitter;
         if ((species == null || ReferenceEquals(species, RuntimeNamespaces.RegExp)) && regex is JsRegExp original && flags == original.Flags)
-            splitter = new JsRegExp(original.Pattern, stickyFlags, original.Engine, original.NamedGroups);
+        {
+            bool recognized = IsRegExpValue(regex);
+            splitter = flags == original.Flags ? new JsRegExp(original.Pattern, stickyFlags, original.Engine, original.NamedGroups) : CreateRegExp(regex, stickyFlags, recognized);
+        }
         else splitter = species == null ? CreateRegExp(regex, stickyFlags)
             : species.Construct(new object[] { regex, stickyFlags }) as TsObject ?? throw new InvalidOperationException("RegExp species returned a primitive");
         uint limit = IsUndefined(limitValue) ? uint.MaxValue : unchecked((uint)ToInt32(Number(limitValue)));

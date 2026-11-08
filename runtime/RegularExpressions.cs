@@ -174,10 +174,22 @@ public static partial class Js
         }
         return false;
     }
-    static JsRegExp CreateRegExp(object pattern, object flags)
+    static JsRegExp CreateRegExp(object pattern, object flags, bool? recognized = null)
     {
-        string text = pattern is JsRegExp original ? original.Pattern : IsUndefined(pattern) ? "" : StringValue(pattern);
-        string requested = IsUndefined(flags) ? pattern is JsRegExp regex ? regex.Flags : "" : StringValue(flags);
+        bool regexLike = recognized ?? IsRegExpValue(pattern);
+        object source = pattern;
+        if (pattern is JsRegExp original)
+        {
+            source = original.Pattern;
+            if (IsUndefined(flags)) flags = original.Flags;
+        }
+        else if (regexLike)
+        {
+            source = Get(pattern, "source");
+            if (IsUndefined(flags)) flags = Get(pattern, "flags");
+        }
+        string text = IsUndefined(source) ? "" : StringValue(source);
+        string requested = IsUndefined(flags) ? "" : StringValue(flags);
         var seen = new HashSet<char>();
         foreach (char flag in requested)
             if ("dgimsuvy".IndexOf(flag) < 0 || !seen.Add(flag)) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid regular-expression flags"));
@@ -250,8 +262,12 @@ public static partial class Js
     sealed class RegExpConstructor : NativeNamespaceFunction
     {
         internal RegExpConstructor() : base("RegExp", static args =>
-            FunctionArgument(args, 0) is JsRegExp regex && IsUndefined(FunctionArgument(args, 1)) && ReferenceEquals(regex.Get("constructor"), RuntimeNamespaces.RegExp)
-                ? regex : CreateRegExp(FunctionArgument(args, 0), FunctionArgument(args, 1)), 2)
+        {
+            object pattern = FunctionArgument(args, 0), flags = FunctionArgument(args, 1);
+            bool regexLike = IsRegExpValue(pattern);
+            return regexLike && IsUndefined(flags) && ReferenceEquals(Js.Get(pattern, "constructor"), RuntimeNamespaces.RegExp)
+                ? pattern : CreateRegExp(pattern, flags, regexLike);
+        }, 2)
         {
             string speciesKey = PropertyKey(SpeciesSymbol);
             Member(speciesKey, Undefined); DefineAccessor(speciesKey, new ConstructorSpeciesGetter(), 1);
@@ -267,7 +283,7 @@ public static partial class Js
                 if (pattern is JsRegExp && !IsUndefined(flags))
                     throw MakeThrown(new JsCaughtError("TypeError", "Cannot supply flags when compiling a regular expression"));
                 // Validate and compile first: invalid input must leave the receiver unchanged.
-                var replacement = CreateRegExp(pattern, flags);
+                var replacement = CreateRegExp(pattern, flags, false);
                 target.Pattern = replacement.Pattern;
                 target.Flags = replacement.Flags;
                 target.Engine = replacement.Engine;

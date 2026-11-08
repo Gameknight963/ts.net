@@ -70,7 +70,10 @@ public static partial class Js
         string flags = StringValue(regex.Get("flags"));
         TsObject copy;
         if ((species == null || ReferenceEquals(species, RuntimeNamespaces.RegExp)) && regex is JsRegExp native && flags == native.Flags)
-            copy = new JsRegExp(native.Pattern, native.Flags, native.Engine, native.NamedGroups);
+        {
+            bool recognized = IsRegExpValue(regex);
+            copy = flags == native.Flags ? new JsRegExp(native.Pattern, native.Flags, native.Engine, native.NamedGroups) : CreateRegExp(regex, flags, recognized);
+        }
         else copy = species == null ? CreateRegExp(regex, flags) : species.Construct(new object[] { regex, flags }) as TsObject ?? throw new InvalidOperationException("RegExp species returned a primitive");
         double position = Number(regex.Get("lastIndex"));
         copy.Set("lastIndex", double.IsNaN(position) || position <= 0 ? 0d : Math.Min(Math.Truncate(position), 9007199254740991d));
