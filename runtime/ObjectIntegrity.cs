@@ -42,9 +42,8 @@ public static partial class Js
     {
         if (value is not TsObject target || ObjectIntegrity(value, frozen)) return value;
         ObjectPreventExtensions(value);
-        if (target is TypedArrayValue {Count: > 0}) throw new InvalidOperationException("Cannot change typed-array element attributes");
         if (target is JsArray ordinary) ordinary.SealElements(frozen);
-        var names = (JsArray)(target is JsArray indexed ? indexed.ExtraPropertyNames() : target.OwnPropertyNames());
+        var names = (JsArray)(target is TypedArrayValue typed ? typed.ExtraPropertyNames() : target is JsArray indexed ? indexed.ExtraPropertyNames() : target.OwnPropertyNames());
         for (uint index = 0; index < names.Length(); index++)
         {
             string key = (string)names.ElementAt(index);
@@ -54,6 +53,7 @@ public static partial class Js
             if (frozen && descriptor.HasOwn("writable")) fields |= DescriptorFields.Writable;
             ApplyPropertyDefinition(target, key, new(Undefined, null, null, false, false, false, fields));
         }
+        if (target is TypedArrayValue {Count: > 0}) throw new InvalidOperationException("Cannot change typed-array element attributes");
         if (frozen && target is JsArray frozenArray) frozenArray.MakeLengthReadOnly();
         return value;
     }
