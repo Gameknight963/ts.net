@@ -38,7 +38,7 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current performance
 
-Measurements from [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9), except typed-array traversal, measured at [6ecde27](https://github.com/Gameknight963/ts.net/commit/6ecde27):
+Measurements from [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9), except typed-array traversal, measured at [e3c9b8a](https://github.com/Gameknight963/ts.net/commit/e3c9b8a):
 
 Runtime performance:
 
@@ -47,7 +47,7 @@ Runtime performance:
 
 | Workload | ts.net | Node | Result |
 |---|---|---|---|
-| Float64Array traversal, 10K elements and 100 passes | 18.79 ms | 0.685 ms | 0.036x |
+| Float64Array traversal, 10K elements and 100 passes | 0.784 ms | 0.718 ms | 0.92x |
 | Numeric loop, 20M iterations | 14.44 ms | 74.71 ms | 5.17x |
 | Typed-object loop, 500K iterations | 0.38 ms | 0.66 ms | 1.74x |
 | `any` property loop, 350K iterations | 0.27 ms | 0.43 ms | 1.59x |
@@ -118,4 +118,4 @@ Compilation times:
 
 Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
 
-Typed-array traversal improved from 42.07 ms to 18.79 ms and now allocates nothing during the loop. Node measured 0.685 ms, so it is still about 27 times as slow. These new measurements are medians of seven fresh processes after three warmup calls, with startup and compilation excluded.
+Eligible read-only Float64Array traversal improved from 18.79 ms to 0.784 ms, with zero allocations during the loop. Node measured 0.718 ms, so this workload is now close to Node; loops with calls, writes, custom lengths, or other view layouts keep the ordinary path. These new measurements are medians of seven fresh processes after three warmup calls, with startup and compilation excluded.
