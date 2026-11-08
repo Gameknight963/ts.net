@@ -2,6 +2,58 @@ package main
 
 import "github.com/microsoft/typescript-go/internal/ast"
 
+// Recognize namespace and method aliases only at call sites. Merely retaining
+// a reference to Reflect must not change unrelated object layouts.
+func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool) int {
+	if n == nil || seen[n] {
+		return 0
+	}
+	seen[n] = true
+	switch n.Kind {
+	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+		return b.reflectionDeletionValue(n.Expression(), seen)
+	case ast.KindIdentifier:
+		if n.Text() == "Reflect" && b.isBuiltinIdentifier(n) {
+			return 1
+		}
+		symbol := b.c.GetSymbolAtLocation(n)
+		if symbol == nil {
+			return 0
+		}
+		if symbol.Flags&ast.SymbolFlagsAlias != 0 {
+			symbol = b.c.GetAliasedSymbol(symbol)
+		}
+		if symbol == nil || symbol.ValueDeclaration == nil {
+			return 0
+		}
+		declaration := symbol.ValueDeclaration
+		if declaration.Kind == ast.KindVariableDeclaration {
+			return b.reflectionDeletionValue(declaration.Initializer(), seen)
+		}
+		if declaration.Kind == ast.KindBindingElement && declaration.Parent.Kind == ast.KindObjectBindingPattern {
+			name := declaration.AsBindingElement().PropertyName
+			if name == nil {
+				name = declaration.Name()
+			}
+			owner := declaration.Parent.Parent
+			if (name.Kind == ast.KindIdentifier || name.Kind == ast.KindStringLiteral) && name.Text() == "deleteProperty" && owner != nil &&
+				(owner.Kind == ast.KindVariableDeclaration || owner.Kind == ast.KindParameter) && b.reflectionDeletionValue(owner.Initializer(), seen) == 1 {
+				return 2
+			}
+		}
+	case ast.KindPropertyAccessExpression:
+		if n.Name().Text() == "deleteProperty" && b.reflectionDeletionValue(n.Expression(), seen) == 1 {
+			return 2
+		}
+	case ast.KindElementAccessExpression:
+		key := n.AsElementAccessExpression().ArgumentExpression
+		if key.Kind == ast.KindStringLiteral && key.Text() == "deleteProperty" && b.reflectionDeletionValue(n.Expression(), seen) == 1 {
+			return 2
+		}
+	}
+	return 0
+}
+
 // A deleted fixed field cannot retain its CLR layout. Conservatively keep all
 // literals containing a potentially deleted name in dynamic storage, including
 // aliases passed across functions and modules. Unknown delete-expression keys
@@ -10,32 +62,15 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 	b.deletedNames = map[string]bool{}
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
-		if n.Kind == ast.KindIdentifier && n.Text() == "Reflect" && b.isBuiltinIdentifier(n) {
-			access := n.Parent
-			method := ""
-			if access != nil && access.Kind == ast.KindPropertyAccessExpression && access.Expression() == n {
-				method = access.Name().Text()
-			} else if access != nil && access.Kind == ast.KindElementAccessExpression && access.Expression() == n {
-				key := access.AsElementAccessExpression().ArgumentExpression
+		if n.Kind == ast.KindCallExpression && b.reflectionDeletionValue(n.Expression(), map[*ast.Node]bool{}) == 2 {
+			arguments := n.AsCallExpression().Arguments.Nodes
+			if len(arguments) >= 2 {
+				key := arguments[1]
 				if key.Kind == ast.KindStringLiteral {
-					method = key.Text()
-				}
-			}
-			// Reflection must not change every object layout merely because a
-			// namespace or method escapes. Direct calls can prepare literal keys
-			// or the target type's known fields; opaque aliases still use the
-			// runtime's checked fallback.
-			if method == "deleteProperty" {
-				call := access.Parent
-				if call != nil && call.Kind == ast.KindCallExpression && call.Expression() == access && len(call.AsCallExpression().Arguments.Nodes) >= 2 {
-					key := call.AsCallExpression().Arguments.Nodes[1]
-					if key.Kind == ast.KindStringLiteral {
-						b.deletedNames[key.Text()] = true
-					} else {
-						target := call.AsCallExpression().Arguments.Nodes[0]
-						for _, property := range b.c.GetPropertiesOfType(b.c.GetTypeAtLocation(target)) {
-							b.deletedNames[ast.SymbolName(property)] = true
-						}
+					b.deletedNames[key.Text()] = true
+				} else {
+					for _, property := range b.c.GetPropertiesOfType(b.c.GetTypeAtLocation(arguments[0])) {
+						b.deletedNames[ast.SymbolName(property)] = true
 					}
 				}
 			}

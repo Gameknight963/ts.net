@@ -1,0 +1,23 @@
+﻿const remove=Reflect.deleteProperty;
+const first={aliasFirst:1,keep:2};
+console.log('method',remove(first,'aliasFirst'),Reflect.has(first,'aliasFirst'),first.keep);
+const again=remove;
+const second={aliasSecond:3};
+console.log('chain',again(second,'aliasSecond'),Object.keys(second).length);
+const reflection=Reflect;
+const third={aliasThird:4};
+console.log('namespace',reflection.deleteProperty(third,'aliasThird'),Object.keys(third).length);
+const {deleteProperty:destructured}=reflection;
+const fourth={aliasFourth:5};
+console.log('destructure',destructured(fourth,'aliasFourth'),Object.keys(fourth).length);
+function drop(value:{dynamicAlias?:number;keepAlias?:number},key:string):boolean{return again(value,key);}
+const dynamic={dynamicAlias:6,keepAlias:7};
+console.log('dynamic',drop(dynamic,'dynamicAlias'),Object.keys(dynamic).join(','));
+const {deleteProperty}=Reflect;
+const fifth={aliasFifth:8};
+console.log('shorthand',deleteProperty(fifth,'aliasFifth'),Object.keys(fifth).length);
+const indexed=reflection['deleteProperty'];
+const sixth={aliasSixth:9};
+console.log('indexed',indexed(sixth,'aliasSixth'),Object.keys(sixth).length);
+const query=Reflect;
+console.log('read only',query.get({untouched:10},'untouched'));
