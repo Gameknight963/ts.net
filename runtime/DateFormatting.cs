@@ -3,7 +3,7 @@ using System.Globalization;
 
 public static partial class Js
 {
-    static void DefineDateLocaleFormatting(JsClassInstance prototype)
+    static void DefineDateLocaleFormatting(JsCreatedObject prototype)
     {
         foreach (var item in new[] { ("toLocaleString", "G"), ("toLocaleDateString", "d"), ("toLocaleTimeString", "T") })
             prototype.DefineMethod(item.Item1, new CollectionMethod(item.Item1, 0, (receiver, arguments) =>

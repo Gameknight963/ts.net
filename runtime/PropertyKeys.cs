@@ -28,7 +28,7 @@ public static partial class Js
             if (!KeyPrimitive(result)) throw new InvalidOperationException("Symbol.toPrimitive must return a primitive value");
             return result;
         }
-        return OrdinaryPrimitive(obj, hint == "string" || hint == "default" && obj is JsDate);
+        return OrdinaryPrimitive(obj, hint == "string");
     }
 
     static object OrdinaryPrimitive(TsObject obj, bool stringHint)

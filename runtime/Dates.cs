@@ -48,8 +48,15 @@ public static partial class Js
             Member("now", new JsFunction((FunctionBody)(static _ => DateNow()), (RawNumberFunction0)DateNow, "now", 0));
             Member("UTC", new JsFunction((FunctionBody)(static args => DateFromParts(args, true)), null, "UTC", 7));
             Member("parse", new JsFunction((FunctionBody)(static args => ParseDate(StringValue(FunctionArgument(args, 0)))), null, "parse", 1));
-            var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
+            var prototype = new JsCreatedObject(); UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
+            prototype.DefineMethod(PropertyKey(ToPrimitiveSymbol), new CollectionMethod("[Symbol.toPrimitive]", 1, static (receiver, args) =>
+            {
+                if (receiver is not TsObject value) throw new InvalidOperationException("Date primitive conversion requires an object");
+                object hint = FunctionArgument(args, 0);
+                if (hint is not string text || text is not ("default" or "string" or "number")) throw new InvalidOperationException("Invalid primitive conversion hint");
+                return OrdinaryPrimitive(value, text != "number");
+            }), false);
             DefineDateGetters(prototype);
             DefineDateSetters(prototype);
             DefineDateLocaleFormatting(prototype);

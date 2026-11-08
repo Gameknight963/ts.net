@@ -23,7 +23,7 @@ public static partial class Js
         if (invalid && component != 0) return date.Timestamp = double.NaN;
         return date.Timestamp = DateFromComponents(parts, utc, legacy);
     }
-    static void DefineDateSetters(JsClassInstance prototype)
+    static void DefineDateSetters(JsCreatedObject prototype)
     {
         string[] names = { "FullYear", "Month", "Date", "Hours", "Minutes", "Seconds", "Milliseconds" };
         int[] counts = { 3, 2, 1, 4, 3, 2, 1 };

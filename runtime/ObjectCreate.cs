@@ -5,6 +5,7 @@ internal sealed class JsCreatedObject : JsDynamicObject
 {
     internal sealed record Descriptor(string Key, object Value, JsFunction Getter, JsFunction Setter, bool Accessor, bool Writable, bool Enumerable, bool Configurable);
     readonly Dictionary<string, Descriptor> descriptors = new();
+    internal void DefineMethod(string key, object value, bool writable = true) => Define(new(key, value, null, null, false, writable, false, true));
     internal void Define(Descriptor descriptor)
     {
         descriptors.Add(descriptor.Key, descriptor);

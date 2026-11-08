@@ -2,7 +2,7 @@ using System;
 
 public static partial class Js
 {
-    static void DefineDateGetters(JsClassInstance prototype)
+    static void DefineDateGetters(JsCreatedObject prototype)
     {
         foreach (bool utc in new[] { false, true })
         {
