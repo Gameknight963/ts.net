@@ -23,8 +23,9 @@ public static partial class Js
     {
         internal WeakRefConstructor() : base("WeakRef", static _ => throw new InvalidOperationException("WeakRef constructor requires new"), 1)
         {
-            var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
+            var prototype = new JsCreatedObject(); UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "WeakRef", false);
             prototype.DefineMethod("deref", new CollectionMethod("deref", 0, (receiver, _) =>
             {
                 if (receiver is not JsWeakRef reference) throw new InvalidOperationException("WeakRef deref requires a weak reference");

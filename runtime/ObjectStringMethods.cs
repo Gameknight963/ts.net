@@ -10,14 +10,14 @@ public static partial class Js
         if (receiver is JsBoxedPrimitive boxed) receiver = boxed.Value;
         string tag = receiver switch {
             JsSymbol => "Symbol", string => "String", double => "Number", bool => "Boolean", JsArray => "Array",
-            JsWeakRef => "WeakRef", JsDate => "Date", JsRegExp => "RegExp", JsFunction => "Function", JsArguments => "Arguments", JsCaughtError => "Error",
+            JsDate => "Date", JsRegExp => "RegExp", JsFunction => "Function", JsArguments => "Arguments", JsCaughtError => "Error",
             _ => "Object"
         };
         TsObject properties = original ?? PrimitivePrototype(receiver);
         string tagKey = PropertyKey(ToStringTagSymbol);
         if (properties != null && properties.HasProperty(tagKey)) {
             object custom = properties.GetWithReceiver(tagKey, original ?? receiver);
-            string fallback = receiver is JsSymbol or JsWeakRef ? "Object" : tag;
+            string fallback = receiver is JsSymbol ? "Object" : tag;
             return "[object " + (custom is string text ? text : fallback) + "]";
         }
         if (original is TsObject obj)
