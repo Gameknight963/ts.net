@@ -98,7 +98,7 @@ public static partial class Js
         if (separator >= 0) {
             string kind = property[..separator], value = property[(separator + 1)..];
             if (value.Length == 0 || value.Contains('=')) throw UnicodeRegExpSyntax();
-            if (kind is "Script" or "sc" or "Script_Extensions" or "scx") throw new NotSupportedException("Unicode regular-expression scripts are not supported yet");
+            if (kind is "Script" or "sc" or "Script_Extensions" or "scx") return UnicodeRegExpScripts.Select(kind, value);
             if (kind is not ("General_Category" or "gc")) throw UnicodeRegExpSyntax();
             int categoryMask = UnicodeRegExpCategoryMask(value);
             if (categoryMask == 0) throw UnicodeRegExpSyntax();
