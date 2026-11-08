@@ -8,6 +8,7 @@ internal sealed class JsRegExp(string pattern, string flags, Regex engine, strin
     internal string Pattern = pattern, Flags = flags;
     internal Regex Engine = engine;
     internal string[] NamedGroups = namedGroups;
+    internal int[] NamedCaptureIndices = Js.RegExpCaptureIndices(engine, namedGroups);
     object lastIndex = 0d;
     bool lastIndexWritable = true;
     internal bool LastIndexWritable => lastIndexWritable;
@@ -271,11 +272,13 @@ public static partial class Js
     {
         if (regex.NamedGroups.Length == 0) return Undefined;
         var result = new JsDynamicObject(); result.SetPrototype(null);
-        foreach (string name in regex.NamedGroups)
+        for (int index = 0; index < regex.NamedGroups.Length; index++)
         {
-            var group = match.Groups[RegExpEngineCaptureName(name)];
+            string name = regex.NamedGroups[index];
+            int number = regex.NamedCaptureIndices[index];
+            var group = match.Groups[number];
             result.DefineOwn(name, !group.Success ? Undefined : indices != null
-                ? indices.Get(regex.Engine.GroupNumberFromName(RegExpEngineCaptureName(name)).ToString(System.Globalization.CultureInfo.InvariantCulture))
+                ? indices.Get(number.ToString(System.Globalization.CultureInfo.InvariantCulture))
                 : group.Value);
         }
         return result;
@@ -309,6 +312,7 @@ public static partial class Js
                 target.Flags = replacement.Flags;
                 target.Engine = replacement.Engine;
                 target.NamedGroups = replacement.NamedGroups;
+                target.NamedCaptureIndices = replacement.NamedCaptureIndices;
                 target.LastIndex = 0d;
                 return target;
             }));

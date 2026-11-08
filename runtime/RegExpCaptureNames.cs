@@ -32,6 +32,13 @@ public static partial class Js
         return name;
     }
     static Exception InvalidCaptureName() => MakeThrown(new JsCaughtError("SyntaxError", "Invalid capture name"));
+    internal static int[] RegExpCaptureIndices(System.Text.RegularExpressions.Regex engine, string[] names)
+    {
+        if (names.Length == 0) return Array.Empty<int>();
+        var indices = new int[names.Length];
+        for (int index = 0; index < names.Length; index++) indices[index] = engine.GroupNumberFromName(RegExpEngineCaptureName(names[index]));
+        return indices;
+    }
     static string RegExpEngineCaptureName(string name)
     {
         var encoded = new StringBuilder("tsnetNamed");
