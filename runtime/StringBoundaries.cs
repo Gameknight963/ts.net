@@ -35,6 +35,7 @@ public static partial class Js
         prototype.DefineHidden("at", RelativeAtFunctions.String);
         prototype.DefineHidden("slice", StringRangeFunctions.Slice);
         prototype.DefineHidden("substring", StringRangeFunctions.Substring);
+        prototype.DefineHidden("substr", new StringSubstrFunction());
         prototype.DefineHidden("charAt", CharacterFunctions.CharAt);
         prototype.DefineHidden("charCodeAt", CharacterFunctions.CharCodeAt);
         prototype.DefineHidden("codePointAt", CharacterFunctions.CodePointAt);

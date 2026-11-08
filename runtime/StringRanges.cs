@@ -9,6 +9,19 @@ public static partial class Js
         internal readonly bool Substring = substring;
         public override object InvokeWithReceiver(object receiver, object[] arguments) => StringRangeConverted(this, receiver, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1));
     }
+    sealed class StringSubstrFunction() : JsFunction(
+        (FunctionBody)(static _ => throw new InvalidOperationException("String method requires a receiver")), null, "substr", 2)
+    {
+        public override object InvokeWithReceiver(object receiver, object[] arguments)
+        {
+            string text = AtString(receiver);
+            int start = StringRangeBound(Number(FunctionArgument(arguments, 0)), text.Length, false);
+            object requested = FunctionArgument(arguments, 1);
+            double length = IsUndefined(requested) ? text.Length : CharacterPosition(Number(requested));
+            int count = length <= 0 ? 0 : length >= text.Length - start ? text.Length - start : (int)length;
+            return count == 1 ? Iteration.CodeUnit(text[start]) : text.Substring(start, count);
+        }
+    }
     static class StringRangeFunctions
     {
         internal static readonly StringRangeFunction Slice = new(false, "slice");
