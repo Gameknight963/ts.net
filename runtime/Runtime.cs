@@ -162,7 +162,6 @@ public static partial class Js
         TsObject obj => obj.Get(key),
         string text when key == "length" => (double)text.Length,
         string when key == "at" => StringAtFunction(),
-        string when key is "indexOf" or "includes" or "lastIndexOf" => StringSearchTarget(key),
         string when key is "slice" or "substring" => StringRangeTarget(key),
         string when key is "charAt" or "charCodeAt" or "codePointAt" => CharacterTarget(key),
         string or double or bool or JsSymbol or BigInteger => PrimitivePrototype(receiver).GetWithReceiver(key, receiver),

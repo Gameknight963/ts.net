@@ -17,11 +17,6 @@ public static partial class Js
         internal static readonly StringSearchFunction Includes = new(StringSearchKind.Includes, "includes");
         internal static readonly StringSearchFunction LastIndexOf = new(StringSearchKind.LastIndexOf, "lastIndexOf");
     }
-    static object StringSearchTarget(string name) => name switch {
-        "indexOf" => StringSearchFunctions.IndexOf,
-        "includes" => StringSearchFunctions.Includes,
-        _ => StringSearchFunctions.LastIndexOf
-    };
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static string StringValue(object value) => value is string text ? text : StringValueConverted(value);
     static string StringValueConverted(object value)
