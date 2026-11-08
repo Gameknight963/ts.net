@@ -82,6 +82,7 @@ public static partial class Js
             prototype.DefineMethod("getWeekInfo", new CollectionMethod("getWeekInfo", 0, static (receiver, _) => LocaleWeekInfo(RequireLocale(receiver))));
             prototype.DefineMethod("getNumberingSystems", new CollectionMethod("getNumberingSystems", 0, static (receiver, _) => LocaleNumberingSystems(RequireLocale(receiver))));
             prototype.DefineMethod("getCollations", new CollectionMethod("getCollations", 0, static (receiver, _) => LocaleCollations(RequireLocale(receiver))));
+            prototype.DefineMethod("getTimeZones", new CollectionMethod("getTimeZones", 0, static (receiver, _) => LocaleTimeZones(RequireLocale(receiver))));
             prototype.DefineMethod("getCalendars", new CollectionMethod("getCalendars", 0, static (receiver, _) =>
             {
                 var locale = RequireLocale(receiver);

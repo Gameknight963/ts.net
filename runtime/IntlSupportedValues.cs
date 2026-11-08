@@ -31,11 +31,8 @@ public static partial class Js
         });
         internal static readonly Lazy<string[]> TimeZones = new(() => {
             var names = new SortedSet<string>(StringComparer.Ordinal);
-            foreach (var zone in TimeZoneInfo.GetSystemTimeZones()) {
-                string name = zone.Id;
-                if (TimeZoneInfo.TryConvertWindowsIdToIanaId(name, out string iana)) name = iana;
-                if (name.Contains('/')) names.Add(name);
-            }
+            foreach (var region in LocaleTimeZoneData.Regions) if (region.Key != "001") foreach (string zone in region.Value) names.Add(zone);
+            names.RemoveWhere(name => !NativeTimeZoneAvailable(name));
             return [..names];
         });
     }
