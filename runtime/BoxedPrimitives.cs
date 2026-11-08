@@ -3,14 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 
-internal sealed class JsBoxedPrimitive(object value, bool intrinsicPrototype = false) : TsObject
+internal sealed class JsBoxedPrimitive(object value, bool intrinsicPrototype = false) : JsDescriptorObject
 {
     internal readonly object Value = value;
-    HashSet<string> hidden;
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : intrinsicPrototype ? Js.DefaultClassObjectPrototype : Js.PrimitivePrototype(Value);
-    internal void DefineHidden(string key, object value) { DefineOwn(key, value); (hidden ??= new()).Add(key); }
+    internal void DefineHidden(string key, object value) => DefineMethod(key, value);
     bool StringIndex(string key, out uint index) => JsArray.Index(key, out index) && Value is string text && index < text.Length;
-    internal override bool IsReadOnlyOwnProperty(string key) => Value is string && (key == "length" || StringIndex(key, out _));
+    internal override bool IsReadOnlyOwnProperty(string key) => Value is string && (key == "length" || StringIndex(key, out _)) || base.IsReadOnlyOwnProperty(key);
     public override bool HasOwn(string key) => Value is string && (key == "length" || StringIndex(key, out _)) || base.HasOwn(key);
     bool NumberMethodFallback(string key) => Value is double && PropertyPrototype is not null && key is "valueOf" or "toString";
     public override bool HasProperty(string key) => NumberMethodFallback(key) || base.HasProperty(key);
@@ -35,15 +34,14 @@ internal sealed class JsBoxedPrimitive(object value, bool intrinsicPrototype = f
     public override object OwnKeys()
     {
         var keys = (JsArray)AllKeys();
-        if (hidden is null) return keys;
+        if (!HasPropertyDescriptors) return keys;
         var result = new JsArray(0);
-        for (uint i = 0; i < keys.Length(); i++) { var key = keys.ElementAt(i); if (!hidden.Contains((string)key)) result.Append(key); }
+        for (uint i = 0; i < keys.Length(); i++) { var key = keys.ElementAt(i); if (ForInEnumerable((string)key)) result.Append(key); }
         return result;
     }
     internal override object OwnPropertyNames() => Value is string ? Js.MergeOwnNames(this, AllKeys(), "length") : AllKeys();
     internal override object ForInOwnKeys() => Value is string ? Js.ForInNames(AllKeys(), "length") : AllKeys();
-    public override bool DeleteOwn(string key) { bool removed = base.DeleteOwn(key); if (removed) hidden?.Remove(key); return removed; }
-    internal override bool ForInEnumerable(string key) => (Value is not string || key != "length") && hidden?.Contains(key) != true;
+    internal override bool ForInEnumerable(string key) => (Value is not string || key != "length") && base.ForInEnumerable(key);
 }
 
 public static partial class Js
