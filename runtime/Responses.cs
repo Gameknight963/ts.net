@@ -45,6 +45,7 @@ public static partial class Js
     {
         var source = RequireResponse(receiver);
         if (source.Body != null && (source.Body.Disturbed || source.Body.Locked)) throw new InvalidOperationException("Response body cannot be cloned after use or while locked");
+        source.Body?.Tee?.BranchRead();
         return new ResponseValue {
             Status = source.Status, StatusText = source.StatusText, Type = source.Type, Url = source.Url, Redirected = source.Redirected,
             Headers = CopyResponseHeaders(source.Headers), Body = source.Body == null ? null : new BufferedBody(source.Body.Bytes)

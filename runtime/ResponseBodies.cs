@@ -18,6 +18,8 @@ public static partial class Js
         internal bool Disturbed, Consuming;
         internal bool Closed = bytes.Length == 0;
         internal BufferedBodyReader Reader;
+        internal BufferedTee Tee;
+        internal int TeeBranch;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : BufferedBodyMethods.Prototype;
         internal bool Locked => Consuming || Reader != null;
         internal BufferedBodyReader GetReader(object options)
@@ -31,11 +33,17 @@ public static partial class Js
         internal byte[] Consume()
         {
             if (Disturbed || Locked) throw new InvalidOperationException("Body has already been consumed or locked");
+            Tee?.BranchRead();
             Disturbed = Closed = true;
             Consuming = true;
             return Bytes;
         }
         internal void Cancel() { Disturbed = Closed = true; Reader?.Finish(); }
+        internal JsPromise CancelPromise()
+        {
+            bool wasClosed = Closed; Cancel();
+            return !wasClosed && Tee != null ? Tee.Cancel(TeeBranch) : BodyOperation(() => Undefined);
+        }
     }
     sealed class BufferedBodyReader : TsObject
     {
@@ -59,6 +67,7 @@ public static partial class Js
             if (Owner == null) throw new InvalidOperationException("Reader lock has been released");
             Owner.Disturbed = true;
             if (Owner.Closed) {Finish();return IteratorResult(Undefined,true);}
+            Owner.Tee?.BranchRead();
             Owner.Closed = true; Finish();
             var chunk = AllocateTypedArray("Uint8Array",Owner.Bytes.Length);
             Owner.Bytes.CopyTo(chunk.Buffer.Bytes,0);
@@ -90,10 +99,8 @@ public static partial class Js
                 return new BufferedBodyIterator(body.GetReader(Undefined),preventCancel);
             });
             result.DefineOwn("values",values); result.DefineMethod(PropertyKey(AsyncIteratorSymbol),values);
-            result.DefineOwn("cancel",new CollectionMethod("cancel",0,(receiver,_) => BodyOperation(() => {
-                var body = RequireBufferedBody(receiver); if (body.Locked) throw new InvalidOperationException("Body stream is locked");
-                body.Cancel(); return Undefined;
-            })));
+            result.DefineOwn("tee",new CollectionMethod("tee",0,(receiver,_) => TeeBufferedBody(RequireBufferedBody(receiver))));
+            result.DefineOwn("cancel",new CollectionMethod("cancel",0,(receiver,_) => CancelBufferedBody(receiver,false)));
             return result;
         }
     }
@@ -108,14 +115,19 @@ public static partial class Js
             if (Truthy(((TsObject)result).Get("done"))) {done = true;reader.Release();}
             return result;
         }
-        internal object Return(object value)
+        internal JsPromise Return(object value)
         {
-            if (!done) {
-                done = true;
-                if (!preventCancel) reader.Owner.Cancel();
-                reader.Release();
-            }
-            return IteratorResult(value,true);
+            if (done) return BodyOperation(() => IteratorResult(value,true));
+            done = true;
+            if (preventCancel) { reader.Release(); return BodyOperation(() => IteratorResult(value,true)); }
+            var result = new JsPromise();
+            var cancellation = reader.Owner.CancelPromise();
+            reader.Release();
+            ObserveGeneratorAwait(cancellation, (reason,rejected) => {
+                if (rejected) result.Settle(reason,true);
+                else result.ResolveValue(IteratorResult(value,true));
+            });
+            return result;
         }
     }
     static class BufferedIteratorMethods
@@ -125,7 +137,7 @@ public static partial class Js
         {
             var result = new JsClassInstance {ParentPrototype = NativeAsyncIteratorPrototype};
             result.DefineMethod("next",new CollectionMethod("next",0,(receiver,_) => BodyOperation(() => receiver is BufferedBodyIterator iterator ? iterator.Next() : throw new InvalidOperationException("Body iterator receiver required"))));
-            result.DefineMethod("return",new CollectionMethod("return",1,(receiver,args) => BodyOperation(() => receiver is BufferedBodyIterator iterator ? iterator.Return(FunctionArgument(args,0)) : throw new InvalidOperationException("Body iterator receiver required"))));
+            result.DefineMethod("return",new CollectionMethod("return",1,(receiver,args) => BodyPromiseOperation(() => receiver is BufferedBodyIterator iterator ? iterator.Return(FunctionArgument(args,0)) : throw new InvalidOperationException("Body iterator receiver required"))));
             return result;
         }
     }
@@ -138,11 +150,7 @@ public static partial class Js
             result.DefineMethod(PropertyKey(ToStringTagSymbol),"ReadableStreamDefaultReader");
             result.DefineAccessor("closed",new CollectionMethod("get closed",0,(receiver,_) => RequireBufferedReader(receiver).ClosedPromise),1);
             result.DefineOwn("read",new CollectionMethod("read",0,(receiver,_) => BodyOperation(() => RequireBufferedReader(receiver).Read())));
-            result.DefineOwn("cancel",new CollectionMethod("cancel",1,(receiver,_) => BodyOperation(() => {
-                var reader = RequireBufferedReader(receiver);
-                if (reader.Owner == null) throw new InvalidOperationException("Reader lock has been released");
-                reader.Owner.Cancel(); return Undefined;
-            })));
+            result.DefineOwn("cancel",new CollectionMethod("cancel",1,(receiver,_) => CancelBufferedBody(receiver,true)));
             result.DefineOwn("releaseLock",new CollectionMethod("releaseLock",0,(receiver,_) => {RequireBufferedReader(receiver).Release();return Undefined;}));
             return result;
         }

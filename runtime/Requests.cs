@@ -107,6 +107,7 @@ public static partial class Js
         var source = RequireRequest(receiver);
         if (source.Body != null && (source.Body.Disturbed || source.Body.Locked)) throw new InvalidOperationException("Request body cannot be cloned after use or while locked");
         var result = CopyRequest(source);
+        source.Body?.Tee?.BranchRead();
         result.Body = source.Body == null ? null : new BufferedBody(source.Body.Bytes);
         result.Signal = FollowRequestSignal(source.Signal);
         return result;
