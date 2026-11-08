@@ -109,27 +109,27 @@ public static partial class Js
         if (count > Array.MaxLength / size) throw new ArgumentOutOfRangeException(null, "Typed array is too large");
         return new TypedArrayValue(name, new BinaryBuffer(count * size), 0, count);
     }
-    static List<object> TypedArrayInput(object input)
+    static int TypedArrayInput(object input, out List<object> values, out TsObject source)
     {
-        var result = new List<object>();
-        bool custom = TryStartCustomIterable(input, out var iterable);
-        if (custom || input is string or JsArray or JsArguments or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator || IsIteratorObject(input))
+        values = null; source = null;
+        var method = CustomIterableMethod(input, out bool disabled);
+        bool iterating = method != null || !disabled && (input is string or JsArray or JsArguments or JsKeyedCollection or JsCollectionIterator or JsSequenceIterator or JsRegexIterator or JsBoxedPrimitive { Value: string } || IsIteratorObject(input));
+        if (iterating)
         {
-            iterable = custom ? iterable : Iteration.Start(input);
+            object iterable = method != null ? StartIteratorObject(InvokeIterableMethod(method, input)) : Iteration.Start(input);
+            values = new List<object>();
             int position = 0;
             while (position < Iteration.Length(iterable))
             {
-                result.Add(Iteration.Value(iterable, position));
+                values.Add(Iteration.Value(iterable, position));
                 position += Iteration.Step(iterable, position);
             }
+            return values.Count;
         }
-        else
-        {
-            var source = ToObject(input); long length = IndexedLength(source);
-            if (length > Array.MaxLength) throw new ArgumentOutOfRangeException(null, "Typed array is too large");
-            for (long i = 0; i < length; i++) result.Add(IndexedValue(source, i));
-        }
-        return result;
+        source = ToObject(input);
+        long length = IndexedLength(source);
+        if (length > Array.MaxLength) throw new ArgumentOutOfRangeException(null, "Typed array is too large");
+        return (int)length;
     }
     sealed class TypedArrayGetter(string name, Func<TypedArrayValue, object> read) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Typed array getter requires a receiver")), null, "get " + name, 0)
     {
@@ -176,11 +176,16 @@ public static partial class Js
             Member("of", new CollectionMethod("of", 0, (receiver, args) => TypedArrayFromValues(receiver, args)));
             Member("from", new CollectionMethod("from", 1, (receiver, args) =>
             {
+                if (receiver is not JsFunction constructor || !constructor.CanInitializeDerived)
+                    throw new InvalidOperationException("Typed array constructor required");
                 object mapper = FunctionArgument(args, 1);
                 if (!IsUndefined(mapper) && mapper is not JsFunction) throw new InvalidOperationException("TypedArray.from mapper must be callable");
-                var values = TypedArrayInput(FunctionArgument(args, 0));
-                var result = CreateTypedArrayResult(receiver, values.Count);
-                for (int i = 0; i < values.Count; i++) result.Write(i, IsUndefined(mapper) ? values[i] : CallMethod(mapper, FunctionArgument(args, 2), new object[] { values[i], (double)i }));
+                int count = TypedArrayInput(FunctionArgument(args, 0), out var values, out var source);
+                var result = CreateTypedArrayResult(receiver, count);
+                for (int i = 0; i < count; i++) {
+                    object value = values != null ? values[i] : IndexedValue(source, i);
+                    result.Write(i, IsUndefined(mapper) ? value : CallMethod(mapper, FunctionArgument(args, 2), new object[] { value, (double)i }));
+                }
                 return result;
             }));
         }
@@ -219,9 +224,9 @@ public static partial class Js
                 return new TypedArrayValue(name, buffer, offset, length, buffer.Resizable && IsUndefined(FunctionArgument(args, 2)));
             }
             if (input is not TsObject) return AllocateTypedArray(name, BinaryIndex(input));
-            var values = TypedArrayInput(input);
-            var result = AllocateTypedArray(name, values.Count);
-            for (int i = 0; i < values.Count; i++) result.Write(i, values[i]);
+            int count = TypedArrayInput(input, out var values, out var indexed);
+            var result = AllocateTypedArray(name, count);
+            for (int i = 0; i < count; i++) result.Write(i, values != null ? values[i] : IndexedValue(indexed, i));
             return result;
         }
         internal override bool CanInitializeDerived => true;
