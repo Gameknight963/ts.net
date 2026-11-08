@@ -39,3 +39,27 @@ for (const failed of ['minimumIntegerDigits', 'roundingMode', 'compactDisplay', 
     try {new Intl.NumberFormat('en-US', failing);}
     catch (error) {console.log('stopped', failed, (error as Error).message, trace.join(','));}
 }
+
+for (const style of ['decimal', 'percent', 'currency']) {
+ for (const unit of ['meter', 'mile-per-hour', 'fluid-ounce-per-acre', 'meter-per-second-per-hour', 'Meter', '', null, Symbol('unit')]) {
+  try {console.log('ignored unit', style, typeof unit, new Intl.NumberFormat('en-US', {style, currency: 'USD', unit} as any).format(12));}
+  catch (error) {console.log('unit error', style, typeof unit, (error as Error).name);}
+ }
+ for (const unitDisplay of ['short', 'long', 'narrow', 'invalid', null, Symbol('display')]) {
+  try {console.log('ignored display', style, typeof unitDisplay, new Intl.NumberFormat('en-US', {style, currency: 'USD', unitDisplay} as any).format(12));}
+  catch (error) {console.log('display error', style, typeof unitDisplay, (error as Error).name);}
+ }
+}
+for (const invalid of [false, true]) {
+ trace = [];
+ const unitOptions: any = {
+  get currencyDisplay() {trace.push('currencyDisplay'); return 'symbol';},
+  get currencySign() {trace.push('currencySign'); return 'standard';},
+  get unit() {trace.push('get unit'); return {[Symbol.toPrimitive](hint: string) {trace.push(hint); return invalid ? 'invalid' : 'meter';}};},
+  get unitDisplay() {trace.push('get unitDisplay'); return {toString() {trace.push('convert display'); return 'long';}};},
+  get notation() {trace.push('notation'); return 'standard';}
+ };
+ try {console.log('unit coercion', new Intl.NumberFormat('en-US', unitOptions).format(12));}
+ catch (error) {console.log('unit coercion error', (error as Error).name);}
+ console.log('unit option order', trace.join(','));
+}

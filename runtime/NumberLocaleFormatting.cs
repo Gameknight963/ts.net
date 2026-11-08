@@ -4,6 +4,18 @@ using System.Numerics;
 
 public static partial class Js
 {
+    static bool SanctionedNumberUnit(string unit) => unit is
+        "acre" or "bit" or "byte" or "celsius" or "centimeter" or "day" or "degree" or "fahrenheit" or "fluid-ounce" or "foot" or "gallon" or
+        "gigabit" or "gigabyte" or "gram" or "hectare" or "hour" or "inch" or "kilobit" or "kilobyte" or "kilogram" or "kilometer" or "liter" or
+        "megabit" or "megabyte" or "meter" or "microsecond" or "mile" or "mile-scandinavian" or "milliliter" or "millimeter" or "millisecond" or
+        "minute" or "month" or "nanosecond" or "ounce" or "percent" or "petabyte" or "pound" or "second" or "stone" or "terabit" or "terabyte" or "week" or "yard" or "year";
+    static bool WellFormedNumberUnit(string unit)
+    {
+        if (SanctionedNumberUnit(unit)) return true;
+        int separator = unit.IndexOf("-per-", StringComparison.Ordinal);
+        return separator >= 0 && SanctionedNumberUnit(unit[..separator]) && SanctionedNumberUnit(unit[(separator + 5)..]);
+    }
+
     static string PadLocaleInteger(string text, int minimum, bool grouping, NumberFormatInfo format)
     {
         int start = 0;
@@ -117,6 +129,11 @@ public static partial class Js
                 currencySign = CurrencyOption("currencySign", "standard");
                 if (currencyDisplay is not ("symbol" or "narrowSymbol" or "code" or "name")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid currency display");
                 if (currencySign is not ("standard" or "accounting")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid currency sign");
+                object requestedUnit = options.Get("unit");
+                if (!IsUndefined(requestedUnit) && !WellFormedNumberUnit(StringValue(requestedUnit)))
+                    throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number formatting unit");
+                string unitDisplay = CurrencyOption("unitDisplay", "short");
+                if (unitDisplay is not ("short" or "narrow" or "long")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid unit display");
                 if (style == "currency")
                 {
                     if (currency == null) throw new InvalidOperationException("Currency code is required");
@@ -137,7 +154,6 @@ public static partial class Js
                     positivePattern = SpaceCurrencyTemplate(1d.ToString("C0", culture));
                     negativePattern = SpaceCurrencyTemplate((-1d).ToString("C0", culture));
                 }
-                if (!IsUndefined(options.Get("unit"))) throw new NotSupportedException("Number locale formatting option unit is not supported");
                 object requestedNotation = options.Get("notation");
                 if (!IsUndefined(requestedNotation)) notation = StringValue(requestedNotation);
                 if (notation == "compact") throw new NotSupportedException("Compact notation is not supported");
