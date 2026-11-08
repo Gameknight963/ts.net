@@ -154,22 +154,6 @@ public static partial class Js
             var capability = NewPromiseCapability(receiver); capability.Complete(value, true); return capability.Promise;
         }
     }
-    sealed class PromisePrototypeObject : JsDynamicObject
-    {
-        readonly HashSet<string> hidden = new();
-        internal void Member(string name, object value) { DefineOwn(name, value); hidden.Add(name); }
-        public override bool DeleteOwn(string key) { bool removed = base.DeleteOwn(key); if (removed) hidden.Remove(key); return removed; }
-        internal override bool ForInEnumerable(string key) => !hidden.Contains(key) && base.ForInEnumerable(key);
-        internal override object ForInOwnKeys() => base.OwnKeys();
-        internal override object OwnPropertyNames() => base.OwnKeys();
-        public override object OwnKeys()
-        {
-            var keys = (JsArray)base.OwnKeys(); var result = new JsArray(0);
-            for (uint i = 0; i < keys.Length(); i++) { string key = (string)keys.ElementAt(i); if (!hidden.Contains(key)) result.Append(key); }
-            return result;
-        }
-        public override double OwnKeyCount() => Js.StringPropertyKeyCount(OwnKeys());
-    }
     static JsPromise CreatePromise(object[] arguments, TsObject prototype = null)
     {
         if (FunctionArgument(arguments, 0) is not JsFunction executor) throw new InvalidOperationException("Promise executor is not callable");
@@ -188,9 +172,10 @@ public static partial class Js
             var speciesGetter = new CollectionMethod("get [Symbol.species]", 0, static (receiver, _) => receiver);
             DefineAccessor(speciesKey, speciesGetter, 1);
             speciesGetter.InferPropertyName("get [Symbol.species]");
-            var prototype = new PromisePrototypeObject(); UseObjectPrototype(prototype);
-            prototype.Member("constructor", this); prototype.Member("then", new PromiseThenFunction());
-            prototype.Member("catch", new PromiseCatchFunction()); prototype.Member("finally", new PromiseFinallyFunction());
+            var prototype = new JsCreatedObject(); UseObjectPrototype(prototype);
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod("then", new PromiseThenFunction());
+            prototype.DefineMethod("catch", new PromiseCatchFunction()); prototype.DefineMethod("finally", new PromiseFinallyFunction());
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Promise", false);
             Member("resolve", new PromiseStaticFunction(false)); Member("reject", new PromiseStaticFunction(true));
             Member("all", new PromiseCombinatorFunction("all", PromiseCombination.All));
             Member("allSettled", new PromiseCombinatorFunction("allSettled", PromiseCombination.AllSettled));
