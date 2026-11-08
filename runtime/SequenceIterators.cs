@@ -71,9 +71,10 @@ public static partial class Js
         internal static readonly TsObject Array = Create(false), String = Create(true);
         static TsObject Create(bool text)
         {
-            var prototype = new JsClassInstance { ParentPrototype = Common };
+            var prototype = new JsCreatedObject();
+            prototype.SetPrototype(Common);
             prototype.DefineMethod("next", text ? StringNext : ArrayNext);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), text ? "String Iterator" : "Array Iterator");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), text ? "String Iterator" : "Array Iterator", false);
             return prototype;
         }
     }
