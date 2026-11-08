@@ -55,7 +55,7 @@ public static partial class Js
         internal object Options()
         {
             var result = new JsDynamicObject();
-            result.DefineOwn("locale", settings.culture.Name); result.DefineOwn("numberingSystem", settings.numberingSystem);
+            result.DefineOwn("locale", settings.localeName); result.DefineOwn("numberingSystem", settings.numberingSystem);
             result.DefineOwn("style", settings.style);
             if (settings.style == "currency")
             {

@@ -58,12 +58,15 @@ public static partial class Js
         internal readonly string currency, currencyDisplay, currencySign;
         readonly string positivePattern, negativePattern;
         readonly string format;
-        internal readonly string numberingSystem;
+        internal readonly string numberingSystem, localeName;
         readonly string digitCharacters;
         internal NumberLocaleSettings(object locales, object optionValue)
         {
-            culture = CaseCulture(locales);
-            numberingSystem = "latn"; digitCharacters = null;
+            var requestedLocales = (JsArray)CanonicalLocales(locales);
+            LocaleValue selectedLocale = IndexedLength(requestedLocales) == 0 ? null : new LocaleValue(IndexedValue(requestedLocales, 0), Undefined);
+            culture = selectedLocale == null ? CultureInfo.CurrentCulture : LocaleCulture(selectedLocale.BaseName);
+            numberingSystem = selectedLocale?.Keyword("nu") as string ?? "latn";
+            localeName = culture.Name + (selectedLocale?.Keyword("nu") is string ? "-u-nu-" + numberingSystem : "");
             notation = "standard"; roundingPriority = "auto";
             minimumSignificant = maximumSignificant = 0;
             roundingIncrement = 1; roundingMode = "halfExpand"; trailingZeroDisplay = "auto";
@@ -86,16 +89,7 @@ public static partial class Js
                             if (!char.IsAsciiLetterOrDigit(ch)) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid numbering system");
                     }
                     numberingSystem = system;
-                    digitCharacters = system switch
-                    {
-                        "latn" => null,
-                        "beng" => "\u09e6\u09e7\u09e8\u09e9\u09ea\u09eb\u09ec\u09ed\u09ee\u09ef",
-                        "deva" => "\u0966\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f",
-                        "thai" => "\u0e50\u0e51\u0e52\u0e53\u0e54\u0e55\u0e56\u0e57\u0e58\u0e59",
-                        "fullwide" => "\uff10\uff11\uff12\uff13\uff14\uff15\uff16\uff17\uff18\uff19",
-                        "hanidec" => "\u3007\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d",
-                        _ => throw new NotSupportedException("The requested numbering system is not supported")
-                    };
+                    if (selectedLocale?.Keyword("nu") as string != system) localeName = culture.Name;
                 }
                 object requestedStyle = options.Get("style");
                 if (!IsUndefined(requestedStyle)) style = StringValue(requestedStyle);
@@ -234,6 +228,7 @@ public static partial class Js
                 if (sizes.Length > 0 && sizes[0] > 0) minimumGroupingWidth = sizes[0] + 2;
             }
             format = (grouping ? "N" : "F") + maximum.ToString(CultureInfo.InvariantCulture);
+            digitCharacters = NumberDigitCharacters(numberingSystem);
         }
         bool RoundUp(BigInteger quotient, BigInteger remainder, BigInteger denominator, bool negative)
         {
@@ -347,6 +342,16 @@ public static partial class Js
             if (fractionDigits != 0) result += culture.NumberFormat.NumberDecimalSeparator + fraction.ToString(CultureInfo.InvariantCulture).PadLeft(fractionDigits, '0');
             return negative ? culture.NumberFormat.NegativeSign + result : result;
         }
+        static string NumberDigitCharacters(string system) => system switch
+        {
+            "latn" => null,
+            "beng" => "\u09e6\u09e7\u09e8\u09e9\u09ea\u09eb\u09ec\u09ed\u09ee\u09ef",
+            "deva" => "\u0966\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f",
+            "thai" => "\u0e50\u0e51\u0e52\u0e53\u0e54\u0e55\u0e56\u0e57\u0e58\u0e59",
+            "fullwide" => "\uff10\uff11\uff12\uff13\uff14\uff15\uff16\uff17\uff18\uff19",
+            "hanidec" => "\u3007\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d",
+            _ => throw new NotSupportedException("The requested numbering system is not supported")
+        };
         internal string LocalizeDigits(string text)
         {
             if (digitCharacters == null) return text;

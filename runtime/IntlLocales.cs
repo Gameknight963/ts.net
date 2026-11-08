@@ -19,7 +19,7 @@ public static partial class Js
             if (seen.Add(name)) result.Append(name);
         }
         if (IsUndefined(locales)) return result;
-        if (locales is string) Add(locales);
+        if (locales is string or LocaleValue) Add(locales);
         else
         {
             var list = ToObject(locales);
