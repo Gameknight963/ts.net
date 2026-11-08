@@ -9,7 +9,7 @@ public delegate double RawNumberFunction0();
 public delegate double RawNumberFunction1(double first);
 public delegate double RawNumberFunction2(double first, double second);
 
-public partial class JsFunction : TsObject
+public partial class JsFunction : JsDescriptorObject
 {
     readonly FunctionBody body;
     readonly NumberFunction0 number0;
@@ -48,7 +48,7 @@ public partial class JsFunction : TsObject
     public virtual double? InvokeMethodNumber2(object receiver,double? first,double? second)=>InvokeNumber2(first,second);
     public virtual object Construct(object[] arguments) => ConstructOrdinary(arguments);
     public virtual bool HasInstance(object value) => OrdinaryHasInstance(value);
-    internal override bool IsReadOnlyOwnProperty(string key) => key == "name" && !deletedName || key == "length" && !deletedLength;
+    internal override bool IsReadOnlyOwnProperty(string key) => key == "name" && !deletedName || key == "length" && !deletedLength || base.IsReadOnlyOwnProperty(key);
     internal void InferPropertyName(string value) { name = Js.PropertyFunctionName(value); }
     public override bool HasOwn(string key) => key == "name" && !deletedName || key == "length" && !deletedLength || key == "prototype" && ordinaryPrototype != null || base.HasOwn(key);
     public override bool HasProperty(string key)=>HasOwn(key) || base.HasProperty(key);

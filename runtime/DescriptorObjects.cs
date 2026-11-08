@@ -8,7 +8,7 @@ public abstract class JsDescriptorObject : TsObject
     internal sealed record Descriptor(string Key, object Value, JsFunction Getter, JsFunction Setter, bool Accessor, bool Writable, bool Enumerable, bool Configurable);
     Dictionary<string, Descriptor> descriptors;
     internal void DefineMethod(string key, object value, bool writable = true) => Define(new(key, value, null, null, false, writable, false, true));
-    internal void Define(Descriptor descriptor)
+    internal virtual void Define(Descriptor descriptor)
     {
         (descriptors ??= new())[descriptor.Key] = descriptor;
         DefineOwn(descriptor.Key, descriptor.Value);

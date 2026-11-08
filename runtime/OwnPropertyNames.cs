@@ -7,7 +7,7 @@ public abstract partial class TsObject
 }
 public partial class JsFunction
 {
-    internal override object OwnPropertyNames() => Js.MergeOwnNames(this, base.OwnKeys(),
+    internal override object OwnPropertyNames() => Js.MergeOwnNames(this, base.ForInOwnKeys(),
         lengthSlotDeleted ? null : "length", nameSlotDeleted ? null : "name",
         ordinaryPrototype != null || this is JsClassFunction ? "prototype" : null);
 }
