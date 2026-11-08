@@ -158,6 +158,10 @@ public static partial class Js
         internal CollectionConstructor(bool set) : base(set ? "Set" : "Map", static _ => throw new InvalidOperationException("Collection constructor requires new"), 0)
         {
             this.set = set;
+            string speciesKey = PropertyKey(SpeciesSymbol);
+            var speciesGetter = new ConstructorSpeciesGetter();
+            Member(speciesKey, Undefined); DefineAccessor(speciesKey, speciesGetter, 1);
+            speciesGetter.InferPropertyName("get [Symbol.species]");
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
             prototype.DefineMethod("constructor", this);
             CollectionMethod Method(string name, int length, Func<JsKeyedCollection, object[], object> action) =>
