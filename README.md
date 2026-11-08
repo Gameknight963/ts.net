@@ -22,23 +22,23 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 | Feature | Points | Missing support |
 |---|---|---|
-| Values and operators | 9 / 10 | Missing some Symbol protocols and operators. |
+| Values and operators | 9 / 10 | Computed deletion of fixed-layout fields and some Symbol protocols. |
 | Control flow | 10 / 10 | Missing nothing. |
 | Functions | 9 / 10 | Global properties do not alias top-level bindings; native global bindings are read-only. |
-| Objects and arrays | 9 / 10 | Missing complete general prototype behavior. |
+| Objects and arrays | 9 / 10 | General property-definition and object-extensibility APIs are incomplete. |
 | Types and generics | 5 / 10 | Missing some runtime type representations. |
 | Modules | 4 / 5 | Missing dynamic imports of uncompiled modules. |
 | Enums | 5 / 5 | Missing nothing. |
 | Classes and inheritance | 14 / 15 | Missing some legacy decorator descriptor changes, some built-in base classes, and complete constructor replacement-object support. |
 | Exceptions | 9 / 10 | Stack traces keep CLR formatting and may omit inlined frames. |
 | Async | 10 / 10 | Missing nothing. |
-| Standard library | 3 / 5 | Missing some Symbol protocols, Reflect methods, RegExp features, and built-ins. |
+| Standard library | 3 / 5 | Missing RegExp u/v flags, Reflect.defineProperty, FinalizationRegistry, and other built-ins. |
 
 </details>
 
 ## Current performance
 
-Measurements from [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9), except typed-array traversal, measured at [e3c9b8a](https://github.com/Gameknight963/ts.net/commit/e3c9b8a):
+Rows from the first Numeric loop through String ordering, and compilation times, measured at [930b4d8](https://github.com/Gameknight963/ts.net/commit/930b4d8fb8c2d26249dd2abc377aaa13cae3c0bc). Other measurements remain from [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9), except typed-array traversal, measured at [e3c9b8a](https://github.com/Gameknight963/ts.net/commit/e3c9b8a):
 
 Runtime performance:
 
@@ -48,29 +48,29 @@ Runtime performance:
 | Workload | ts.net | Node | Result |
 |---|---|---|---|
 | Float64Array traversal, 10K elements and 100 passes | 0.784 ms | 0.718 ms | 0.92x |
-| Numeric loop, 20M iterations | 14.44 ms | 74.71 ms | 5.17x |
-| Typed-object loop, 500K iterations | 0.38 ms | 0.66 ms | 1.74x |
-| `any` property loop, 350K iterations | 0.27 ms | 0.43 ms | 1.59x |
-| Mixed array, 100K elements and 5 traversals | 1.05 ms | 1.16 ms | 1.10x |
-| Numeric `any[]`, 1M iterations | 0.81 ms | 1.66 ms | 2.05x |
-| Numeric array, 100K elements and 100 reversals | 2.07 ms | 7.98 ms | 3.86x |
-| Mixed array, 100K elements and 100 reversals | 1.06 ms | 7.74 ms | 7.30x |
-| Numeric callback, 2M calls (experimental) | 1.42 ms | 0.83 ms | 0.58x |
-| Captured numeric callback, 2M calls | 5.24 ms | 5.10 ms | 0.97x |
-| Local function, 2M direct calls | 0.47 ms | 0.83 ms | 1.77x |
-| Self-returning function, 2M calls | 5.04 ms | 0.77 ms | 0.15x |
-| `Object.keys(value).length`, 100K calls | 0.071 ms | 0.949 ms | 13.37x |
-| `Object.keys(value)`, 100K calls and key reads | 1.30 ms | 1.12 ms | 0.86x |
-| Local object spread, 100K two-field copies | 0.09 ms | 1.00 ms | 11.11x |
-| Object spread, 100K copies stored in an array | 3.17 ms | 2.41 ms | 0.76x |
-| Computed keys, 100K objects and reads | 3.85 ms | 26.06 ms | 6.77x |
-| `Object.values(value)`, 100K calls and reads | 1.44 ms | 9.41 ms | 6.53x |
-| `Object.entries(value)`, 100K calls and reads | 5.53 ms | 16.69 ms | 3.02x |
-| Literal squares, 2M iterations | 1.40 ms | 1.42 ms | 1.01x |
-| Small integer bases and varying exponents, 1M iterations | 4.04 ms | 13.72 ms | 3.40x |
-| Mixed numeric strings, 1M conversions | 27.14 ms | 29.88 ms | 1.10x |
-| Object valueOf, 1M numeric conversions | 14.44 ms | 23.51 ms | 1.63x |
-| String ordering, 2M comparisons | 8.85 ms | 8.75 ms | 0.99x |
+| Numeric loop, 20M iterations | 14.36 ms | 74.50 ms | 5.19x |
+| Typed-object loop, 500K iterations | 0.354 ms | 0.658 ms | 1.86x |
+| `any` property loop, 350K iterations | 0.264 ms | 0.429 ms | 1.62x |
+| Mixed array, 100K elements and 5 traversals | 0.986 ms | 1.03 ms | 1.05x |
+| Numeric `any[]`, 1M iterations | 0.706 ms | 1.66 ms | 2.35x |
+| Numeric array, 100K elements and 100 reversals | 2.24 ms | 7.72 ms | 3.45x |
+| Mixed array, 100K elements and 100 reversals | 1.06 ms | 7.45 ms | 7.03x |
+| Numeric callback, 2M calls (experimental) | 1.41 ms | 0.827 ms | 0.59x |
+| Captured numeric callback, 2M calls | 5.17 ms | 5.09 ms | 0.99x |
+| Local function, 2M direct calls | 0.461 ms | 0.828 ms | 1.80x |
+| Self-returning function, 2M calls | 7.97 ms | 0.767 ms | 0.10x |
+| `Object.keys(value).length`, 100K calls | 0.073 ms | 0.929 ms | 12.69x |
+| `Object.keys(value)`, 100K calls and key reads | 2.30 ms | 1.32 ms | 0.57x |
+| Local object spread, 100K two-field copies | 0.096 ms | 1.04 ms | 10.82x |
+| Object spread, 100K copies stored in an array | 7.02 ms | 2.98 ms | 0.42x |
+| Computed keys, 100K objects and reads | 5.00 ms | 28.88 ms | 5.77x |
+| `Object.values(value)`, 100K calls and reads | 1.56 ms | 9.47 ms | 6.06x |
+| `Object.entries(value)`, 100K calls and reads | 6.46 ms | 16.77 ms | 2.60x |
+| Literal squares, 2M iterations | 1.41 ms | 1.41 ms | 1.00x |
+| Small integer bases and varying exponents, 1M iterations | 4.05 ms | 13.83 ms | 3.42x |
+| Mixed numeric strings, 1M conversions | 28.37 ms | 30.18 ms | 1.06x |
+| Object valueOf, 1M numeric conversions | 48.22 ms | 23.48 ms | 0.49x |
+| String ordering, 2M comparisons | 8.79 ms | 8.75 ms | 1.00x |
 | `==` on mixed values, 1M comparisons | 5.15 ms | 7.26 ms | 1.41x |
 | `== null` on nullable arrays, 1M comparisons | 1.51 ms | 1.15 ms | 0.76x |
 | Numeric array `.at(-1)`, 1M calls | 3.84 ms | 3.82 ms | 0.99x |
@@ -113,7 +113,7 @@ Compilation times:
 
 | Source | tsnetc | tsc |
 |---|---|---|
-| Small numeric benchmark | 519.18 ms | 340.84 ms |
-| 5,000 variables | 726.64 ms | 388.73 ms |
+| Small numeric benchmark | 508.21 ms | 354.70 ms |
+| 5,000 variables | 751.51 ms | 388.55 ms |
 
 Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
