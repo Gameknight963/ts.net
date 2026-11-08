@@ -30,8 +30,7 @@ public static partial class Js
     internal static TsObject RegexIteratorPrototype => RegexIteratorMethods.Prototype;
     internal static object StartRegexIterator(JsRegexIterator iterator)
     {
-        if (iterator.Get("next") is not JsFunction next) throw new InvalidOperationException("Iterator next is not callable");
-        return new JsProtocolIterator(iterator, next);
+        return new JsProtocolIterator(iterator, iterator.Get("next"));
     }
     sealed class StringMatchAllFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("String method requires a receiver")), null, "matchAll", 1)
     {

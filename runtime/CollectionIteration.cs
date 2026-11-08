@@ -1,6 +1,6 @@
 using System;
 
-internal sealed class JsProtocolIterator(TsObject source, JsFunction next)
+internal sealed class JsProtocolIterator(TsObject source, object next)
 {
     internal readonly TsObject Source = source;
     internal bool Done;
@@ -22,7 +22,8 @@ internal sealed class JsProtocolIterator(TsObject source, JsFunction next)
                 direct = true; Done = done; result = done ? null : value; cached = !done; return !done;
             }
             direct = false;
-            result = Js.RequireIteratorResult(next.InvokeWithReceiver(Source, Array.Empty<object>()));
+            if (next is not JsFunction function) throw new InvalidOperationException("Iterator next is not callable");
+            result = Js.RequireIteratorResult(function.InvokeWithReceiver(Source, Array.Empty<object>()));
             if (Js.Truthy(Js.Get(result, "done"))) { Done = true; result = null; return false; }
             cached = true; return true;
         }
@@ -48,8 +49,7 @@ public static partial class Js
     {
         object next = iterator.Get("next");
         if (ReferenceEquals(next, KeyedIteratorIntrinsicNext(iterator.IsSetIterator))) return iterator;
-        if (next is not JsFunction function) throw new InvalidOperationException("Iterator next is not callable");
-        return new JsProtocolIterator(iterator, function);
+        return new JsProtocolIterator(iterator, next);
     }
     public static void CloseIteration(object source, bool suppressError)
     {

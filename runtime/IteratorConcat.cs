@@ -54,7 +54,7 @@ public static partial class Js
             return result;
         }
     }
-    internal static bool TryReadConcatIterator(TsObject source, JsFunction next, out object value, out bool done)
+    internal static bool TryReadConcatIterator(TsObject source, object next, out object value, out bool done)
     {
         if (source is ConcatIterator iterator && ReferenceEquals(next,ConcatIteratorMethods.Next)) {
             done = !iterator.TryNext(out value); return true;

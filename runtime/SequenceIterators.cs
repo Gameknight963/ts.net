@@ -66,8 +66,7 @@ public static partial class Js
     internal static object StartSequenceIterator(JsSequenceIterator iterator)
     {
         object next = iterator.Get("next");
-        if (next is not JsFunction function) throw new InvalidOperationException("Iterator next is not callable");
-        return new JsProtocolIterator(iterator, function);
+        return new JsProtocolIterator(iterator, next);
     }
     internal static TsObject IterationObjectAt(object source, int position)
     {

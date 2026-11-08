@@ -18,8 +18,7 @@ public static partial class Js
     }
     internal static object StartIteratorObject(TsObject source)
     {
-        if (source.Get("next") is not JsFunction next) throw new InvalidOperationException("Iterator next is not callable");
-        return new JsProtocolIterator(source, next);
+        return new JsProtocolIterator(source, source.Get("next"));
     }
     static class IteratorWrapperMethods
     {
