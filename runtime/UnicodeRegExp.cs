@@ -69,7 +69,8 @@ public static partial class Js
                 alternatives.Add(Unit(highLast) + Units(0xdc00, lowLast));
             }
         }
-        if (basic.Length != 0) alternatives.Add("[" + basic + "]");
+        // This branch cannot overlap the surrogate branches.
+        if (basic.Length != 0) alternatives.Insert(0, "[" + basic + "]");
         return alternatives.Count == 0 ? "(?!)" : "(?:" + string.Join('|', alternatives) + ")";
     }
     static List<RegExpCodePointRange> UnicodeRegExpClassEscape(char kind)
