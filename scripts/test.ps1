@@ -100,6 +100,12 @@ try {
     if (($expectedDeletion -join "`n") -cne ($actualDeletion -join "`n")) { throw 'Runtime deletion differs from Node' }
     Write-Host 'PASS runtime deletion matches Node'
 
+    & dotnet build tests/inspect-descriptor-values/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw 'Descriptor value inspector build failed' }
+    & dotnet tests/inspect-descriptor-values/bin/Release/net10.0/Inspect.dll
+    if ($LASTEXITCODE) { throw 'Descriptors retained overwritten values' }
+
+
     & dotnet build tests/inspect-weak-collections/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Weak collection inspector build failed' }
     & dotnet tests/inspect-weak-collections/bin/Release/net10.0/Inspect.dll

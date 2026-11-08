@@ -3,7 +3,10 @@ using System.Collections.Generic;
 
 public abstract class JsDescriptorObject : TsObject
 {
-    internal sealed record Descriptor(string Key, object Value, JsFunction Getter, JsFunction Setter, bool Accessor, bool Writable, bool Enumerable, bool Configurable);
+    internal sealed record Descriptor(string Key, object Value, JsFunction Getter, JsFunction Setter, bool Accessor, bool Writable, bool Enumerable, bool Configurable)
+    {
+        public object Value { get; set; } = Value;
+    }
     // Keep the common object layout small; non-extensibility shares the
     // descriptor dictionary instead of adding a flag to every instance.
     sealed class NonExtensibleProperties : Dictionary<string, Descriptor>
@@ -22,8 +25,9 @@ public abstract class JsDescriptorObject : TsObject
     internal void DefineMethod(string key, object value, bool writable = true) => Define(new(key, value, null, null, false, writable, false, true));
     internal virtual void Define(Descriptor descriptor)
     {
-        (descriptors ??= new())[descriptor.Key] = descriptor;
         DefineOwn(descriptor.Key, descriptor.Value);
+        descriptor.Value = Js.Undefined;
+        (descriptors ??= new())[descriptor.Key] = descriptor;
         if (descriptor.Getter != null) DefineAccessor(descriptor.Key, descriptor.Getter, 1, false);
         if (descriptor.Setter != null) DefineAccessor(descriptor.Key, descriptor.Setter, 2, false);
     }

@@ -43,9 +43,10 @@ public partial class JsFunction : JsDescriptorObject
     }
     internal override void Define(Descriptor descriptor)
     {
+        object value = descriptor.Value;
         base.Define(descriptor);
         ReplaceIntrinsicMetadata(descriptor.Key);
-        if (descriptor.Key == "prototype" && ordinaryPrototype != null) ordinaryPrototype = descriptor.Value ?? NullPrototypeValue;
+        if (descriptor.Key == "prototype" && ordinaryPrototype != null) ordinaryPrototype = value ?? NullPrototypeValue;
     }
     internal virtual void SetObjectHome(TsObject home) { }
     public virtual object InvokeWithReceiver(object receiver,object[] arguments)=>Invoke(arguments);
