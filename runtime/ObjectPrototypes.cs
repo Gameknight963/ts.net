@@ -32,7 +32,11 @@ public abstract partial class TsObject
     {
         if (CanSetPrototype(value)) prototypes.GetValue(this, static _ => new PrototypeState()).Value = value;
     }
-    private object InheritedValue(string key, object receiver) => PropertyPrototype is null ? Js.Undefined : PropertyPrototype.GetWithReceiver(key, receiver);
+    private object InheritedValue(string key, object receiver)
+    {
+        var prototype = PropertyPrototype;
+        return prototype is null ? Js.Undefined : prototype.GetWithReceiver(key, receiver);
+    }
     private bool SetInheritedProperty(string key, object value)
     {
         if (HasOwn(key)) return false;
