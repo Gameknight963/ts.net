@@ -15,7 +15,7 @@ public static partial class Js
                 "Object", "Number", "String", "Boolean", "Array", "BigInt", "Symbol", "Date", "RegExp", "Math", "JSON", "Reflect", "Intl",
                 "console", "performance", "Promise", "queueMicrotask", "Map", "Set", "WeakMap", "WeakSet", "WeakRef", "Iterator",
                 "DisposableStack", "AsyncDisposableStack", "ArrayBuffer", "SharedArrayBuffer", "Atomics", "DataView", "TextEncoder", "TextDecoder", "Blob", "File", "URL", "URLSearchParams", "Headers", "FormData", "Response", "Request",
-                "crypto", "Crypto", "SubtleCrypto", "CryptoKey", "DOMException", "Event", "CustomEvent", "EventTarget", "AbortController", "AbortSignal", "setTimeout", "setInterval", "clearTimeout", "clearInterval", "structuredClone",
+                "fetch", "crypto", "Crypto", "SubtleCrypto", "CryptoKey", "DOMException", "Event", "CustomEvent", "EventTarget", "AbortController", "AbortSignal", "setTimeout", "setInterval", "clearTimeout", "clearInterval", "structuredClone",
                 "parseInt", "parseFloat", "isNaN", "isFinite", "atob", "btoa", "encodeURI", "encodeURIComponent", "decodeURI", "decodeURIComponent", "escape", "unescape"
             }) Binding(name, BuiltinNamespace(name));
             foreach (string name in TypedArrayNames) Binding(name, GetTypedArrayConstructor(name));
