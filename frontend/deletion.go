@@ -63,11 +63,8 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 			return 0
 		}
 		declaration := symbol.ValueDeclaration
-		if declaration.Kind == ast.KindParameter {
-			return b.reflectionParameterValue(declaration, seen, b.reflectionDeletionValue)
-		}
-		if declaration.Kind == ast.KindVariableDeclaration {
-			return b.reflectionDeletionValue(declaration.Initializer(), seen)
+		if declaration.Kind == ast.KindParameter || declaration.Kind == ast.KindVariableDeclaration {
+			return b.reflectionBindingValue(declaration, seen, b.reflectionDeletionValue)
 		}
 		if declaration.Kind == ast.KindBindingElement && declaration.Parent.Kind == ast.KindObjectBindingPattern {
 			name := declaration.AsBindingElement().PropertyName
@@ -90,8 +87,18 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 		}
 	case ast.KindBinaryExpression:
 		expression := n.AsBinaryExpression()
-		if expression.OperatorToken.Kind == ast.KindCommaToken {
+		if expression.OperatorToken.Kind == ast.KindCommaToken || expression.OperatorToken.Kind == ast.KindEqualsToken {
 			return b.reflectionDeletionValue(expression.Right, seen)
+		}
+		switch expression.OperatorToken.Kind {
+		case ast.KindAmpersandAmpersandToken, ast.KindBarBarToken, ast.KindQuestionQuestionToken,
+			ast.KindAmpersandAmpersandEqualsToken, ast.KindBarBarEqualsToken, ast.KindQuestionQuestionEqualsToken:
+			left := b.reflectionDeletionValue(expression.Left, seen)
+			right := b.reflectionDeletionValue(expression.Right, seen)
+			if right > left {
+				return right
+			}
+			return left
 		}
 	case ast.KindConditionalExpression:
 		expression := n.AsConditionalExpression()
@@ -122,7 +129,7 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 // cover every literal. Dynamic reflection uses the target's known field names,
 // or covers every literal when an object/any parameter hides those names.
 func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
-	b.prepareReflectionArguments(files)
+	b.prepareReflectionSources(files)
 	b.deletedNames = map[string]bool{}
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
