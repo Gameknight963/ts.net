@@ -38,7 +38,9 @@ Then run `.\scripts\build.ps1 -Run` to compile and run an example.
 
 ## Current performance
 
-Rows from the first Numeric loop through String ordering, and compilation times, measured at [930b4d8](https://github.com/Gameknight963/ts.net/commit/930b4d8fb8c2d26249dd2abc377aaa13cae3c0bc). Other measurements remain from [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9), except typed-array traversal, measured at [e3c9b8a](https://github.com/Gameknight963/ts.net/commit/e3c9b8a):
+Rows from the first Numeric loop through String ordering, and compilation times, measured at [395e8ad](https://github.com/Gameknight963/ts.net/commit/395e8ade44a27da41ba17b08a7dbe7baa4862c0e). Other measurements remain from [9c5d2ef](https://github.com/Gameknight963/ts.net/commit/9c5d2efb1f0ece3314753f3a44fb1ea74aa770b9), except typed-array traversal, measured at [e3c9b8a](https://github.com/Gameknight963/ts.net/commit/e3c9b8a):
+
+Updated execution rows use Release builds and the median of 35 samples across five fresh processes, after at least 100 warmup calls and 500 ms of warmup per process; startup is excluded. Compilation uses medians of seven fresh processes and includes startup; the full test suite ran concurrently.
 
 Runtime performance:
 
@@ -48,29 +50,29 @@ Runtime performance:
 | Workload | ts.net | Node | Result |
 |---|---|---|---|
 | Float64Array traversal, 10K elements and 100 passes | 0.784 ms | 0.718 ms | 0.92x |
-| Numeric loop, 20M iterations | 14.36 ms | 74.50 ms | 5.19x |
-| Typed-object loop, 500K iterations | 0.354 ms | 0.658 ms | 1.86x |
-| `any` property loop, 350K iterations | 0.264 ms | 0.429 ms | 1.62x |
-| Mixed array, 100K elements and 5 traversals | 0.986 ms | 1.03 ms | 1.05x |
-| Numeric `any[]`, 1M iterations | 0.706 ms | 1.66 ms | 2.35x |
-| Numeric array, 100K elements and 100 reversals | 2.24 ms | 7.72 ms | 3.45x |
-| Mixed array, 100K elements and 100 reversals | 1.06 ms | 7.45 ms | 7.03x |
-| Numeric callback, 2M calls (experimental) | 1.41 ms | 0.827 ms | 0.59x |
-| Captured numeric callback, 2M calls | 5.17 ms | 5.09 ms | 0.99x |
-| Local function, 2M direct calls | 0.461 ms | 0.828 ms | 1.80x |
-| Self-returning function, 2M calls | 7.97 ms | 0.767 ms | 0.10x |
-| `Object.keys(value).length`, 100K calls | 0.073 ms | 0.929 ms | 12.69x |
-| `Object.keys(value)`, 100K calls and key reads | 2.30 ms | 1.32 ms | 0.57x |
-| Local object spread, 100K two-field copies | 0.096 ms | 1.04 ms | 10.82x |
-| Object spread, 100K copies stored in an array | 7.02 ms | 2.98 ms | 0.42x |
-| Computed keys, 100K objects and reads | 5.00 ms | 28.88 ms | 5.77x |
-| `Object.values(value)`, 100K calls and reads | 1.56 ms | 9.47 ms | 6.06x |
-| `Object.entries(value)`, 100K calls and reads | 6.46 ms | 16.77 ms | 2.60x |
-| Literal squares, 2M iterations | 1.41 ms | 1.41 ms | 1.00x |
-| Small integer bases and varying exponents, 1M iterations | 4.05 ms | 13.83 ms | 3.42x |
-| Mixed numeric strings, 1M conversions | 28.37 ms | 30.18 ms | 1.06x |
-| Object valueOf, 1M numeric conversions | 48.22 ms | 23.48 ms | 0.49x |
-| String ordering, 2M comparisons | 8.79 ms | 8.75 ms | 1.00x |
+| Numeric loop, 20M iterations | 14.58 ms | 75.45 ms | 5.17x |
+| Typed-object loop, 500K iterations | 0.381 ms | 0.650 ms | 1.70x |
+| `any` property loop, 350K iterations | 0.266 ms | 0.435 ms | 1.64x |
+| Mixed array, 100K elements and 5 traversals | 3.19 ms | 1.15 ms | 0.36x |
+| Numeric `any[]`, 1M iterations | 0.954 ms | 1.66 ms | 1.74x |
+| Numeric array, 100K elements and 100 reversals | 4.37 ms | 7.87 ms | 1.80x |
+| Mixed array, 100K elements and 100 reversals | 3.07 ms | 7.70 ms | 2.51x |
+| Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | 0.60x |
+| Captured numeric callback, 2M calls | 5.24 ms | 5.07 ms | 0.97x |
+| Local function, 2M direct calls | 0.461 ms | 0.825 ms | 1.79x |
+| Self-returning function, 2M calls | 8.39 ms | 0.760 ms | 0.09x |
+| `Object.keys(value).length`, 100K calls | 0.095 ms | 0.953 ms | 10.05x |
+| `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | 0.46x |
+| Local object spread, 100K two-field copies | 0.095 ms | 1.02 ms | 10.77x |
+| Object spread, 100K copies stored in an array | 11.34 ms | 2.42 ms | 0.21x |
+| Computed keys, 100K objects and reads | 5.97 ms | 29.00 ms | 4.86x |
+| `Object.values(value)`, 100K calls and reads | 1.73 ms | 9.53 ms | 5.51x |
+| `Object.entries(value)`, 100K calls and reads | 8.09 ms | 16.71 ms | 2.07x |
+| Literal squares, 2M iterations | 1.40 ms | 1.41 ms | 1.00x |
+| Small integer bases and varying exponents, 1M iterations | 4.07 ms | 13.85 ms | 3.41x |
+| Mixed numeric strings, 1M conversions | 28.60 ms | 30.37 ms | 1.06x |
+| Object valueOf, 1M numeric conversions | 48.94 ms | 23.64 ms | 0.48x |
+| String ordering, 2M comparisons | 8.98 ms | 8.75 ms | 0.97x |
 | `==` on mixed values, 1M comparisons | 5.15 ms | 7.26 ms | 1.41x |
 | `== null` on nullable arrays, 1M comparisons | 1.51 ms | 1.15 ms | 0.76x |
 | Numeric array `.at(-1)`, 1M calls | 3.84 ms | 3.82 ms | 0.99x |
@@ -113,7 +115,9 @@ Compilation times:
 
 | Source | tsnetc | tsc |
 |---|---|---|
-| Small numeric benchmark | 508.21 ms | 354.70 ms |
-| 5,000 variables | 751.51 ms | 388.55 ms |
+| Small numeric benchmark | 503.72 ms | 354.32 ms |
+| 5,000 variables | 754.27 ms | 391.27 ms |
+
+Arithmetic and small typed-object loops look healthy; mixed arrays and stored object copies still need work.
 
 Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
