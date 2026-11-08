@@ -116,6 +116,18 @@ public static partial class Js
             Getter("eventPhase", value => value.Dispatching ? 2d : 0d); Getter("cancelBubble", value => BoxBoolean(value.Stopped)); Getter("returnValue", value => BoxBoolean(!value.Cancelled));
             prototype.DefineClassAccessor("cancelBubble", new CollectionMethod("set cancelBubble", 1, static (receiver, args) => { var value = RequireEvent(receiver); if (Truthy(FunctionArgument(args, 0))) value.Stopped = true; return Undefined; }), 2);
             prototype.DefineClassAccessor("returnValue", new CollectionMethod("set returnValue", 1, static (receiver, args) => { var value = RequireEvent(receiver); if (!Truthy(FunctionArgument(args, 0))) value.PreventDefault(); return Undefined; }), 2);
+            prototype.DefineMethod("initEvent", new CollectionMethod("initEvent", 1, static (receiver, args) =>
+            {
+                var value = RequireEvent(receiver);
+                if (args.Length == 0) throw new InvalidOperationException("Event type is required");
+                string type = StringValue(args[0]);
+                bool bubbles = Truthy(FunctionArgument(args, 1)), cancelable = Truthy(FunctionArgument(args, 2));
+                if (value.Dispatching) return Undefined;
+                value.Stopped = value.ImmediateStopped = value.Cancelled = false;
+                value.Trusted = false; value.Target = null;
+                value.Type = type; value.Bubbles = bubbles; value.Cancelable = cancelable;
+                return Undefined;
+            }));
             prototype.DefineMethod("preventDefault", new CollectionMethod("preventDefault", 0, static (receiver, _) => { RequireEvent(receiver).PreventDefault(); return Undefined; }));
             prototype.DefineMethod("stopPropagation", new CollectionMethod("stopPropagation", 0, static (receiver, _) => { RequireEvent(receiver).Stopped = true; return Undefined; }));
             prototype.DefineMethod("stopImmediatePropagation", new CollectionMethod("stopImmediatePropagation", 0, static (receiver, _) => { var value = RequireEvent(receiver); value.Stopped = value.ImmediateStopped = true; return Undefined; }));

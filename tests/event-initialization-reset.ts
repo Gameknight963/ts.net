@@ -1,0 +1,10 @@
+const sample = new Event('before', {cancelable:true});
+sample.preventDefault(); sample.stopImmediatePropagation();
+sample.initEvent('after',true,true);
+if(sample.defaultPrevented || sample.cancelBubble) throw new Error('flags not reset');
+const target = new EventTarget();
+let calls=0; target.addEventListener('after',()=>{calls++;});
+if(!target.dispatchEvent(sample) || calls!==1) throw new Error('dispatch did not reset');
+sample.initEvent('again');
+if(sample.target!==null) throw new Error('target not reset');
+console.log('PASS DOM initialization resets');
