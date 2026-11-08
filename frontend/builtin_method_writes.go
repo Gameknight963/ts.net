@@ -2,6 +2,31 @@ package main
 
 import "github.com/microsoft/typescript-go/internal/ast"
 
+func builtinPropertyMayBeWritten(n *ast.Node) bool {
+	for n.Parent != nil {
+		if identifierWrite(n) {
+			return true
+		}
+		parent := n.Parent
+		switch parent.Kind {
+		case ast.KindParenthesizedExpression, ast.KindArrayLiteralExpression, ast.KindObjectLiteralExpression, ast.KindSpreadElement, ast.KindSpreadAssignment:
+			n = parent
+		case ast.KindPropertyAssignment:
+			if parent.Initializer() != n {
+				return false
+			}
+			n = parent
+		case ast.KindForOfStatement, ast.KindForInStatement:
+			return parent.AsForInOrOfStatement().Initializer == n
+		case ast.KindDeleteExpression:
+			return parent.Expression() == n
+		default:
+			return false
+		}
+	}
+	return false
+}
+
 // Namespace aliases can be changed by code outside the direct call site.
 // Keep those programs on ordinary property reads rather than cached intrinsics.
 func builtinNamespaceMayChange(n *ast.Node) bool {
@@ -20,7 +45,7 @@ func builtinNamespaceMayChange(n *ast.Node) bool {
 		for parent.Parent != nil && parent.Parent.Kind == ast.KindParenthesizedExpression {
 			parent = parent.Parent
 		}
-		return identifierWrite(parent) || parent.Parent != nil && parent.Parent.Kind == ast.KindDeleteExpression
+		return builtinPropertyMayBeWritten(parent)
 	case ast.KindCallExpression, ast.KindNewExpression:
 		return parent.Expression() != n
 	case ast.KindVariableDeclaration:
