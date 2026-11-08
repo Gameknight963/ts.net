@@ -28,8 +28,10 @@ public static partial class Js
         internal WeakCollectionConstructor(bool set) : base(set ? "WeakSet" : "WeakMap", static _ => throw new InvalidOperationException("Weak collection constructor requires new"), 0)
         {
             this.set = set;
-            var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
+            var prototype = new JsCreatedObject();
+            prototype.SetPrototype(DefaultClassObjectPrototype);
             prototype.DefineMethod("constructor", this);
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), set ? "WeakSet" : "WeakMap", false);
             CollectionMethod Method(string name, int length, Func<JsWeakCollection, object[], object> action) => new(name, length,
                 (receiver, arguments) => receiver is JsWeakCollection collection && collection.IsSet == set
                     ? action(collection, arguments) : throw new InvalidOperationException("Incompatible weak collection receiver"));
