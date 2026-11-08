@@ -39,7 +39,6 @@ internal sealed class JsBoundFunction : JsFunction
     readonly double boundLength;
     readonly TsObject inheritedPrototype;
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : inheritedPrototype;
-    JsFunction InheritedStatics => target is JsClassFunction cls ? cls.Parent : target is JsBoundFunction bound ? bound.InheritedStatics : null;
     JsBoundFunction(JsFunction target, object receiver, object[] prefix, string name, double length, TsObject prototype)
         : base((FunctionBody)(arguments => Js.CallMethod(target, receiver, Combine(prefix, arguments))), null, name, 0)
     {
@@ -59,8 +58,7 @@ internal sealed class JsBoundFunction : JsFunction
         if (first.Length == 0) return second;
         var result = new object[checked(first.Length + second.Length)]; Array.Copy(first, result, first.Length); Array.Copy(second, 0, result, first.Length, second.Length); return result;
     }
-    public override object Get(string key) => key == "length" && HasIntrinsicLength ? boundLength : HasOwn(key) ? base.Get(key) : InheritedStatics is not null ? InheritedStatics.GetWithReceiver(key, this) : base.Get(key);
-    public override bool HasProperty(string key) => base.HasProperty(key) || InheritedStatics is not null && InheritedStatics.HasProperty(key);
+    public override object Get(string key) => key == "length" && HasIntrinsicLength ? boundLength : base.Get(key);
     // Match the existing nullable-number call ABI; other values retain the general path.
     bool NumberPrefix(int index, out double? value)
     {
