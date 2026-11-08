@@ -108,14 +108,23 @@ public static partial class Js
                 return BoxBoolean(registry.Unregister(FunctionArgument(args, 0)));
             }));
         }
-        public override object Construct(object[] args)
+        static JsFunction Callback(object[] args) => FunctionArgument(args, 0) as JsFunction ?? throw new InvalidOperationException("FinalizationRegistry callback must be callable");
+        static FinalizationRegistryValue CreateRegistry(JsFunction callback)
         {
-            if (FunctionArgument(args, 0) is not JsFunction callback) throw new InvalidOperationException("FinalizationRegistry callback must be callable");
             var registry = new FinalizationRegistryValue(callback);
             (finalizationRegistries ??= new()).Add(new(registry));
             return registry;
         }
+        public override object Construct(object[] args) => CreateRegistry(Callback(args));
         internal override bool CanInitializeDerived => true;
+        internal override object InitializeDerived(object instance, object[] args, JsFunction newTarget)
+        {
+            var callback = Callback(args);
+            var prototype = ConstructionPrototype(newTarget);
+            var result = CreateRegistry(callback);
+            result.SetPrototype(prototype);
+            return result;
+        }
         internal override object InitializeDerived(object instance, object[] args) {var result = (TsObject)Construct(args); result.SetPrototype(((TsObject)instance).PropertyPrototype); return result;}
     }
 }
