@@ -76,6 +76,7 @@ public static partial class Js
     public static object AsyncAwaitContinue(object value, object continuation) => new AsyncAwaitRecord((JsPromise)PromiseResolve(RuntimeNamespaces.Promise, value), (JsFunction)continuation);
     sealed class AsyncFunctionObject : JsFunction
     {
+        internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : AsyncFunctionFamily.Value.Prototype;
         readonly JsFunction function;
         internal override string SourceText => function.SourceText;
         internal override void SetObjectHome(TsObject home) => function.SetObjectHome(home);

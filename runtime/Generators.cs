@@ -178,10 +178,12 @@ public static partial class Js
     static TsObject AsyncGeneratorPrototype => GeneratorMethods.AsyncPrototype;
     sealed class GeneratorFunctionObject : JsFunction
     {
+        internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (invocation.Asynchronous ? AsyncGeneratorFunctionFamily.Value : GeneratorFunctionFamily.Value).Prototype;
         readonly Invocation invocation;
         sealed class Invocation(JsFunction function, bool asynchronous)
         {
             internal GeneratorFunctionObject Owner;
+            internal bool Asynchronous => asynchronous;
             internal string SourceText => function.SourceText;
             internal void SetObjectHome(TsObject home) => function.SetObjectHome(home);
             internal object Invoke(object receiver, object[] args)
@@ -195,7 +197,8 @@ public static partial class Js
         GeneratorFunctionObject(Invocation invocation, JsFunction function, bool asynchronous) : base((FunctionBody)(args => invocation.Invoke(Undefined, args)), null, (string)function.Get("name"), (int)(double)function.Get("length"))
         {
             this.invocation = invocation; invocation.Owner = this;
-            UseObjectPrototype(new JsClassInstance { ParentPrototype = asynchronous ? AsyncGeneratorPrototype : GeneratorPrototype });
+            var family = asynchronous ? AsyncGeneratorFunctionFamily.Value : GeneratorFunctionFamily.Value;
+            UseObjectPrototype(new JsClassInstance { ParentPrototype = family.IteratorPrototype });
         }
         internal override string SourceText => invocation.SourceText;
         internal override void SetObjectHome(TsObject home) => invocation.SetObjectHome(home);
