@@ -25,5 +25,5 @@ const captured = (Array.from as any).call(Mutating, changing);
 console.log('captured', order, captured[0], captured[1], captured.length);
 
 const overridden = [1,2,3];
-(overridden as any)[Symbol.iterator] = function*(): Generator<number, undefined, unknown> { yield 9; return undefined; };
+overridden[Symbol.iterator] = function*(): Generator<number, undefined, unknown> { yield 9; return undefined; };
 console.log('override', Array.from(overridden).join(','));

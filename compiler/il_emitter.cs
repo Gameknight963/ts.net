@@ -126,8 +126,8 @@ internal static partial class CompilerFunctions
                 b.emit(0xfe0c, packed); b.emit(0xfe0c, index); b.op(0x99); b.call(RuntimeMember.WrapNumber); return;
             }
             b.emit(0xfe0c, receiver); b.emit(0xfe0c, index);
-            if (il_direct_array_index(entry, c, b)) { b.call(RuntimeMember.NumberIndexGetAt); }
-            else if (il_number_index(entry, c)) { b.call(RuntimeMember.NumberIndexGet); }
+            if (il_direct_array_index(entry, c, b)) { b.call(RuntimeMember.NumberIndexGetAt); b.convert(get_type(get_node(n.left, c).type, c).element, n.type, c); }
+            else if (il_number_index(entry, c)) { b.call(RuntimeMember.NumberIndexGet); b.convert(get_type(get_node(n.left, c).type, c).element, n.type, c); }
             else { b.call(il_direct_index(entry, c, b) ? RuntimeMember.ArrayIndexGetAt : RuntimeMember.IndexGet); b.from_object(n.type, c); }
             return;
         }
@@ -191,7 +191,7 @@ internal static partial class CompilerFunctions
             {
                 int owner = get_node(target.left, c).type; TypeKind kind = get_type(owner, c).kind;
                 if (kind == TypeKind.Any) { value_type = owner; }
-                else if (target.kind == NodeKind.Index && kind == TypeKind.Array) { value_type = get_type(owner, c).element; }
+                else if (target.kind == NodeKind.Index && kind == TypeKind.Array && get_type(get_node(target.right, c).type, c).kind == TypeKind.Number) { value_type = get_type(owner, c).element; }
                 else if (kind == TypeKind.Shape)
                 {
                     int member = target.kind == NodeKind.Property ? field(owner, target.name, c) : 0;
@@ -583,8 +583,8 @@ internal static partial class CompilerFunctions
                 else {il_expression(n.right,c,b);b.call(RuntimeMember.StringIndexNumber);}
                 b.from_object(n.type,c);return;
             }
-            if (il_direct_array_index(entry, c, b)) { il_integer(n.right, c, b); b.call(RuntimeMember.NumberIndexGetAt); }
-            else if (il_number_index(entry, c)) { il_number(n.right, c, b); b.call(RuntimeMember.NumberIndexGet); }
+            if (il_direct_array_index(entry, c, b)) { il_integer(n.right, c, b); b.call(RuntimeMember.NumberIndexGetAt); b.convert(get_type(get_node(n.left, c).type, c).element, n.type, c); }
+            else if (il_number_index(entry, c)) { il_number(n.right, c, b); b.call(RuntimeMember.NumberIndexGet); b.convert(get_type(get_node(n.left, c).type, c).element, n.type, c); }
             else if (get_type(n.type, c).kind == TypeKind.Number && get_type(get_node(n.right, c).type, c).kind == TypeKind.Number) { il_expression(n.right, c, b); b.call(RuntimeMember.IndexGetNumber); }
             else { if (il_direct_index(entry, c, b)) { il_integer(n.right, c, b); b.call(RuntimeMember.ArrayIndexGetAt); } else { il_boxed(n.right, c, b); b.call(RuntimeMember.IndexGet); } b.from_object(n.type, c); }
         }
