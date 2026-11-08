@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 
 public static partial class Js
 {
@@ -44,11 +43,7 @@ public static partial class Js
         object Map(object value, long index) => mapping ? CallMethod(mapper, thisArg, new object[] { value, (double)index }) : value;
         void Define(long index, object value)
         {
-            if (result is JsArray array && index <= int.MaxValue) { array.SetAt((int)index, value); return; }
-            string key = index.ToString(CultureInfo.InvariantCulture);
-            if (result.IsModuleNamespace || result.IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Cannot define array item");
-            if (result is JsArray wideArray) wideArray.Set(key, value);
-            else result.DefineOwn(key, value);
+            ArraySpeciesSet(result, index, value);
         }
         long count = 0;
         if (iterating)

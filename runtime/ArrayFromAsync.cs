@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 
 public static partial class Js
 {
@@ -104,13 +103,7 @@ public static partial class Js
         }
         void Store(object value)
         {
-            if (target is JsArray array && count <= int.MaxValue) array.SetAt((int)count, value);
-            else
-            {
-                string key = count.ToString(CultureInfo.InvariantCulture);
-                if (target.IsModuleNamespace || target.IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Cannot define array item");
-                if (target is JsArray wide) wide.Set(key, value); else target.DefineOwn(key, value);
-            }
+            ArraySpeciesSet(target, count, value);
             count++; Step();
         }
     }
