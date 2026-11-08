@@ -641,6 +641,11 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Assert) { il_as(n.left, n.type, c, b); }
         else if (n.kind == NodeKind.Assign || n.kind == NodeKind.Update) { il_mutation(entry, c, b); }
+        else if (n.kind == NodeKind.Destructure) {
+            il_boxed(n.left,c,b); int original=b.local(-5); b.emit(0xfe0e,original);
+            int source=b.local(-5); b.emit(0xfe0c,original); b.emit(0xfe0e,source); il_binding_pattern(entry,source,c,b);
+            b.emit(0xfe0c,original); b.from_object(n.type,c);
+        }
         else if (n.kind == NodeKind.Unary)
         {
             int op = get_token(n.token, c).text;

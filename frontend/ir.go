@@ -892,6 +892,14 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		}
 	case ast.KindBinaryExpression:
 		expr := n.AsBinaryExpression()
+		if expr.OperatorToken.Kind == ast.KindEqualsToken {
+			pattern := assignmentPatternNode(expr.Left)
+			if pattern.Kind == ast.KindArrayLiteralExpression || pattern.Kind == ast.KindObjectLiteralExpression {
+				id = b.assignmentPattern(pattern)
+				b.nodes[id-1].typ = b.typ(b.c.GetTypeAtLocation(n))
+				return b.assignmentPatternValue(n, id, b.lower(expr.Right))
+			}
+		}
 		if expr.OperatorToken.Kind == ast.KindInKeyword {
 			id = b.node(67, n, "in")
 			row = b.nodes[id-1]

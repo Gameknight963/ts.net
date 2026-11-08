@@ -373,6 +373,12 @@ func (a *asyncExpressionLowering) expression(id int, next asyncExpressionContinu
 		})
 	case 32: // array literal
 		return a.operands(a.list(n.children), true, func(values []int) int { n.children = a.link(values); return next(a.operation(n)) })
+	case 36: // destructuring assignment; preserve the original RHS value
+		return a.expression(n.left, func(value int) int {
+			return a.bind(value, func(original int) int {
+				return a.pattern(n, a.reference(original), func() int { return next(a.reference(original)) })
+			})
+		})
 	case 4: // object literal
 		return a.object(n, next)
 	case 5: // property

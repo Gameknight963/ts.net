@@ -20,8 +20,10 @@ internal static partial class CompilerFunctions
         for (int child = pattern.children; child != 0; child = get_node(child, c).next)
         {
             Node binding = get_node(child, c);
+            DestructureAssignmentTarget assignment = null;
             if (binding.constant)
             {
+                assignment = il_prepare_assignment_binding(child,c,b);
                 b.emit(0x73, b.spread_any_constructor); int destination = b.local(-5); b.emit(0xfe0e, destination);
                 b.emit(0xfe0c, destination); b.emit(0xfe0c, source); b.emit(0xfe0c, excluded); b.call(RuntimeMember.CopyObjectRest);
                 b.emit(0xfe0c, destination); b.from_object(binding.type, c);
@@ -30,10 +32,11 @@ internal static partial class CompilerFunctions
             {
                 // Coerce each key once, before reading its value or running defaults.
                 il_boxed(binding.third, c, b); b.call(RuntimeMember.PropertyKey); int key = b.local(-4); b.emit(0xfe0e, key);
+                assignment = il_prepare_assignment_binding(child,c,b);
                 b.emit(0xfe0c, excluded); b.emit(0x20, index++); b.emit(0xfe0c, key); b.op(0xa2);
                 b.emit(0xfe0c, source); b.emit(0xfe0c, key); b.call(RuntimeMember.IndexGet); b.from_object(binding.type, c);
             }
-            il_finish_binding(child, c, b);
+            il_finish_binding(child, c, b, assignment);
         }
     }
 }

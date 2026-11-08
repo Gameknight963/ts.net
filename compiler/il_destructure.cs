@@ -6,7 +6,7 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 internal static partial class CompilerFunctions
 {
-    internal static void il_finish_binding(int entry, Compiler c, IlBackend b)
+    internal static void il_finish_binding(int entry, Compiler c, IlBackend b, DestructureAssignmentTarget assignment = null)
     {
         Node binding = get_node(entry, c);
         if (binding.left != 0)
@@ -22,6 +22,7 @@ internal static partial class CompilerFunctions
         {
             // Exported namespace bindings write their property immediately,
             // so later defaults can read an earlier destructured export.
+            if (assignment != null) { il_store_assignment_binding(assignment,binding.type,c,b); return; }
             if (binding.fourth != 0)
             {
                 Node target = get_node(binding.fourth, c);
@@ -195,9 +196,10 @@ internal static partial class CompilerFunctions
             }
             else
             {
+                var assignment = il_prepare_assignment_binding(child,c,b);
                 if (binding.constant) { il_binding_rest(binding.type, source, position, finished, c, b); }
                 else { il_binding_read(binding.type, source, position, finished, c, b); }
-                il_finish_binding(child, c, b);
+                il_finish_binding(child, c, b, assignment);
             }
             child = binding.next;
         }
@@ -215,6 +217,12 @@ internal static partial class CompilerFunctions
         while (child != 0)
         {
             Node binding = get_node(child, c); Node key = get_node(binding.third, c); int member = 0;
+            if (binding.name != 0 && is_text(binding.name,"$assignment",c)) {
+                il_boxed(binding.third,c,b); b.call(RuntimeMember.PropertyKey); int name=b.local(-4); b.emit(0xfe0e,name);
+                var assignment=il_prepare_assignment_binding(child,c,b);
+                b.emit(0xfe0c,source); b.emit(0xfe0c,name); b.call(RuntimeMember.IndexGet); b.from_object(binding.type,c);
+                il_finish_binding(child,c,b,assignment); child=binding.next; continue;
+            }
             if (get_type(pattern.type, c).kind == TypeKind.Shape && key.kind == NodeKind.String) { member = field(pattern.type, get_token(key.token, c).text, c); }
             b.emit(0xfe0c, source);
             if (member != 0 && b.getter(member) != 0 && get_type(pattern.type, c).name == 0)

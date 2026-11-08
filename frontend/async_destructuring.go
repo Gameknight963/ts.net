@@ -25,7 +25,7 @@ func (a *asyncExpressionLowering) pattern(n irNode, source int, next func() int)
 				}
 				return a.binding(binding, value, func() int { return walk(binding.next) })
 			}
-			read := func(key int) int {
+			readValue := func(key int) int {
 				value := a.node(75, "destructuring read")
 				a.b.nodes[value-1].left = a.reference(cursor)
 				a.b.nodes[value-1].right = key
@@ -36,7 +36,23 @@ func (a *asyncExpressionLowering) pattern(n irNode, source int, next func() int)
 				}
 				return finish(value)
 			}
+			read := func(key int) int {
+				if binding.name == 0 || a.b.texts[binding.name-1] != "$assignment" || binding.fourth == 0 {
+					return readValue(key)
+				}
+				assignment := a.b.nodes[binding.fourth-1]
+				return a.target(assignment.left, func(reference func() int) int {
+					assignment.left = reference()
+					binding.fourth = a.operation(assignment)
+					return readValue(key)
+				})
+			}
 			if n.constant != 0 && binding.constant == 0 {
+				if binding.name != 0 && a.b.texts[binding.name-1] == "$assignment" {
+					return a.expression(binding.third, func(key int) int {
+						return a.bind(a.b.builtinCall(a.source, "__classKey", key), func(saved int) int { return read(a.reference(saved)) })
+					})
+				}
 				return a.expression(binding.third, read)
 			}
 			return read(a.node(20, "undefined"))
@@ -73,6 +89,13 @@ func (a *asyncExpressionLowering) binding(n irNode, value int, next func() int) 
 			pattern := a.b.nodes[n.right-1]
 			a.discard(n.right)
 			return a.pattern(pattern, value, next)
+		}
+		if n.name != 0 && a.b.texts[n.name-1] == "$assignment" {
+			assignment := a.b.nodes[n.fourth-1]
+			assignment.right = value
+			statement := a.node(18, "destructured assignment")
+			a.b.nodes[statement-1].left = a.operation(assignment)
+			return a.sequence(statement, next())
 		}
 		declaration := a.node(13, "destructured binding")
 		a.b.nodes[declaration-1].symbol = n.symbol
