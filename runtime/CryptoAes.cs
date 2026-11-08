@@ -29,11 +29,12 @@ public static partial class Js
     {
         object algorithm = FunctionArgument(args, 0);
         string name = CryptoAlgorithm(algorithm);
-        if (name is not ("AES-GCM" or "AES-CBC")) throw CryptoError("NotSupportedError", "Unsupported encryption algorithm");
+        if (name is not ("AES-GCM" or "AES-CBC" or "AES-CTR")) throw CryptoError("NotSupportedError", "Unsupported encryption algorithm");
         var key = RequireCryptoKey(FunctionArgument(args, 1));
         string requiredUsage = usage ?? (decrypt ? "decrypt" : "encrypt");
         if (key.Name != name || !Array.Exists(key.Usages, value => value == requiredUsage)) throw CryptoError("InvalidAccessError", "Key does not permit this operation");
         if (algorithm is not TsObject options) throw new InvalidOperationException("AES encryption requires an IV");
+        if (name == "AES-CTR") return AesCtr(key, options, CryptoBytes(FunctionArgument(args, 2)));
         byte[] iv = CryptoBytes(options.Get("iv"));
         if (name == "AES-CBC") return AesCbc(key, iv, CryptoBytes(FunctionArgument(args, 2)), decrypt);
         if (iv.Length != 12) throw CryptoError("OperationError", "This platform requires a 12-byte AES-GCM IV");

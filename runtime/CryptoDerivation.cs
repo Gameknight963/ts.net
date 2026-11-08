@@ -55,7 +55,7 @@ public static partial class Js
     static object CryptoDeriveKey(object[] args)
     {
         object target = FunctionArgument(args, 2); string name = CryptoAlgorithm(target); int bits;
-        if (name is "AES-GCM" or "AES-CBC") {
+        if (name is "AES-GCM" or "AES-CBC" or "AES-CTR") {
             if (target is not TsObject options) throw new InvalidOperationException("AES derivation requires a key length");
             object length = options.Get("length");
             if (IsUndefined(length)) throw new InvalidOperationException("AES derivation requires a key length");
