@@ -40,7 +40,7 @@ public static partial class Js
             result = result.Replace("%" + ((int)character).ToString("X2", CultureInfo.InvariantCulture), character.ToString(), StringComparison.Ordinal);
         return result.Replace("%25", "%", StringComparison.Ordinal);
     }
-    sealed class UrlValue : TsObject
+    sealed class UrlValue : JsDescriptorObject
     {
         Uri uri;
         internal readonly SearchParamsValue Params;
@@ -191,7 +191,7 @@ public static partial class Js
         internal UrlConstructor() : base("URL", static _ => throw new InvalidOperationException("URL requires new"), 1)
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "URL");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "URL", false);
             foreach (string key in new[] { "href", "origin", "protocol", "username", "password", "host", "hostname", "port", "pathname", "search", "hash", "searchParams" })
             {
                 prototype.DefineClassAccessor(key, new CollectionMethod("get " + key, 0, (receiver, _) => RequireUrl(receiver).Read(key)), 1);

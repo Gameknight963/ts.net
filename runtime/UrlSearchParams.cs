@@ -6,7 +6,7 @@ using System.Text;
 
 public static partial class Js
 {
-    sealed class SearchParamsValue : TsObject
+    sealed class SearchParamsValue : JsDescriptorObject
     {
         internal readonly List<KeyValuePair<string, string>> Pairs = new();
         internal Action Changed;
@@ -39,7 +39,7 @@ public static partial class Js
             if (!found) Pairs.Add(new(key, value));
         }
     }
-    sealed class SearchParamsIterator(SearchParamsValue owner, int mode) : TsObject
+    sealed class SearchParamsIterator(SearchParamsValue owner, int mode) : JsDescriptorObject
     {
         readonly SearchParamsValue source = owner;
         int position;
@@ -57,7 +57,7 @@ public static partial class Js
         static TsObject Create()
         {
             var prototype = new JsClassInstance { ParentPrototype = NativeIteratorPrototype };
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "URLSearchParams Iterator");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "URLSearchParams Iterator", false);
             prototype.DefineMethod("next", new CollectionMethod("next", 0, (receiver, _) => receiver is SearchParamsIterator iterator ? iterator.Next() : throw new InvalidOperationException("URLSearchParams iterator receiver required")));
             return prototype;
         }
@@ -139,7 +139,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "URLSearchParams");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "URLSearchParams", false);
             prototype.DefineClassAccessor("size", new CollectionMethod("get size", 0, (receiver, _) => (double)RequireSearchParams(receiver).Pairs.Count), 1);
             prototype.DefineMethod("append", new CollectionMethod("append", 2, (receiver, args) => { var target = RequireSearchParams(receiver); string key = QueryArgument(args, 0), value = QueryArgument(args, 1); target.Pairs.Add(new(key, value)); target.Notify(); return Undefined; }));
             prototype.DefineMethod("set", new CollectionMethod("set", 2, (receiver, args) => { var target = RequireSearchParams(receiver); string key = QueryArgument(args, 0), value = QueryArgument(args, 1); target.SetPair(key, value); target.Notify(); return Undefined; }));
