@@ -36,30 +36,67 @@ public static partial class Js
             else {Strings.IntersectWith(other.Strings); MayContainStrings &= other.MayContainStrings;}
         }
     }
+    sealed class RegExpStringNode
+    {
+        internal bool Terminal;
+        internal readonly SortedDictionary<int, RegExpStringNode> Children = new();
+    }
+    static string RegExpStringNodeAtom(RegExpStringNode node, bool ignoreCase)
+    {
+        string Point(int point) {
+                var ranges = new List<RegExpCodePointRange>{new(point, point)};
+                return RegExpCodePointAtom(ignoreCase ? UnicodeRegExpFolding.Close(ranges) : ranges);
+        }
+        var prefix = new StringBuilder();
+        while (!node.Terminal && node.Children.Count == 1) {
+            using var child = node.Children.GetEnumerator(); child.MoveNext();
+            prefix.Append(Point(child.Current.Key)); node = child.Current.Value;
+        }
+        if (node.Children.Count == 0) return prefix.ToString();
+        var alternatives = new List<string>();
+        foreach (var child in node.Children)
+            alternatives.Add(Point(child.Key) + RegExpStringNodeAtom(child.Value, ignoreCase));
+        // A prefix is tried only after all its longer alternatives.
+        if (node.Terminal) alternatives.Add("");
+        return prefix + "(?:" + string.Join('|', alternatives) + ")";
+    }
     static string SetExpressionAtom(RegExpCharacterSet set)
     {
-        var strings = new List<string>(set.Strings);
-        strings.Sort(static (a, b) => {
-            int length = b.Length.CompareTo(a.Length);
-            return length != 0 ? length : StringComparer.Ordinal.Compare(a, b);
-        });
-        var alternatives = new List<string>();
-        foreach (string value in strings) {
+        var root = new RegExpStringNode();
+        foreach (string value in set.Strings) {
             if (value.Length == 0) continue;
-            var expression = new StringBuilder();
+            var node = root;
             for (int index = 0; index < value.Length; index += 6) {
                 int point = int.Parse(value.AsSpan(index, 6), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture);
-                var ranges = new List<RegExpCodePointRange>{new(point, point)};
-                expression.Append(RegExpCodePointAtom(set.IgnoreCase ? UnicodeRegExpFolding.Close(ranges) : ranges));
+                if (!node.Children.TryGetValue(point, out var child)) {
+                    child = new(); node.Children.Add(point, child);
+                }
+                node = child;
             }
-            alternatives.Add(expression.ToString());
+            node.Terminal = true;
         }
+        var alternatives = new List<string>();
+        if (root.Children.Count != 0) alternatives.Add(RegExpStringNodeAtom(root, set.IgnoreCase));
         if (set.Ranges.Count != 0) alternatives.Add(RegExpCodePointAtom(set.Ranges));
         if (set.Strings.Contains("")) alternatives.Add("");
         return alternatives.Count == 0 ? "(?!)" : "(?:" + string.Join('|', alternatives) + ")";
     }
     sealed partial class UnicodeRegExpReader
     {
+        bool TryStringProperty(out RegExpCharacterSet result)
+        {
+            result = null;
+            if (!unicodeSets || position + 3 >= source.Length || source[position] != '\\' ||
+                source[position + 1] is not ('p' or 'P') || source[position + 2] != '{') return false;
+            int end = source.IndexOf('}', position + 3);
+            if (end < 0) return false;
+            string property = source[(position + 3)..end];
+            if (!IsRegExpStringProperty(property)) return false;
+            if (source[position + 1] == 'P') throw UnicodeRegExpSyntax();
+            position = end + 1;
+            result = UnicodeRegExpStringProperties.Select(property, ignoreCase);
+            return true;
+        }
         bool SetOperator(string operation) => source.AsSpan(position).StartsWith(operation, StringComparison.Ordinal);
         int SetCharacter()
         {
@@ -102,6 +139,7 @@ public static partial class Js
             character = null;
             if (position == source.Length) throw UnicodeRegExpSyntax();
             if (source[position] == '[') return SetClass();
+            if (TryStringProperty(out var property)) return property;
             if (source[position] == '\\' && position + 1 < source.Length && source[position + 1] == 'q') return SetStrings();
             if (source[position] == '\\' && position + 1 < source.Length && "dDwWsSpP".Contains(source[position + 1])) {
                 var ranges = Atom(true);

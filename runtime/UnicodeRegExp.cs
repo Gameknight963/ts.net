@@ -144,10 +144,6 @@ public static partial class Js
                     if (position == source.Length || source[position++] != '{') throw UnicodeRegExpSyntax();
                     int end = source.IndexOf('}', position); if (end < 0) throw UnicodeRegExpSyntax();
                     string property = source[position..end]; position = end + 1;
-                    if (unicodeSets && property is "Basic_Emoji" or "Emoji_Keycap_Sequence" or "RGI_Emoji_Modifier_Sequence" or "RGI_Emoji_Flag_Sequence" or "RGI_Emoji_Tag_Sequence" or "RGI_Emoji_ZWJ_Sequence" or "RGI_Emoji") {
-                        if (escape == 'P') throw UnicodeRegExpSyntax();
-                        throw new NotSupportedException("Unicode regular-expression string properties are not supported yet");
-                    }
                     var ranges = UnicodeRegExpProperty(property);
                     if (unicodeSets && ignoreCase) ranges = UnicodeRegExpFolding.Close(ranges);
                     return escape == 'P' ? InvertRegExpRanges(ranges) : ranges;
@@ -211,6 +207,7 @@ public static partial class Js
                 previousAssertion = false;
                 if (ch == '[') {result.Append(unicodeSets ? SetExpressionAtom(SetClass()) : CharacterClass()); continue;}
                 if (ch == '\\') {
+                    if (TryStringProperty(out var strings)) {result.Append(SetExpressionAtom(strings)); continue;}
                     if (position + 1 < source.Length && source[position + 1] is 'b' or 'B') {
                         string word = ignoreCase ? "[A-Za-z0-9_\\u017F\\u212A]" : "[A-Za-z0-9_]";
                         bool boundary = source[position + 1] == 'b';
@@ -238,7 +235,7 @@ public static partial class Js
                     assertions.Push(assertion);
                     if (position + 2 < source.Length && source[position + 1] == '?' && RegExpModifierGroup(source, position + 2)) {
                         int end = source.IndexOf(':', position + 2);
-                        if (source.AsSpan(position, end - position).Contains('i')) throw new NotSupportedException("Unicode case-insensitive regular expressions are not supported yet");
+                        if (source.AsSpan(position, end - position).Contains('i')) throw new NotSupportedException("Unicode regular-expression case modifiers are not supported yet");
                         result.Append(source, position, end - position + 1); position = end + 1; continue;
                     }
                     if (position + 3 < source.Length && source[position + 1] == '?' && source[position + 2] == '<' && source[position + 3] is not ('=' or '!')) {
