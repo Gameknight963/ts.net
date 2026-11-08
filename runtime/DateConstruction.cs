@@ -30,14 +30,12 @@ public static partial class Js
         // back into the valid range. Avoid passing these inputs to DateTime.
         double localTimestamp = UtcDateTimestamp(year, month, parts);
         if (!double.IsFinite(localTimestamp) || Math.Abs(localTimestamp) > 8640000000000000d + 86400000d) return double.NaN;
-        if (year < 1 || year > 9999) throw new NotSupportedException("Date calendar construction outside .NET's year range 1 through 9999 is not supported");
-        try
-        {
-            var date = new DateTime((int)year, month, 1, 0, 0, 0, DateTimeKind.Unspecified)
-                .AddDays(parts[2] - 1).AddHours(parts[3]).AddMinutes(parts[4]).AddSeconds(parts[5]).AddMilliseconds(parts[6]);
-            return ClipDate(utc ? new DateTimeOffset(date, TimeSpan.Zero).ToUnixTimeMilliseconds() : LocalDateTimestamp(date));
-        }
-        catch (ArgumentOutOfRangeException) { throw new NotSupportedException("Date calendar construction outside .NET's year range 1 through 9999 is not supported"); }
+        if (OutsideNativeDate(localTimestamp)) throw new NotSupportedException("Date calendar construction outside .NET's year range 1 through 9999 is not supported");
+        // Normalize all components before entering DateTime's restricted range.
+        // Large day and time offsets may cancel to an ordinary local date.
+        var normalized = DateTimeOffset.FromUnixTimeMilliseconds((long)localTimestamp).UtcDateTime;
+        var local = DateTime.SpecifyKind(normalized, DateTimeKind.Unspecified);
+        return ClipDate(LocalDateTimestamp(local));
     }
     static double UtcDateTimestamp(double year, int month, ReadOnlySpan<double> parts)
     {
