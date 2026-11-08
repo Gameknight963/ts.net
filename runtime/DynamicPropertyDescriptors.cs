@@ -23,11 +23,6 @@ public partial class JsDynamicObject : TsObject
             ? Js.AccessorDescriptor(descriptor.Getter, descriptor.Setter, descriptor.Enumerable, descriptor.Configurable)
             : Js.DataDescriptor(Get(key), descriptor.Writable, descriptor.Enumerable, descriptor.Configurable);
     }
-    public override object Set(string key, object value)
-    {
-        if (IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Property is read-only");
-        return base.Set(key, value);
-    }
     internal override bool ForInEnumerable(string key) => descriptors == null || !descriptors.TryGetValue(key, out var descriptor) || descriptor.Enumerable;
     internal override object ForInOwnKeys() => base.OwnKeys();
     public override object OwnKeys()

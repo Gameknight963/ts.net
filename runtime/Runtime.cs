@@ -21,6 +21,7 @@ public abstract partial class TsObject
     {
         if (IsModuleNamespace) throw new InvalidOperationException("Module namespace is read-only");
         if(TryOwnAccessor(key,out var accessor))return accessor.Write(this,value);
+        if (IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Property is read-only");
         if (SetInheritedProperty(key, value)) return value;
         (extra ??= new OwnProperties())[key] = value;
         return value;

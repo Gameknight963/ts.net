@@ -112,6 +112,7 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
 		if n.Kind == ast.KindCallExpression {
+			b.prepareDefinition(n)
 			arguments := b.reflectionDeletionArguments(n)
 			if len(arguments) >= 2 {
 				key := arguments[1]
