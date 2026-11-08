@@ -10,7 +10,7 @@ public static partial class Js
             object input = arguments[i];
             if (IsNullish(input)) continue;
             var source = ToObject(input);
-            var keys = (JsArray)source.OwnKeys();
+            var keys = (JsArray)source.OwnPropertyNames();
             for (uint index = 0; index < keys.Length(); index++)
             {
                 string key = (string)keys.ElementAt(index);
