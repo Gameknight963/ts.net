@@ -82,6 +82,7 @@ public static partial class Js
     }
     static bool TryApplyPropertyDefinition(TsObject obj, string key, PropertyDefinition definition)
     {
+        if (obj is JsArray ordinaryArray && key == "length") return DefineArrayLength(ordinaryArray, definition);
         if (obj is TypedArrayValue array && TypedArrayValue.NumericKey(key, out double index))
         {
             bool HasElementField(DescriptorFields field) => (definition.Fields & field) != 0;

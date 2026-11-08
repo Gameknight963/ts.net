@@ -131,8 +131,8 @@ public partial class JsArray : TsObject
         return base.DeleteOwn(key);
     }
     public virtual bool HasElement(uint index) => index < Count && !ReferenceEquals(values.Get(index), Hole);
-    protected virtual void Write(uint index, object value) => values.Set(index, value);
-    protected virtual void Resize(uint length) => values.Resize(length);
+    protected virtual void Write(uint index, object value) { CheckGrowth(index); values.Set(index, value); }
+    protected virtual void Resize(uint length) { CheckLengthWritable(); values.Resize(length); }
     public double Length() => Count;
     internal static uint SliceBound(object value, uint length)
     {
@@ -243,6 +243,7 @@ public partial class JsArray : TsObject
     }
     public double PushMany(object[] items)
     {
+        if (items.Length == 0) CheckLengthWritable();
         foreach (object value in items)
         {
             uint index = Count;
@@ -254,8 +255,10 @@ public partial class JsArray : TsObject
     public object Pop()
     {
         uint length = Count;
-        if (length == 0) return Js.Undefined;
-        object value = Read(length - 1);Resize(length - 1);return value;
+        if (length == 0) { CheckLengthWritable(); return Js.Undefined; }
+        object value = Read(length - 1);
+        if (!LengthWritable) DeleteElement(length - 1);
+        Resize(length - 1);return value;
     }
 }
 
@@ -284,11 +287,13 @@ public sealed partial class NumberArray : JsArray
     protected override void Write(uint index, object value) => Store(index, Js.Cast<double?>(value, "Array write violates number element type"));
     protected override void Resize(uint length)
     {
+        CheckLengthWritable();
         numbers.Resize(length);packedPrefix = Math.Min(packedPrefix, length);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void Store(uint index, double? value)
     {
+        CheckGrowth(index);
         numbers.Set(index, Encode(value));
         if (!value.HasValue) { if (index < packedPrefix) packedPrefix = index; }
         else if (index == packedPrefix) packedPrefix++;
@@ -298,6 +303,7 @@ public sealed partial class NumberArray : JsArray
     public bool AppendPacked(NumberArray source, int extra)
     {
         uint count = source.numbers.Length, start = numbers.Length;
+        if (count != 0) CheckLengthWritable();
         double[] buffer = source.TryPacked(count);
         ulong required = (ulong)start + count;
         if (buffer == null || required + (uint)extra > (ulong)Array.MaxLength) return false;
@@ -342,7 +348,9 @@ public sealed partial class NumberArray : JsArray
     public double? PopNumber()
     {
         uint length = numbers.Length;
-        if (length == 0) return null;
-        double? value = Decode(numbers.Get(length - 1));Resize(length - 1);return value;
+        if (length == 0) { CheckLengthWritable(); return null; }
+        double? value = Decode(numbers.Get(length - 1));
+        if (!LengthWritable) DeleteElement(length - 1);
+        Resize(length - 1);return value;
     }
 }

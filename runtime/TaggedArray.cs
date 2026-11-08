@@ -58,6 +58,7 @@ public sealed partial class TaggedArray : JsArray
     }
     bool Prepare(uint index)
     {
+        CheckGrowth(index);
         if (materialized != null) return false;
         if (index < (uint)tags.Length) return true;
         if (index >= (uint)Array.MaxLength || index > Math.Max(16u, (uint)tags.Length * 2)) { Materialize();return false; }
@@ -89,6 +90,7 @@ public sealed partial class TaggedArray : JsArray
     }
     protected override void Resize(uint count)
     {
+        CheckLengthWritable();
         if (materialized != null) { materialized.SetLength(count);return; }
         if (count < length && count < (uint)tags.Length)
         {
