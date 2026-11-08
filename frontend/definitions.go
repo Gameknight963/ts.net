@@ -62,7 +62,7 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 				name = name.Expression()
 			}
 			owner := declaration.Parent.Parent
-			if (name.Kind == ast.KindIdentifier || name.Kind == ast.KindStringLiteral) && name.Text() == "defineProperty" && owner != nil &&
+			if (name.Kind == ast.KindIdentifier || name.Kind == ast.KindStringLiteral) && (name.Text() == "defineProperty" || name.Text() == "defineProperties") && owner != nil &&
 				(owner.Kind == ast.KindVariableDeclaration || owner.Kind == ast.KindParameter) && b.reflectionDefinitionValue(owner.Initializer(), seen) == 1 {
 				return 2
 			}
@@ -78,12 +78,12 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 			return b.reflectionDefinitionValue(expression.Right, seen)
 		}
 	case ast.KindPropertyAccessExpression:
-		if n.Name().Text() == "defineProperty" && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
+		if (n.Name().Text() == "defineProperty" || n.Name().Text() == "defineProperties") && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
 			return 2
 		}
 	case ast.KindElementAccessExpression:
 		key := n.AsElementAccessExpression().ArgumentExpression
-		if key.Kind == ast.KindStringLiteral && key.Text() == "defineProperty" && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
+		if key.Kind == ast.KindStringLiteral && (key.Text() == "defineProperty" || key.Text() == "defineProperties") && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
 			return 2
 		}
 	}

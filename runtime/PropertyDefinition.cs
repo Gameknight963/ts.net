@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 public static partial class Js
 {
@@ -38,6 +39,25 @@ public static partial class Js
         string key = PropertyKey(property);
         PropertyDefinition definition = ReadPropertyDefinition(attributes);
         return ApplyPropertyDefinition(obj, key, definition);
+    }
+    static List<(string Key, PropertyDefinition Definition)> ReadPropertyDefinitions(object properties)
+    {
+        var source = ToObject(properties);
+        var keys = (JsArray)source.OwnPropertyNames();
+        var definitions = new List<(string, PropertyDefinition)>();
+        for (uint index = 0; index < keys.Length(); index++)
+        {
+            string key = (string)keys.ElementAt(index);
+            if (source.HasOwn(key) && source.ForInEnumerable(key)) definitions.Add((key, ReadPropertyDefinition(source.Get(key))));
+        }
+        return definitions;
+    }
+    static object ObjectDefineProperties(object target, object properties)
+    {
+        if (target is not TsObject obj) throw new InvalidOperationException("Property target must be an object");
+        var definitions = ReadPropertyDefinitions(properties);
+        foreach (var entry in definitions) ApplyPropertyDefinition(obj, entry.Key, entry.Definition);
+        return obj;
     }
     static void DefineDictionaryField(JsDynamicObject target, string key, object value) => ApplyPropertyDefinition(target, key,
         new(value, null, null, true, true, true, DescriptorFields.Value | DescriptorFields.Writable | DescriptorFields.Enumerable | DescriptorFields.Configurable));
