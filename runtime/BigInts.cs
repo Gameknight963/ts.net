@@ -8,7 +8,31 @@ public static partial class Js
     static double ExplicitNumber(object value)
     {
         if (value is TsObject obj) value = ToPrimitive(obj, "number");
-        return value is BigInteger integer ? (double)integer : Number(value);
+        return value is BigInteger integer ? BigIntNumber(integer) : Number(value);
+    }
+    static double BigIntNumber(BigInteger integer)
+    {
+        BigInteger magnitude = BigInteger.Abs(integer);
+        long bits = magnitude.GetBitLength();
+        if (bits <= 53) return (double)integer;
+        bool negative = integer.Sign < 0;
+        if (bits > 1024) return negative ? double.NegativeInfinity : double.PositiveInfinity;
+        // Keep 53 significant bits and round the discarded bits to nearest, ties to even.
+        // BigInteger's double conversion truncates instead for some large values.
+        Span<byte> bytes = stackalloc byte[128];
+        magnitude.TryWriteBytes(bytes, out int count, isUnsigned: true, isBigEndian: true);
+        int read = Math.Min(count, 8);
+        ulong leading = 0;
+        for (int index = 0; index < read; index++) leading = (leading << 8) | bytes[index];
+        int discarded = (int)bits - (count - read) * 8 - 53;
+        ulong significand = leading >> discarded;
+        ulong remainder = leading & ((1UL << discarded) - 1), half = 1UL << (discarded - 1);
+        bool trailing = false;
+        if (remainder == half)
+            for (int index = read; index < count; index++) if (bytes[index] != 0) { trailing = true; break; }
+        if (remainder > half || remainder == half && (trailing || (significand & 1) != 0)) significand++;
+        double result = Math.ScaleB(significand, (int)bits - 53);
+        return negative ? -result : result;
     }
 
     public static object NumericNegate(object value)
