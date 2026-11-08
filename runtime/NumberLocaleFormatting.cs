@@ -62,9 +62,9 @@ public static partial class Js
         readonly string digitCharacters;
         internal NumberLocaleSettings(object locales, object optionValue)
         {
-            var requestedLocales = (JsArray)CanonicalLocales(locales);
+            var requestedLocales = (JsArray)CollatorSupportedLocales(locales, Undefined);
             LocaleValue selectedLocale = IndexedLength(requestedLocales) == 0 ? null : new LocaleValue(IndexedValue(requestedLocales, 0), Undefined);
-            culture = selectedLocale == null ? CultureInfo.CurrentCulture : LocaleCulture(selectedLocale.BaseName);
+            culture = selectedLocale == null ? CultureInfo.CurrentCulture : LocaleCulture(CollatorLocale(selectedLocale.BaseName));
             numberingSystem = selectedLocale?.Keyword("nu") as string ?? "latn";
             localeName = culture.Name + (selectedLocale?.Keyword("nu") is string ? "-u-nu-" + numberingSystem : "");
             notation = "standard"; roundingPriority = "auto";

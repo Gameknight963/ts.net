@@ -85,25 +85,18 @@ public static partial class Js
     }
     static object CollatorSupportedLocales(object locales, object optionValue)
     {
+        var requested = (JsArray)CanonicalLocales(locales);
         if (!IsUndefined(optionValue))
         {
             object matcher = ToObject(optionValue).Get("localeMatcher");
             if (!IsUndefined(matcher) && StringValue(matcher) is not ("lookup" or "best fit"))
                 throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
         }
-        var result = new JsArray(0); var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        void Add(object value)
+        var result = new JsArray(0);
+        for (uint index = 0; index < requested.Length(); index++)
         {
-            if (value is not string && value is not TsObject) throw new InvalidOperationException("Locale must be a string or object");
-            string name = CaseCulture(StringValue(value)).Name;
-            if (CollatorLocale(name) != null && seen.Add(name)) result.Append(name);
-        }
-        if (IsUndefined(locales)) return result;
-        if (locales is string) Add(locales);
-        else
-        {
-            var list = ToObject(locales); long length = IndexedLength(list);
-            for (long i = 0; i < length; i++) if (TryIndexedValue(list, i, out object value)) Add(value);
+            string name = (string)requested.ElementAt(index);
+            if (CollatorLocale(name) != null) result.Append(name);
         }
         return result;
     }
