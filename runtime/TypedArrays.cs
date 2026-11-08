@@ -166,8 +166,8 @@ public static partial class Js
             Member(speciesKey, Undefined); DefineAccessor(speciesKey, speciesGetter, 1); speciesGetter.InferPropertyName("get [Symbol.species]");
             var prototype = new JsClassInstance { ParentPrototype = TypedArrayPrototypeMethods.Prototype }; UseObjectPrototype(prototype);
             int size = BinarySize(name == "Uint8ClampedArray" ? "Uint8" : name[..^5]);
-            Member("BYTES_PER_ELEMENT", (double)size);
-            prototype.DefineMethod("BYTES_PER_ELEMENT", (double)size);
+            Define(new Descriptor("BYTES_PER_ELEMENT", (double)size, null, null, false, false, false, false));
+            prototype.Define(new Descriptor("BYTES_PER_ELEMENT", (double)size, null, null, false, false, false, false));
             prototype.DefineMethod("constructor", this);
             if (name == "Uint8Array") DefineByteEncoding(this, prototype);
             void Getter(string key, Func<TypedArrayValue, object> read) => prototype.DefineClassAccessor(key, new TypedArrayGetter(key, read), 1);
