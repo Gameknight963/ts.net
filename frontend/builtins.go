@@ -51,6 +51,9 @@ func identifierWrite(n *ast.Node) bool {
 }
 
 func (b *irBuilder) numberPredicate(n *ast.Node) int {
+	if b.mutableNumberMethods {
+		return -1
+	}
 	for n.Kind == ast.KindParenthesizedExpression {
 		n = n.Expression()
 	}
@@ -91,6 +94,9 @@ func numberPredicateName(name string) int {
 // A declaration from the unchanged built-in Number object can use its cached
 // functions directly. Keep ordinary destructuring for shadowed Number bindings.
 func (b *irBuilder) numberPredicateBindings(n *ast.Node) (int, bool) {
+	if b.mutableNumberMethods {
+		return 0, false
+	}
 	if n.Name().Kind != ast.KindObjectBindingPattern || n.Initializer() == nil {
 		return 0, false
 	}
@@ -186,6 +192,9 @@ func (b *irBuilder) intrinsicVoidCall(callee int) bool {
 }
 
 func (b *irBuilder) objectEnumeration(n *ast.Node) int {
+	if b.mutableObjectEnumeration {
+		return -1
+	}
 	name := ""
 	if n.Kind == ast.KindPropertyAccessExpression {
 		name = n.Name().Text()

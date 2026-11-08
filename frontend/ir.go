@@ -31,6 +31,9 @@ type irLabel struct {
 	statement *ast.Node
 }
 type irBuilder struct {
+	mutableNumberMethods     bool
+	mutableObjectEnumeration bool
+
 	nativeShapeViews      map[*checker.Type]bool
 	sourceTexts           map[int]int
 	legacyDecorators      bool
@@ -1365,6 +1368,7 @@ func exportIR(s *session) (result []byte, err error) {
 	b.prepareNativeShapeViews(files)
 	b.prepareJSONModules(files)
 	b.prepareExportAssignments(files)
+	b.prepareBuiltinMethodWrites(files)
 	b.prepareDeletion(files)
 	b.prepareEnumNamespaces(files)
 	b.prepareDynamicModules(files)
