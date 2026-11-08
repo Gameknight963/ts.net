@@ -187,6 +187,20 @@ public static partial class Js
         public override object Construct(object[] args)
         {
             object input = FunctionArgument(args, 0);
+            if (input is TypedArrayValue source)
+            {
+                if (source.OutOfBounds) throw new InvalidOperationException("Typed array is out of bounds");
+                if (source.Kind.StartsWith("Big", StringComparison.Ordinal) != name.StartsWith("Big", StringComparison.Ordinal))
+                    throw new InvalidOperationException("Typed array content types do not match");
+                var copy = AllocateTypedArray(name, source.Count);
+                // Typed-array construction copies internal elements, without consulting
+                // iterator or length overrides. Same-kind copies preserve NaN payload bits.
+                if (source.Kind == copy.Kind)
+                    source.Buffer.Bytes.AsSpan(source.Offset, source.Count * source.Size).CopyTo(copy.Buffer.Bytes);
+                else
+                    for (int index = 0; index < source.Count; index++) copy.Write(index, source.Read(index));
+                return copy;
+            }
             if (input is BinaryBuffer buffer)
             {
                 int size = BinarySize(name == "Uint8ClampedArray" ? "Uint8" : name[..^5]);
