@@ -14,10 +14,10 @@ public static partial class Js
         {
             if (tag is not string && tag is not TsObject) throw new InvalidOperationException("Locale must be a string or object");
             string name = tag is LocaleValue locale ? locale.Name : StringValue(tag);
-            _ = LocaleCulture(name);
             var parts = name.Split('-');
             int baseEnd = 1;
             while (baseEnd < parts.Length && parts[baseEnd].Length != 1) baseEnd++;
+            _ = LocaleCulture(string.Join("-", parts, 0, baseEnd));
             var extensions = new LocaleExtensions(parts, baseEnd);
             int next = 1;
             string language = parts[0], script = null, region = null;

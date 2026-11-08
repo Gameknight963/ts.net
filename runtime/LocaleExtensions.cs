@@ -14,8 +14,15 @@ public static partial class Js
             while (start < parts.Length)
             {
                 string singleton = parts[start++].ToLowerInvariant();
+                if (singleton.Length != 1 || !char.IsAsciiLetterOrDigit(singleton[0])) throw new ArgumentOutOfRangeException(nameof(parts), "Invalid locale extension");
                 var values = new List<string>();
-                while (start < parts.Length && (singleton == "x" || parts[start].Length != 1)) values.Add(parts[start++].ToLowerInvariant());
+                while (start < parts.Length && (singleton == "x" || parts[start].Length != 1))
+                {
+                    string part = parts[start++];
+                    if (part.Length < (singleton == "x" ? 1 : 2) || part.Length > 8) throw new ArgumentOutOfRangeException(nameof(parts), "Invalid locale extension subtag");
+                    foreach (char ch in part) if (!char.IsAsciiLetterOrDigit(ch)) throw new ArgumentOutOfRangeException(nameof(parts), "Invalid locale extension subtag");
+                    values.Add(part.ToLowerInvariant());
+                }
                 if (values.Count == 0) throw new ArgumentOutOfRangeException(nameof(parts), "Empty locale extension");
                 if (singleton != "u") {
                     if (!others.TryAdd(singleton, values)) throw new ArgumentOutOfRangeException(nameof(parts), "Duplicate locale extension");
@@ -28,6 +35,7 @@ public static partial class Js
                     if (!attributes.Add(values[index++])) throw new ArgumentOutOfRangeException(nameof(parts), "Duplicate locale attribute");
                 while (index < values.Count) {
                     string key = values[index++];
+                    if (!char.IsAsciiLetter(key[1])) throw new ArgumentOutOfRangeException(nameof(parts), "Invalid Unicode locale key");
                     var types = new List<string>();
                     while (index < values.Count && values[index].Length != 2) types.Add(values[index++]);
                     string type = string.Join('-', types);
