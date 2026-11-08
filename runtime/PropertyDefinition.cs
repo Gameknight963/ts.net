@@ -96,7 +96,7 @@ public static partial class Js
             if (HasElementField(DescriptorFields.Value)) array.Write((int)index, definition.Value);
             return true;
         }
-        if (obj.IsModuleNamespace || obj is not JsDescriptorObject && obj is not JsArray)
+        if (obj.IsModuleNamespace || obj is not JsDescriptorObject && obj is not JsArray && obj is not JsRawJson)
             throw new NotSupportedException("Property definition on this object layout is not implemented yet");
         if (obj is JsArray indexed && JsArray.Index(key, out uint element) && element >= indexed.Length() && !indexed.LengthWritable) return false;
         object existing = obj.OwnPropertyDescriptor(key);
@@ -123,6 +123,8 @@ public static partial class Js
                 if (Has(DescriptorFields.Writable) && definition.Writable || Has(DescriptorFields.Value) && !SameValue(current.Get("value"), definition.Value)) return false;
             }
         }
+        // Raw JSON properties are immutable; compatible definitions need no storage update.
+        if (obj is JsRawJson) return true;
         bool nextAccessor = changesKind ? definition.Accessor : accessor;
         object value = nextAccessor ? Undefined : Has(DescriptorFields.Value) ? definition.Value : accessor ? Undefined : current.Get("value");
         bool writable = Has(DescriptorFields.Writable) ? definition.Writable : !accessor && Truthy(current.Get("writable"));

@@ -3,6 +3,7 @@ using System;
 internal sealed class JsRawJson(string text) : TsObject
 {
     internal readonly string Text = text;
+    internal override bool IsExtensible => false;
     internal override TsObject PropertyPrototype => null;
     internal override bool TrySetPrototype(TsObject value) => value == null;
     internal override void SetPrototype(TsObject value) { if (value != null) throw new InvalidOperationException("Raw JSON object is not extensible"); }
