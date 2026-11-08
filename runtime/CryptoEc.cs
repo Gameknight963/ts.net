@@ -28,8 +28,11 @@ public static partial class Js
             while (position < Iteration.Length(iterator))
             {
                 string usage = StringValue(Iteration.Value(iterator, position));
-                bool valid = name != "ECDH" ? usage is "sign" or "verify" && (privateKey != true || usage == "sign") && (privateKey != false || usage == "verify")
-                    : usage is "deriveBits" or "deriveKey" && privateKey != false;
+                bool valid = name switch {
+                    "ECDH" => usage is "deriveBits" or "deriveKey" && privateKey != false,
+                    "RSA-OAEP" => (usage is "encrypt" or "wrapKey") && privateKey != true || (usage is "decrypt" or "unwrapKey") && privateKey != false,
+                    _ => (usage is "sign" or "verify") && (privateKey != true || usage == "sign") && (privateKey != false || usage == "verify")
+                };
                 if (!valid) throw CryptoError("SyntaxError", "Invalid asymmetric key usage");
                 if (!usages.Contains(usage)) usages.Add(usage);
                 position += Iteration.Step(iterator, position);

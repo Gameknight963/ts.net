@@ -29,6 +29,7 @@ public static partial class Js
     {
         object algorithm = FunctionArgument(args, 0);
         string name = CryptoAlgorithm(algorithm);
+        if (name == "RSA-OAEP") return RsaCrypt(args, decrypt, usage);
         if (name is not ("AES-GCM" or "AES-CBC" or "AES-CTR")) throw CryptoError("NotSupportedError", "Unsupported encryption algorithm");
         var key = RequireCryptoKey(FunctionArgument(args, 1));
         string requiredUsage = usage ?? (decrypt ? "decrypt" : "encrypt");

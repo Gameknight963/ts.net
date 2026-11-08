@@ -112,11 +112,11 @@ public static partial class Js
         return promise;
     }
     static object CryptoImport(object[] args) => CryptoAlgorithm(FunctionArgument(args, 2)) switch {
-        "RSA-PSS" => RsaImport(args, "RSA-PSS"), "RSASSA-PKCS1-V1_5" => RsaImport(args), "ECDH" => EcImport(args, "ECDH"), "ECDSA" => EcImport(args), "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "AES-CBC" => AesImport(args, "AES-CBC"), "AES-CTR" => AesImport(args, "AES-CTR"), "AES-KW" => AesImport(args, "AES-KW"), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
+        "RSA-OAEP" => RsaImport(args, "RSA-OAEP"), "RSA-PSS" => RsaImport(args, "RSA-PSS"), "RSASSA-PKCS1-V1_5" => RsaImport(args), "ECDH" => EcImport(args, "ECDH"), "ECDSA" => EcImport(args), "HMAC" => HmacImport(args), "AES-GCM" => AesImport(args), "AES-CBC" => AesImport(args, "AES-CBC"), "AES-CTR" => AesImport(args, "AES-CTR"), "AES-KW" => AesImport(args, "AES-KW"), "PBKDF2" => KdfImport(args, "PBKDF2"), "HKDF" => KdfImport(args, "HKDF"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object CryptoGenerate(object[] args) => CryptoAlgorithm(FunctionArgument(args, 0)) switch {
-        "RSA-PSS" => RsaGenerate(args, "RSA-PSS"), "RSASSA-PKCS1-V1_5" => RsaGenerate(args), "ECDH" => EcGenerate(args, "ECDH"), "ECDSA" => EcGenerate(args), "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args), "AES-CBC" => AesGenerate(args, "AES-CBC"), "AES-CTR" => AesGenerate(args, "AES-CTR"), "AES-KW" => AesGenerate(args, "AES-KW"),
+        "RSA-OAEP" => RsaGenerate(args, "RSA-OAEP"), "RSA-PSS" => RsaGenerate(args, "RSA-PSS"), "RSASSA-PKCS1-V1_5" => RsaGenerate(args), "ECDH" => EcGenerate(args, "ECDH"), "ECDSA" => EcGenerate(args), "HMAC" => HmacGenerate(args), "AES-GCM" => AesGenerate(args), "AES-CBC" => AesGenerate(args, "AES-CBC"), "AES-CTR" => AesGenerate(args, "AES-CTR"), "AES-KW" => AesGenerate(args, "AES-KW"),
         _ => throw CryptoError("NotSupportedError", "Unsupported key algorithm")
     };
     static object HmacImport(object[] args)

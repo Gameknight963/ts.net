@@ -6,7 +6,8 @@ public static partial class Js
     const string RsaSigningName = "RSASSA-PKCS1-v1_5";
     static CryptoKeyValue RsaKey(RSA rsa, string hash, bool privateKey, bool extractable, string[] usages, string name) =>
         new(Array.Empty<byte>(), hash, extractable, usages, name, privateKey: privateKey, rsa: rsa);
-    static string RsaJwkAlgorithm(string hash, string name) => (name == "RSA-PSS" ? "PS" : "RS") + (hash == "SHA-1" ? "1" : hash[4..]);
+    static string RsaJwkAlgorithm(string hash, string name) => name == "RSA-OAEP" ? "RSA-OAEP" + (hash == "SHA-1" ? "" : "-" + hash[4..])
+        : (name == "RSA-PSS" ? "PS" : "RS") + (hash == "SHA-1" ? "1" : hash[4..]);
     static object RsaGenerate(object[] args, string name = RsaSigningName)
     {
         object algorithm = FunctionArgument(args, 0); string hash = HmacHash(algorithm);
@@ -17,14 +18,16 @@ public static partial class Js
         while (start < encoded.Length && encoded[start] == 0) start++;
         if (!encoded.AsSpan(start).SequenceEqual(new byte[] { 1, 0, 1 })) throw CryptoError("NotSupportedError", "RSA generation currently requires public exponent 65537");
         string[] usages = AsymmetricKeyUsages(FunctionArgument(args, 2), null, name);
-        if (Array.IndexOf(usages, "sign") < 0) throw CryptoError("SyntaxError", "Private key requires a usage");
+        string[] privateUsages = Array.FindAll(usages, usage => name == "RSA-OAEP" ? usage is "decrypt" or "unwrapKey" : usage == "sign");
+        string[] publicUsages = Array.FindAll(usages, usage => name == "RSA-OAEP" ? usage is "encrypt" or "wrapKey" : usage == "verify");
+        if (privateUsages.Length == 0) throw CryptoError("SyntaxError", "Private key requires a usage");
         RSA privateKey = null, publicKey = null;
         try
         {
             privateKey = RSA.Create(bits); publicKey = RSA.Create(privateKey.ExportParameters(false));
             var result = new JsDynamicObject();
-            result.DefineOwn("privateKey", RsaKey(privateKey, hash, true, Truthy(FunctionArgument(args, 1)), new[] { "sign" }, name));
-            result.DefineOwn("publicKey", RsaKey(publicKey, hash, false, true, Array.IndexOf(usages, "verify") < 0 ? Array.Empty<string>() : new[] { "verify" }, name)); return result;
+            result.DefineOwn("privateKey", RsaKey(privateKey, hash, true, Truthy(FunctionArgument(args, 1)), privateUsages, name));
+            result.DefineOwn("publicKey", RsaKey(publicKey, hash, false, true, publicUsages, name)); return result;
         }
         catch (Exception error) when (error is CryptographicException or ArgumentException)
         {
@@ -65,7 +68,7 @@ public static partial class Js
             {
                 if (input is not TsObject jwk) throw new InvalidOperationException("JWK must be an object");
                 if (StringValue(jwk.Get("kty")) != "RSA" || !IsUndefined(jwk.Get("oth"))) throw CryptoError("DataError", "Invalid RSA JWK type");
-                ValidateJwkPermissions(jwk, RsaJwkAlgorithm(hash, name), "sig", extractable, usages);
+                ValidateJwkPermissions(jwk, RsaJwkAlgorithm(hash, name), name == "RSA-OAEP" ? "enc" : "sig", extractable, usages);
                 parameters.Modulus = DecodeJwkInteger(jwk.Get("n")); parameters.Exponent = DecodeJwkInteger(jwk.Get("e"));
                 if (privateKey)
                 {
