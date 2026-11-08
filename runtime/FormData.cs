@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
-    sealed class FormDataValue : TsObject
+    sealed class FormDataValue : JsDescriptorObject
     {
         internal readonly List<KeyValuePair<string,object>> Fields = new();
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)FormDataConstructors.Value.Get("prototype");
@@ -35,7 +35,7 @@ public static partial class Js
         string name = IsUndefined(filename) ? "blob" : QueryText(filename);
         return new FileValue(blob.Bytes,blob.Type,name,blob is FileValue file ? file.Modified : DateNow());
     }
-    sealed class FormDataIterator(FormDataValue source, int mode) : TsObject
+    sealed class FormDataIterator(FormDataValue source, int mode) : JsDescriptorObject
     {
         int position;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : FormDataIteratorMethods.Prototype;
@@ -52,7 +52,7 @@ public static partial class Js
         static TsObject Create()
         {
             var result = new JsClassInstance {ParentPrototype = NativeIteratorPrototype};
-            result.DefineMethod(PropertyKey(ToStringTagSymbol),"FormData Iterator");
+            result.DefineMethod(PropertyKey(ToStringTagSymbol),"FormData Iterator",false);
             result.DefineMethod("next",new CollectionMethod("next",0,(receiver,_) => receiver is FormDataIterator iterator ? iterator.Next() : throw new InvalidOperationException("FormData iterator receiver required")));
             return result;
         }
@@ -68,7 +68,7 @@ public static partial class Js
         internal FormDataConstructor() : base("FormData",static _ => throw new InvalidOperationException("FormData constructor requires new"),0)
         {
             var prototype = new JsClassInstance {ParentPrototype = DefaultClassObjectPrototype}; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor",this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol),"FormData");
+            prototype.DefineMethod("constructor",this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol),"FormData",false);
             foreach (bool replace in new[] {false,true}) {
                 string name = replace ? "set" : "append";
                 prototype.DefineOwn(name,new CollectionMethod(name,2,(receiver,args) => {

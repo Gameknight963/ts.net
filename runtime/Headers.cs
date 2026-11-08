@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
-    sealed class HeadersValue : TsObject
+    sealed class HeadersValue : JsDescriptorObject
     {
         internal readonly SortedDictionary<string, List<string>> Fields = new(StringComparer.Ordinal);
         List<KeyValuePair<string,string>> rows;
@@ -88,7 +88,7 @@ public static partial class Js
         }
         return result;
     }
-    sealed class HeadersIterator(HeadersValue source, int mode) : TsObject
+    sealed class HeadersIterator(HeadersValue source, int mode) : JsDescriptorObject
     {
         int position;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : HeaderIteratorMethods.Prototype;
@@ -106,7 +106,7 @@ public static partial class Js
         static TsObject Create()
         {
             var result = new JsClassInstance {ParentPrototype = NativeIteratorPrototype};
-            result.DefineMethod(PropertyKey(ToStringTagSymbol),"Headers Iterator");
+            result.DefineMethod(PropertyKey(ToStringTagSymbol),"Headers Iterator",false);
             result.DefineMethod("next",new CollectionMethod("next",0,(receiver,_) => receiver is HeadersIterator iterator ? iterator.Next() : throw new InvalidOperationException("Headers iterator receiver required")));
             return result;
         }
@@ -117,7 +117,7 @@ public static partial class Js
         internal HeadersConstructor() : base("Headers",static _ => throw new InvalidOperationException("Headers constructor requires new"),0)
         {
             var prototype = new JsClassInstance {ParentPrototype = DefaultClassObjectPrototype}; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor",this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol),"Headers");
+            prototype.DefineMethod("constructor",this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol),"Headers",false);
             foreach (bool replace in new[] {false,true}) {
                 string method = replace ? "set" : "append";
                 prototype.DefineOwn(method,new CollectionMethod(method,2,(receiver,args) => {
