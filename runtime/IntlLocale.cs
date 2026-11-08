@@ -79,6 +79,7 @@ public static partial class Js
             Getter("script", value => value.Script ?? Undefined); Getter("region", value => value.Region ?? Undefined);
             foreach (var pair in new[] { ("calendar", "ca"), ("collation", "co"), ("firstDayOfWeek", "fw"), ("hourCycle", "hc"), ("caseFirst", "kf"), ("numberingSystem", "nu") }) Getter(pair.Item1, value => value.Keyword(pair.Item2));
             Getter("numeric", static value => BoxBoolean(value.Numeric));
+            prototype.DefineMethod("getWeekInfo", new CollectionMethod("getWeekInfo", 0, static (receiver, _) => LocaleWeekInfo(RequireLocale(receiver))));
             prototype.DefineMethod("getCalendars", new CollectionMethod("getCalendars", 0, static (receiver, _) =>
             {
                 var locale = RequireLocale(receiver);
