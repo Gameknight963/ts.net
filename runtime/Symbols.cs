@@ -24,6 +24,7 @@ public static partial class Js
     static readonly JsSymbol HasInstanceSymbol = new("Symbol.hasInstance");
     static readonly JsSymbol ToPrimitiveSymbol = new("Symbol.toPrimitive");
     static readonly JsSymbol ToStringTagSymbol = new("Symbol.toStringTag");
+    static readonly JsSymbol UnscopablesSymbol = new("Symbol.unscopables");
     static readonly JsSymbol AsyncIteratorSymbol = new("Symbol.asyncIterator");
     static readonly Dictionary<string, JsSymbol> globalSymbols = new(StringComparer.Ordinal);
     static JsSymbol RequireSymbol(object receiver)
@@ -44,7 +45,7 @@ public static partial class Js
             return new JsSymbol(IsUndefined(description) ? Undefined : StringValue(description));
         }, 0)
         {
-            foreach (string name in wellKnown) Member(name, name == "species" ? SpeciesSymbol : name == "match" ? MatchSymbol : name == "matchAll" ? MatchAllSymbol : name == "replace" ? ReplaceSymbol : name == "search" ? SearchSymbol : name == "split" ? SplitSymbol : name == "iterator" ? IteratorSymbol : name == "asyncIterator" ? AsyncIteratorSymbol : name == "toStringTag" ? ToStringTagSymbol : name == "toPrimitive" ? ToPrimitiveSymbol : name == "hasInstance" ? HasInstanceSymbol : name == "isConcatSpreadable" ? ConcatSpreadableSymbol : name == "dispose" ? DisposeSymbol : name == "asyncDispose" ? AsyncDisposeSymbol : new JsSymbol("Symbol." + name));
+            foreach (string name in wellKnown) Member(name, name == "unscopables" ? UnscopablesSymbol : name == "species" ? SpeciesSymbol : name == "match" ? MatchSymbol : name == "matchAll" ? MatchAllSymbol : name == "replace" ? ReplaceSymbol : name == "search" ? SearchSymbol : name == "split" ? SplitSymbol : name == "iterator" ? IteratorSymbol : name == "asyncIterator" ? AsyncIteratorSymbol : name == "toStringTag" ? ToStringTagSymbol : name == "toPrimitive" ? ToPrimitiveSymbol : name == "hasInstance" ? HasInstanceSymbol : name == "isConcatSpreadable" ? ConcatSpreadableSymbol : name == "dispose" ? DisposeSymbol : name == "asyncDispose" ? AsyncDisposeSymbol : new JsSymbol("Symbol." + name));
             var prototype = new JsCreatedObject(); UseObjectPrototype(prototype);
             void Data(string key, object value, bool writable = true) => prototype.Define(new(key, value, null, null, false, writable, false, true));
             Data("constructor", this);

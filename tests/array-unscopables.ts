@@ -1,0 +1,11 @@
+export {};
+const descriptor = Object.getOwnPropertyDescriptor(Array.prototype, Symbol.unscopables)!;
+const list = descriptor.value;
+console.log('descriptor', descriptor.writable, descriptor.enumerable, descriptor.configurable);
+console.log('list', Object.getPrototypeOf(list) === null, Object.keys(list).join(','), Object.values(list).every(value => value === true));
+console.log('shared', ([] as any)[Symbol.unscopables] === list, Reflect.set(Array.prototype, Symbol.unscopables, {}));
+list.find = false;
+console.log('mutable', list.find, Object.getOwnPropertyDescriptor(list, 'find')!.writable, Object.isExtensible(list));
+const array: any[] = [];
+Object.defineProperty(array, Symbol.unscopables, {value: {own: true}});
+console.log('shadow', (array as any)[Symbol.unscopables].own, list.find);
