@@ -192,7 +192,7 @@ public static partial class Js
             prototype.DefineMethod(PropertyKey(IteratorSymbol), prototype.Get("values"));
             prototype.DefineMethod("toString", ArrayStringMethod.Value);
             foreach (string method in new[] { "slice", "subarray", "set", "map", "filter", "toReversed", "with", "sort", "toSorted", "toLocaleString" })
-                prototype.DefineMethod(method, new CollectionMethod(method, method is "slice" or "subarray" or "with" ? 2 : method is "toLocaleString" or "toReversed" ? 0 : 1, (receiver, args) => TypedArrayMethod(RequireTypedArrayMethod(receiver), method, args)));
+                prototype.DefineMethod(method, new CollectionMethod(method, method is "slice" or "subarray" or "with" ? 2 : method is "toLocaleString" or "toReversed" ? 0 : 1, (receiver, args) => TypedArrayMethod(method == "subarray" ? RequireTypedArray(receiver) : RequireTypedArrayMethod(receiver), method, args)));
             return prototype;
         }
     }

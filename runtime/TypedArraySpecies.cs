@@ -16,8 +16,13 @@ public static partial class Js
                 constructor = function;
             }
         }
-        if (buffer != null) EnsureAttached(buffer);
-        if (ReferenceEquals(constructor, intrinsic)) return buffer == null ? AllocateTypedArray(source.Name, length) : new TypedArrayValue(source.Name, buffer, offset, length, tracking);
+        if (ReferenceEquals(constructor, intrinsic)) {
+            if (buffer == null) return AllocateTypedArray(source.Name, length);
+            EnsureAttached(buffer);
+            if (offset < 0 || offset > buffer.Bytes.Length || !tracking && length > (buffer.Bytes.Length - offset) / source.Size)
+                throw new ArgumentOutOfRangeException(null, "Typed array view exceeds its buffer");
+            return new TypedArrayValue(source.Name, buffer, offset, length, tracking);
+        }
         object[] arguments = buffer == null ? new object[] { (double)length } : tracking ? new object[] { buffer, (double)offset } : new object[] { buffer, (double)offset, (double)length };
         if (constructor.Construct(arguments) is not TypedArrayValue result || result.OutOfBounds || buffer == null && result.Count < length)
             throw new InvalidOperationException("Typed array species returned an invalid or short result");
