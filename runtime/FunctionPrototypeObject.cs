@@ -4,7 +4,14 @@ public static partial class Js
 {
     static class FunctionPrototypeState
     {
-        internal static readonly TsObject Value = new FunctionPrototypeValue();
+        internal static readonly FunctionPrototypeValue Prototype = new();
+        internal static readonly JsFunction Constructor = new FunctionConstructor(Prototype);
+        internal static readonly TsObject Value = Initialize();
+        static TsObject Initialize()
+        {
+            Prototype.DefineMethod("constructor", Constructor);
+            return Prototype;
+        }
     }
     internal static TsObject SharedFunctionPrototype => FunctionPrototypeState.Value;
     static class OrdinaryInstanceCheck

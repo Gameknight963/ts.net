@@ -12,7 +12,7 @@ public static partial class Js
             ParentPrototype = DefaultClassObjectPrototype;
             void Binding(string name, object value) { Define(new(name, value, null, null, false, false, false, false)); native.Add(name); }
             foreach (string name in new[] {
-                "Object", "Number", "String", "Boolean", "Array", "BigInt", "Symbol", "Date", "RegExp", "Math", "JSON", "Reflect", "Intl",
+                "Object", "Function", "Number", "String", "Boolean", "Array", "BigInt", "Symbol", "Date", "RegExp", "Math", "JSON", "Reflect", "Intl",
                 "console", "performance", "Promise", "queueMicrotask", "Map", "Set", "WeakMap", "WeakSet", "WeakRef", "FinalizationRegistry", "Iterator",
                 "DisposableStack", "AsyncDisposableStack", "ArrayBuffer", "SharedArrayBuffer", "Atomics", "DataView", "TextEncoder", "TextDecoder", "Blob", "File", "URL", "URLSearchParams", "Headers", "FormData", "Response", "Request",
                 "fetch", "crypto", "Crypto", "SubtleCrypto", "CryptoKey", "DOMException", "Event", "CustomEvent", "EventTarget", "AbortController", "AbortSignal", "setTimeout", "setInterval", "clearTimeout", "clearInterval", "structuredClone",
