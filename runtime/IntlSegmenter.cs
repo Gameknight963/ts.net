@@ -6,6 +6,7 @@ public static partial class Js
     sealed class SegmenterValue : JsDescriptorObject
     {
         internal readonly string Locale;
+        internal readonly string Granularity;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)IntlSegmenter.Constructor.Get("prototype");
         internal SegmenterValue(object locales, object optionValue)
         {
@@ -18,22 +19,31 @@ public static partial class Js
                 return IsUndefined(value) ? fallback : StringValue(value);
             }
             if (Option("localeMatcher", "best fit") is not ("lookup" or "best fit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
-            string granularity = Option("granularity", "grapheme");
-            if (granularity is not ("grapheme" or "word" or "sentence")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid segmentation granularity");
-            if (granularity != "grapheme") throw new NotSupportedException("Word and sentence segmentation are not supported");
+            Granularity = Option("granularity", "grapheme");
+            if (Granularity is not ("grapheme" or "word" or "sentence")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid segmentation granularity");
+            if (Granularity != "grapheme" && !NativeSegmentation.Available) throw new NotSupportedException("Word and sentence segmentation require system ICU");
         }
         internal object Options() {
-            var result = new JsDynamicObject(); result.DefineOwn("locale", Locale); result.DefineOwn("granularity", "grapheme"); return result;
+            var result = new JsDynamicObject(); result.DefineOwn("locale", Locale); result.DefineOwn("granularity", Granularity); return result;
         }
     }
-    sealed class SegmentsValue(string input) : JsDescriptorObject
+    sealed class SegmentsValue : JsDescriptorObject
     {
-        internal readonly string Input = input;
-        internal readonly int[] Starts = StringInfo.ParseCombiningCharacters(input);
+        internal readonly string Input;
+        internal readonly int[] Starts;
+        readonly bool[] Words;
+        internal SegmentsValue(string input, SegmenterValue formatter)
+        {
+            Input = input;
+            if (formatter.Granularity == "grapheme") Starts = StringInfo.ParseCombiningCharacters(input);
+            else (Starts, Words) = NativeSegmentation.Segment(input, formatter.Locale, formatter.Granularity == "word");
+        }
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : SegmentPrototypes.Segments;
         internal object Data(int slot) {
             int start = Starts[slot], end = slot + 1 < Starts.Length ? Starts[slot + 1] : Input.Length;
-            var result = new JsDynamicObject(); result.DefineOwn("segment", Input[start..end]); result.DefineOwn("index", (double)start); result.DefineOwn("input", Input); return result;
+            var result = new JsDynamicObject(); result.DefineOwn("segment", Input[start..end]); result.DefineOwn("index", (double)start); result.DefineOwn("input", Input);
+            if (Words != null) result.DefineOwn("isWordLike", BoxBoolean(Words[slot]));
+            return result;
         }
         internal object Containing(object value) {
             double index = Number(value); index = double.IsNaN(index) ? 0 : Math.Truncate(index);
@@ -75,7 +85,7 @@ public static partial class Js
         internal SegmenterConstructor() : base("Segmenter", static _ => throw new InvalidOperationException("Segmenter requires new"), 0) {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Intl.Segmenter", false);
-            prototype.DefineMethod("segment", new CollectionMethod("segment", 1, static (receiver, args) => receiver is SegmenterValue ? new SegmentsValue(StringValue(FunctionArgument(args, 0))) : throw new InvalidOperationException("Segmenter receiver required")));
+            prototype.DefineMethod("segment", new CollectionMethod("segment", 1, static (receiver, args) => receiver is SegmenterValue value ? new SegmentsValue(StringValue(FunctionArgument(args, 0)), value) : throw new InvalidOperationException("Segmenter receiver required")));
             prototype.DefineMethod("resolvedOptions", new CollectionMethod("resolvedOptions", 0, static (receiver, _) => receiver is SegmenterValue value ? value.Options() : throw new InvalidOperationException("Segmenter receiver required")));
             Member("supportedLocalesOf", new JsFunction((FunctionBody)(static args => CollatorSupportedLocales(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "supportedLocalesOf", 1));
         }
