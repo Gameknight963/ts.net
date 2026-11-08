@@ -9,7 +9,8 @@ public static partial class Js
     {
         string candidate = new LocaleValue(name, Undefined).BaseName;
         while (true) {
-            if (candidate is "en" or "en-US" or "en-GB") return candidate;
+            if (candidate is "en" or "en-US" or "en-GB" or "de" or "de-DE" or "fr" or "fr-FR" or "ru" or "ru-RU"
+                or "ja" or "ja-JP" or "ko" or "ko-KR" or "zh" or "zh-CN" or "zh-TW" or "zh-Hans" or "zh-Hant") return candidate;
             int separator = candidate.LastIndexOf('-');
             if (separator < 0) return null;
             candidate = candidate[..separator];
@@ -36,13 +37,15 @@ public static partial class Js
     sealed class ListFormatValue : JsDescriptorObject
     {
         readonly string locale, type, style;
+        readonly ListPattern pattern;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)IntlListFormat.Constructor.Get("prototype");
         internal ListFormatValue(object locales, object optionValue)
         {
             var requested = (JsArray)CanonicalLocales(locales);
             TsObject options = IsUndefined(optionValue) ? null : ToObject(optionValue);
             ListLocaleMatcher(options);
-            locale = CultureInfo.CurrentCulture.Name == "en-GB" ? "en-GB" : "en-US";
+            string current = CultureInfo.CurrentCulture.Name;
+            locale = (current.Length == 0 ? null : SupportedListLocale(current)) ?? "en-US";
             for (uint index = 0; index < requested.Length(); index++) {
                 string selected = SupportedListLocale((string)requested.ElementAt(index));
                 if (selected != null) {locale = selected; break;}
@@ -55,6 +58,7 @@ public static partial class Js
             if (type is not ("conjunction" or "disjunction" or "unit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid list type");
             style = Option("style", "long");
             if (style is not ("long" or "short" or "narrow")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid list style");
+            pattern = ListPatternFor(locale, type, style);
         }
         static List<string> Items(object input)
         {
@@ -74,14 +78,6 @@ public static partial class Js
             } catch {if (closeable) CloseIterationAt(source, position, true); throw;}
             return result;
         }
-        string Separator(int index, int count)
-        {
-            if (type == "unit") return style == "narrow" ? " " : ", ";
-            if (type == "conjunction" && style == "narrow") return ", ";
-            if (index != count - 1) return ", ";
-            string word = type == "disjunction" ? "or" : style == "short" && locale != "en-GB" ? "&" : "and";
-            return (count > 2 && locale != "en-GB" ? ", " : " ") + word + " ";
-        }
         internal object Format(object input, bool parts)
         {
             var items = Items(input);
@@ -98,7 +94,7 @@ public static partial class Js
                 previousLiteral = type == "literal" ? part : null;
             }
             for (int index = 0; index < items.Count; index++) {
-                if (index != 0) Add("literal", Separator(index, items.Count));
+                if (index != 0) Add("literal", items.Count == 2 ? pattern.Pair : index == items.Count - 1 ? pattern.End : pattern.Middle);
                 Add("element", items[index]);
             }
             return parts ? result : text.ToString();
