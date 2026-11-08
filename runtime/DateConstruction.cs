@@ -11,7 +11,9 @@ public static partial class Js
             var choices = zone.GetAmbiguousTimeOffsets(local);
             offset = choices[0] > choices[1] ? choices[0] : choices[1];
         }
-        return new DateTimeOffset(local, offset).ToUnixTimeMilliseconds();
+        // The local calendar value can be representable even when applying
+        // its offset crosses DateTimeOffset's year 1/9999 boundary.
+        return (local.Ticks - DateTime.UnixEpoch.Ticks) / TimeSpan.TicksPerMillisecond - offset.TotalMilliseconds;
     }
     static double DateFromParts(object[] arguments, bool utc)
     {
