@@ -78,7 +78,7 @@ public static partial class Js
             if (arguments[index] is not TsObject source) throw new InvalidOperationException("Iterator.concat requires iterable objects");
             object value = source.Get(key);
             JsFunction method = value as JsFunction;
-            if (method == null && IsNullish(value) && !source.HasOwn(key) && source is JsArray or JsArguments or JsKeyedCollection or JsBoxedPrimitive {Value:string})
+            if (method == null && IsNullish(value) && !source.HasInProperty(key) && source is JsArray or JsArguments or JsKeyedCollection or JsBoxedPrimitive {Value:string})
                 method = ConcatIntrinsicIterator.Open;
             if (method == null) throw new InvalidOperationException("Iterator.concat requires iterable objects");
             inputs[index] = (source,method);

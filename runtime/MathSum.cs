@@ -13,7 +13,7 @@ public static partial class Js
             if (method.InvokeWithReceiver(input, Array.Empty<object>()) is not TsObject iterator)
                 throw new InvalidOperationException("Iterator must be an object");
             source = StartIteratorObject(iterator);
-        } else if (IsNullish(iteratorMethod) && !iterable.HasOwn(iteratorKey) && input is JsArray or JsArguments or JsKeyedCollection or string or JsBoxedPrimitive {Value:string})
+        } else if (IsNullish(iteratorMethod) && !iterable.HasInProperty(iteratorKey) && input is JsArray or JsArguments or JsKeyedCollection or string or JsBoxedPrimitive {Value:string})
             source = Iteration.Start(input);
         else throw new InvalidOperationException("Math.sumPrecise requires an iterable");
         // Each bin covers 16 adjacent binary exponents. A 53-bit significand,

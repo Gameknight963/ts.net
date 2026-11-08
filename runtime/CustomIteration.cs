@@ -36,11 +36,13 @@ public static partial class Js
         return iterator != null;
     }
 
-    internal static bool TryStartCustomIterable(object value, out object cursor)
+    internal static bool TryStartCustomIterable(object value, out object cursor, bool required = false)
     {
         cursor = null;
-        if (!TryGetIterableObject(value, out var iterator)) return false;
-        cursor = StartIteratorObject(iterator);
+        var method = CustomIterableMethod(value, out bool disabled);
+        if (required && disabled) throw new InvalidOperationException("Value is not iterable");
+        if (method == null) return false;
+        cursor = StartIteratorObject(InvokeIterableMethod(method, value));
         return true;
     }
 }
