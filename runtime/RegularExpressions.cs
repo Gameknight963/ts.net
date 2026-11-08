@@ -168,12 +168,15 @@ public static partial class Js
         pattern = rewritten.ToString();
         lock (regexEngines)
         {
-            if (regexEngines.TryGetValue((pattern, options), out var cached)) return cached;
+            if (!unicode && regexEngines.TryGetValue((pattern, options), out var cached)) return cached;
             Regex result;
             try { result = new Regex(pattern, options); }
             catch (ArgumentException error) { throw MakeThrown(new JsCaughtError("SyntaxError", error.Message)); }
-            if (regexEngines.Count >= 64) regexEngines.Clear();
-            regexEngines.Add((pattern, options), result); return result;
+            if (!unicode) {
+                if (regexEngines.Count >= 64) regexEngines.Clear();
+                regexEngines.Add((pattern, options), result);
+            }
+            return result;
         }
     }
     static bool RegExpHasNamedCapture(string pattern)
@@ -243,7 +246,11 @@ public static partial class Js
         if (seen.Contains('i')) options |= RegexOptions.IgnoreCase;
         if (seen.Contains('m')) options |= RegexOptions.Multiline;
         string canonical = ""; foreach (char flag in "dgimsuy") if (seen.Contains(flag)) canonical += flag;
-        var engine = RegExpEngine(unicode ? new UnicodeRegExpReader(text).Rewrite() : text, options, seen.Contains('s'), unicode, out var names);
+        if (unicode) {
+            var compiled = UnicodeRegExpEngines.Compile(text, options, seen.Contains('s'));
+            return new JsRegExp(text, canonical, compiled.Engine, compiled.Names);
+        }
+        var engine = RegExpEngine(text, options, seen.Contains('s'), false, out var names);
         return new JsRegExp(text, canonical, engine, names);
     }
     static string RegExpSource(string pattern)

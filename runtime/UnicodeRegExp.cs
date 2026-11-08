@@ -2,9 +2,25 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 public static partial class Js
 {
+    static class UnicodeRegExpEngines
+    {
+        static readonly Dictionary<(string Source, RegexOptions Options, bool DotAll), (Regex Engine, string[] Names)> Values = new();
+        internal static (Regex Engine, string[] Names) Compile(string source, RegexOptions options, bool dotAll)
+        {
+            lock (Values) {
+                var key = (source, options, dotAll);
+                if (Values.TryGetValue(key, out var compiled)) return compiled;
+                var engine = RegExpEngine(new UnicodeRegExpReader(source).Rewrite(), options, dotAll, true, out var names);
+                if (Values.Count >= 64) Values.Clear();
+                compiled = (engine, names); Values.Add(key, compiled);
+                return compiled;
+            }
+        }
+    }
     readonly record struct RegExpCodePointRange(int First, int Last);
     static Exception UnicodeRegExpSyntax() => MakeThrown(new JsCaughtError("SyntaxError", "Invalid Unicode regular expression"));
     static List<RegExpCodePointRange> MergeRegExpRanges(List<RegExpCodePointRange> ranges)
