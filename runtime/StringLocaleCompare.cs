@@ -26,7 +26,7 @@ public static partial class Js
             string text = AtString(receiver), other = StringValue(FunctionArgument(arguments, 0));
             var culture = CaseCulture(FunctionArgument(arguments, 1));
             object optionValue = FunctionArgument(arguments, 2);
-            if (culture.Name.Contains("-u-", StringComparison.OrdinalIgnoreCase))
+            if (culture.Name.Contains("-u-", StringComparison.OrdinalIgnoreCase) || culture.CompareInfo.Name.Contains('_'))
                 return SelectCollationSettings(FunctionArgument(arguments, 1), optionValue).Compare(text, other);
             return IsUndefined(optionValue) ? Math.Sign(culture.CompareInfo.Compare(text, other))
                 : new CollationSettings(culture, optionValue).Compare(text, other);

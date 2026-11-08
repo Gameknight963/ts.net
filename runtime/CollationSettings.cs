@@ -11,7 +11,7 @@ public static partial class Js
         readonly CompareInfo comparer;
         readonly CompareOptions flags;
         readonly bool reverseCaseTies;
-        internal CollationSettings(CultureInfo culture, object optionValue, bool? numericDefault = null)
+        internal CollationSettings(CultureInfo culture, object optionValue, bool? numericDefault = null, string collationDefault = null, string caseFirstDefault = null)
         {
             TsObject options = IsUndefined(optionValue) ? null : ToObject(optionValue);
             string Option(string name, string fallback)
@@ -23,10 +23,10 @@ public static partial class Js
             if (matcher is not ("lookup" or "best fit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
             Usage = Option("usage", "sort");
             if (Usage is not ("sort" or "search")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid collator usage");
-            string collation = Option("collation", "default");
+            string collation = Option("collation", collationDefault ?? "default");
             if (!ValidCollation(collation)) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid collation identifier");
             collation = collation.ToLowerInvariant();
-            string caseFirst = Option("caseFirst", null);
+            string caseFirst = Option("caseFirst", caseFirstDefault);
             if (caseFirst is not (null or "false" or "upper" or "lower")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid case order");
             Sensitivity = Option("sensitivity", "variant");
             flags = Sensitivity switch {
@@ -43,7 +43,11 @@ public static partial class Js
             bool configure = caseFirst != null || Usage == "search" || collation != "default";
             Culture = configure && culture.Name.Length == 0 ? CultureInfo.GetCultureInfo("en-US") : culture;
             Collation = Usage == "search" ? "default" : SelectCollation(Culture.TwoLetterISOLanguageName, collation);
-            Locale = Culture.Name + (numericDefault.HasValue ? numericDefault.Value ? "-u-kn" : "-u-kn-false" : "");
+            string extensions = "";
+            if (collationDefault != null && SelectCollation(Culture.TwoLetterISOLanguageName, collationDefault) != "default") extensions += "-co-" + collationDefault;
+            if (caseFirstDefault != null) extensions += "-kf-" + caseFirstDefault;
+            if (numericDefault.HasValue) extensions += numericDefault.Value ? "-kn" : "-kn-false";
+            Locale = Culture.Name + (extensions.Length == 0 ? "" : "-u" + extensions);
             configure = caseFirst != null || Usage == "search" || Collation != "default";
             comparer = configure ? NativeComparer(Culture, Usage, caseFirst, Collation) : Culture.CompareInfo;
             CaseFirst = caseFirst ?? (comparer.Compare("A", "a") < 0 ? "upper" : "false");

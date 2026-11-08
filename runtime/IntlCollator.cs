@@ -33,15 +33,16 @@ public static partial class Js
         var supported = (JsArray)CollatorSupportedLocales(locales, Undefined);
         string selected = supported.Length() == 0 ? null : (string)supported.ElementAt(0);
         bool? numeric = null;
+        string collation = null, caseFirst = null;
         if (selected != null)
         {
             var locale = new LocaleValue(selected, Undefined);
-            if (!IsUndefined(locale.Keyword("co")) || !IsUndefined(locale.Keyword("kf")))
-                throw new NotSupportedException("Collator collation and case-order locale extensions are not supported");
+            collation = locale.Keyword("co") as string;
+            caseFirst = (locale.Keyword("kf") as string) switch { "upper" => "upper", "lower" => "lower", "false" => "false", _ => null };
             numeric = (locale.Keyword("kn") as string) switch { "true" => true, "false" => false, _ => null };
         }
         var culture = selected == null ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(CollatorLocale(selected));
-        return new CollationSettings(culture, optionValue, numeric);
+        return new CollationSettings(culture, optionValue, numeric, collation, caseFirst);
     }
     static CollatorValue RequireCollator(object receiver) => receiver as CollatorValue ?? throw new InvalidOperationException("Collator receiver required");
     sealed class CollatorConstructor : NativeNamespaceFunction
