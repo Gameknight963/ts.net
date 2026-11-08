@@ -1,3 +1,4 @@
+/// <reference lib="es2024.arraybuffer" />
 export {};
 for (const offset of [8, 16, 2 ** 31, 2 ** 40]) {
     for (const throwing of [false, true]) {

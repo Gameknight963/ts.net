@@ -1,3 +1,4 @@
+/// <reference lib="es2024.arraybuffer" />
 export {};
 for (const offset of [2 ** 31, 2 ** 40, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1]) {
     const buffer = new ArrayBuffer(8);
