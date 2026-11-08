@@ -60,16 +60,7 @@ public static partial class Js
     {
         var result = receiver is JsFunction constructor && constructor.CanInitializeDerived
             ? (TsObject)constructor.Construct(new object[] { (double)arguments.Length }) : new JsArray(0);
-        for (int i = 0; i < arguments.Length; i++)
-        {
-            if (result is JsArray array) array.SetAt(i, arguments[i]);
-            else
-            {
-                string key = i.ToString(CultureInfo.InvariantCulture);
-                if (result.IsModuleNamespace || result.IsReadOnlyOwnProperty(key)) throw new InvalidOperationException("Cannot define array item");
-                result.DefineOwn(key, arguments[i]);
-            }
-        }
+        for (int i = 0; i < arguments.Length; i++) ArraySpeciesSet(result, i, arguments[i]);
         result.Set("length", (double)arguments.Length);
         return result;
     }

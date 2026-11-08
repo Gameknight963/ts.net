@@ -32,3 +32,15 @@ catch (error) {console.log('fixed sync', (error as Error).name);}
     show('async', result);
     return (Array as any).fromAsync.call(Fixed, source()).catch((error: Error) => console.log('fixed async', error.name));
 });
+
+function ClosedResult(): any {
+    return Object.preventExtensions(Object.create(null, {
+        '0': {get() {return 1;}, configurable: true},
+        '1': {value: 2, writable: false, configurable: true},
+        length: {value: 2, writable: true}
+    }));
+}
+for (const factory of [Array.from, Array.of]) {
+    const result = factory === Array.from ? (factory as any).call(ClosedResult, [11, 12]) : (factory as any).call(ClosedResult, 13, 14);
+    console.log('closed result', result[0], result[1], Object.isExtensible(result), Object.getOwnPropertyDescriptor(result, '0')!.writable, Object.getOwnPropertyDescriptor(result, '1')!.enumerable);
+}

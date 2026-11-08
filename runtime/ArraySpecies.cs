@@ -54,6 +54,11 @@ public static partial class Js
         if (destination.GetType() == typeof(JsArray) && !destination.HasPropertyOverrides && !destination.IsModuleNamespace && index <= int.MaxValue)
         { ((JsArray)destination).SetAt((int)index, value); return; }
         string key = index.ToString(CultureInfo.InvariantCulture);
+        if (destination is JsArray or JsDescriptorObject) {
+            ApplyPropertyDefinition(destination, key, new(value, null, null, true, true, true,
+                DescriptorFields.Value | DescriptorFields.Writable | DescriptorFields.Enumerable | DescriptorFields.Configurable));
+            return;
+        }
         if (destination.IsModuleNamespace) throw new InvalidOperationException("Cannot define array result item");
         if (destination.HasOwn(key))
         {
