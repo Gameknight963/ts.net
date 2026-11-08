@@ -15,6 +15,7 @@ public static partial class Js
     sealed class TypedArrayValue : TsObject
     {
         internal readonly BinaryBuffer Buffer;
+        TsObject prototype;
         internal readonly int Offset, FixedCount, Size;
         internal readonly bool Tracking;
         internal bool OutOfBounds => Buffer.Detached || Buffer.Resizable && (Offset > Buffer.Bytes.Length || !Tracking && FixedCount > (Buffer.Bytes.Length - Offset) / Size);
@@ -24,8 +25,10 @@ public static partial class Js
         {
             Name = name; Kind = name == "Uint8ClampedArray" ? "Uint8" : name[..^5];
             Size = BinarySize(Kind); Buffer = buffer; Offset = offset; FixedCount = count; Tracking = tracking;
+            prototype = (TsObject)GetTypedArrayConstructor(name).Get("prototype");
         }
-        internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)GetTypedArrayConstructor(Name).Get("prototype");
+        internal override TsObject PropertyPrototype => prototype;
+        internal override void SetPrototype(TsObject value) { if (CanSetPrototype(value)) prototype = value; }
         internal object Read(int index) => Buffer.Detached || Buffer.Resizable && (uint)index >= (uint)Count ? Undefined : ReadBinary(Buffer.Bytes.AsSpan(Offset + index * Size, Size), Kind, BitConverter.IsLittleEndian);
         internal void Write(int index, object value)
         {
@@ -40,9 +43,23 @@ public static partial class Js
             if (key == "-0") { index = -1; return true; }
             return double.TryParse(key, NumberStyles.Float, CultureInfo.InvariantCulture, out index) && NumberKeyString(index) == key;
         }
+        internal double? ReadNumberIndex(double index)
+        {
+            if (!Valid(index)) return null;
+            if (Kind.StartsWith("Big", StringComparison.Ordinal)) return Cast<double?>(Read((int)index), "checked conversion failed");
+            return ReadBinaryNumber(Buffer.Bytes.AsSpan(Offset + (int)index * Size, Size), Kind, BitConverter.IsLittleEndian);
+        }
         internal object ReadIndex(double index) => Valid(index) ? Read((int)index) : Undefined;
         internal void WriteIndex(double index, object value) => Write(Valid(index) ? (int)index : -1, value);
         bool Valid(double index) => index >= 0 && index < Count && index == Math.Truncate(index);
+        internal double? ReadNumberProperty(string key)
+        {
+            if (key is "length" or "byteLength" or "byteOffset" or "buffer") {
+                if (!base.HasOwn(key) && PropertyPrototype is TsObject prototype && prototype.TryOwnAccessor(key, out var accessor) && accessor.Getter is TypedArrayGetter getter)
+                    return getter.ReadNumber(this);
+            }
+            return Cast<double?>(Get(key), "checked conversion failed");
+        }
         public override object Get(string key)
         {
             if (key is "length" or "byteLength" or "byteOffset" or "buffer")
@@ -109,6 +126,11 @@ public static partial class Js
     sealed class TypedArrayGetter(string name, Func<TypedArrayValue, object> read) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Typed array getter requires a receiver")), null, "get " + name, 0)
     {
         internal object Read(TypedArrayValue value) => read(value);
+        internal double? ReadNumber(TypedArrayValue value) => name switch {
+            "length" => value.Count, "byteLength" => value.Count * value.Size,
+            "byteOffset" => value.OutOfBounds ? 0 : value.Offset,
+            _ => Cast<double?>(read(value), "checked conversion failed")
+        };
         public override object InvokeWithReceiver(object receiver, object[] args) => read(RequireTypedArray(receiver));
     }
     sealed class TypedArrayConstructor : NativeNamespaceFunction

@@ -141,8 +141,9 @@ internal static partial class CompilerFunctions
             }
             else if (get_type(owner, c).kind == TypeKind.Any || get_type(owner, c).name != 0)
             {
-                il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet);
-                b.from_object(n.type, c);
+                il_text(n.name, c, b);
+                if (get_type(n.type, c).kind == TypeKind.Number) b.call(RuntimeMember.GetNumber);
+                else { b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); }
             }
             else
             {
@@ -580,6 +581,7 @@ internal static partial class CompilerFunctions
             }
             if (il_direct_array_index(entry, c, b)) { il_integer(n.right, c, b); b.call(RuntimeMember.NumberIndexGetAt); }
             else if (il_number_index(entry, c)) { il_number(n.right, c, b); b.call(RuntimeMember.NumberIndexGet); }
+            else if (get_type(n.type, c).kind == TypeKind.Number && get_type(get_node(n.right, c).type, c).kind == TypeKind.Number) { il_expression(n.right, c, b); b.call(RuntimeMember.IndexGetNumber); }
             else { if (il_direct_index(entry, c, b)) { il_integer(n.right, c, b); b.call(RuntimeMember.ArrayIndexGetAt); } else { il_boxed(n.right, c, b); b.call(RuntimeMember.IndexGet); } b.from_object(n.type, c); }
         }
         else if (n.kind == NodeKind.Object)
@@ -620,8 +622,9 @@ internal static partial class CompilerFunctions
             }
             else if (get_type(owner, c).kind == TypeKind.Any || get_type(owner, c).name != 0)
             {
-                il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet);
-                b.from_object(n.type, c);
+                il_text(n.name, c, b);
+                if (get_type(n.type, c).kind == TypeKind.Number) b.call(RuntimeMember.GetNumber);
+                else { b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); }
             }
             else if (get_type(owner, c).kind == TypeKind.String) { if (is_text(n.name, text_length, c)) { b.call(RuntimeMember.Length); b.op(0x6c); b.call(RuntimeMember.WrapNumber); } else { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); } }
             else

@@ -208,6 +208,23 @@ public static partial class Js
         return false;
     }
 
+    public static double? GetNumber(object receiver, string key)
+    {
+        if (receiver is TypedArrayValue typed) return typed.ReadNumberProperty(key);
+        if (key == "length") {
+            if (receiver is string text) return text.Length;
+            if (receiver is JsArray array) return array.Length();
+        }
+        return Cast<double?>(Get(receiver, key), "checked conversion failed");
+    }
+    public static double? IndexGetNumber(object receiver, double? index)
+    {
+        if (index.HasValue) {
+            if (receiver is NumberArray numbers) return numbers.GetNumber(index.GetValueOrDefault());
+            if (receiver is TypedArrayValue typed) return typed.ReadNumberIndex(index.GetValueOrDefault());
+        }
+        return Cast<double?>(IndexGet(receiver, BoxNumber(index)), "checked conversion failed");
+    }
     public static object IndexGet(object receiver, object key)
     {
         if (IsNullish(receiver)) throw new InvalidOperationException("Cannot read property of null or undefined");

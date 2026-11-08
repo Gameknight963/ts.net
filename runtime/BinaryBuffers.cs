@@ -154,16 +154,26 @@ public static partial class Js
     }
     static object ReadBinary(ReadOnlySpan<byte> bytes, string type, bool little)
     {
+        if (type.StartsWith("Big", StringComparison.Ordinal)) {
+            ulong raw = ReadBinaryBits(bytes, little);
+            return type == "BigInt64" ? new BigInteger(unchecked((long)raw)) : new BigInteger(raw);
+        }
+        return ReadBinaryNumber(bytes, type, little);
+    }
+    static ulong ReadBinaryBits(ReadOnlySpan<byte> bytes, bool little)
+    {
         int size = bytes.Length;
-        bool bigint = type.StartsWith("Big", StringComparison.Ordinal);
-        ulong raw = size switch
+        return size switch
         {
             1 => bytes[0],
             2 => little ? BinaryPrimitives.ReadUInt16LittleEndian(bytes) : BinaryPrimitives.ReadUInt16BigEndian(bytes),
             4 => little ? BinaryPrimitives.ReadUInt32LittleEndian(bytes) : BinaryPrimitives.ReadUInt32BigEndian(bytes),
             _ => little ? BinaryPrimitives.ReadUInt64LittleEndian(bytes) : BinaryPrimitives.ReadUInt64BigEndian(bytes)
         };
-        if (bigint) return type == "BigInt64" ? new BigInteger(unchecked((long)raw)) : new BigInteger(raw);
+    }
+    static double ReadBinaryNumber(ReadOnlySpan<byte> bytes, string type, bool little)
+    {
+        ulong raw = ReadBinaryBits(bytes, little);
         return type switch
         {
             "Float16" => (double)BitConverter.UInt16BitsToHalf((ushort)raw),
