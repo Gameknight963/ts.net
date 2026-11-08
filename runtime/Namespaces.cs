@@ -44,6 +44,12 @@ public static partial class Js
                 if (receiver is not PerformanceNamespace) throw new InvalidOperationException("Performance receiver required");
                 return PerformanceClock.Origin;
             }), 1);
+            prototype.DefineOwn("toJSON", new CollectionMethod("toJSON", 0, (receiver, _) => {
+                if (receiver is not PerformanceNamespace performance) throw new InvalidOperationException("Performance receiver required");
+                var result = new JsDynamicObject();
+                result.DefineOwn("timeOrigin", performance.Get("timeOrigin"));
+                return result;
+            }));
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Performance", false);
             return prototype;
         }

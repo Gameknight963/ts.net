@@ -1,0 +1,12 @@
+export {};
+const first = performance.toJSON();
+const second = performance.toJSON();
+console.log('snapshot', first !== second, first.timeOrigin === performance.timeOrigin, Object.hasOwn(first, 'timeOrigin'));
+Object.defineProperty(performance, 'timeOrigin', {value: 42, configurable: true});
+console.log('override', performance.toJSON().timeOrigin, JSON.parse(JSON.stringify(performance)).timeOrigin);
+let reads = 0;
+Object.defineProperty(performance, 'timeOrigin', {get() {reads++; return 17;}, configurable: true});
+console.log('getter', performance.toJSON().timeOrigin, reads);
+Reflect.deleteProperty(performance, 'timeOrigin');
+Object.freeze(performance);
+console.log('frozen', performance.toJSON().timeOrigin === performance.timeOrigin);
