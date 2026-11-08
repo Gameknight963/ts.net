@@ -10,6 +10,7 @@ internal sealed class JsRegExp(string pattern, string flags, Regex engine, strin
     internal Regex Engine = engine;
     internal string[] NamedGroups = namedGroups;
     internal int[] NamedCaptureIndices = Js.RegExpCaptureIndices(engine, namedGroups);
+    internal int[][] DuplicateCaptureIndices = Js.RegExpDuplicateCaptureIndices(engine, namedGroups);
     object lastIndex = 0d;
     bool lastIndexWritable = true;
     internal bool LastIndexWritable => lastIndexWritable;
@@ -49,12 +50,13 @@ public static partial class Js
         bool previousClassSet = false;
         bool currentDotAll = dotAll, currentMultiline = (options & RegexOptions.Multiline) != 0;
         var modes = new Stack<(bool DotAll, bool Multiline)>();
-        var names = new List<string>();
+        var namedCaptures = ReadRegExpNamedCaptures(pattern);
+        var names = namedCaptures.Names;
         string prefix = "tsnetCapture";
         while (pattern.Contains(prefix, StringComparison.Ordinal)) prefix += "X";
-        var unicodeCaptures = unicode ? UnicodeRegExpCaptureNames(pattern, prefix) : null;
+        var unicodeCaptures = unicode ? UnicodeRegExpCaptureNames(pattern, prefix, namedCaptures) : null;
         int captures = 0;
-        bool namedBackReferences = pattern.Contains("\\k", StringComparison.Ordinal) && RegExpHasNamedCapture(pattern);
+        bool namedBackReferences = pattern.Contains("\\k", StringComparison.Ordinal) && names.Count != 0;
         var rewritten = new StringBuilder(pattern.Length);
         for (int i = 0; i < pattern.Length; i++)
         {
@@ -95,9 +97,13 @@ public static partial class Js
                     int end = pattern.IndexOf('>', i + 3);
                     if (end < 0) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid named back reference"));
                     string name = ReadRegExpCaptureName(pattern[(i + 3)..end]);
-                    string capture = RegExpEngineCaptureName(name);
-                    if (unicode) rewritten.Append("(?(").Append(capture).Append(")\\k<").Append(capture).Append(">|)");
-                    else rewritten.Append("\\k<").Append(capture).Append('>');
+                    if (!namedCaptures.ByName.TryGetValue(name, out var occurrences))
+                        throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid named back reference"));
+                    foreach (var occurrence in occurrences) {
+                        string capture = occurrence.PhysicalName;
+                        rewritten.Append("(?(").Append(capture).Append(")\\k<").Append(capture).Append(">|");
+                    }
+                    foreach (var _ in occurrences) rewritten.Append(')');
                     i = end; continue;
                 }
                 if (i + 1 < pattern.Length && pattern[i + 1] is 'x' or 'u')
@@ -148,10 +154,8 @@ public static partial class Js
             {
                 int end = pattern.IndexOf('>', i + 3);
                 if (end < 0) throw MakeThrown(new JsCaughtError("SyntaxError", "Invalid named capture"));
-                string name = ReadRegExpCaptureName(pattern[(i + 3)..end]);
-                if (names.Contains(name)) throw new NotSupportedException("Duplicate named captures are not supported");
-                names.Add(name); captures++;
-                rewritten.Append("(?<").Append(RegExpEngineCaptureName(name)).Append('>');
+                captures++;
+                rewritten.Append("(?<").Append(namedCaptures.AtPosition[i]).Append('>');
                 i = end; continue;
             }
             if (!inClass && ch == '(' && (i + 1 >= pattern.Length || pattern[i + 1] != '?'))
@@ -309,7 +313,7 @@ public static partial class Js
         for (int index = 0; index < regex.NamedGroups.Length; index++)
         {
             string name = regex.NamedGroups[index];
-            int number = regex.NamedCaptureIndices[index];
+            int number = RegExpNamedCaptureNumber(regex, match, index);
             var group = match.Groups[number];
             result.DefineOwn(name, !group.Success ? Undefined : indices != null
                 ? indices.Get(number.ToString(System.Globalization.CultureInfo.InvariantCulture))
@@ -348,6 +352,7 @@ public static partial class Js
                 target.Engine = replacement.Engine;
                 target.NamedGroups = replacement.NamedGroups;
                 target.NamedCaptureIndices = replacement.NamedCaptureIndices;
+                target.DuplicateCaptureIndices = replacement.DuplicateCaptureIndices;
                 target.LastIndex = 0d;
                 return target;
             }));

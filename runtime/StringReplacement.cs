@@ -20,7 +20,7 @@ public static partial class Js
                     result.Append(template, literal, index - literal);
                     string name = template[(index + 2)..end];
                     int captureIndex = Array.IndexOf(regex.NamedGroups, name);
-                    if (captureIndex >= 0) result.Append(RegExpCaptureText(text, captures.Groups[regex.NamedCaptureIndices[captureIndex]]));
+                    if (captureIndex >= 0) result.Append(RegExpCaptureText(text, captures.Groups[RegExpNamedCaptureNumber(regex, captures, captureIndex)]));
                     index = end; literal = end + 1; continue;
                 }
             }

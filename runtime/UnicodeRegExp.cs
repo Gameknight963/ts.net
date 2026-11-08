@@ -269,7 +269,7 @@ public static partial class Js
             return "(?:" + result + ")";
         }
     }
-    static List<string> UnicodeRegExpCaptureNames(string pattern, string prefix)
+    static List<string> UnicodeRegExpCaptureNames(string pattern, string prefix, RegExpNamedCaptures namedCaptures)
     {
         var names = new List<string>(); bool characterClass = false;
         for (int index = 0; index < pattern.Length; index++) {
@@ -281,7 +281,7 @@ public static partial class Js
                 if (index + 1 == pattern.Length || pattern[index + 1] != '?') names.Add(prefix + (names.Count + 1));
                 else if (index + 3 < pattern.Length && pattern[index + 2] == '<' && pattern[index + 3] is not ('=' or '!')) {
                     int end = pattern.IndexOf('>', index + 3); if (end < 0) throw UnicodeRegExpSyntax();
-                    names.Add(RegExpEngineCaptureName(ReadRegExpCaptureName(pattern[(index + 3)..end]))); index = end;
+                    names.Add(namedCaptures.AtPosition[index]); index = end;
                 }
             }
         }
