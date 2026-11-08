@@ -60,6 +60,7 @@ public static partial class Js
             DefineIteratorTerminals(prototype);
             DefineIteratorLazy(prototype);
             Member("from", new JsFunction((FunctionBody)(static arguments => IteratorFrom(FunctionArgument(arguments, 0))), null, "from", 1));
+            Member("concat", new JsFunction((FunctionBody)IteratorConcat, null, "concat", 0));
         }
         public override object Construct(object[] arguments) => throw new InvalidOperationException("Iterator is an abstract constructor");
         internal override bool CanInitializeDerived => true;
