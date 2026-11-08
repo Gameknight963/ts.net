@@ -24,6 +24,7 @@ public static partial class Js
     {
         var date = RequireDate(receiver);
         if (double.IsNaN(date.Timestamp)) throw new ArgumentOutOfRangeException(nameof(receiver), "Invalid time value");
+        if (OutsideNativeDate(date.Timestamp)) return ExtendedDateIso(date.Timestamp);
         return NativeDate(date).ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
     }
     static string DateText(object receiver)

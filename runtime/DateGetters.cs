@@ -19,6 +19,7 @@ public static partial class Js
                 {
                     var date = RequireDate(receiver);
                     if (double.IsNaN(date.Timestamp)) return double.NaN;
+                    if (utc && OutsideNativeDate(date.Timestamp)) return ExtendedUtcDateField(date.Timestamp, item.Name);
                     var native = NativeDate(date);
                     if (!utc) native = TimeZoneInfo.ConvertTime(native, TimeZoneInfo.Local);
                     return item.Read(native);
