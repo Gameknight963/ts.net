@@ -331,6 +331,7 @@ public static partial class Js
     }
     static object TypedArrayMethod(TypedArrayValue array, string method, object[] args)
     {
+        if (method == "with") return WithTypedArray(array, args);
         if (method is "slice" or "subarray")
         {
             int originalLength = array.Count;
@@ -421,13 +422,6 @@ public static partial class Js
         }
         var copied = AllocateTypedArray(array.Name, array.Count);
         for (int i = 0; i < array.Count; i++) copied.Write(i, array.Read(method == "toReversed" ? array.Count - i - 1 : i));
-        if (method == "with")
-        {
-            double index = Math.Truncate(Number(FunctionArgument(args, 0))); if (double.IsNaN(index)) index = 0;
-            if (index < 0) index += array.Count;
-            if (index < 0 || index >= array.Count) throw new ArgumentOutOfRangeException(null, "Typed array index is out of range");
-            copied.Write((int)index, FunctionArgument(args, 1));
-        }
         return copied;
     }
 }
