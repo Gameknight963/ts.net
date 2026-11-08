@@ -129,16 +129,14 @@ public static partial class Js
                     positivePattern = SpaceCurrencyTemplate(1d.ToString("C0", culture));
                     negativePattern = SpaceCurrencyTemplate((-1d).ToString("C0", culture));
                 }
-                foreach (string key in new[] { "compactDisplay", "unit" })
-                    if (!IsUndefined(options.Get(key))) throw new NotSupportedException("Number locale formatting option " + key + " is not supported");
+                if (!IsUndefined(options.Get("unit"))) throw new NotSupportedException("Number locale formatting option unit is not supported");
                 object requestedNotation = options.Get("notation");
                 if (!IsUndefined(requestedNotation)) notation = StringValue(requestedNotation);
                 if (notation == "compact") throw new NotSupportedException("Compact notation is not supported");
                 if (notation is not ("standard" or "scientific" or "engineering")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number notation");
-                object priority = options.Get("roundingPriority");
-                if (!IsUndefined(priority)) roundingPriority = StringValue(priority);
-                if (roundingPriority is not ("auto" or "morePrecision" or "lessPrecision"))
-                    throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid rounding priority");
+                integerDigits = Digits("minimumIntegerDigits", 1, 1, 21);
+                object minimumSetting = options.Get("minimumFractionDigits"), maximumSetting = options.Get("maximumFractionDigits");
+                object minimumSignificantSetting = options.Get("minimumSignificantDigits"), maximumSignificantSetting = options.Get("maximumSignificantDigits");
                 object increment = options.Get("roundingIncrement");
                 if (!IsUndefined(increment))
                 {
@@ -152,6 +150,10 @@ public static partial class Js
                 if (!IsUndefined(requestedRounding)) roundingMode = StringValue(requestedRounding);
                 if (roundingMode is not ("ceil" or "floor" or "expand" or "trunc" or "halfCeil" or "halfFloor" or "halfExpand" or "halfTrunc" or "halfEven"))
                     throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid rounding mode");
+                object priority = options.Get("roundingPriority");
+                if (!IsUndefined(priority)) roundingPriority = StringValue(priority);
+                if (roundingPriority is not ("auto" or "morePrecision" or "lessPrecision"))
+                    throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid rounding priority");
                 object requestedZeros = options.Get("trailingZeroDisplay");
                 if (!IsUndefined(requestedZeros)) trailingZeroDisplay = StringValue(requestedZeros);
                 if (trailingZeroDisplay is not ("auto" or "stripIfInteger"))
@@ -167,16 +169,6 @@ public static partial class Js
                     if (!double.IsFinite(count) || count < lower || count > upper) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid digit count");
                     return (int)Math.Floor(count);
                 }
-                object sign = options.Get("signDisplay");
-                if (!IsUndefined(sign))
-                {
-                    signDisplay = StringValue(sign);
-                    if (signDisplay is not ("auto" or "always" or "exceptZero" or "never" or "negative"))
-                        throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid sign display");
-                }
-                integerDigits = Digits("minimumIntegerDigits", 1, 1, 21);
-                object minimumSetting = options.Get("minimumFractionDigits"), maximumSetting = options.Get("maximumFractionDigits");
-                object minimumSignificantSetting = options.Get("minimumSignificantDigits"), maximumSignificantSetting = options.Get("maximumSignificantDigits");
                 if (roundingPriority != "auto" || !IsUndefined(minimumSignificantSetting) || !IsUndefined(maximumSignificantSetting))
                 {
                     minimumSignificant = DigitValue(minimumSignificantSetting, 1, 1, 21);
@@ -193,6 +185,8 @@ public static partial class Js
                     if (roundingIncrement != 1 && minimum != maximum)
                         throw new ArgumentOutOfRangeException(nameof(optionValue), "Rounding increments require equal minimum and maximum fraction digits");
                 }
+                string compactDisplay = CurrencyOption("compactDisplay", "short");
+                if (compactDisplay is not ("short" or "long")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid compact display");
                 object group = options.Get("useGrouping");
                 if (!IsUndefined(group))
                 {
@@ -204,6 +198,13 @@ public static partial class Js
                         "min2" => text,
                         _ => throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid grouping option")
                     } : "always";
+                }
+                object sign = options.Get("signDisplay");
+                if (!IsUndefined(sign))
+                {
+                    signDisplay = StringValue(sign);
+                    if (signDisplay is not ("auto" or "always" or "exceptZero" or "never" or "negative"))
+                        throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid sign display");
                 }
             }
             if (style == "percent")
