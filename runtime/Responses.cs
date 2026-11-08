@@ -59,6 +59,7 @@ public static partial class Js
         byte[] bytes = body?.Consume() ?? Array.Empty<byte>();
         if (kind == "text") return ResponseText(bytes);
         if (kind == "json") return new JsonParser(ResponseText(bytes),false).Parse().Value;
+        if (kind == "formData") return ParseHttpFormData(bytes,headers);
         if (kind == "blob") {
             string type = headers.Fields.TryGetValue("content-type",out var values) ? HeadersValue.Joined("content-type",values) : "";
             if (!System.Net.Http.Headers.MediaTypeHeaderValue.TryParse(type,out _)) type = "";
@@ -79,7 +80,7 @@ public static partial class Js
             Getter("headers",value => value.Headers); Getter("body",value => value.Body); Getter("bodyUsed",value => BoxBoolean(value.Body?.Disturbed ?? false));
             Getter("url",value => value.Url); Getter("redirected",value => BoxBoolean(value.Redirected)); Getter("type",value => value.Type);
             prototype.DefineOwn("clone",new CollectionMethod("clone",0,(receiver,_) => CloneResponse(receiver)));
-            foreach (string kind in new[] {"text","json","arrayBuffer","blob","bytes"})
+            foreach (string kind in new[] {"text","json","arrayBuffer","blob","bytes","formData"})
                 prototype.DefineOwn(kind,new CollectionMethod(kind,0,(receiver,_) => ConsumeResponse(receiver,kind)));
             Member("error",new JsFunction((FunctionBody)(static _ => new ResponseValue {Status=0,Type="error",Headers=new HeadersValue {Immutable=true}}),null,"error",0));
             Member("redirect",new JsFunction((FunctionBody)(static args => {

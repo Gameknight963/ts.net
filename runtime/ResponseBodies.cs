@@ -151,6 +151,7 @@ public static partial class Js
     static (byte[] Bytes,string ContentType,BufferedBody Stream) ExtractResponseBody(object input)
     {
         if (IsNullish(input)) return (null,null,null);
+        if (input is FormDataValue form) return SerializeFormData(form);
         if (input is BufferedBody stream) {
             if (stream.Locked || stream.Disturbed) throw new InvalidOperationException("Body stream has already been consumed or locked");
             return (stream.Bytes,null,stream);

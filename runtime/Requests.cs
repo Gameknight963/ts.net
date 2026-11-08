@@ -129,7 +129,7 @@ public static partial class Js
             Getter("integrity",value=>value.Integrity); Getter("keepalive",value=>BoxBoolean(value.KeepAlive)); Getter("destination",_=>""); Getter("duplex",_=>"half");
             Getter("isReloadNavigation",_=>BoxBoolean(false)); Getter("isHistoryNavigation",_=>BoxBoolean(false));
             prototype.DefineOwn("clone",new CollectionMethod("clone",0,(receiver,_)=>CloneRequest(receiver)));
-            foreach (string kind in new[] {"text","json","arrayBuffer","blob","bytes"})
+            foreach (string kind in new[] {"text","json","arrayBuffer","blob","bytes","formData"})
                 prototype.DefineOwn(kind,new CollectionMethod(kind,0,(receiver,_)=>ConsumeRequest(receiver,kind)));
         }
         public override object Construct(object[] args) => CreateRequest(args);
