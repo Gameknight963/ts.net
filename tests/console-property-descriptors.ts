@@ -1,0 +1,13 @@
+export {};
+const log = console.log;
+const before = Object.getOwnPropertyDescriptor(console, 'log')!;
+log('log descriptor', before.writable, before.enumerable, before.configurable);
+const tag = Object.getOwnPropertyDescriptor(console, Symbol.toStringTag)!;
+log('tag', tag.value, tag.writable, tag.enumerable, tag.configurable, Object.prototype.toString.call(console));
+Object.defineProperty(console, 'label', {value: 'output', enumerable: true});
+Object.defineProperty(console, 'info', {value: log, writable: false, configurable: true});
+console.info('replacement');
+log('readonly', Reflect.set(console, 'info', () => {}));
+Object.freeze(console);
+log('frozen', Object.isFrozen(console), Reflect.set(console, 'label', 'other'), Reflect.defineProperty(console, 'extra', {value: 1}));
+console.log('still works');

@@ -4,10 +4,11 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
-    sealed class ConsoleNamespace : TsObject
+    sealed class ConsoleNamespace : JsDescriptorObject
     {
         internal ConsoleNamespace()
         {
+            DefineMethod(PropertyKey(ToStringTagSymbol), "console", false);
             foreach (string name in new[] { "log", "info", "debug" })
                 DefineOwn(name, new JsFunction((FunctionBody)(static args => { Log(args); return Undefined; }), null, name, 0));
             foreach (string name in new[] { "warn", "error" })
