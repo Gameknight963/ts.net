@@ -18,11 +18,11 @@ public static partial class Js
     }
     internal static object EnumerateProperties(TsObject obj, bool entries)
     {
-        var keys = (JsArray)obj.OwnKeys();
+        var keys = (JsArray)obj.OwnPropertyNames();
         var values = new object[(int)keys.Length()];int count=0;
         for (uint i = 0; i < values.Length; i++) {
             string key = (string)keys.ElementAt(i);
-            if (IsSymbolKey(key) || !obj.HasOwn(key)) continue;
+            if (IsSymbolKey(key) || !obj.HasOwn(key) || !obj.ForInEnumerable(key)) continue;
             object value = obj.Get(key);
             values[count++] = entries ? new JsArray(new object[] {key, value}) : value;
         }
@@ -39,10 +39,10 @@ public static partial class Js
     internal static object EnumerateNumberProperties(TsObject obj)
     {
         var result = new NumberArray(0);
-        var keys = (JsArray)obj.OwnKeys();result.ReservePushes(keys.Length());
+        var keys = (JsArray)obj.OwnPropertyNames();result.ReservePushes(keys.Length());
         for (uint i = 0; i < keys.Length(); i++) {
             string key = (string)keys.ElementAt(i);
-            if (!IsSymbolKey(key) && obj.HasOwn(key)) result.PushNumber(Cast<double?>(obj.Get(key), "Object value is not a number"));
+            if (!IsSymbolKey(key) && obj.HasOwn(key) && obj.ForInEnumerable(key)) result.PushNumber(Cast<double?>(obj.Get(key), "Object value is not a number"));
         }
         return result;
     }
