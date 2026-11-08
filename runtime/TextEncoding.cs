@@ -4,11 +4,11 @@ using System.Text;
 
 public static partial class Js
 {
-    sealed class TextEncoderValue : TsObject
+    sealed class TextEncoderValue : JsDescriptorObject
     {
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)RuntimeNamespaces.TextEncoder.Get("prototype");
     }
-    sealed class TextDecoderValue(string name, Encoding encoding, bool fatal, bool ignoreBom) : TsObject
+    sealed class TextDecoderValue(string name, Encoding encoding, bool fatal, bool ignoreBom) : JsDescriptorObject
     {
         internal readonly string Name = name;
         internal readonly bool Fatal = fatal, IgnoreBom = ignoreBom;
@@ -59,7 +59,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "TextEncoder");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "TextEncoder", false);
             prototype.DefineClassAccessor("encoding", new CollectionMethod("get encoding", 0, (receiver, _) => { RequireTextEncoder(receiver); return "utf-8"; }), 1);
             prototype.DefineMethod("encode", new CollectionMethod("encode", 0, (receiver, args) =>
             {
@@ -129,7 +129,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this);
-            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "TextDecoder");
+            prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "TextDecoder", false);
             prototype.DefineClassAccessor("encoding", new CollectionMethod("get encoding", 0, (receiver, _) => RequireTextDecoder(receiver).Name), 1);
             prototype.DefineClassAccessor("fatal", new CollectionMethod("get fatal", 0, (receiver, _) => BoxBoolean(RequireTextDecoder(receiver).Fatal)), 1);
             prototype.DefineClassAccessor("ignoreBOM", new CollectionMethod("get ignoreBOM", 0, (receiver, _) => BoxBoolean(RequireTextDecoder(receiver).IgnoreBom)), 1);
