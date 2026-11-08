@@ -7,7 +7,6 @@ public class JsClassInstance : JsDescriptorObject
     internal TsObject ParentPrototype;
     internal TsObject InheritedPrototype => TryExplicitPrototype(out var value) ? value : Owner is null ? ParentPrototype : Owner.Prototype;
     internal override TsObject PropertyPrototype => InheritedPrototype;
-    internal override object ForInOwnKeys() => base.OwnKeys();
     internal override bool HasInProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasInProperty(key);
     public override bool HasProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasProperty(key);
     public override object Get(string key) => GetWithReceiver(key, this);

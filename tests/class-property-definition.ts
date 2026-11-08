@@ -22,3 +22,10 @@ Object.defineProperty(Example.prototype, 'inherited', {value: 7, writable: false
 const child = new Example();
 try {(child as any).inherited = 8;} catch (error) {console.log('inherited readonly', (error as Error).name);}
 console.log('inherited', (child as any).inherited, Object.hasOwn(child, 'inherited'));
+const hidden = new Example();
+Object.defineProperty(hidden, 'secret', {value: 10, writable: true, configurable: true});
+console.log('hidden names', Object.getOwnPropertyNames(hidden).join(','), Object.keys(hidden).join(','));
+Object.freeze(hidden);
+console.log('hidden frozen', Object.getOwnPropertyDescriptor(hidden, 'secret')!.writable, Object.getOwnPropertyDescriptor(hidden, 'secret')!.configurable);
+try {(hidden as any).secret = 11;} catch (error) {console.log('hidden readonly', (error as Error).name);}
+console.log('prototype names', Object.getOwnPropertyNames(Example.prototype).join(','));
