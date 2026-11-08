@@ -85,7 +85,7 @@ public static partial class Js
             if (failure != null) ExceptionDispatchInfo.Capture(failure).Throw();
         }
     }
-    sealed class AbortControllerValue : TsObject
+    sealed class AbortControllerValue : JsDescriptorObject
     {
         internal readonly AbortSignalValue Signal = new();
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)AbortConstructors.Controller.Get("prototype");
@@ -123,7 +123,7 @@ public static partial class Js
         internal AbortControllerConstructor() : base("AbortController", static _ => throw new InvalidOperationException("AbortController requires new"), 0)
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "AbortController");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "AbortController", false);
             prototype.DefineClassAccessor("signal", new CollectionMethod("get signal", 0, static (receiver, _) => RequireAbortController(receiver).Signal), 1);
             prototype.DefineMethod("abort", new CollectionMethod("abort", 0, static (receiver, args) => { RequireAbortController(receiver).Signal.Abort(FunctionArgument(args, 0)); return Undefined; }));
         }
@@ -137,7 +137,7 @@ public static partial class Js
         {
             var prototype = new JsClassInstance { ParentPrototype = (TsObject)EventConstructors.Target.Get("prototype") }; UseObjectPrototype(prototype);
             SetPrototype(EventConstructors.Target);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "AbortSignal");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "AbortSignal", false);
             prototype.DefineClassAccessor("aborted", new CollectionMethod("get aborted", 0, static (receiver, _) => BoxBoolean(RequireAbortSignal(receiver).Aborted)), 1);
             prototype.DefineClassAccessor("reason", new CollectionMethod("get reason", 0, static (receiver, _) => RequireAbortSignal(receiver).Reason), 1);
             prototype.DefineClassAccessor("onabort", new CollectionMethod("get onabort", 0, static (receiver, _) => RequireAbortSignal(receiver).Handler), 1);

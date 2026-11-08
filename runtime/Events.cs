@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
-    class EventValue : TsObject
+    class EventValue : JsDescriptorObject
     {
         internal string Type;
         internal bool Bubbles, Cancelable, Cancelled, Stopped, ImmediateStopped, Dispatching, Passive;
@@ -36,7 +36,7 @@ public static partial class Js
         internal Action OnRemove;
         internal HashSet<AbortSignalValue> AbortSources;
     }
-    class EventTargetValue : TsObject
+    class EventTargetValue : JsDescriptorObject
     {
         List<EventListener> listeners;
         internal bool HasListeners => listeners != null && listeners.Count != 0;
@@ -104,7 +104,7 @@ public static partial class Js
         {
             this.custom = custom;
             var prototype = new JsClassInstance { ParentPrototype = custom ? (TsObject)EventConstructors.Event.Get("prototype") : DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), custom ? "CustomEvent" : "Event");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), custom ? "CustomEvent" : "Event", false);
             void Getter(string key, Func<EventValue, object> read) => prototype.DefineClassAccessor(key, new CollectionMethod("get " + key, 0, (receiver, _) => read(RequireEvent(receiver))), 1);
             if (custom) {
                 prototype.DefineClassAccessor("detail", new CollectionMethod("get detail", 0, static (receiver, _) => receiver is CustomEventValue value ? value.Detail : throw new InvalidOperationException("CustomEvent receiver required")), 1);
@@ -148,7 +148,7 @@ public static partial class Js
         internal EventTargetConstructor() : base("EventTarget", static _ => throw new InvalidOperationException("EventTarget requires new"), 0)
         {
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype }; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "EventTarget");
+            prototype.DefineMethod("constructor", this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "EventTarget", false);
             prototype.DefineMethod("addEventListener", new CollectionMethod("addEventListener", 2, static (receiver, args) => {
                 var target = RequireEventTarget(receiver);
                 if (args.Length < 2) throw new InvalidOperationException("Event type and listener are required");
