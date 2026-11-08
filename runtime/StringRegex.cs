@@ -16,7 +16,7 @@ public static partial class Js
     static object MatchRegExp(string text, JsRegExp regex, bool search)
     {
         string flags = search ? null : StringValue(regex.Get("flags"));
-        if (!HasBuiltinRegExpExec(regex) || !search && flags != regex.Flags) return MatchCustomRegExp(text, regex, search, flags);
+        if (!HasBuiltinRegExpExec(regex) || search && !regex.LastIndexWritable || !search && flags != regex.Flags) return MatchCustomRegExp(text, regex, search, flags);
         bool sticky = regex.Flags.Contains('y');
         if (search)
         {

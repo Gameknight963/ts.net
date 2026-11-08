@@ -3,21 +3,36 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-internal sealed class JsRegExp(string pattern, string flags, Regex engine, string[] namedGroups) : TsObject
+internal sealed class JsRegExp(string pattern, string flags, Regex engine, string[] namedGroups) : JsDescriptorObject
 {
     internal string Pattern = pattern, Flags = flags;
     internal Regex Engine = engine;
     internal string[] NamedGroups = namedGroups;
-    internal object LastIndex = 0d;
+    object lastIndex = 0d;
+    bool lastIndexWritable = true;
+    internal bool LastIndexWritable => lastIndexWritable;
+    internal object LastIndex
+    {
+        get => lastIndex;
+        set { if (!lastIndexWritable) throw new InvalidOperationException("RegExp lastIndex is read-only"); lastIndex = value; }
+    }
+    internal override bool IsReadOnlyOwnProperty(string key) => key == "lastIndex" ? !lastIndexWritable : base.IsReadOnlyOwnProperty(key);
+    internal override object OwnPropertyDescriptor(string key) => key == "lastIndex" ? Js.DataDescriptor(lastIndex, lastIndexWritable, false, false) : base.OwnPropertyDescriptor(key);
+    internal override void Define(Descriptor descriptor)
+    {
+        if (descriptor.Key == "lastIndex") { lastIndex = descriptor.Value; lastIndexWritable = descriptor.Writable; }
+        else base.Define(descriptor);
+    }
+    public override object SetOwnValue(string key, object value) => key == "lastIndex" ? Set(key, value) : base.SetOwnValue(key, value);
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.RegExpPrototype;
     public override bool HasOwn(string key) => key == "lastIndex" || base.HasOwn(key);
     public override object Get(string key) => key == "lastIndex" ? LastIndex : base.Get(key);
     public override object Set(string key, object value) { if (key == "lastIndex") { LastIndex = value; return value; } return base.Set(key, value); }
     public override bool DeleteOwn(string key) => key != "lastIndex" && base.DeleteOwn(key);
     internal override bool OwnPropertyConfigurable(string key) => key != "lastIndex" && base.OwnPropertyConfigurable(key);
-    internal override object OwnPropertyNames() => Js.MergeOwnNames(this, base.OwnKeys(), "lastIndex");
-    internal override object ForInOwnKeys() => Js.ForInNames(base.OwnKeys(), "lastIndex");
-    internal override bool ForInEnumerable(string key) => key != "lastIndex";
+    internal override object OwnPropertyNames() => Js.MergeOwnNames(this, base.ForInOwnKeys(), "lastIndex");
+    internal override object ForInOwnKeys() => Js.ForInNames(base.ForInOwnKeys(), "lastIndex");
+    internal override bool ForInEnumerable(string key) => key != "lastIndex" && base.ForInEnumerable(key);
 }
 
 public static partial class Js
