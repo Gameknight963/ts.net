@@ -5,9 +5,9 @@ using System.Text.RegularExpressions;
 
 internal sealed class JsRegExp(string pattern, string flags, Regex engine, string[] namedGroups) : TsObject
 {
-    internal readonly string Pattern = pattern, Flags = flags;
-    internal readonly Regex Engine = engine;
-    internal readonly string[] NamedGroups = namedGroups;
+    internal string Pattern = pattern, Flags = flags;
+    internal Regex Engine = engine;
+    internal string[] NamedGroups = namedGroups;
     internal object LastIndex = 0d;
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.RegExpPrototype;
     public override bool HasOwn(string key) => key == "lastIndex" || base.HasOwn(key);
@@ -179,6 +179,22 @@ public static partial class Js
             var prototype = new JsClassInstance { ParentPrototype = DefaultClassObjectPrototype };
             UseObjectPrototype(prototype); prototype.DefineMethod("constructor", this);
             DefineRegExpProtocols(prototype);
+            prototype.DefineMethod("compile", new CollectionMethod("compile", 2, (receiver, args) =>
+            {
+                if (receiver is not JsRegExp target)
+                    throw MakeThrown(new JsCaughtError("TypeError", "RegExp.compile requires a regular expression"));
+                object pattern = FunctionArgument(args, 0), flags = FunctionArgument(args, 1);
+                if (pattern is JsRegExp && !IsUndefined(flags))
+                    throw MakeThrown(new JsCaughtError("TypeError", "Cannot supply flags when compiling a regular expression"));
+                // Validate and compile first: invalid input must leave the receiver unchanged.
+                var replacement = CreateRegExp(pattern, flags);
+                target.Pattern = replacement.Pattern;
+                target.Flags = replacement.Flags;
+                target.Engine = replacement.Engine;
+                target.NamedGroups = replacement.NamedGroups;
+                target.LastIndex = 0d;
+                return target;
+            }));
             foreach (bool test in new[] { false, true })
                 prototype.DefineMethod(test ? "test" : "exec", new CollectionMethod(test ? "test" : "exec", 1, (receiver, args) => receiver is JsRegExp regex ? RegExpMatch(regex, FunctionArgument(args, 0), test) : throw new InvalidOperationException("RegExp method requires a regular expression")));
             prototype.DefineMethod("toString", new CollectionMethod("toString", 0, (receiver, _) =>
