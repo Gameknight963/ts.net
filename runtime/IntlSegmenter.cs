@@ -82,7 +82,8 @@ public static partial class Js
         public override object Construct(object[] args) => new SegmenterValue(FunctionArgument(args, 0), FunctionArgument(args, 1));
         internal override bool CanInitializeDerived => true;
         internal override object InitializeDerived(object instance, object[] args, JsFunction newTarget) {
-            var result = (TsObject)Construct(args); result.SetPrototype(ConstructionPrototype(newTarget)); return result;
+            var prototype = ConstructionPrototype(newTarget);
+            var result = (TsObject)Construct(args); result.SetPrototype(prototype); return result;
         }
     }
     static class IntlSegmenter { internal static readonly JsFunction Constructor = new SegmenterConstructor(); }

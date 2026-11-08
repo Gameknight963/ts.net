@@ -43,7 +43,8 @@ public static partial class Js
         internal override bool CanInitializeDerived => true;
         internal override object InitializeDerived(object instance, object[] args, JsFunction newTarget)
         {
-            var result = (TsObject)Construct(args); result.SetPrototype(ConstructionPrototype(newTarget)); return result;
+            var prototype = ConstructionPrototype(newTarget);
+            var result = (TsObject)Construct(args); result.SetPrototype(prototype); return result;
         }
     }
     static class IntlDateTimeFormat { internal static readonly JsFunction Constructor = new DateTimeFormatConstructor(); }

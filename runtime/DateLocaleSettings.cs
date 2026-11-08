@@ -21,6 +21,8 @@ public static partial class Js
                 object value = options.Get(name);
                 return IsUndefined(value) ? null : StringValue(value);
             }
+            string matcher = Option("localeMatcher");
+            if (matcher != null && matcher is not ("lookup" or "best fit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
             dateStyle = Option("dateStyle"); timeStyle = Option("timeStyle");
             static bool ValidStyle(string style) => style is null or "full" or "long" or "medium" or "short";
             if (!ValidStyle(dateStyle) || !ValidStyle(timeStyle)) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid date or time style");
@@ -52,8 +54,6 @@ public static partial class Js
             localeName = Culture.Name + (extensions.Length == 0 ? "" : "-u" + extensions);
             if ((dateFields.HasFields || timeFields.HasFields) && (dateStyle != null || timeStyle != null))
                 throw new InvalidOperationException("Date styles cannot be combined with component options");
-            string matcher = Option("localeMatcher");
-            if (matcher != null && matcher is not ("lookup" or "best fit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid locale matcher");
             string formatMatcher = Option("formatMatcher");
             if (formatMatcher != null && formatMatcher is not ("basic" or "best fit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid format matcher");
             string zoneName = Option("timeZone");
