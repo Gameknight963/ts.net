@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
-    sealed class ResponseValue : TsObject
+    sealed class ResponseValue : JsDescriptorObject
     {
         internal int Status = 200;
         internal string StatusText = "", Type = "default", Url = "";
@@ -75,7 +75,7 @@ public static partial class Js
         internal ResponseConstructor() : base("Response",static _ => throw new InvalidOperationException("Response constructor requires new"),0)
         {
             var prototype = new JsClassInstance {ParentPrototype = DefaultClassObjectPrototype}; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor",this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol),"Response");
+            prototype.DefineMethod("constructor",this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol),"Response",false);
             void Getter(string name, Func<ResponseValue,object> read) => prototype.DefineAccessor(name,new CollectionMethod("get " + name,0,(receiver,_) => read(RequireResponse(receiver))),1);
             Getter("status",value => (double)value.Status); Getter("statusText",value => value.StatusText); Getter("ok",value => BoxBoolean(value.Status >= 200 && value.Status <= 299));
             Getter("headers",value => value.Headers); Getter("body",value => value.Body); Getter("bodyUsed",value => BoxBoolean(value.Body?.Disturbed ?? false));

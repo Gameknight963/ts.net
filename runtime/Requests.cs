@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
-    sealed class RequestValue : TsObject
+    sealed class RequestValue : JsDescriptorObject
     {
         internal string Url, Method = "GET", Referrer = "about:client", ReferrerPolicy = "", Mode = "cors", Credentials = "same-origin", Cache = "default", Redirect = "follow", Integrity = "";
         internal bool KeepAlive, StreamBody;
@@ -121,7 +121,7 @@ public static partial class Js
         internal RequestConstructor() : base("Request",static _ => throw new InvalidOperationException("Request constructor requires new"),1)
         {
             var prototype = new JsClassInstance {ParentPrototype=DefaultClassObjectPrototype}; UseObjectPrototype(prototype);
-            prototype.DefineMethod("constructor",this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol),"Request");
+            prototype.DefineMethod("constructor",this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol),"Request",false);
             void Getter(string name, Func<RequestValue,object> read) => prototype.DefineAccessor(name,new CollectionMethod("get " + name,0,(receiver,_) => read(RequireRequest(receiver))),1);
             Getter("url",value=>value.Url); Getter("method",value=>value.Method); Getter("headers",value=>value.Headers);
             Getter("body",value=>value.Body); Getter("bodyUsed",value=>BoxBoolean(value.Body?.Disturbed ?? false)); Getter("signal",value=>value.Signal);
