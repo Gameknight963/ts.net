@@ -148,6 +148,8 @@ public static partial class Js
             Member("timeout", new JsFunction((FunctionBody)(static args => AbortTimeout(FunctionArgument(args, 0))), null, "timeout", 1));
         }
         public override object Construct(object[] args) => throw new InvalidOperationException("Illegal AbortSignal constructor");
+        internal override bool CanInitializeDerived => true;
+        internal override object InitializeDerived(object instance, object[] args) => throw new InvalidOperationException("Illegal AbortSignal constructor");
     }
     static class AbortConstructors
     {
