@@ -75,6 +75,7 @@ public static partial class Js
     sealed class UnicodeRegExpReader(string source)
     {
         int position;
+        bool atomIsSet;
         int Hex(int digits)
         {
             if (source.Length - position < digits) throw UnicodeRegExpSyntax();
@@ -107,13 +108,20 @@ public static partial class Js
         }
         List<RegExpCodePointRange> Atom(bool characterClass)
         {
+            atomIsSet = false;
             if (position == source.Length) throw UnicodeRegExpSyntax();
             int value = source[position++];
             if (value == '\\') {
                 if (position == source.Length) throw UnicodeRegExpSyntax();
                 char escape = source[position++];
-                if (escape is 'd' or 'D' or 'w' or 'W' or 's' or 'S') return UnicodeRegExpClassEscape(escape);
-                if (escape is 'p' or 'P') throw new NotSupportedException("Unicode regular-expression properties are not supported yet");
+                if (escape is 'd' or 'D' or 'w' or 'W' or 's' or 'S') {atomIsSet = true; return UnicodeRegExpClassEscape(escape);}
+                if (escape is 'p' or 'P') {
+                    atomIsSet = true;
+                    if (position == source.Length || source[position++] != '{') throw UnicodeRegExpSyntax();
+                    int end = source.IndexOf('}', position); if (end < 0) throw UnicodeRegExpSyntax();
+                    var ranges = UnicodeRegExpProperty(source[position..end]); position = end + 1;
+                    return escape == 'P' ? InvertRegExpRanges(ranges) : ranges;
+                }
                 value = escape switch {
                     'u' => UnicodeEscape(), 'x' => Hex(2), 'n' => 10, 'r' => 13, 't' => 9, 'f' => 12, 'v' => 11,
                     'b' when characterClass => 8,
@@ -138,9 +146,10 @@ public static partial class Js
             var ranges = new List<RegExpCodePointRange>();
             while (position < source.Length && source[position] != ']') {
                 var first = Atom(true);
+                bool firstIsSet = atomIsSet;
                 if (position < source.Length - 1 && source[position] == '-' && source[position + 1] != ']') {
                     position++; var last = Atom(true);
-                    if (first.Count != 1 || last.Count != 1 || first[0].First != first[0].Last || last[0].First != last[0].Last || first[0].First > last[0].First) throw UnicodeRegExpSyntax();
+                    if (firstIsSet || atomIsSet || first.Count != 1 || last.Count != 1 || first[0].First != first[0].Last || last[0].First != last[0].Last || first[0].First > last[0].First) throw UnicodeRegExpSyntax();
                     ranges.Add(new(first[0].First, last[0].First));
                 }
                 else ranges.AddRange(first);
