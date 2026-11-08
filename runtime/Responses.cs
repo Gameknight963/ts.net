@@ -52,17 +52,21 @@ public static partial class Js
     }
     static object ConsumeResponse(object receiver, string kind) => BodyOperation(() => {
         var response = RequireResponse(receiver);
-        byte[] bytes = response.Body?.Consume() ?? Array.Empty<byte>();
+        return ConsumeHttpBody(response.Body,response.Headers,kind);
+    });
+    static object ConsumeHttpBody(BufferedBody body, HeadersValue headers, string kind)
+    {
+        byte[] bytes = body?.Consume() ?? Array.Empty<byte>();
         if (kind == "text") return ResponseText(bytes);
         if (kind == "json") return new JsonParser(ResponseText(bytes),false).Parse().Value;
         if (kind == "blob") {
-            string type = response.Headers.Fields.TryGetValue("content-type",out var values) ? HeadersValue.Joined("content-type",values) : "";
+            string type = headers.Fields.TryGetValue("content-type",out var values) ? HeadersValue.Joined("content-type",values) : "";
             if (!System.Net.Http.Headers.MediaTypeHeaderValue.TryParse(type,out _)) type = "";
             return new BlobValue(bytes,BlobType(type));
         }
         if (kind == "bytes") {var array = AllocateTypedArray("Uint8Array",bytes.Length);bytes.CopyTo(array.Buffer.Bytes,0);return array;}
         var result = new BinaryBuffer(bytes.Length); bytes.CopyTo(result.Bytes,0); return result;
-    });
+    }
     static class ResponseConstructors {internal static readonly JsFunction Value = new ResponseConstructor();}
     sealed class ResponseConstructor : NativeNamespaceFunction
     {
