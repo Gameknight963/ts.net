@@ -8,6 +8,8 @@ public static partial class Js
         (FunctionBody)(static _ => throw new InvalidOperationException("String search method requires a receiver")), null, name, 1)
     {
         internal readonly StringSearchKind Kind = kind;
+        public override object InvokeWithReceiver(object receiver, object[] arguments) =>
+            StringSearchArguments(this, receiver, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1));
     }
     static class StringSearchFunctions
     {
@@ -42,6 +44,7 @@ public static partial class Js
     static int StringSearchPrimitive(StringSearchFunction method, object receiver, object needle, double? position)
     {
         string text = AtString(receiver);
+        if (method.Kind == StringSearchKind.Includes && IsRegExpValue(needle)) throw new InvalidOperationException("String.includes does not accept regular expressions");
         string search = StringValue(needle);
         double start = position ?? (method.Kind == StringSearchKind.LastIndexOf ? double.PositiveInfinity : 0);
         return StringSearchCore(text, search, start, method.Kind);
@@ -49,6 +52,7 @@ public static partial class Js
     static int StringSearchConverted(StringSearchKind kind, object receiver, object needle, object position)
     {
         string text = AtString(receiver);
+        if (kind == StringSearchKind.Includes && IsRegExpValue(needle)) throw new InvalidOperationException("String.includes does not accept regular expressions");
         string search = StringValue(needle);
         double start = Number(position);
         return StringSearchCore(text, search, start, kind);

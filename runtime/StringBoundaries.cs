@@ -8,7 +8,9 @@ public static partial class Js
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
             string text = AtString(receiver);
-            string search = StringValue(FunctionArgument(arguments, 0));
+            object needle = FunctionArgument(arguments, 0);
+            if (IsRegExpValue(needle)) throw new InvalidOperationException("String boundary methods do not accept regular expressions");
+            string search = StringValue(needle);
             object position = FunctionArgument(arguments, 1);
             int bound = backwards && IsUndefined(position) ? text.Length : StringRangeBound(Number(position), text.Length, true);
             int start = backwards ? bound - search.Length : bound;
@@ -29,6 +31,9 @@ public static partial class Js
     }
     static void DefineStringBoundaries(JsBoxedPrimitive prototype)
     {
+        prototype.DefineHidden("indexOf", StringSearchFunctions.IndexOf);
+        prototype.DefineHidden("includes", StringSearchFunctions.Includes);
+        prototype.DefineHidden("lastIndexOf", StringSearchFunctions.LastIndexOf);
         prototype.DefineHidden("isWellFormed", new StringWellFormedFunction(false));
         prototype.DefineHidden("toWellFormed", new StringWellFormedFunction(true));
         prototype.DefineHidden("normalize", new StringNormalizationFunction());
