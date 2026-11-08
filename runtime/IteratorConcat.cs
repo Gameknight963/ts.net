@@ -2,7 +2,7 @@ using System;
 
 public static partial class Js
 {
-    sealed class ConcatIterator((TsObject Source, JsFunction Open)[] inputs) : TsObject
+    sealed class ConcatIterator((TsObject Source, JsFunction Open)[] inputs) : JsDescriptorObject
     {
         internal (TsObject Source, JsFunction Open)[] Inputs = inputs;
         internal JsProtocolIterator Current;

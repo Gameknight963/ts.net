@@ -3,7 +3,7 @@ using System.Globalization;
 
 // The ordinary array/string/arguments paths retain their unboxed index loops.
 // Materialize the iterator only when a cleanup method can observe its receiver.
-public sealed class JsSequenceIterator : TsObject
+public sealed class JsSequenceIterator : JsDescriptorObject
 {
     object source;
     readonly bool text;

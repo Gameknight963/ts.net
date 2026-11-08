@@ -1,6 +1,6 @@
 using System;
 
-internal sealed class JsLazyIterator(JsProtocolIterator cursor, string mode, JsFunction callback, double limit) : TsObject
+internal sealed class JsLazyIterator(JsProtocolIterator cursor, string mode, JsFunction callback, double limit) : JsDescriptorObject
 {
     internal JsProtocolIterator Cursor = cursor, Inner;
     internal JsFunction Callback = callback;

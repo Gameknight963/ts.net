@@ -12,7 +12,7 @@ public static partial class Js
         internal readonly bool AsyncIterator = asyncIterator;
         internal readonly JsFunction Continuation = continuation;
     }
-    sealed partial class GeneratorValue(JsFunction start, bool asynchronous = false) : TsObject
+    sealed partial class GeneratorValue(JsFunction start, bool asynchronous = false) : JsDescriptorObject
     {
         internal readonly bool Asynchronous = asynchronous;
         readonly Stack<AsyncTryFrame> frames = new();

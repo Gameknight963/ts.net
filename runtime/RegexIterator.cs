@@ -1,6 +1,6 @@
 using System;
 
-internal sealed class JsRegexIterator(TsObject regex, string text, bool global, bool unicode) : TsObject
+internal sealed class JsRegexIterator(TsObject regex, string text, bool global, bool unicode) : JsDescriptorObject
 {
     internal bool Done;
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.RegexIteratorPrototype;

@@ -95,7 +95,7 @@ public sealed class JsKeyedCollection : JsDescriptorObject
     }
 }
 
-public sealed class JsCollectionIterator : TsObject
+public sealed class JsCollectionIterator : JsDescriptorObject
 {
     internal JsKeyedCollection Owner;
     internal int Position;

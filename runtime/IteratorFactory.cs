@@ -1,6 +1,6 @@
 using System;
 
-internal sealed class JsIteratorWrapper(TsObject source, object next) : TsObject
+internal sealed class JsIteratorWrapper(TsObject source, object next) : JsDescriptorObject
 {
     internal readonly TsObject Source = source;
     internal readonly object NextMethod = next;
