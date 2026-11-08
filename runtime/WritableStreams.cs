@@ -19,6 +19,7 @@ public static partial class Js
         JsFunction write, close, abort, size;
         internal WritableWriter Writer;
         internal int PipeState => state;
+        internal object PipeError => storedError;
         internal bool PipeClosing => closing;
         readonly WritableController controller;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)WritableBuiltins.Stream.Get("prototype");

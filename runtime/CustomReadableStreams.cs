@@ -31,9 +31,11 @@ public static partial class Js
         bool started, pulling, pullAgain, closeRequested;
         internal CustomStreamReader Reader;
         internal bool PipeReadable => state == 0;
+        internal bool CanTransformClose => state == 0 && !closeRequested;
+        internal bool TransformWantsPull => state == 0 && !closeRequested && ((Reader?.Pending.Count ?? 0) > 0 || highWaterMark > totalSize);
         readonly CustomStreamController controller;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : BufferedBodyMethods.Prototype;
-        internal CustomReadableStream(object sourceValue, object strategyValue)
+        internal CustomReadableStream(object sourceValue, object strategyValue, double defaultHighWaterMark = 1)
         {
             if (!IsNullish(sourceValue) && sourceValue is not TsObject) throw new InvalidOperationException("Underlying source must be an object");
             if (!IsNullish(strategyValue) && strategyValue is not TsObject) throw new InvalidOperationException("Queuing strategy must be an object");
@@ -46,7 +48,7 @@ public static partial class Js
                 if (StringValue(type) != "bytes") throw new InvalidOperationException("Invalid stream type");
                 throw new NotSupportedException("Custom byte streams and BYOB readers are not supported yet");
             }
-            highWaterMark = IsUndefined(mark) ? 1 : Number(mark);
+            highWaterMark = IsUndefined(mark) ? defaultHighWaterMark : Number(mark);
             if (double.IsNaN(highWaterMark) || highWaterMark < 0) throw new ArgumentOutOfRangeException(nameof(strategyValue),"Invalid high water mark");
             var start = StreamCallback(source,"start",true);
             pull = StreamCallback(source,"pull",true);
