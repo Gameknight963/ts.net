@@ -75,6 +75,14 @@ public static partial class Js
     }
     static bool TryApplyPropertyDefinition(TsObject obj, string key, PropertyDefinition definition)
     {
+        if (obj is TypedArrayValue array && TypedArrayValue.NumericKey(key, out double index))
+        {
+            bool HasElementField(DescriptorFields field) => (definition.Fields & field) != 0;
+            if (!array.Valid(index) || definition.Accessor || HasElementField(DescriptorFields.Configurable) && !definition.Configurable ||
+                HasElementField(DescriptorFields.Enumerable) && !definition.Enumerable || HasElementField(DescriptorFields.Writable) && !definition.Writable) return false;
+            if (HasElementField(DescriptorFields.Value)) array.Write((int)index, definition.Value);
+            return true;
+        }
         if (obj is not JsDescriptorObject created || obj.IsModuleNamespace) throw new NotSupportedException("Property definition on this object layout is not implemented yet");
         object existing = obj.OwnPropertyDescriptor(key);
         if (IsUndefined(existing)) {

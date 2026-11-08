@@ -6,17 +6,27 @@ public static partial class Js
     static object ObjectPreventExtensions(object value)
     {
         if (value is not TsObject target || !ObjectExtensible(value)) return value;
+        if (target is TypedArrayValue array && !array.CanPreventExtensions) throw new InvalidOperationException("Cannot prevent extensions on this typed array");
         if (target is not JsDescriptorObject dictionary) throw new NotSupportedException("Preventing extensions on this object layout is not implemented yet");
         dictionary.Extensible = false;
         return value;
+    }
+    static object ReflectPreventExtensions(object value)
+    {
+        var target = ReflectTarget(value);
+        if (target is TypedArrayValue array && !array.CanPreventExtensions) return BoxBoolean(false);
+        ObjectPreventExtensions(target);
+        return BoxBoolean(true);
     }
     static bool ObjectIntegrity(object value, bool frozen)
     {
         if (value is not TsObject target) return true;
         if (ObjectExtensible(target)) return false;
-        var names = (JsArray)target.OwnPropertyNames();
+        if (frozen && target is TypedArrayValue {Count: > 0}) return false;
+        var names = (JsArray)(target is TypedArrayValue array ? array.ExtraPropertyNames() : target.OwnPropertyNames());
         for (uint index = 0; index < names.Length(); index++) {
-            var descriptor = (TsObject)target.OwnPropertyDescriptor((string)names.ElementAt(index));
+            string key = (string)names.ElementAt(index);
+            var descriptor = (TsObject)target.OwnPropertyDescriptor(key);
             if (Truthy(descriptor.Get("configurable"))) return false;
             if (frozen && descriptor.HasOwn("writable") && Truthy(descriptor.Get("writable"))) return false;
         }
@@ -26,6 +36,7 @@ public static partial class Js
     {
         if (value is not TsObject target || ObjectIntegrity(value, frozen)) return value;
         ObjectPreventExtensions(value);
+        if (target is TypedArrayValue {Count: > 0}) throw new InvalidOperationException("Cannot change typed-array element attributes");
         var names = (JsArray)target.OwnPropertyNames();
         for (uint index = 0; index < names.Length(); index++)
         {

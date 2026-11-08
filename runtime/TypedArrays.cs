@@ -12,7 +12,7 @@ public static partial class Js
         if (!TypedArrayConstructors.TryGetValue(name, out var result)) TypedArrayConstructors.Add(name, result = new TypedArrayConstructor(name));
         return result;
     }
-    sealed class TypedArrayValue : TsObject
+    sealed class TypedArrayValue : JsDescriptorObject
     {
         internal readonly BinaryBuffer Buffer;
         TsObject prototype;
@@ -38,7 +38,7 @@ public static partial class Js
             if (Name == "Uint8ClampedArray") number = double.IsNaN(number) ? 0 : Math.Round(Math.Clamp(number, 0, 255), MidpointRounding.ToEven);
             if ((uint)index < (uint)Count) WriteBinary(Buffer.Bytes.AsSpan(Offset + index * Size, Size), Kind, BitConverter.IsLittleEndian, number, integer);
         }
-        static bool NumericKey(string key, out double index)
+        internal static bool NumericKey(string key, out double index)
         {
             if (key == "-0") { index = -1; return true; }
             return double.TryParse(key, NumberStyles.Float, CultureInfo.InvariantCulture, out index) && NumberKeyString(index) == key;
@@ -51,7 +51,7 @@ public static partial class Js
         }
         internal object ReadIndex(double index) => Valid(index) ? Read((int)index) : Undefined;
         internal void WriteIndex(double index, object value) => Write(Valid(index) ? (int)index : -1, value);
-        bool Valid(double index) => index >= 0 && index < Count && index == Math.Truncate(index);
+        internal bool Valid(double index) => index >= 0 && index < Count && index == Math.Truncate(index);
         internal double? ReadNumberProperty(string key)
         {
             if (key is "length" or "byteLength" or "byteOffset" or "buffer") {
@@ -77,16 +77,19 @@ public static partial class Js
         public override object SetOwnValue(string key, object value) => NumericKey(key, out _) ? Set(key, value) : base.SetOwnValue(key, value);
         public override bool HasOwn(string key) => NumericKey(key, out double index) ? Valid(index) : base.HasOwn(key);
         public override bool DeleteOwn(string key) => NumericKey(key, out double index) ? !Valid(index) : base.DeleteOwn(key);
-        public override object OwnKeys()
+        object PropertyNames(bool enumerable)
         {
             var result = new JsArray(0);
             for (int i = 0; i < Count; i++) result.Append(i.ToString(CultureInfo.InvariantCulture));
-            var extra = (JsArray)base.OwnKeys();
+            var extra = (JsArray)(enumerable ? base.OwnKeys() : base.ForInOwnKeys());
             for (uint i = 0; i < extra.Length(); i++) result.Append(extra.ElementAt(i));
             return result;
         }
-        internal override object OwnPropertyNames() => OwnKeys();
-        internal override object ForInOwnKeys() => OwnKeys();
+        internal object ExtraPropertyNames() => base.ForInOwnKeys();
+        public override object OwnKeys() => PropertyNames(true);
+        internal override object OwnPropertyNames() => PropertyNames(false);
+        internal override object ForInOwnKeys() => OwnPropertyNames();
+        internal bool CanPreventExtensions => !Buffer.Resizable || Buffer is SharedBuffer && !Tracking;
     }
     public static int Float64BufferLength(byte[] bytes) => bytes.Length / 8;
     public static byte[] TryFloat64Buffer(object value)
