@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Numerics;
 using System.Text;
 
 public static partial class Js
@@ -67,7 +68,7 @@ public static partial class Js
         object Prepare(TsObject holder, string key)
         {
             object value = holder.Get(key);
-            if (value is TsObject obj && obj.Get("toJSON") is JsFunction method) value = method.InvokeWithReceiver(obj, new object[] { key });
+            if (value is TsObject or BigInteger && Get(value, "toJSON") is JsFunction method) value = method.InvokeWithReceiver(value, new object[] { key });
             if (replacer != null) value = replacer.InvokeWithReceiver(holder, new[] { key, value });
             if (value is JsBoxedPrimitive boxed && boxed.Value is not JsSymbol) value = boxed.Value is double ? Number(value) : boxed.Value is string ? StringValue(value) : boxed.Value;
             return value;
