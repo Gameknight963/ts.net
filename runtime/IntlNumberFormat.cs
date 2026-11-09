@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Collections.Generic;
 
 public static partial class Js
 {
@@ -15,17 +16,18 @@ public static partial class Js
         }
         internal string DecimalSeparator => settings.culture.NumberFormat.NumberDecimalSeparator;
         internal string Text(object value) => settings.LocalizeDigits(LatinText(value));
-        string LatinText(object value, bool includeAffix = true)
+        string LatinText(object value, bool includeAffix = true, List<string> compactLabels = null)
         {
             value = IntlNumericValue(value);
-            if (value is LocaleDecimal exact) return settings.FormatLatin(exact, true, includeAffix);
-            if (value is BigInteger integer) return settings.FormatLatin(integer, true, includeAffix);
+            if (value is LocaleDecimal exact) return settings.FormatLatin(exact, true, includeAffix, compactLabels);
+            if (value is BigInteger integer) return settings.FormatLatin(integer, true, includeAffix, compactLabels);
             double number = Number(value);
-            return settings.FormatLatin(number, double.IsFinite(number), includeAffix);
+            return settings.FormatLatin(number, double.IsFinite(number), includeAffix, compactLabels);
         }
         internal object Parts(object value)
         {
-            string text = LatinText(value, false);
+            var compactLabels=settings.UsesNativeCompact ? new List<string>() : null;
+            string text = LatinText(value, false,compactLabels);
             var info = settings.culture.NumberFormat;
             var result = new JsArray(0);
             void Part(string type, string contents)
@@ -40,13 +42,23 @@ public static partial class Js
                     if (token.Length == 0 || !text.AsSpan(position).StartsWith(token, StringComparison.Ordinal)) return false;
                     Part(type, token); position += token.Length; return true;
                 }
+                bool Sign(string token,string type) {
+                    if(token.Length==0 || !text.AsSpan(position).StartsWith(token,StringComparison.Ordinal))return false;
+                    int prefix=0;while(prefix<token.Length && char.GetUnicodeCategory(token[prefix])==System.Globalization.UnicodeCategory.Format)prefix++;
+                    if(prefix!=0)Part("literal",token[..prefix]);
+                    if(prefix<token.Length)Part(type,token[prefix..]);position+=token.Length;return true;
+                }
+                bool compactToken=false;
+                if(compactLabels!=null)foreach(string label in compactLabels)if(Token(label,"compact")){compactToken=true;break;}
+                if(compactToken)continue;
                 if (settings.style == "currency" && !settings.CurrencyName && Token(info.CurrencySymbol, "currency")) continue;
                 if (!exponent && settings.notation is ("scientific" or "engineering") && Token("E", "exponentSeparator")) { exponent = true; fraction = false; continue; }
                 if (settings.notation == "compact" && (Token(settings.CompactLabel(3), "compact") || Token(settings.CompactLabel(6), "compact") || Token(settings.CompactLabel(9), "compact") || Token(settings.CompactLabel(12), "compact"))) continue;
                 if (exponent && Token(info.NegativeSign, "exponentMinusSign")) continue;
                 if (Token(info.NumberDecimalSeparator, "decimal")) { fraction = true; continue; }
                 if (settings.style == "percent" && Token(info.PercentSymbol, settings.notation == "compact" ? "unit" : "percentSign")) continue;
-                if (Token(info.NumberGroupSeparator, "group") || Token(info.NegativeSign, "minusSign") || Token(info.PositiveSign, "plusSign")
+                bool group=position+info.NumberGroupSeparator.Length<text.Length && char.IsAsciiDigit(text[position+info.NumberGroupSeparator.Length]) && Token(info.NumberGroupSeparator,"group");
+                if (group || Sign(info.NegativeSign, "minusSign") || Sign(info.PositiveSign, "plusSign")
                     || Token(info.NaNSymbol, "nan") || Token(info.PositiveInfinitySymbol, "infinity")) continue;
                 int start = position;
                 if (char.IsAsciiDigit(text[position]))
