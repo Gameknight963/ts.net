@@ -52,8 +52,10 @@ public static partial class Js
             string text = digits.FormatLatin(value, true);
             return text.StartsWith("-", StringComparison.Ordinal) ? text[1..] : text;
         }
-        string Category(string text)
+        string Category(string text)=>CategoryFor(locale,type,text);
+        internal static string CategoryFor(string locale,string type,string text)
         {
+            if(locale is "ja" or "ko" or "zh")return "other";
             if(AdditionalPluralLanguage(locale))return AdditionalPluralCategory(locale,type,text);
             int point = text.IndexOf('.');
             ReadOnlySpan<char> integer = point < 0 ? text.AsSpan() : text.AsSpan(0, point);

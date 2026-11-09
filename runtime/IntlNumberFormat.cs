@@ -15,19 +15,24 @@ public static partial class Js
             Format = new JsFunction((FunctionBody)(args => Text(FunctionArgument(args, 0))), null, "", 1);
         }
         internal string DecimalSeparator => settings.culture.NumberFormat.NumberDecimalSeparator;
-        internal string Text(object value) => settings.LocalizeDigits(LatinText(value));
-        string LatinText(object value, bool includeAffix = true, List<string> compactLabels = null)
+        internal string Text(object value)
+        {
+            if(!settings.CurrencyName)return settings.LocalizeDigits(LatinText(value));
+            var details=new NumberFormatAnnotations();string number=LatinText(value,false,null,details);return details.Currency.Apply(settings.LocalizeDigits(number));
+        }
+        string LatinText(object value, bool includeAffix = true, List<string> compactLabels = null, NumberFormatAnnotations details = null)
         {
             value = IntlNumericValue(value);
-            if (value is LocaleDecimal exact) return settings.FormatLatin(exact, true, includeAffix, compactLabels);
-            if (value is BigInteger integer) return settings.FormatLatin(integer, true, includeAffix, compactLabels);
+            if (value is LocaleDecimal exact) return settings.FormatLatin(exact, true, includeAffix, compactLabels,details);
+            if (value is BigInteger integer) return settings.FormatLatin(integer, true, includeAffix, compactLabels,details);
             double number = Number(value);
-            return settings.FormatLatin(number, double.IsFinite(number), includeAffix, compactLabels);
+            return settings.FormatLatin(number, double.IsFinite(number), includeAffix, compactLabels,details);
         }
         internal object Parts(object value)
         {
             var compactLabels=settings.UsesNativeCompact ? new List<string>() : null;
-            string text = LatinText(value, false,compactLabels);
+            var details=settings.CurrencyName ? new NumberFormatAnnotations() : null;
+            string text = LatinText(value, false,compactLabels,details);
             var info = settings.culture.NumberFormat;
             var result = new JsArray(0);
             JsDynamicObject previousLiteral=null;
@@ -36,6 +41,7 @@ public static partial class Js
                 if(type=="literal" && previousLiteral!=null){previousLiteral.Set("value",(string)previousLiteral.Get("value")+contents);return;}
                 var part = new JsDynamicObject();previousLiteral=type=="literal" ? part : null; part.DefineOwn("type", type); part.DefineOwn("value", type is "integer" or "fraction" or "exponentInteger" ? settings.LocalizeDigits(contents) : contents); result.Append(part);
             }
+            details?.Currency.Parts(true,Part);
             int position = 0; bool fraction = false, exponent = false;
             while (position < text.Length)
             {
@@ -72,7 +78,7 @@ public static partial class Js
                 }
                 else { Part("literal", text.Substring(position, 1)); position++; }
             }
-            if (settings.CurrencyName) { Part("literal", " "); Part("currency", settings.CurrencyNameAffix(text)); }
+            details?.Currency.Parts(false,Part);
             if (settings.style == "unit") { var affix = settings.UnitAffix(text); if (affix.Gap.Length != 0) Part("literal", affix.Gap); Part("unit", affix.Name); }
             return result;
         }

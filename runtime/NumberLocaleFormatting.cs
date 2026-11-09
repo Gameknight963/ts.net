@@ -68,10 +68,12 @@ public static partial class Js
         internal readonly string unit, unitDisplay;
         internal readonly string currency, currencyDisplay, currencySign;
         readonly string positivePattern, negativePattern, compactNegativePattern, compactPositivePattern;
-        readonly string format;
+        readonly string format, ungroupedFormat;
+        readonly double minimumGroupingThreshold;
         internal readonly string numberingSystem, localeName;
         internal readonly string exponentSeparator;
         readonly NativeCompactNumbers nativeCompact;
+        readonly NativeCurrencyNames nativeCurrencyNames;
         internal bool UsesNativeCompact=>nativeCompact!=null;
         readonly string digitCharacters;
         internal NumberLocaleSettings(object locales, object optionValue)
@@ -142,7 +144,7 @@ public static partial class Js
                 if (style == "currency")
                 {
                     if (currency == null) throw new InvalidOperationException("Currency code is required");
-                    if (currencyDisplay == "name" && culture.Name is not ("en" or "en-US")) throw new NotSupportedException("Currency names currently support US English");
+                    if (currencyDisplay == "name" && culture.Name is not ("en" or "en-US")) nativeCurrencyNames=new NativeCurrencyNames(culture.Name,currency);
                     var metadata = CurrencyFor(currency, culture, currencyDisplay);
                     currencyDigits = metadata.Digits;
                     culture = (CultureInfo)culture.Clone();
@@ -156,9 +158,11 @@ public static partial class Js
                     if (currencySign == "accounting") info.CurrencyNegativePattern = info.CurrencyPositivePattern switch {
                         0 => 0, 1 => 4, 2 => 14, _ => 15
                     };
-                    info.NumberDecimalSeparator = info.CurrencyDecimalSeparator;
-                    info.NumberGroupSeparator = info.CurrencyGroupSeparator;
-                    info.NumberGroupSizes = info.CurrencyGroupSizes;
+                    if(currencyDisplay!="name") {
+                        info.NumberDecimalSeparator = info.CurrencyDecimalSeparator;
+                        info.NumberGroupSeparator = info.CurrencyGroupSeparator;
+                        info.NumberGroupSizes = info.CurrencyGroupSizes;
+                    }
                     info.NumberNegativePattern = 1;
                     positivePattern = SpaceCurrencyTemplate(1d.ToString("C0", culture));
                     negativePattern = SpaceCurrencyTemplate((-1d).ToString("C0", culture));
@@ -290,13 +294,15 @@ public static partial class Js
                 culture=(CultureInfo)culture.Clone();culture.NumberFormat.NaNSymbol="\u0644\u064a\u0633\u00a0\u0631\u0642\u0645\u064b\u0627";
             }
             if (style == "unit" && culture.Name is not ("en" or "en-US")) throw new NotSupportedException("Unit formatting currently supports US English");
-            minimumGrouping = groupingOption is "min2" || groupingOption is "auto" && culture.Name is "es" or "es-ES";
+            minimumGrouping = groupingOption is "min2" || groupingOption is "auto" && culture.Name is "es" or "es-ES" or "pl" or "pl-PL";
             minimumGroupingWidth = int.MaxValue;
             if (minimumGrouping)
             {
                 int[] sizes = culture.NumberFormat.NumberGroupSizes;
                 if (sizes.Length > 0 && sizes[0] > 0) minimumGroupingWidth = sizes[0] + 2;
             }
+            minimumGroupingThreshold=Math.Pow(10,minimumGroupingWidth-1);
+            ungroupedFormat="F"+maximum.ToString(CultureInfo.InvariantCulture);
             format = (grouping ? "N" : "F") + maximum.ToString(CultureInfo.InvariantCulture);
             digitCharacters = NumberDigitCharacters(numberingSystem);
         }
@@ -325,7 +331,10 @@ public static partial class Js
         {
             notationExponent = 0; fractionMinimum = minimum; fractionMaximum = maximum;
             // Safe integers need no decimal rounding and retain native formatting.
-            if (notation == "standard" && maximumSignificant == 0 && !minimumGrouping && roundingIncrement == 1 && style is ("decimal" or "unit") && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) return value.ToString(format, culture);
+            if (notation == "standard" && maximumSignificant == 0 && roundingIncrement == 1 && style is ("decimal" or "unit") && double.IsInteger(value) && Math.Abs(value) <= 9007199254740991d) {
+                bool groups=!minimumGrouping || integerDigits>=minimumGroupingWidth || Math.Abs(value)>=minimumGroupingThreshold;
+                return value.ToString(groups ? format : ungroupedFormat,culture);
+            }
             string raw = Math.Abs(value).ToString("R", CultureInfo.InvariantCulture);
             int split = raw.IndexOf('E');
             int exponent = split < 0 ? 0 : int.Parse(raw.AsSpan(split + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
@@ -441,8 +450,12 @@ public static partial class Js
             return (numerator.Gap, numerator.Name + (unitDisplay == "long" ? " per " : "/") + denominatorName);
         }
         internal string LocalizeDigits(string text) => LocalizeNumberDigits(text, digitCharacters);
-        internal string Format<T>(T value, bool finite) where T : struct, IFormattable => LocalizeDigits(FormatLatin(value, finite));
-        internal string FormatLatin<T>(T value, bool finite, bool includeAffix = true, List<string> compactLabels = null) where T : struct, IFormattable
+        internal string Format<T>(T value, bool finite) where T : struct, IFormattable
+        {
+            if(!CurrencyName)return LocalizeDigits(FormatLatin(value,finite));
+            var details=new NumberFormatAnnotations();string number=FormatLatin(value,finite,false,null,details);return details.Currency.Apply(LocalizeDigits(number));
+        }
+        internal string FormatLatin<T>(T value, bool finite, bool includeAffix = true, List<string> compactLabels = null, NumberFormatAnnotations details = null) where T : struct, IFormattable
         {
             int fractionMinimum = minimum, fractionMaximum = maximum, notationExponent = 0;
             string result = value is LocaleDecimal exact ? NumericText(exact.Digits, exact.Exponent + (style == "percent" ? 2 : 0), exact.Negative, out fractionMinimum, out fractionMaximum, out notationExponent)
@@ -497,11 +510,15 @@ public static partial class Js
                     if (integer) result = result[..point];
                 }
             }
+            var namePattern=nativeCurrencyNames?.Pattern(result,notationExponent,culture.NumberFormat,finite);
             if(finite && nativeCompact!=null)result=nativeCompact.Apply(result,notationExponent,culture.NumberFormat,compactLabels);
             else if (finite && notation == "compact") { string compact = CompactLabel(notationExponent); if (compact.Length != 0) result += (LongCompact ? " " : "") + compact; }
             else if (finite && notation != "standard")
                 result += exponentSeparator + (notationExponent < 0 ? culture.NumberFormat.NegativeSign : "") + Math.Abs(notationExponent).ToString(CultureInfo.InvariantCulture);
-            if (CurrencyName) return includeAffix ? result + " " + CurrencyNameAffix(result) : result;
+            if (CurrencyName) {
+                namePattern??=CurrencyNamePattern.English(CurrencyNameAffix(result));if(details!=null)details.Currency=namePattern;
+                return includeAffix ? namePattern.Apply(result) : result;
+            }
             if (style == "unit") { if (!includeAffix) return result; var affix = UnitAffix(result); return result + affix.Gap + affix.Name; }
             if (style == "decimal") return result;
             var info = culture.NumberFormat;
