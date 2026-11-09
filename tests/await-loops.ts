@@ -184,3 +184,29 @@ async function asyncForCapture():Promise<string> {
     return (await Promise.all(readers.map(read=>read()))).join(',');
 }
 asyncForCapture().then(value=>console.log('async iteration captures',value));
+async function separateTransferState(start:number):Promise<number> {
+    let sum=0;
+    for(let i=0;i<5;i++) {
+        try {
+            if(i===1)continue;
+            sum+=await(start+i);
+            if(i===3)break;
+        } finally {
+            await 0;
+            sum+=10;
+        }
+    }
+    return sum;
+}
+Promise.all([separateTransferState(1),separateTransferState(20)]).then(values=>console.log('separate transfer state',values.join(',')));
+async function repeatedTransferLoops():Promise<number> {
+    let sum=0;
+    for(let outer=0;outer<3;outer++) {
+        for(let inner=0;inner<3;inner++) {
+            if(inner===1)continue;
+            sum+=await(outer*10+inner);
+        }
+    }
+    return sum;
+}
+repeatedTransferLoops().then(value=>console.log('nested transfer state',value));
