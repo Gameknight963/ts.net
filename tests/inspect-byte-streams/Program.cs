@@ -53,3 +53,30 @@ status=Js.Run(()=>{
 });
 if(status!=0 || !complete)throw new Exception("BYOB transfer check did not complete");
 Console.WriteLine("PASS BYOB requests and responses preserve the caller's backing byte array");
+bool readFailed=false,closedFailed=false,defaultFailed=false,cloneFailed=false,requestFailed=false;object storedFailure=null;
+status=Js.Run(()=>{
+    var payload=(TsObject)((JsFunction)Js.BuiltinNamespace("Uint8Array")).Construct(new object[]{1d});
+    var response=(TsObject)((JsFunction)Js.BuiltinNamespace("Response")).Construct(new object[]{payload});
+    var body=(TsObject)response.Get("body");var options=new JsDynamicObject();options.Set("mode","byob");
+    var reader=(TsObject)Call(body,"getReader",options);
+    JsFunction Failure(Action mark)=>new((FunctionBody)(args=>{
+        if(!Equals(Js.Get(args[0],"name"),"TypeError"))throw new Exception("Expected TypeError");
+        if(storedFailure==null)storedFailure=args[0];else if(!ReferenceEquals(storedFailure,args[0]))throw new Exception("Stored body error identity changed");
+        mark();return Js.Undefined;
+    }),null,"failed",1);
+    var view=((JsFunction)Js.BuiltinNamespace("Uint16Array")).Construct(new object[]{2d});
+    Call((TsObject)Call(reader,"read",view),"catch",Failure(()=>readFailed=true));
+    Call((TsObject)reader.Get("closed"),"catch",Failure(()=>closedFailed=true));
+    Call(reader,"releaseLock");var ordinary=(TsObject)Call(body,"getReader");
+    Call((TsObject)Call(ordinary,"read"),"catch",Failure(()=>defaultFailed=true));
+    Call(ordinary,"releaseLock");var branches=(TsObject)Call(body,"tee");
+    var errored=(TsObject)((JsFunction)Js.BuiltinNamespace("Response")).Construct(new[]{branches.Get("0")});
+    var cloned=(TsObject)Call(errored,"clone");Call((TsObject)Call(cloned,"text"),"catch",Failure(()=>cloneFailed=true));
+    var init=new JsDynamicObject();init.Set("method","POST");init.Set("body",branches.Get("1"));init.Set("duplex","half");
+    var request=(TsObject)((JsFunction)Js.BuiltinNamespace("Request")).Construct(new object[]{"https://example.com/",init});
+    var requestClone=Call(request,"clone");var transferred=(TsObject)((JsFunction)Js.BuiltinNamespace("Request")).Construct(new[]{requestClone});
+    Call((TsObject)Call(transferred,"text"),"catch",Failure(()=>requestFailed=true));
+});
+if(status!=0 || !readFailed || !closedFailed || !defaultFailed || !cloneFailed || !requestFailed)throw new Exception("Buffered BYOB alignment error did not propagate");
+Console.WriteLine("PASS buffered BYOB alignment errors reject read and closed promises and survive reader replacement");
+Console.WriteLine("PASS stored body errors survive tee, Response cloning, and Request cloning and transfer");

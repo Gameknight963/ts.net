@@ -22,7 +22,7 @@ public static partial class Js
             if (source is BufferedBody body) body.Disturbed = true;
             else if (source is CustomReadableStream stream) stream.Disturbed = true;
         }
-        bool SourceReadable => source is CustomReadableStream stream ? stream.PipeReadable : !((BufferedBody)source).Closed;
+        bool SourceReadable => source is CustomReadableStream stream ? stream.PipeReadable : !((BufferedBody)source).Closed && ((BufferedBody)source).Failure==null;
         JsPromise ReaderClosed => reader is CustomStreamReader custom ? custom.ClosedPromise : ((BufferedBodyReader)reader).ClosedPromise;
         JsPromise Read() => reader is CustomStreamReader custom ? custom.Read() : BodyOperation(() => ((BufferedBodyReader)reader).Read());
         JsPromise Cancel(object reason) => BodyPromiseOperation(() => reader is CustomStreamReader custom ? custom.Cancel(reason) : ((BufferedBodyReader)reader).Owner.CancelPromise());

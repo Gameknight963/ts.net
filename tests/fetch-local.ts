@@ -26,5 +26,9 @@ async function run():Promise<void>{
  try{await fetch(origin+'/slow',{signal:AbortSignal.timeout(5)});}catch(error){console.log('timeout',(error as Error).name);}
  const concurrent=await Promise.all([fetch(origin+'/text'),fetch(origin+'/text')]);console.log('concurrent',(await Promise.all(concurrent.map(value=>value.text()))).join(','));
  console.log('metadata',fetch.name,fetch.length,globalThis.fetch===fetch);
+ const streamed=await fetch(origin+'/text');const byteReader=streamed.body!.getReader({mode:'byob'});
+ const prefix=await byteReader.read(new Uint8Array(2));byteReader.releaseLock();
+ const rest=streamed.body!.getReader();
+ console.log('byob',Array.from(prefix.value!).join(','),Array.from((await rest.read()).value!).join(','),(await rest.read()).done,streamed.bodyUsed);rest.releaseLock();
 }
 run();

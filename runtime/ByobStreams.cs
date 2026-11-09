@@ -15,8 +15,8 @@ public static partial class Js
     }
     static (BinaryBuffer Buffer,int Offset,int Length,int Size,string Name) ByobView(object value)
     {
-        if(value is TypedArrayValue array && !array.OutOfBounds)return(array.Buffer,array.Offset,checked(array.Count*array.Size),array.Size,array.Name);
-        if(value is BinaryView view && !view.OutOfBounds)return(view.Buffer,view.Offset,view.Length,1,null);
+        if(value is TypedArrayValue array && array.Buffer is not SharedBuffer && !array.OutOfBounds)return(array.Buffer,array.Offset,checked(array.Count*array.Size),array.Size,array.Name);
+        if(value is BinaryView view && view.Buffer is not SharedBuffer && !view.OutOfBounds)return(view.Buffer,view.Offset,view.Length,1,null);
         throw new InvalidOperationException("An attached ArrayBuffer view is required");
     }
     static double ByobByteCount(object amount)
@@ -24,6 +24,21 @@ public static partial class Js
         double number=Math.Truncate(Number(amount));
         if(!double.IsFinite(number) || number<0 || number>=18446744073709551616d)throw new InvalidOperationException("Invalid response byte count");
         return number;
+    }
+    static (BinaryBuffer Buffer,int Offset,int Length,int Size,string Name,int Minimum) ValidateByobRead(object input,object options)
+    {
+        var view=ByobView(input);
+        if(view.Length==0 || view.Buffer.Bytes.Length==0)throw new InvalidOperationException("BYOB views must not be empty");
+        if(!IsNullish(options) && options is not TsObject)throw new InvalidOperationException("Read options must be an object");
+        object requested=options is TsObject settings ? settings.Get("min") : Undefined;
+        double min=IsUndefined(requested)?1:Math.Truncate(Number(requested));
+        if(!double.IsFinite(min) || min<1 || min>=18446744073709551616d)throw new InvalidOperationException("Invalid minimum read length");
+        if(min>view.Length/view.Size)throw new ArgumentOutOfRangeException(nameof(options),"Minimum read length exceeds the view");
+        EnsureAttached(view.Buffer);
+        view=ByobView(input);
+        if(view.Length==0)throw new InvalidOperationException("BYOB view became empty during conversion");
+        if(min>view.Length/view.Size)throw new ArgumentOutOfRangeException(nameof(options),"Minimum read length exceeds the view");
+        return(view.Buffer,view.Offset,view.Length,view.Size,view.Name,(int)min*view.Size);
     }
     sealed partial class CustomReadableStream
     {
@@ -65,23 +80,13 @@ public static partial class Js
         void AllocateDefaultRead(JsPromise promise)=>pullIntos.Enqueue(new PullInto(new BinaryBuffer(autoAllocateChunkSize),0,autoAllocateChunkSize,1,"Uint8Array",1,promise,true));
         internal JsPromise ReadInto(object input,object options,ByobStreamReader requester)
         {
-            var view=ByobView(input);
-            if(view.Length==0 || view.Buffer.Bytes.Length==0)throw new InvalidOperationException("BYOB views must not be empty");
-            if(!IsNullish(options) && options is not TsObject)throw new InvalidOperationException("Read options must be an object");
-            object requested=options is TsObject settings ? settings.Get("min") : Undefined;
-            double min=IsUndefined(requested)?1:Math.Truncate(Number(requested));
-            if(!double.IsFinite(min) || min<1 || min>=18446744073709551616d)throw new InvalidOperationException("Invalid minimum read length");
-            if(min>view.Length/view.Size)throw new ArgumentOutOfRangeException(nameof(options),"Minimum read length exceeds the view");
-            EnsureAttached(view.Buffer);
+            var view=ValidateByobRead(input,options);
             if(requester.Owner!=this || ByobReader!=requester)throw new InvalidOperationException("Reader lock has been released");
-            view=ByobView(input);
-            if(view.Length==0)throw new InvalidOperationException("BYOB view became empty during conversion");
-            if(min>view.Length/view.Size)throw new ArgumentOutOfRangeException(nameof(options),"Minimum read length exceeds the view");
             Disturbed=true;
             var result=new JsPromise();
             if(state==2){result.Settle(error,true);return result;}
             var transferred=(BinaryBuffer)TransferBuffer(view.Buffer,Undefined,false);
-            var descriptor=new PullInto(transferred,view.Offset,view.Length,view.Size,view.Name,(int)min*view.Size,result);
+            var descriptor=new PullInto(transferred,view.Offset,view.Length,view.Size,view.Name,view.Minimum,result);
             if(state==1 && pullIntos.Count==0){CommitInto(descriptor,true);return result;}
             pullIntos.Enqueue(descriptor);
             try {ProcessPullIntos();}catch when(state==2){return result;}
@@ -199,12 +204,15 @@ public static partial class Js
     sealed class ByobStreamReader(CustomReadableStream owner) : JsDescriptorObject
     {
         internal CustomReadableStream Owner=owner;
+        internal BufferedBody BufferedOwner;
+        internal ByobStreamReader(BufferedBody body) : this((CustomReadableStream)null){BufferedOwner=body;}
         internal JsPromise ClosedPromise=new(){Handled=true};
         internal override TsObject PropertyPrototype=>TryExplicitPrototype(out var value)?value:ByobReaderMethods.Prototype;
         internal void Release()
         {
-            if(Owner==null)return;
-            Owner.ReleasePullIntos();Owner.ByobReader=null;Owner=null;
+            if(Owner==null && BufferedOwner==null)return;
+            if(BufferedOwner!=null){BufferedOwner.ByobReader=null;BufferedOwner=null;}
+            else {Owner.ReleasePullIntos();Owner.ByobReader=null;Owner=null;}
             var reason=new JsCaughtError("TypeError","Reader lock has been released");ClosedPromise.Settle(reason,true);ClosedPromise=new JsPromise{Handled=true};ClosedPromise.Settle(reason,true);
         }
     }

@@ -60,7 +60,8 @@ public static partial class Js
     static object TeeBufferedBody(BufferedBody source)
     {
         source.GetReader(Undefined);
-        byte[] bytes = source.Closed ? Array.Empty<byte>() : source.Bytes;
+        if(source.Failure!=null)return new JsArray(new object[]{new BufferedBody(Array.Empty<byte>()){Failure=source.Failure},new BufferedBody(Array.Empty<byte>()){Failure=source.Failure}});
+        byte[] bytes = source.Closed ? Array.Empty<byte>() : source.Position==0 ? source.Bytes : source.Bytes.AsSpan(source.Position).ToArray();
         var state = new BufferedTee(source);
         var first = new BufferedBody(bytes) { Tee = state, TeeBranch = 0 };
         var second = new BufferedBody(bytes) { Tee = state, TeeBranch = 1 };

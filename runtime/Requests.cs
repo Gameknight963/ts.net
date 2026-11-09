@@ -98,7 +98,7 @@ public static partial class Js
             result.CustomBody = source.CustomBody;
         } else if (source?.Body != null) {
             if (source.Body.Disturbed || source.Body.Locked) throw new InvalidOperationException("Source request body has already been consumed or locked");
-            result.Body = new BufferedBody(source.Body.Bytes);
+            result.Body = new BufferedBody(source.Body.Bytes){Failure=source.Body.Failure};
         }
         if ((result.Body != null || result.CustomBody != null) && result.Method is "GET" or "HEAD") throw new InvalidOperationException("GET and HEAD requests cannot have a body");
         if (result.StreamBody && (result.KeepAlive || result.Mode == "no-cors")) throw new InvalidOperationException("Stream request bodies cannot use keepalive or no-cors mode");
@@ -120,7 +120,7 @@ public static partial class Js
         if (source.Body != null && (source.Body.Disturbed || source.Body.Locked)) throw new InvalidOperationException("Request body cannot be cloned after use or while locked");
         var result = CopyRequest(source);
         source.Body?.Tee?.BranchRead();
-        result.Body = source.Body == null ? null : new BufferedBody(source.Body.Bytes);
+        result.Body = source.Body == null ? null : new BufferedBody(source.Body.Bytes){Failure=source.Body.Failure};
         if (source.CustomBody != null) {
             var branches = TeeCustomStream(source.CustomBody);
             source.CustomBody = (CustomReadableStream)branches.Get("0");

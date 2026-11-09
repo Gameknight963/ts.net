@@ -10,7 +10,7 @@ public static partial class Js
     };
     static TsObject GetDefaultStreamReader(object receiver, object options) => receiver switch {
         CustomReadableStream stream => stream.AcquireReader(options),
-        BufferedBody body => body.GetReader(options),
+        BufferedBody body => body.AcquireReader(options),
         _ => throw new InvalidOperationException("Readable stream receiver required")
     };
     static JsFunction StreamCallback(TsObject source, string name, bool nullIsAbsent = false)

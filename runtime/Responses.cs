@@ -62,7 +62,7 @@ public static partial class Js
         source.Body?.Tee?.BranchRead();
         return new ResponseValue {
             Status = source.Status, StatusText = source.StatusText, Type = source.Type, Url = source.Url, Redirected = source.Redirected,
-            Headers = CopyResponseHeaders(source.Headers), Body = source.Body == null ? null : new BufferedBody(source.Body.Bytes)
+            Headers = CopyResponseHeaders(source.Headers), Body = source.Body == null ? null : new BufferedBody(source.Body.Bytes){Failure=source.Body.Failure}
         };
     }
     static object ConsumeResponse(object receiver, string kind) => BodyPromiseOperation(() => {

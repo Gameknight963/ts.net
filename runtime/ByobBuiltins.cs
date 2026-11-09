@@ -8,14 +8,23 @@ public static partial class Js
         internal static readonly JsFunction Constructor=CreateConstructor();
         static JsFunction CreateConstructor(){var result=new ByobReaderConstructor();((JsDescriptorObject)Prototype).DefineMethod("constructor",result);return result;}
         static ByobStreamReader Require(object value)=>value as ByobStreamReader ?? throw new InvalidOperationException("BYOB reader receiver required");
-        static CustomReadableStream Owner(object value)=>Require(value).Owner ?? throw new InvalidOperationException("Reader lock has been released");
+        static JsPromise Read(object receiver,object input,object options) {
+            var reader=Require(receiver);
+            if(reader.BufferedOwner!=null)return reader.BufferedOwner.ReadInto(input,options,reader);
+            return reader.Owner!=null ? reader.Owner.ReadInto(input,options,reader) : throw new InvalidOperationException("Reader lock has been released");
+        }
+        static JsPromise Cancel(object receiver,object reason) {
+            var reader=Require(receiver);
+            if(reader.BufferedOwner!=null)return reader.BufferedOwner.CancelPromise();
+            return reader.Owner!=null ? reader.Owner.Cancel(reason) : throw new InvalidOperationException("Reader lock has been released");
+        }
         static TsObject Create()
         {
             var result=new JsClassInstance{ParentPrototype=DefaultClassObjectPrototype};
             result.DefineMethod(PropertyKey(ToStringTagSymbol),"ReadableStreamBYOBReader",false);
             result.DefineAccessor("closed",new CollectionMethod("get closed",0,(receiver,_)=>BodyPromiseOperation(()=>Require(receiver).ClosedPromise)),1);
-            result.DefineOwn("read",new CollectionMethod("read",1,(receiver,args)=>BodyPromiseOperation(()=>Owner(receiver).ReadInto(FunctionArgument(args,0),FunctionArgument(args,1),Require(receiver)))));
-            result.DefineOwn("cancel",new CollectionMethod("cancel",1,(receiver,args)=>BodyPromiseOperation(()=>Owner(receiver).Cancel(FunctionArgument(args,0)))));
+            result.DefineOwn("read",new CollectionMethod("read",1,(receiver,args)=>BodyPromiseOperation(()=>Read(receiver,FunctionArgument(args,0),FunctionArgument(args,1)))));
+            result.DefineOwn("cancel",new CollectionMethod("cancel",1,(receiver,args)=>BodyPromiseOperation(()=>Cancel(receiver,FunctionArgument(args,0)))));
             result.DefineOwn("releaseLock",new CollectionMethod("releaseLock",0,(receiver,_)=>{Require(receiver).Release();return Undefined;}));
             return result;
         }
@@ -23,7 +32,7 @@ public static partial class Js
     sealed class ByobReaderConstructor : NativeNamespaceFunction
     {
         internal ByobReaderConstructor() : base("ReadableStreamBYOBReader",static _=>throw new InvalidOperationException("BYOB reader requires new"),1){UseObjectPrototype(ByobReaderMethods.Prototype);}
-        public override object Construct(object[] args)=>FunctionArgument(args,0) is CustomReadableStream stream ? stream.GetByobReader() : throw new InvalidOperationException("Byte stream required");
+        public override object Construct(object[] args)=>FunctionArgument(args,0) switch {CustomReadableStream stream=>stream.GetByobReader(),BufferedBody body=>body.GetByobReader(),_=>throw new InvalidOperationException("Byte stream required")};
         internal override bool CanInitializeDerived=>true;
         internal override object InitializeDerived(object instance,object[] args,JsFunction newTarget){var value=(TsObject)Construct(args);value.SetPrototype(ConstructionPrototype(newTarget));return value;}
     }

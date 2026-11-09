@@ -12,7 +12,7 @@ public static partial class Js
     }
     // Buffered bodies own immutable bytes. Exposed buffers and reader chunks are
     // copies, so consuming or changing one response cannot change a clone.
-    sealed class BufferedBody(byte[] bytes) : JsDescriptorObject
+    sealed partial class BufferedBody(byte[] bytes) : JsDescriptorObject
     {
         internal readonly byte[] Bytes = bytes;
         internal bool Disturbed, Consuming;
@@ -21,7 +21,7 @@ public static partial class Js
         internal BufferedTee Tee;
         internal int TeeBranch;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : BufferedBodyMethods.Prototype;
-        internal bool Locked => Consuming || Reader != null;
+        internal bool Locked => Consuming || Reader != null || ByobReader != null;
         internal BufferedBodyReader GetReader(object options)
         {
             if (!IsNullish(options) && options is not TsObject) throw new InvalidOperationException("Reader options must be an object");
@@ -29,7 +29,7 @@ public static partial class Js
             if (!IsUndefined(mode)) {
                 string requested = StringValue(mode);
                 if (requested != "byob") throw new InvalidOperationException("Invalid reader mode");
-                throw new InvalidOperationException("Buffered response bodies currently support default readers");
+                throw new InvalidOperationException("Default reader mode required");
             }
             if (Locked) throw new InvalidOperationException("Body stream is locked");
             return Reader = new BufferedBodyReader(this);
@@ -37,14 +37,16 @@ public static partial class Js
         internal byte[] Consume()
         {
             if (Disturbed || Locked) throw new InvalidOperationException("Body has already been consumed or locked");
+            if(Failure!=null){Disturbed=Consuming=true;throw MakeThrown(Failure);}
             Tee?.BranchRead();
             Disturbed = Closed = true;
             Consuming = true;
-            return Bytes;
+            Position=Bytes.Length;return Bytes;
         }
-        internal void Cancel() { Disturbed = Closed = true; Reader?.Finish(); }
+        internal void Cancel() { Disturbed = Closed = true;Position=Bytes.Length;Reader?.Finish();ByobReader?.ClosedPromise.Settle(Undefined,false); }
         internal JsPromise CancelPromise()
         {
+            if(Failure!=null){Disturbed=true;return BodyOperation(()=>throw MakeThrown(Failure));}
             bool wasClosed = Closed; Cancel();
             return !wasClosed && Tee != null ? Tee.Cancel(TeeBranch) : BodyOperation(() => Undefined);
         }
@@ -58,6 +60,7 @@ public static partial class Js
                 if (closedPromise != null) return closedPromise;
                 closedPromise = new JsPromise {Handled = true};
                 if (Owner == null) closedPromise.Settle(new JsCaughtError("TypeError","Reader lock has been released"),true);
+                else if(Owner.Failure!=null)closedPromise.Settle(Owner.Failure,true);
                 else if (finished) closedPromise.Settle(Undefined,false);
                 return closedPromise;
             }
@@ -70,11 +73,12 @@ public static partial class Js
         {
             if (Owner == null) throw new InvalidOperationException("Reader lock has been released");
             Owner.Disturbed = true;
+            if(Owner.Failure!=null)throw MakeThrown(Owner.Failure);
             if (Owner.Closed) {Finish();return IteratorResult(Undefined,true);}
             Owner.Tee?.BranchRead();
             Owner.Closed = true; Finish();
-            var chunk = AllocateTypedArray("Uint8Array",Owner.Bytes.Length);
-            Owner.Bytes.CopyTo(chunk.Buffer.Bytes,0);
+            var chunk = AllocateTypedArray("Uint8Array",Owner.Bytes.Length-Owner.Position);
+            Owner.Bytes.AsSpan(Owner.Position).CopyTo(chunk.Buffer.Bytes);Owner.Position=Owner.Bytes.Length;
             return IteratorResult(chunk,false);
         }
         internal void Release()
