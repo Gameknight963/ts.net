@@ -17,6 +17,7 @@ public static partial class Js
             {
                 object resolve = Js.Get(receiver, "resolve");
                 if (resolve is not JsFunction) throw new InvalidOperationException("Promise resolve is not callable");
+                bool intrinsicResolve = ReferenceEquals(receiver, RuntimeNamespaces.Promise) && resolve is PromiseStaticFunction { IsResolve: true };
                 input = Iteration.Start(FunctionArgument(arguments, 0));
                 var state = new PromiseCombinationState(mode, capability);
                 while (true)
@@ -26,7 +27,7 @@ public static partial class Js
                     object item = input is JsArray array ? IndexedValue(array, position) : Iteration.Value(input, position);
                     position += Iteration.Step(input, position); closeable = true;
                     int index = state.Add();
-                    object promise = CallMethod(resolve, receiver, new[] { item });
+                    object promise = intrinsicResolve ? PromiseResolve(receiver, item) : CallMethod(resolve, receiver, new[] { item });
                     object then = Js.Get(promise, "then");
                     if (promise is JsPromise native && then is PromiseThenFunction)
                     {

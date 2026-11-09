@@ -63,3 +63,12 @@ class RejectedRecorded {
 (Promise.any as any).call(RejectedRecorded,['a','b']);
 const getterInput:any=[1,,];const getterPrototype={get 1():number{console.log('element getter');throw 'element failure';}};Object.setPrototypeOf(getterPrototype,Array.prototype);Object.setPrototypeOf(getterInput,getterPrototype);
 Promise.all(getterInput).catch(e=>console.log('element failure',e));
+
+const savedResolve = Promise.resolve;
+let resolveReads = 0;
+Object.defineProperty(Promise, 'resolve', {configurable: true, get() {
+    resolveReads++;
+    return savedResolve;
+}});
+Promise.all([3, 4]).then(values => console.log('captured native resolve', resolveReads, values.join(',')));
+Object.defineProperty(Promise, 'resolve', {configurable: true, writable: true, value: savedResolve});

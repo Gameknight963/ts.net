@@ -204,6 +204,7 @@ public static partial class Js
     }
     sealed class PromiseStaticFunction(bool reject) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Promise method requires a constructor")), null, reject ? "reject" : "resolve", 1)
     {
+        internal bool IsResolve => !reject;
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
             object value = FunctionArgument(arguments, 0);
