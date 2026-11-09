@@ -64,6 +64,8 @@ public static partial class Js
     static string NumberKeyString(double value)
     {
         if (!double.IsFinite(value) || value == 0) return Text(value);
+        if (value >= int.MinValue && value <= int.MaxValue && value == (int)value)
+            return ((int)value).ToString(CultureInfo.InvariantCulture);
         string raw = value.ToString("R", CultureInfo.InvariantCulture);
         int e = raw.IndexOf('E');
         if (e < 0) return raw;
