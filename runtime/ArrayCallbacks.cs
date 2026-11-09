@@ -84,24 +84,42 @@ public static partial class Js
             if (FunctionArgument(arguments, 0) is not JsFunction callback) throw new InvalidOperationException("Array callback is not callable");
             bool initialized = arguments.Length > 1;
             bool numericCallback = callback.SupportsArrayNumber();
+            bool numericResult = numericCallback && callback.SupportsNumberResult();
+            bool unboxed = false;
+            double? numberAccumulator = null;
             object accumulator = FunctionArgument(arguments, 1);
             long step = backwards ? -1 : 1;
             for (long i = backwards ? length - 1 : 0; i >= 0 && i < length; i += step)
             {
-                if (initialized && numericCallback && accumulator is double rawAccumulator &&
+                if (initialized && numericCallback && (unboxed || accumulator is double) &&
                     source is NumberArray numbers && !numbers.HasIndexedAccessors && numbers.TryPacked(i + 1) is { } packed)
                 {
-                    accumulator = callback.InvokeArrayNumber(Undefined, rawAccumulator, packed[(int)i], source);
+                    if (numericResult)
+                    {
+                        numberAccumulator = callback.InvokeNumber2(unboxed ? numberAccumulator : (double)accumulator, packed[(int)i]);
+                        unboxed = true;
+                    }
+                    else accumulator = callback.InvokeArrayNumber(Undefined, (double)accumulator, packed[(int)i], source);
                     continue;
                 }
                 if (!TryIndexedValue(source, i, out object value)) continue;
                 if (!initialized) { accumulator = value; initialized = true; }
-                // Eligible callbacks use only their first two numeric arguments.
-                else if (numericCallback && accumulator is double first && value is double second)
-                    accumulator = callback.InvokeArrayNumber(Undefined, first, second, source);
-                else accumulator = callback.InvokeWithReceiver(Undefined, new object[] { accumulator, value, (double)i, source });
+                else if (numericResult && value is double number && (unboxed || accumulator is double))
+                {
+                    numberAccumulator = callback.InvokeNumber2(unboxed ? numberAccumulator : (double)accumulator, number);
+                    unboxed = true;
+                }
+                else
+                {
+                    if (unboxed) { accumulator = BoxNumber(numberAccumulator); unboxed = false; }
+                    // Eligible callbacks use only their first two numeric arguments.
+                    if (numericCallback && accumulator is double first && value is double second)
+                        accumulator = callback.InvokeArrayNumber(Undefined, first, second, source);
+                    else accumulator = callback.InvokeWithReceiver(Undefined, new object[] { accumulator, value, (double)i, source });
+                }
             }
-            return initialized ? accumulator : throw new InvalidOperationException("Reduce of empty array with no initial value");
+            if (!initialized) throw new InvalidOperationException("Reduce of empty array with no initial value");
+            return unboxed ? BoxNumber(numberAccumulator) : accumulator;
         }
         public override object InvokeWithReceiver(object receiver, object[] arguments) => Execute(receiver, arguments);
         public override double? InvokeMethodNumber0(object receiver) => Cast<double?>(Execute(receiver, Array.Empty<object>()), "Reduce result violates number type");

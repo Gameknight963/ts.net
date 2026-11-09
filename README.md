@@ -85,7 +85,7 @@ Runtime performance:
 | Create a Map, insert and read 10K entries, then delete half | 4.38 ms | 0.80 ms | 0.18x |
 | join, 20 joins of 10K integers from 0-99 | 1.64 ms | 2.23 ms | 1.36x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 6.02 ms | 2.11 ms | 0.35x |
-| reduce and reduceRight, 10 pairs over 10K integers from 0-255 | 0.941 ms | 1.22 ms | 1.30x |
+| reduce and reduceRight, 10 pairs over 10K integers from 0-255 | 0.775 ms | 1.21 ms | 1.56x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
 | copyWithin, 1K copies of 5K entries in a 10K packed array | 1 ms | 269 ms | 321x |
 | Object.assign, create 1K objects with 3 fields | 1 ms | 0 ms | 0.10x |

@@ -110,6 +110,8 @@ public partial class JsFunction : JsDescriptorObject
         if (numeric is NumberFunction0 number0) return number0();
         return Js.Cast<double?>(body(new[] { Js.BoxNumber(first), Js.BoxNumber(second) }), "Function result violates number type");
     }
+    // Generated number-returning functions support nullable numeric results.
+    public virtual bool SupportsNumberResult() => false;
 }
 
 public static partial class Js

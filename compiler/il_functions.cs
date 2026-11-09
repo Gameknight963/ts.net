@@ -229,6 +229,11 @@ internal static partial class CompilerFunctions
             else b.box(result, c);
             b.op(0x2a);
         }
+        if (count >= 0)
+        {
+            int supported = b.plan.method0(5, type, 0xc6, -2, "SupportsNumberResult");
+            b.begin(supported); b.emit(0x20, 1); b.op(0x2a);
+        }
     }
     internal static void il_function_object(int symbol, Compiler c, IlBackend b)
     {

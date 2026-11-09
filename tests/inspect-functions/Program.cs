@@ -65,3 +65,26 @@ var rawFunction = new JsFunction(nativeBody,numericDelegates[1],"raw",1);
 if(nullableFunction.InvokeNumber0()!=null || nullableFunction.InvokeNumber1(null)!=null || !double.IsNaN(rawFunction.InvokeNumber1(null).GetValueOrDefault()))
     throw new Exception("Missing numeric arguments changed");
 Console.WriteLine("PASS native numeric delegates, missing arguments, and generic call fallbacks");
+
+var nullableReduceInput = new NumberArray(3);
+for(int i=0;i<3;i++)nullableReduceInput.SetNumberAt(i,i+1);
+var nullableReducer = new NullableReducer();
+var nullableReduceResult = Js.CallMethod(Js.Get(nullableReduceInput,"reduce"),nullableReduceInput,new object[]{nullableReducer,0d});
+if(nullableReduceResult is not double nullableTotal || nullableTotal!=10 || !nullableReducer.SawUndefined)
+    throw new Exception("Unboxed reduce lost an undefined accumulator");
+var nullableRightResult = Js.CallMethod(Js.Get(nullableReduceInput,"reduceRight"),nullableReduceInput,new object[]{nullableReducer,0d});
+if(!ReferenceEquals(nullableRightResult,Js.Undefined))throw new Exception("Unboxed reduceRight lost its undefined result");
+Console.WriteLine("PASS nullable numeric reduction state and undefined results");
+
+sealed class NullableReducer : JsFunction
+{
+    internal bool SawUndefined;
+    internal NullableReducer() : base((FunctionBody)(static _=>throw new Exception("Unexpected generic reduction")),null,"nullable",2) { }
+    public override bool SupportsArrayNumber()=>true;
+    public override bool SupportsNumberResult()=>true;
+    public override double? InvokeNumber2(double? first,double? second)
+    {
+        if(!first.HasValue)SawUndefined=true;
+        return second==1 ? null : (first??5)+second;
+    }
+}

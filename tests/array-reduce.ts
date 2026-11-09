@@ -72,3 +72,21 @@ const packedRightGetterSum = packedRightGetterSource.reduceRight((sum, value) =>
     return sum + value;
 }, 0);
 console.log('packed reduceRight getter', packedRightGetterSum, packedRightGetterReads);
+
+const scalarMissingInput = [1, 2, 3];
+console.log('scalar undefined input', scalarMissingInput.reduce((sum, value = 9) => {
+    if (value === 1) (scalarMissingInput as any)[1] = undefined;
+    return sum + value;
+}, 0));
+const scalarRightMissingInput = [1, 2, 3];
+console.log('scalar right undefined input', scalarRightMissingInput.reduceRight((sum, value = 9) => {
+    if (value === 3) (scalarRightMissingInput as any)[1] = undefined;
+    return sum + value;
+}, 0));
+console.log('scalar optional result', [1, 2, 3].reduce<number | undefined>((sum, value) => value === 1 ? undefined : (sum ?? 5) + value, 0));
+console.log('scalar optional right result', [1, 2, 3].reduceRight<number | undefined>((sum, value) => value === 1 ? undefined : (sum ?? 5) + value, 0));
+console.log('scalar unused initial', [1, 2, 3].reduce(() => 42, 'seed' as any));
+console.log('scalar empty initial', ([] as number[]).reduce(() => 42, 'seed' as any));
+console.log('scalar singleton', [9].reduce(() => 42));
+try {[1, 2, 3].reduce((sum, value) => {if (value === 3) throw 'scalar reduce failure'; return sum + value;}, 0);}
+catch (error) {console.log('scalar exception', error);}
