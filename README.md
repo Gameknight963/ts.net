@@ -97,10 +97,10 @@ Runtime performance:
 | Construct and run a chain of 10K handlers | 2.61 ms | 0.309 ms | 0.12x |
 | Create 10K resolved promises, collect with all, and sum results | 3.48 ms | 0.489 ms | 0.14x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
-| Sum 1K values in a loop, awaiting each value | 0.194 ms | 0.0468 ms | 0.24x |
-| Sum 1K values with an await in try and an increment in finally each iteration | 0.274 ms | 0.0504 ms | 0.18x |
+| Sum 1K values in a loop, awaiting each value | 0.0964 ms | 0.0431 ms | 0.45x |
+| Sum 1K values with an await in try and an increment in finally each iteration | 0.202 ms | 0.0536 ms | 0.27x |
 | Traverse 1K array values with for-await-of and sum them | 0.737 ms | 0.126 ms | 0.17x |
-| Sum 100K values in a loop, awaiting only on the final iteration | 8 ms | 1 ms | 0.07x |
+| Sum 100K values in a loop, awaiting only on the final iteration | 3.29 ms | 0.456 ms | 0.14x |
 | Numeric loop, 20M iterations | 19 ms | 19 ms | 0.99x |
 | Typed-object loop, 500K iterations | 0.5 ms | 0.4 ms | 1.49x |
 | `any` property loop, 350K iterations | 0.3 ms | 0.3 ms | 1.00x |
@@ -135,7 +135,7 @@ Runtime performance:
 
 </details>
 
-The self-returning function, Promise chain and batch, two 1K-value await loops, numeric join, map/filter, forEach/every/findIndex, reduction, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric reductions are faster than Node in this workload, but callback loops, promises, and JSON serialization still lag.
+The self-returning function, Promise chain and batch, three await loops, numeric join, map/filter, forEach/every/findIndex, reduction, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric reductions are faster than Node in this workload, but callback loops, promises, and JSON serialization still lag.
 
 Compilation times:
 
