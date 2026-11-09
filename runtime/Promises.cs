@@ -8,12 +8,15 @@ public static partial class Js
         internal void Run()
         {
             if (reaction != null) reaction.Run(value, rejected);
-            else callback();
+            else if (callback != null) callback();
+            else ((JsFunction)value).InvokeWithReceiver(Undefined, Array.Empty<object>());
         }
     }
     [ThreadStatic] static Queue<PromiseJob> promiseJobs;
     [ThreadStatic] static HashSet<JsPromise> unhandledPromises;
     static void EnqueuePromiseJob(Action job) => (promiseJobs ??= new()).Enqueue(new(job, null, null, false));
+    static void EnqueueMicrotask(JsFunction callback) =>
+        (promiseJobs ??= new()).Enqueue(new(null, null, callback, false));
     static void EnqueuePromiseReaction(PromiseReaction reaction, object value, bool rejected) =>
         (promiseJobs ??= new()).Enqueue(new(null, reaction, value, rejected));
     static void DrainPromiseJobs()
@@ -273,6 +276,6 @@ public static partial class Js
     static JsFunction CreateQueueMicrotask() => new((FunctionBody)(args =>
     {
         if (FunctionArgument(args, 0) is not JsFunction callback) throw new InvalidOperationException("Microtask callback is not callable");
-        EnqueuePromiseJob(() => callback.InvokeWithReceiver(Undefined, Array.Empty<object>())); return Undefined;
+        EnqueueMicrotask(callback); return Undefined;
     }), null, "queueMicrotask", 1);
 }
