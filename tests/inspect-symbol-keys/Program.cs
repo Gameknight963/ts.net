@@ -32,5 +32,20 @@ static class Program
         Collect();
         if (pair.Symbol.IsAlive) throw new Exception("Symbol key table retained an unreachable symbol");
         Console.WriteLine("PASS objects retain symbol keys; unreachable symbol keys are collectible");
+        var factory = (JsFunction)Js.BuiltinNamespace("Symbol");
+        string symbolKey = Js.PropertyKey(factory.InvokeWithReceiver(Js.Undefined, new object[] { "json" }));
+        string textKey = new string(symbolKey.ToCharArray());
+        var ordinary = new JsDynamicObject(); ordinary.DefineOwn(textKey, 1d);
+        var symbolic = new JsDynamicObject(); symbolic.DefineOwn(symbolKey, 2d);
+        var json = (TsObject)Js.BuiltinNamespace("JSON");
+        object stringify = json.Get("stringify");
+        string quoted = (string)Js.CallMethod(stringify, json, new object[] { textKey });
+        string actual = (string)Js.CallMethod(stringify, json, new object[] { new JsArray(new object[] { ordinary, symbolic }) });
+        if (actual != "[{" + quoted + ":1},{}]")
+        {
+            Console.Error.WriteLine("JSON key snapshots confused a string key with an equal-text symbol key");
+            Environment.ExitCode = 1; return;
+        }
+        Console.WriteLine("PASS JSON key snapshots distinguish symbol identity from string contents");
     }
 }

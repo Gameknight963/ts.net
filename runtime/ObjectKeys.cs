@@ -39,7 +39,7 @@ public abstract partial class TsObject
             bool matches = true;
             if (extra != null)
                 foreach (string name in extra.Keys)
-                    if (name != (string)previous[index++]) { matches = false; break; }
+                    if (name != (string)previous[index++] || Js.IsSymbolKey(name)) { matches = false; break; }
             if (matches) return previous;
         }
         var names = KeyNamesFromFixed(Array.Empty<object>());
