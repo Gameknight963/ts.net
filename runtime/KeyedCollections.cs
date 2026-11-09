@@ -47,6 +47,7 @@ public sealed class JsKeyedCollection : JsDescriptorObject
     internal int Size => index.Count;
     static object Key(object value) => value ?? NullKey;
     internal bool Contains(object key) => index.ContainsKey(Key(key));
+    internal bool ContainsNumber(double key) => index.GetAlternateLookup<double>().ContainsKey(key);
     internal object Read(object key) => index.TryGetValue(Key(key), out int slot) ? Entries[slot].Value : Js.Undefined;
     internal object ReadNumber(double key) => index.GetAlternateLookup<double>().TryGetValue(key, out int slot) ? Entries[slot].Value : Js.Undefined;
     internal void Write(object key, object value)
@@ -60,6 +61,11 @@ public sealed class JsKeyedCollection : JsDescriptorObject
     internal bool Remove(object key)
     {
         if (!index.Remove(Key(key), out int slot)) return false;
+        Entries[slot].Remove(); Compact(); return true;
+    }
+    internal bool RemoveNumber(double key)
+    {
+        if (!index.GetAlternateLookup<double>().Remove(key, out _, out int slot)) return false;
         Entries[slot].Remove(); Compact(); return true;
     }
     internal void ClearEntries()
@@ -147,9 +153,37 @@ public sealed class JsCollectionIterator : JsDescriptorObject
 
 public static partial class Js
 {
-    sealed class MapGetFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Map.get requires a receiver")), null, "get", 1)
+    interface ICollectionNumberKeyMethod
+    {
+        object InvokeNumberKey(object receiver, double? key);
+    }
+    public static object CallCollectionNumberKey(object target, object receiver, double? key) =>
+        target is ICollectionNumberKeyMethod method ? method.InvokeNumberKey(receiver, key)
+        : InvokeReceiver(target, receiver, new[] { BoxNumber(key) });
+    sealed class CollectionKeyFunction(bool set, bool remove) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Collection method requires a receiver")), null, remove ? "delete" : "has", 1), ICollectionNumberKeyMethod
+    {
+        public override object InvokeWithReceiver(object receiver, object[] arguments)
+        {
+            var collection = CollectionReceiver(receiver, set);
+            object key = FunctionArgument(arguments, 0);
+            return BoxBoolean(remove ? collection.Remove(key) : collection.Contains(key));
+        }
+        public object InvokeNumberKey(object receiver, double? key)
+        {
+            var collection = CollectionReceiver(receiver, set);
+            return BoxBoolean(key.HasValue
+                ? remove ? collection.RemoveNumber(key.Value) : collection.ContainsNumber(key.Value)
+                : remove ? collection.Remove(Undefined) : collection.Contains(Undefined));
+        }
+    }
+    sealed class MapGetFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Map.get requires a receiver")), null, "get", 1), ICollectionNumberKeyMethod
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments) => CollectionReceiver(receiver, false).Read(FunctionArgument(arguments, 0));
+        public object InvokeNumberKey(object receiver, double? first)
+        {
+            var map = CollectionReceiver(receiver, false);
+            return first.HasValue ? map.ReadNumber(first.Value) : map.Read(Undefined);
+        }
         public override double? InvokeMethodNumber1(object receiver, double? first)
         {
             var map = CollectionReceiver(receiver, false);
@@ -182,8 +216,8 @@ public static partial class Js
             CollectionMethod Method(string name, int length, Func<JsKeyedCollection, object[], object> action) =>
                 new(name, length, (receiver, arguments) => action(CollectionReceiver(receiver, set), arguments));
             prototype.Define(new("size", Undefined, Method("get size", 0, (collection, _) => (double)collection.Size), null, true, false, false, true));
-            prototype.DefineMethod("has", Method("has", 1, (collection, args) => BoxBoolean(collection.Contains(FunctionArgument(args, 0)))));
-            prototype.DefineMethod("delete", Method("delete", 1, (collection, args) => BoxBoolean(collection.Remove(FunctionArgument(args, 0)))));
+            prototype.DefineMethod("has", new CollectionKeyFunction(set, false));
+            prototype.DefineMethod("delete", new CollectionKeyFunction(set, true));
             prototype.DefineMethod("clear", Method("clear", 0, (collection, _) => { collection.ClearEntries(); return Undefined; }));
             prototype.DefineMethod(set ? "add" : "set", Method(set ? "add" : "set", set ? 1 : 2, (collection, args) => { collection.Write(FunctionArgument(args, 0), FunctionArgument(args, 1)); return collection; }));
             if (!set) prototype.DefineMethod("get", new MapGetFunction());

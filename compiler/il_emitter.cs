@@ -682,6 +682,7 @@ internal static partial class CompilerFunctions
         {
             if (il_number_predicate(entry, true, c, b)) { return; }
             if (il_string_search_call(entry,c)) {il_emit_string_search(entry,c,b);return;}
+            if (il_collection_key_call(entry,c)) {il_emit_collection_key_call(entry,c,b);return;}
             if (il_index_method_call(entry,c)) {il_emit_index_method(entry,c,b);return;}
             if (il_call_has_spread(entry, c)) { il_spread_call(entry, c, b); return; }
             if (get_node(n.left, c).kind == NodeKind.ObjectKeysFunction) { il_object_keys_call(entry, false, c, b); return; }

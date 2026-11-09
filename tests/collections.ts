@@ -44,6 +44,9 @@ Promise.all(new Set([Promise.resolve(1),Promise.resolve(2)])).then(values=>conso
     console.log('undefined numeric key',numbers.get(undefined as unknown as number));
     const get=numbers.get;
     console.log('numeric get call',get.call(numbers,NaN),get.bind(numbers)(Infinity));
+    for(const key of keys)console.log('numeric membership',numbers.has(key));
+    console.log('undefined membership',numbers.has(undefined as unknown as number));
+    console.log('undefined deletion',numbers.delete(undefined as unknown as number),numbers.has(undefined as unknown as number));
     numbers.get=function(this:Map<number,number>,key:number):number {return this.size+key;};
     console.log('overridden numeric get',numbers.get(2));
     const compacted=new Map<number,number>();
@@ -52,4 +55,20 @@ Promise.all(new Set([Promise.resolve(1),Promise.resolve(2)])).then(values=>conso
     console.log('numeric get after compaction',compacted.get(190),compacted.get(10),compacted.size);
     compacted.clear();compacted.set(190,7);
     console.log('numeric get after clear',compacted.get(190),compacted.get(191));
+    console.log('numeric delete after clear',compacted.delete(190),compacted.delete(190),compacted.has(190));
+    const labels=new Map<number,string>([[1,'one']]);
+    console.log('numeric key string value',labels.get(1),labels.get(2));
+    const object={value:7};const records=new Map<number,typeof object>([[1,object]]);
+    console.log('numeric key object identity',records.get(1)===object);
+}
+{
+    const set=new Set<number>([NaN,-0,0.25,Infinity]);
+    for(const key of [NaN,-0,0,0.25,Infinity])console.log('numeric set membership',set.has(key),set.delete(key),set.has(key));
+    let lookups=0,argumentsRun=0;
+    const custom={value:9,get has(){lookups++;return function(this:{value:number},key:number):boolean{return this.value===9&&arguments.length===1&&key===1;};}};
+    console.log('custom keyed method',custom.has(++argumentsRun),lookups,argumentsRun);
+    const numeric={get(value:number):number{return value+1;}};
+    console.log('custom numeric result',numeric.get(2));
+    const invalid:any={has:0};let effects=0;
+    try{invalid.has(++effects);}catch(error){console.log('noncallable keyed method',(error as Error).name,effects);}
 }
