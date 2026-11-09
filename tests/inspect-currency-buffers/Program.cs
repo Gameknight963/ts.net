@@ -19,3 +19,12 @@ try {
  });
 }finally{Volatile.Write(ref stop,true);collector.Join();}
 Console.WriteLine("PASS currency code buffers and both display-name fallbacks survive concurrent compacting GC");
+
+var held=(TsObject)numbers.Construct(new object[]{"ar-EG"});var heldFormat=(JsFunction)held.Get("format");
+foreach(string locale in new[]{"ar-EG","ar-SA","ar-AE","ar-MA","ar-BH","ar-IQ","ar-JO","ar-KW","ar-LB","ar-QA"})
+ foreach(string system in new[]{"latn","arab","arabext","deva","beng","thai","fullwide","mathbold"}) {
+  var settings=new JsDynamicObject();settings.Set("numberingSystem",system);numbers.Construct(new object[]{locale,settings});
+ }
+GC.Collect();GC.WaitForPendingFinalizers();
+if(!Equals(heldFormat.Invoke(new object[]{12.5}),"\u0661\u0662\u066b\u0665"))throw new Exception("Existing number formatter lost symbols after locale cache eviction");
+Console.WriteLine("PASS existing number formatters retain symbols after locale cache eviction");

@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 public static partial class Js
@@ -51,6 +52,27 @@ public static partial class Js
             if(first<0 || first>9 || second<0 || second>9)throw new InvalidOperationException("Invalid native grouping sizes");
             return first==0 || second==0 || first==second ? new[]{first} : new[]{first,second};
         }
+        sealed record SymbolData(string[] Values,int[] Groups);
+        static readonly object SymbolGate=new();
+        static readonly Dictionary<(string Locale,string System),SymbolData> SymbolCache=new();
+        static SymbolData Data(Api api,string locale,string system)
+        {
+            lock(SymbolGate) {
+                if(SymbolCache.TryGetValue((locale,system),out var cached))return cached;
+                using var thread=api.Module.Enter();int error=0;using var formatter=new Handle(api.Module,api.Close);
+                formatter.Initialize(api.Open(1,IntPtr.Zero,0,locale.Replace('-','_')+"@numbers="+system,IntPtr.Zero,ref error));Check(error);
+                if(formatter.IsInvalid)throw new InvalidOperationException("Native number symbol formatter was not created");
+                var output=new char[32];var values=new string[18];
+                foreach(int field in new[]{0,1,3,6,7,10,11,14,15,17}) {
+                    int status=0,length=api.Symbol(formatter,field,output,output.Length,ref status);
+                    if(status==15){if(length<0 || length>1024)throw new InvalidOperationException("Native number symbol is too long");output=new char[length+1];status=0;length=api.Symbol(formatter,field,output,output.Length,ref status);}
+                    Check(status);if(length<0 || length>output.Length)throw new InvalidOperationException("Invalid native number symbol length");values[field]=new string(output,0,length);
+                }
+                var data=new SymbolData(values,Groups(locale,system,1));
+                // Retain copied locale data, never mutable CultureInfo objects or native handles.
+                if(SymbolCache.Count>=64)SymbolCache.Clear();SymbolCache.Add((locale,system),data);return data;
+            }
+        }
         internal static CultureInfo Configure(CultureInfo culture,string system,out string exponent)
         {
             exponent="E";if(!Needs(culture,system))return culture;
@@ -63,17 +85,9 @@ public static partial class Js
                 info.NumberGroupSeparator=info.CurrencyGroupSeparator=info.PercentGroupSeparator=arabic ? "\u066c" : ",";
                 return result;
             }
-            using var thread=api.Module.Enter();int error=0;
-            using var formatter=new Handle(api.Module,api.Close);
-            formatter.Initialize(api.Open(1,IntPtr.Zero,0,culture.Name.Replace('-','_')+"@numbers="+system,IntPtr.Zero,ref error));Check(error);
-            if(formatter.IsInvalid)throw new InvalidOperationException("Native number symbol formatter was not created");
-            var output=new char[32];
-            string Read(int field) {
-                int status=0,length=api.Symbol(formatter,field,output,output.Length,ref status);
-                if(status==15){if(length<0 || length>1024)throw new InvalidOperationException("Native number symbol is too long");output=new char[length+1];status=0;length=api.Symbol(formatter,field,output,output.Length,ref status);}
-                Check(status);if(length<0 || length>output.Length)throw new InvalidOperationException("Invalid native number symbol length");return new string(output,0,length);
-            }
-            info.NumberGroupSizes=Groups(culture.Name,system,1) ?? info.NumberGroupSizes;
+            var data=Data(api,culture.Name,system);
+            string Read(int field)=>data.Values[field];
+            info.NumberGroupSizes=data.Groups ?? info.NumberGroupSizes;
             info.NumberDecimalSeparator=info.PercentDecimalSeparator=Read(0);
             info.NumberGroupSeparator=info.PercentGroupSeparator=Read(1);
             info.CurrencyDecimalSeparator=Read(10);info.CurrencyGroupSeparator=Read(17);

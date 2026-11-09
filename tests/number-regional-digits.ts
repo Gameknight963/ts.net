@@ -16,3 +16,8 @@ for(const locale of ['en-US','de-DE','ar','ar-EG','ar-SA','ar-AE','ar-MA','fa-IR
     const format=new Intl.NumberFormat(locale,{numberingSystem});
     console.log('methods',spacing((12345.67).toLocaleString(locale,{numberingSystem})),spacing((12345678901234567890n).toLocaleString(locale,{numberingSystem})));
 }
+
+let trace='';
+const repeated={get numberingSystem(){trace+='get|';return {toString(){trace+='string|';return 'arab';}};}};
+for(let i=0;i<4;i++)console.log('repeated',new Intl.NumberFormat('ar-EG',repeated as any).format(12.5));
+console.log('repeated-options',trace);
