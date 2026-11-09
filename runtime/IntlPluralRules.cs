@@ -12,7 +12,7 @@ public static partial class Js
             _ => Undefined
         };
     }
-    static bool SupportsPluralLanguage(string language) => language is "en" or "de" or "fr" or "ru" or "ja" or "ko" or "zh";
+    static bool SupportsPluralLanguage(string language) => language is "en" or "de" or "fr" or "ru" or "ja" or "ko" or "zh" || AdditionalPluralLanguage(language);
     static object PluralSupportedLocales(object locales, object optionValue)
     {
         var requested = (JsArray)CanonicalLocales(locales);
@@ -44,7 +44,7 @@ public static partial class Js
             object requested = options == null ? Undefined : options.Get("type");
             type = IsUndefined(requested) ? "cardinal" : StringValue(requested);
             if (type is not ("cardinal" or "ordinal")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid plural rule type");
-            allOther = locale is "ja" or "ko" or "zh" || type == "ordinal" && locale is "de" or "ru";
+            allOther = locale is "ja" or "ko" or "zh" || type == "ordinal" && locale is "de" or "ru" or "ar" or "pl" or "cs" or "sk" or "sl" or "lt" or "lv" or "he";
             digits = new NumberLocaleSettings("en-US", new PluralNumberOptions(options));
         }
         string Rounded(double value)
@@ -54,6 +54,7 @@ public static partial class Js
         }
         string Category(string text)
         {
+            if(AdditionalPluralLanguage(locale))return AdditionalPluralCategory(locale,type,text);
             int point = text.IndexOf('.');
             ReadOnlySpan<char> integer = point < 0 ? text.AsSpan() : text.AsSpan(0, point);
             while (integer.Length > 1 && integer[0] == '0') integer = integer[1..];
@@ -92,6 +93,7 @@ public static partial class Js
             string left = double.IsFinite(first) ? Rounded(first) : null, right = double.IsFinite(last) ? Rounded(last) : null;
             if (left != null && left == right) return Category(left);
             string firstCategory = left == null ? "other" : Category(left), lastCategory = right == null ? "other" : Category(right);
+            if(AdditionalPluralLanguage(locale))return AdditionalPluralRange(locale,firstCategory,lastCategory);
             if (locale == "ru") return lastCategory;
             if (locale == "de" && firstCategory == "other" && lastCategory == "one") return "one";
             if (locale == "fr" && firstCategory == "one" && lastCategory == "one") return "one";
@@ -108,6 +110,7 @@ public static partial class Js
                 result.DefineOwn("minimumSignificantDigits", (double)digits.minimumSignificant); result.DefineOwn("maximumSignificantDigits", (double)digits.maximumSignificant);
             }
             object[] categories = allOther ? new object[] {"other"}
+                : AdditionalPluralLanguage(locale) ? AdditionalPluralCategories(locale,type)
                 : type == "ordinal" && locale == "en" ? new object[] {"one", "two", "few", "other"}
                 : locale == "ru" ? new object[] {"one", "few", "many", "other"}
                 : locale == "fr" && type == "cardinal" ? new object[] {"one", "many", "other"} : new object[] {"one", "other"};
