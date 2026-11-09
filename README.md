@@ -112,10 +112,13 @@ Runtime performance:
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | 0.48x |
 | TransformStream pipeline, double 1K numbers | 5.17 ms | 3.57 ms | 0.69x |
 | UTF-8 roundtrip, 1K chunks of 80 UTF-16 code units | 11.23 ms | 16.11 ms | 1.43x |
+| Gzip-compress 1 MiB of repeated ASCII A | 3.54 ms | 6.71 ms | 1.90x |
+| Gzip-decompress 1,052 bytes into 1 MiB of repeated ASCII A | 1.19 ms | 4.38 ms | 3.68x |
+| Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | 0.37x |
 
 </details>
 
-UTF-8 roundtrips are encouraging, but queued writes are still much slower than Node.
+UTF-8 roundtrips and gzip are encouraging in these workloads, but queued writes and streamed Response reads are still slower than Node.
 
 Compilation times:
 
