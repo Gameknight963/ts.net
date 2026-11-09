@@ -3,14 +3,24 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
-    [ThreadStatic] static Queue<Action> promiseJobs;
+    readonly struct PromiseJob(Action callback, PromiseReaction reaction, object value, bool rejected)
+    {
+        internal void Run()
+        {
+            if (reaction != null) reaction.Run(value, rejected);
+            else callback();
+        }
+    }
+    [ThreadStatic] static Queue<PromiseJob> promiseJobs;
     [ThreadStatic] static HashSet<JsPromise> unhandledPromises;
-    static void EnqueuePromiseJob(Action job) => (promiseJobs ??= new()).Enqueue(job);
+    static void EnqueuePromiseJob(Action job) => (promiseJobs ??= new()).Enqueue(new(job, null, null, false));
+    static void EnqueuePromiseReaction(PromiseReaction reaction, object value, bool rejected) =>
+        (promiseJobs ??= new()).Enqueue(new(null, reaction, value, rejected));
     static void DrainPromiseJobs()
     {
         ClearKeptWeakTargets();
         while (promiseJobs != null && promiseJobs.TryDequeue(out var job))
-            try { job(); } finally { ClearKeptWeakTargets(); }
+            try { job.Run(); } finally { ClearKeptWeakTargets(); }
         CheckFinalizationRegistries();
         if (unhandledPromises != null)
             foreach (var promise in unhandledPromises)
@@ -68,7 +78,8 @@ public static partial class Js
     sealed class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected,
         Action<object, bool> continuation = null, bool discardResult = false)
     {
-        internal void Enqueue(object value, bool isRejected) => EnqueuePromiseJob(() =>
+        internal void Enqueue(object value, bool isRejected) => EnqueuePromiseReaction(this, value, isRejected);
+        internal void Run(object value, bool isRejected)
         {
             if (continuation != null)
             {
@@ -91,7 +102,7 @@ public static partial class Js
             try { result = handler.InvokeWithReceiver(Undefined, new[] { value }); }
             catch (Exception error) { capability.Complete(CaughtValue(error), true); return; }
             capability.Complete(result, false);
-        });
+        }
     }
     sealed class JsPromise : JsDescriptorObject
     {

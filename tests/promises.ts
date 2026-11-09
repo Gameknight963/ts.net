@@ -54,3 +54,10 @@ let selfResolve!:(value:unknown)=>void;const selfPromise=new Promise(resolve=>{s
 Promise.resolve(1).finally(123 as any).then(value=>console.log('ignored-finally',value));
 const overriddenThen:any=Promise.resolve(1);overriddenThen.then=function(first:unknown,second:unknown):number {console.log('overridden-catch',first===undefined,typeof second);return 7;};console.log('catch-lookup',overriddenThen.catch(()=>{}));
 queueMicrotask(()=>{Promise.reject('handled in microtask').catch(reason=>console.log(reason));});
+
+const queuedOrder: string[] = [];
+for (let i = 0; i < 64; i++) {
+    Promise.resolve(i).then(value => {queuedOrder.push('p' + value);});
+    queueMicrotask(() => {queuedOrder.push('q' + i);});
+}
+queueMicrotask(() => console.log('mixed queue order', queuedOrder.join(',')));
