@@ -33,11 +33,16 @@ public static partial class Js
     }
     public static object AsyncResume(object continuation) => new AsyncResumeRecord((JsFunction)continuation);
     public static object AsyncResumeRegion(object continuation, int region) => new AsyncResumeRecord((JsFunction)continuation, region);
-    sealed class AsyncAwaitRecord(JsPromise awaited, JsFunction continuation = null)
+    sealed class AsyncAwaitRecord(object awaited, JsFunction continuation = null)
     {
+        void Then(PromiseReaction reaction)
+        {
+            if (awaited is JsPromise promise) promise.Then(reaction);
+            else reaction.Enqueue(awaited, false);
+        }
         internal void AttachGenerator(Action<object> run)
         {
-            awaited.Then(new PromiseReaction(null, null, null, (value, rejected) =>
+            Then(new PromiseReaction(null, null, null, (value, rejected) =>
             {
                 object result;
                 try { result = rejected ? new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)) : continuation == null ? value : continuation.InvokeWithReceiver(Undefined, new[] { value }); }
@@ -50,8 +55,8 @@ public static partial class Js
             var capability = new PromiseCapability { Promise = target, Intrinsic = pair };
             // Await uses intrinsic reactions, bypassing public then and species.
             // Even an already fulfilled value resumes through a queued job.
-            if (continuation == null && execution == null) { awaited.Then(new PromiseReaction(capability, null, null)); return; }
-            awaited.Then(new PromiseReaction(null, null, null, (value, rejected) =>
+            if (continuation == null && execution == null) { Then(new PromiseReaction(capability, null, null)); return; }
+            Then(new PromiseReaction(null, null, null, (value, rejected) =>
             {
                 if (rejected)
                 {
@@ -72,8 +77,12 @@ public static partial class Js
             }));
         }
     }
-    public static object AsyncAwait(object value) => new AsyncAwaitRecord((JsPromise)PromiseResolve(RuntimeNamespaces.Promise, value));
-    public static object AsyncAwaitContinue(object value, object continuation) => new AsyncAwaitRecord((JsPromise)PromiseResolve(RuntimeNamespaces.Promise, value), (JsFunction)continuation);
+    // Primitive resolution cannot invoke user code. Queue its reaction directly,
+    // retaining await's asynchronous ordering without a temporary promise.
+    static AsyncAwaitRecord AwaitRecord(object value, JsFunction continuation = null) =>
+        new(value is TsObject ? PromiseResolve(RuntimeNamespaces.Promise, value) : value, continuation);
+    public static object AsyncAwait(object value) => AwaitRecord(value);
+    public static object AsyncAwaitContinue(object value, object continuation) => AwaitRecord(value, (JsFunction)continuation);
     sealed class AsyncFunctionObject : JsFunction
     {
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : AsyncFunctionFamily.Value.Prototype;

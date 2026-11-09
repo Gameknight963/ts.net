@@ -47,3 +47,16 @@ value.bind(undefined)().then(result=>console.log('bound',result));
 let synchronousArgument=false;
 try {defaults(badDefault());} catch {synchronousArgument=true;}
 console.log('argument throws sync',synchronousArgument);
+
+async function awaitPrimitiveValues(): Promise<void> {
+    const symbol = Symbol('awaited');
+    const values: unknown[] = [undefined, null, false, true, 0, -0, NaN, Infinity, 12n, 'text', symbol];
+    for (const input of values) {
+        let continued = false;
+        queueMicrotask(() => console.log('primitive suspended', continued));
+        const result = await input;
+        continued = true;
+        console.log('primitive identity', Object.is(result, input));
+    }
+}
+awaitPrimitiveValues();
