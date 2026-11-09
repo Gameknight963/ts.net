@@ -84,7 +84,8 @@ Runtime performance:
 | String lastIndexOf, 1M searches | 10.07 ms | 19.54 ms | 1.94x |
 | Create a Map, insert and read 10K entries, then delete half | 4.38 ms | 0.80 ms | 0.18x |
 | join, 20 joins of 10K integers from 0-99 | 1.64 ms | 2.23 ms | 1.36x |
-| map, filter and sum, 10 passes over 10K integers from 0-255 | 6.02 ms | 2.11 ms | 0.35x |
+| map, filter and sum, 10 passes over 10K integers from 0-255 | 5.60 ms | 2.05 ms | 0.37x |
+| forEach sum, every and findIndex, 10 passes over 10K integers from 0-255 | 1.57 ms | 0.876 ms | 0.56x |
 | reduce and reduceRight, 10 pairs over 10K integers from 0-255 | 0.775 ms | 1.21 ms | 1.56x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
 | copyWithin, 1K copies of 5K entries in a 10K packed array | 1 ms | 269 ms | 321x |
@@ -134,7 +135,7 @@ Runtime performance:
 
 </details>
 
-The self-returning function, Promise chain and batch, two 1K-value await loops, numeric join, map/filter, reduction, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric joins, map/filter, and reductions look much better, while promises and JSON serialization still need substantial work.
+The self-returning function, Promise chain and batch, two 1K-value await loops, numeric join, map/filter, forEach/every/findIndex, reduction, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric reductions are faster than Node in this workload, but callback loops, promises, and JSON serialization still lag.
 
 Compilation times:
 
