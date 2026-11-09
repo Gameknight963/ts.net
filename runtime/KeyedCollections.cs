@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-internal sealed class CollectionKeyComparer : IEqualityComparer<object>
+internal sealed class CollectionKeyComparer : IEqualityComparer<object>, IAlternateEqualityComparer<double, object>
 {
     internal static readonly CollectionKeyComparer Instance = new();
     public new bool Equals(object first, object second) => ReferenceEquals(first, second) || ((first, second) switch
@@ -22,6 +22,9 @@ internal sealed class CollectionKeyComparer : IEqualityComparer<object>
         BigInteger integer => integer.GetHashCode(),
         _ => RuntimeHelpers.GetHashCode(value)
     };
+    public bool Equals(double first, object second) => second is double number && (first == number || double.IsNaN(first) && double.IsNaN(number));
+    public int GetHashCode(double value) => value.GetHashCode();
+    public object Create(double value) => value;
 }
 
 internal sealed class CollectionEntry(object key, object value)
@@ -45,6 +48,7 @@ public sealed class JsKeyedCollection : JsDescriptorObject
     static object Key(object value) => value ?? NullKey;
     internal bool Contains(object key) => index.ContainsKey(Key(key));
     internal object Read(object key) => index.TryGetValue(Key(key), out int slot) ? Entries[slot].Value : Js.Undefined;
+    internal object ReadNumber(double key) => index.GetAlternateLookup<double>().TryGetValue(key, out int slot) ? Entries[slot].Value : Js.Undefined;
     internal void Write(object key, object value)
     {
         if (key is double number && number == 0) key = 0d;
@@ -143,6 +147,15 @@ public sealed class JsCollectionIterator : JsDescriptorObject
 
 public static partial class Js
 {
+    sealed class MapGetFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Map.get requires a receiver")), null, "get", 1)
+    {
+        public override object InvokeWithReceiver(object receiver, object[] arguments) => CollectionReceiver(receiver, false).Read(FunctionArgument(arguments, 0));
+        public override double? InvokeMethodNumber1(object receiver, double? first)
+        {
+            var map = CollectionReceiver(receiver, false);
+            return Cast<double?>(first.HasValue ? map.ReadNumber(first.Value) : map.Read(Undefined), "Collection result violates number type");
+        }
+    }
     sealed class CollectionMethod(string name, int length, Func<object, object[], object> action)
         : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Collection method requires a receiver")), null, name, length)
     {
@@ -173,7 +186,7 @@ public static partial class Js
             prototype.DefineMethod("delete", Method("delete", 1, (collection, args) => BoxBoolean(collection.Remove(FunctionArgument(args, 0)))));
             prototype.DefineMethod("clear", Method("clear", 0, (collection, _) => { collection.ClearEntries(); return Undefined; }));
             prototype.DefineMethod(set ? "add" : "set", Method(set ? "add" : "set", set ? 1 : 2, (collection, args) => { collection.Write(FunctionArgument(args, 0), FunctionArgument(args, 1)); return collection; }));
-            if (!set) prototype.DefineMethod("get", Method("get", 1, (collection, args) => collection.Read(FunctionArgument(args, 0))));
+            if (!set) prototype.DefineMethod("get", new MapGetFunction());
             if (!set) foreach (bool computed in new[] {false,true}) {
                 string name = computed ? "getOrInsertComputed" : "getOrInsert";
                 prototype.DefineMethod(name,Method(name,2,(collection,args) => {

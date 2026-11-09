@@ -34,3 +34,22 @@ let receiverTotal=0;const receiver={factor:2};new Map([[2,3]]).forEach(function(
 async function asyncValues():Promise<number>{let total=0;for await(const value of new Set([Promise.resolve(2),3]))total+=value;return total;}
 asyncValues().then(value=>console.log('async set',value));
 Promise.all(new Set([Promise.resolve(1),Promise.resolve(2)])).then(values=>console.log('promise set',values[0],values[1]));
+{
+    const numbers=new Map<number,number>();
+    const keys=[NaN,-0,0,Infinity,-Infinity,0.125,Number.MIN_VALUE,Number.MAX_SAFE_INTEGER];
+    for(let i=0;i<keys.length;i++)numbers.set(keys[i],i+1);
+    for(const key of keys)console.log('numeric get',numbers.get(key));
+    console.log('numeric missing',numbers.get(123456));
+    numbers.set(undefined as unknown as number,42);
+    console.log('undefined numeric key',numbers.get(undefined as unknown as number));
+    const get=numbers.get;
+    console.log('numeric get call',get.call(numbers,NaN),get.bind(numbers)(Infinity));
+    numbers.get=function(this:Map<number,number>,key:number):number {return this.size+key;};
+    console.log('overridden numeric get',numbers.get(2));
+    const compacted=new Map<number,number>();
+    for(let i=0;i<200;i++)compacted.set(i,i+1);
+    for(let i=0;i<170;i++)compacted.delete(i);
+    console.log('numeric get after compaction',compacted.get(190),compacted.get(10),compacted.size);
+    compacted.clear();compacted.set(190,7);
+    console.log('numeric get after clear',compacted.get(190),compacted.get(191));
+}
