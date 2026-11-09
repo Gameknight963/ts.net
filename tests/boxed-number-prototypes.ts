@@ -11,3 +11,9 @@ delete empty.valueOf;
 console.log('deleted', typeof number.valueOf, 'valueOf' in number);
 Object.setPrototypeOf(number, original);
 console.log('restored', number.valueOf(), number.toString());
+
+const separateNumberLeft: any = Object(1);
+const separateNumberRight: any = Object(1);
+separateNumberLeft.extra = 'left';
+console.log('boxed identity', separateNumberLeft === separateNumberRight, separateNumberLeft.valueOf() === separateNumberRight.valueOf(), separateNumberRight.extra === undefined);
+console.log('boxed zero sign', Object.is(new Number(-0).valueOf(), -0), Object.is(new Number(0).valueOf(), 0));

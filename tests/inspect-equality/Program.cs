@@ -38,3 +38,17 @@ Check(first,second,false,"different objects");
 object[] aliases={null,Js.Undefined,false,true,0d,-0d,42d,double.PositiveInfinity,double.NegativeInfinity,BigInteger.One,"text",first,new JsFunction((FunctionBody)(static _=>null),null,"",0)};
 foreach(object value in aliases)Check(value,value,true,"aliased value");
 Console.WriteLine("PASS strict equality aliases, NaN, signed zero, primitive types, and object identity");
+
+double[] boxingValues = {-129d,-128,-127,-1,-0d,0,1,127,128,254,255,256,-128.5,-127.5,-0.5,0.5,255.5,double.Epsilon,double.MinValue,double.MaxValue,double.PositiveInfinity,double.NegativeInfinity,double.NaN};
+void CheckBox(double number) {
+    if(Js.BoxNumber(number) is not double boxed || BitConverter.DoubleToInt64Bits(boxed)!=BitConverter.DoubleToInt64Bits(number))
+        throw new Exception("Number boxing changed its value or bits");
+}
+foreach(double number in boxingValues)CheckBox(number);
+ulong randomBits=0x963963963963963;
+for(int i=0;i<10000;i++) {
+    randomBits^=randomBits<<13;randomBits^=randomBits>>7;randomBits^=randomBits<<17;
+    CheckBox(BitConverter.Int64BitsToDouble(unchecked((long)randomBits)));
+}
+if(!ReferenceEquals(Js.BoxNumber(null),Js.Undefined))throw new Exception("Missing number boxing changed");
+Console.WriteLine("PASS exact number boxing, signed zero, random bit patterns, and missing numbers");
