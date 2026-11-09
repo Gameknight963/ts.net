@@ -24,14 +24,20 @@ public static partial class Js
         if (!cursor.Started && TryGetAsyncIterator(cursor.Source, out var asyncSource, out var asyncNext)) {
             cursor.Source = asyncSource; cursor.AsyncNext = asyncNext; cursor.Asynchronous = true; cursor.Started = true;
         }
+        // Both consumers await this result. Resolving here first repeats
+        // observable Promise constructor lookups.
         if (cursor.Asynchronous)
-            return PromiseResolve(RuntimeNamespaces.Promise, CallMethod(cursor.AsyncNext, cursor.Source, Array.Empty<object>()));
+            return CallMethod(cursor.AsyncNext, cursor.Source, Array.Empty<object>());
+        return ForAwaitSyncNext(cursor);
+    }
+    static object ForAwaitSyncNext(AsyncIterationState cursor)
+    {
         var result = new JsPromise();
         var pair = new PromiseResolvingFunctions(result);
         bool more = false;
         try
         {
-            more = NextAsyncIteration(state);
+            more = NextAsyncIteration(cursor);
             cursor.NeedsClose = false;
             // Unwrap the sync iterator's value in an intrinsic reaction. The
             // loop then awaits the resulting iterator-result promise separately.
@@ -62,9 +68,12 @@ public static partial class Js
         cursor.NeedsClose = false;
         if (cursor.Asynchronous) {
             object close = ((TsObject)cursor.Source).Get("return");
-            return PromiseResolve(RuntimeNamespaces.Promise, IsNullish(close)
-                ? IteratorResult(Undefined, true) : CallMethod(close, cursor.Source, Array.Empty<object>()));
+            return IsNullish(close) ? IteratorResult(Undefined, true) : CallMethod(close, cursor.Source, Array.Empty<object>());
         }
+        return ForAwaitSyncClose(cursor);
+    }
+    static object ForAwaitSyncClose(AsyncIterationState cursor)
+    {
         // A missing return method still produces a promise of an iterator
         // result. Its resolution must observe inherited then properties.
         var result = new JsPromise();
