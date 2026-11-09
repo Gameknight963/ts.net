@@ -1,8 +1,14 @@
 using System;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 
 public static partial class Js
 {
+    sealed class DateLocaleDigits(CultureInfo culture)
+    {
+        internal readonly bool Latin=culture.NumberFormat.NativeDigits[0]=="0";
+    }
+    static readonly ConditionalWeakTable<CultureInfo,DateLocaleDigits> DateCultureDigits=new();
     static void DefineDateLocaleFormatting(JsCreatedObject prototype)
     {
         foreach (var item in new[] { ("toLocaleString", "G"), ("toLocaleDateString", "d"), ("toLocaleTimeString", "T") })
@@ -16,7 +22,7 @@ public static partial class Js
     }
     static string FormatLocaleDate(JsDate date, CultureInfo culture, object optionValue, string mode, LocaleValue locale = null)
     {
-        if (!ExtendedLocalDate(date.Timestamp) && DateLocaleSettings.NativeCalendarName(culture.DateTimeFormat.Calendar)=="gregory" && IsUndefined(optionValue) && (locale == null || IsUndefined(locale.Keyword("ca")) && IsUndefined(locale.Keyword("hc")) && IsUndefined(locale.Keyword("nu")))) return TimeZoneInfo.ConvertTime(NativeDate(date), TimeZoneInfo.Local).ToString(mode, culture);
+        if (!ExtendedLocalDate(date.Timestamp) && DateLocaleSettings.NativeCalendarName(culture.DateTimeFormat.Calendar)=="gregory" && DateCultureDigits.GetValue(culture,static value=>new(value)).Latin && IsUndefined(optionValue) && (locale == null || IsUndefined(locale.Keyword("ca")) && IsUndefined(locale.Keyword("hc")) && IsUndefined(locale.Keyword("nu")))) return TimeZoneInfo.ConvertTime(NativeDate(date), TimeZoneInfo.Local).ToString(mode, culture);
         return new DateLocaleSettings(culture, optionValue, mode, locale).Format(date.Timestamp);
     }
     static string LocalDateText(object receiver, int mode)

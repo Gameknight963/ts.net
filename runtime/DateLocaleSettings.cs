@@ -32,6 +32,9 @@ public static partial class Js
             if (!ValidStyle(dateStyle) || !ValidStyle(timeStyle)) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid date or time style");
             if (mode == "d" && timeStyle != null || mode == "T" && dateStyle != null)
                 throw new InvalidOperationException("This date method does not accept the requested style");
+            var localeFacts=new LocaleValue(locale?.BaseName ?? (culture.Name.Length==0 ? "en-US" : culture.Name),Undefined);
+            string preferredCalendar=(string)((JsArray)LocaleCalendars(localeFacts)).ElementAt(0);
+            string preferredNumbers=(string)((JsArray)LocaleNumberingSystems(localeFacts)).ElementAt(0);
             string calendarDefault = locale?.Keyword("ca") as string, numberingDefault = locale?.Keyword("nu") as string;
             string cycleDefault = (locale?.Keyword("hc") as string) switch { "h11" => "h11", "h12" => "h12", "h23" => "h23", "h24" => "h24", _ => null };
             string CanonicalCalendar(string value) {
@@ -40,10 +43,11 @@ public static partial class Js
                 return value.ToLowerInvariant() switch {"islamicc"=>"islamic-civil","ethiopic-amete-alem"=>"ethioaa",var other=>other};
             }
             calendarDefault=CanonicalCalendar(calendarDefault);
-            string calendar = CanonicalCalendar(Option("calendar") ?? calendarDefault);
-            if(calendar!=null && Array.IndexOf(IntlValueLists.Calendars.Value,calendar)<0)calendar=null;
+            string calendar = CanonicalCalendar(Option("calendar") ?? calendarDefault) ?? preferredCalendar;
+            if(calendar!=null && Array.IndexOf(IntlValueLists.Calendars.Value,calendar)<0)calendar=preferredCalendar;
             string requestedNumbering = Option("numberingSystem");
-            numberingSystem = requestedNumbering ?? numberingDefault ?? "latn";
+            numberingSystem = requestedNumbering ?? numberingDefault ?? preferredNumbers;
+            if(preferredCalendar!=NativeCalendarName(culture))nativeCalendarPath=true;
             string nativeCalendar = calendar == "iso8601" ? "gregory" : calendar;
             if (nativeCalendar != null && nativeCalendar != NativeCalendarName(culture))
             {
@@ -71,8 +75,12 @@ public static partial class Js
             if(calendarName is not ("gregory" or "iso8601") && NativeDateFormatting.Calendars!=null)nativeCalendarPath=true;
             ValidateNumberingSystem(numberingSystem);
             numberingSystem = ResolveNumberingSystem(numberingSystem);
-            try { digitCharacters = NumberDigitCharacters(numberingSystem); }
+            try { digitCharacters = numberingSystem switch {"arab"=>"\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669","arabext"=>"\u06f0\u06f1\u06f2\u06f3\u06f4\u06f5\u06f6\u06f7\u06f8\u06f9",_=>NumberDigitCharacters(numberingSystem)}; }
             catch (NotSupportedException) { throw new NotSupportedException("Date locale formatting option numberingSystem is not supported"); }
+            string decimalSeparator=numberingSystem is "arab" or "arabext" ? "\u066b" : culture.NumberFormat.NumberDecimalSeparator=="\u066b" ? "." : culture.NumberFormat.NumberDecimalSeparator;
+            if(decimalSeparator!=culture.NumberFormat.NumberDecimalSeparator) {
+                culture=(CultureInfo)culture.Clone();culture.NumberFormat.NumberDecimalSeparator=decimalSeparator;Culture=culture;
+            }
             dateFields = new DateLocaleFields(options);
             string regionalCycle = locale == null ? null : LocaleDefaultHourCycle(locale, false);
             string nativeCycle = culture.DateTimeFormat.ShortTimePattern.Contains('H') ? "h23" : "h12";
