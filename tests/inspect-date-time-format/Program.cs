@@ -45,3 +45,16 @@ foreach(var selection in new[]{("ja-JP","japanese"),("th-TH","gregory"),("he-IL"
  }
 }
 Console.WriteLine("PASS 10 native calendar formats");
+var fraction=Formatter("en-US",("hour","2-digit"),("minute","2-digit"),("second","2-digit"),("fractionalSecondDigits",3d));
+bool unsupported=false;
+try {((JsFunction)fraction.Get("formatRange")).InvokeWithReceiver(fraction,new object[]{timestamp,timestamp+1});}
+catch(NotSupportedException){unsupported=true;}
+if(!unsupported)throw new Exception("Fractional-second date range was silently collapsed");
+foreach(string cycle in new[]{"h11","h24"}) {
+ var value=Formatter("en-US",("hour","2-digit"),("minute","2-digit"),("hourCycle",cycle));
+ unsupported=false;
+ try {((JsFunction)value.Get("formatRange")).InvokeWithReceiver(value,new object[]{0d,3600000d});}
+ catch(NotSupportedException){unsupported=true;}
+ if(!unsupported)throw new Exception("Unsupported interval hour cycle was silently changed: "+cycle);
+}
+Console.WriteLine("PASS unsupported fractional-second and hour-cycle ranges are rejected");

@@ -121,6 +121,11 @@ public static partial class Js
             return result;
         }
         internal string Format(double timestamp) => LocalizeNumberDigits(FormatLatin(timestamp), digitCharacters);
+        internal bool SameLocalDay(double first, double second)
+        {
+            DateTime Local(double value) => (fixedOffset.HasValue ? NativeDate(value + fixedOffset.Value * 60000d) : TimeZoneInfo.ConvertTime(NativeDate(value),Zone)).Date;
+            return Local(first)==Local(second);
+        }
         internal JsArray Parts(double timestamp)
         {
             var parts = new List<(string Type, string Value)>();
