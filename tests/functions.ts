@@ -86,3 +86,16 @@ console.log(apply(plus as unknown as (n: number) => number, 3));
 console.log(apply2(twice, 3, 4));
 console.log(apply0(numericIdentity as unknown as () => number));
 console.log(apply2(numericIdentity, 3, 4));
+
+const arityZero = (): number => 17;
+const arityOne = (first: number): number => first + 1;
+const arityTwo = (first: number, second: number): number => first * 10 + second;
+const arityDefaults = (first = 2, second = 3): number => first * 10 + second;
+const zeroAsTwo = arityZero as unknown as (first: number, second: number) => number;
+const oneAsZero = arityOne as unknown as () => number;
+const oneAsTwo = arityOne as unknown as (first: number, second: number) => number;
+const twoAsZero = arityTwo as unknown as () => number;
+const twoAsOne = arityTwo as unknown as (first: number) => number;
+const defaultsAsZero = arityDefaults as unknown as () => number;
+const defaultsAsOne = arityDefaults as unknown as (first: number) => number;
+console.log('numeric arity', zeroAsTwo(1, 2), Number.isNaN(oneAsZero()), oneAsTwo(4, 9), Number.isNaN(twoAsZero()), Number.isNaN(twoAsOne(4)), defaultsAsZero(), defaultsAsOne(7));

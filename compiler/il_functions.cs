@@ -189,17 +189,24 @@ internal static partial class CompilerFunctions
         b.op(0x2a);
         if (count >= 0)
         {
-            int method = 0;
-            if (count == 0) { method = b.plan.method0(5, type, 0xc6, -10, "InvokeNumber0"); }
-            else if (count == 1) { method = b.plan.method1(5, type, 0xc6, -10, -10, "InvokeNumber1"); }
-            else { method = b.plan.method2(5, type, 0xc6, -10, -10, -10, "InvokeNumber2"); }
-            b.begin(method);
-            int raw = b.raw_functions.at(symbol);
-            if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
-            for (int i = 0; i < count; i++) { b.emit(0xfe09, i + 1); if (raw != 0) { b.call(RuntimeMember.NumberValue); } }
-            b.emit(0x28, raw != 0 ? raw : b.function(symbol));
-            if (raw != 0) { b.call(RuntimeMember.WrapNumber); }
-            b.op(0x2a);
+            for (int arity = 0; arity <= 2; arity++)
+            {
+                int method = arity == 0 ? b.plan.method0(5, type, 0xc6, -10, "InvokeNumber0")
+                    : arity == 1 ? b.plan.method1(5, type, 0xc6, -10, -10, "InvokeNumber1")
+                    : b.plan.method2(5, type, 0xc6, -10, -10, -10, "InvokeNumber2");
+                b.begin(method);
+                int raw = b.raw_functions.at(symbol);
+                if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+                for (int i = 0; i < count; i++)
+                {
+                    if (i < arity) b.emit(0xfe09, i + 1);
+                    else b.call(RuntimeMember.EmptyNumber);
+                    if (raw != 0) b.call(RuntimeMember.NumberValue);
+                }
+                b.emit(0x28, raw != 0 ? raw : b.function(symbol));
+                if (raw != 0) b.call(RuntimeMember.WrapNumber);
+                b.op(0x2a);
+            }
         }
         if (callback >= 0)
         {
@@ -229,7 +236,8 @@ internal static partial class CompilerFunctions
         if (context != 0) { b.load_context(context); } else { b.op(0x14); }
         b.emit(0xfe06, adapter); b.emit(0x73, b.RuntimeToken(RuntimeMember.FunctionBodyConstructor));
         int numeric = il_numeric_function(symbol, c);
-        if (numeric < 0) { b.op(0x14); }
+        // Generated numeric classes handle all supported argument counts directly.
+        if (numeric < 0 || b.function_constructors.at(symbol) != 0) { b.op(0x14); }
         else
         {
             int raw = b.raw_functions.at(symbol); if (context != 0) { b.load_context(context); } else { b.op(0x14); }

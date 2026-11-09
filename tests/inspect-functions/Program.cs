@@ -7,6 +7,10 @@ foreach (int arity in new[] { 0, 1, 2 }) {
     if (!types.Any(t => t.IsSealed && t.GetMethod("InvokeNumber" + arity)!.DeclaringType == t))
         throw new Exception($"Missing generated numeric callback class for arity {arity}");
 }
+foreach (var type in types.Where(type => Enumerable.Range(0,3).Any(arity => type.GetMethod("InvokeNumber"+arity)!.DeclaringType==type)))
+    foreach(int arity in new[]{0,1,2})
+        if(type.GetMethod("InvokeNumber"+arity)!.DeclaringType!=type)
+            throw new Exception($"Numeric callback lacks direct handling for {arity} arguments: {type.Name}");
 var assembly = Assembly.LoadFile(Path.GetFullPath(args[1]));
 var method = assembly.GetType("Program")!.GetMethods().Single(m =>
     m.ReturnType == typeof(double?) && m.GetParameters().Length == 2 &&
