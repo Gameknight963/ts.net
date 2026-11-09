@@ -67,6 +67,16 @@ internal static partial class CompilerFunctions
             set_node_left(id, r.id(), c); set_node_right(id, r.id(), c); set_node_third(id, r.id(), c); set_node_fourth(id, r.id(), c);
             set_node_children(id, r.id(), c); set_node_next(id, r.id(), c); set_node_symbol(id, r.id(), c); set_node_constant(id, r.integer() != 0, c);
         }
+        // Assertions annotate a storage location. Normalize mutation targets
+        // before any analysis, so write tracking sees the actual binding too.
+        for (int id = 1; id <= count; id++)
+        {
+            Node node = get_node(id, c);
+            if (node.kind is not (NodeKind.Assign or NodeKind.Update)) continue;
+            int target = node.left;
+            while (get_node(target, c).kind == NodeKind.Assert) target = get_node(target, c).left;
+            if (target != node.left) set_node_left(id, target, c);
+        }
         count = r.id(); c.next_symbol = (int)count;
         for (int i = 0; i < count; i++)
         {
