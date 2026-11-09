@@ -10,7 +10,10 @@ public static partial class Js
         string candidate = new LocaleValue(name, Undefined).BaseName;
         while (true) {
             if (candidate is "en" or "en-US" or "en-GB" or "de" or "de-DE" or "fr" or "fr-FR" or "ru" or "ru-RU"
-                or "ja" or "ja-JP" or "ko" or "ko-KR" or "zh" or "zh-CN" or "zh-TW" or "zh-Hans" or "zh-Hant") return candidate;
+                or "ja" or "ja-JP" or "ko" or "ko-KR" or "zh" or "zh-CN" or "zh-TW" or "zh-Hans" or "zh-Hant"
+                or "es" or "es-ES" or "es-MX" or "es-419" or "it" or "it-IT" or "pt" or "pt-BR" or "pt-PT"
+                or "nl" or "nl-NL" or "pl" or "pl-PL" or "uk" or "uk-UA" or "cs" or "cs-CZ" or "tr" or "tr-TR"
+                or "ar" or "ar-EG" or "ar-SA" or "hi" or "hi-IN" or "sv" or "sv-SE" or "da" or "da-DK" or "fi" or "fi-FI" or "he" or "he-IL") return candidate;
             int separator = candidate.LastIndexOf('-');
             if (separator < 0) return null;
             candidate = candidate[..separator];
@@ -87,7 +90,7 @@ public static partial class Js
                 previousLiteral = type == "literal" ? part : null;
             }
             for (int index = 0; index < items.Count; index++) {
-                if (index != 0) Add("literal", items.Count == 2 ? pattern.Pair : index == items.Count - 1 ? pattern.End : pattern.Middle);
+                if (index != 0) Add("literal", ContextualListSeparator(locale,items.Count == 2 ? pattern.Pair : index == items.Count - 1 ? pattern.End : pattern.Middle,items[index],type=="conjunction"));
                 Add("element", items[index]);
             }
             return parts ? result : text.ToString();

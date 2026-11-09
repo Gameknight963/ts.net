@@ -5,6 +5,7 @@ public static partial class Js
     readonly record struct ListPattern(string Pair, string Middle, string End);
     static ListPattern ListPatternFor(string locale, string type, string style)
     {
+        if(AdditionalListPattern(locale,type,style) is ListPattern additional)return additional;
         static ListPattern Uniform(string separator) => new(separator, separator, separator);
         static ListPattern Ending(string separator) => new(separator, ", ", separator);
         if (locale.StartsWith("de", StringComparison.Ordinal))

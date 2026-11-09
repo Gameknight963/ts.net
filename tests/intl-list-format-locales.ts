@@ -1,5 +1,5 @@
 export {};
-const locales = ['de', 'de-DE', 'fr', 'fr-FR', 'ru', 'ru-RU', 'ja', 'ja-JP', 'ko', 'ko-KR', 'zh', 'zh-CN', 'zh-TW', 'zh-Hans', 'zh-Hant'];
+const locales = ['de', 'de-DE', 'fr', 'fr-FR', 'ru', 'ru-RU', 'ja', 'ja-JP', 'ko', 'ko-KR', 'zh', 'zh-CN', 'zh-TW', 'zh-Hans', 'zh-Hant', 'es', 'es-ES', 'es-MX', 'es-419', 'it', 'it-IT', 'pt', 'pt-BR', 'pt-PT', 'nl', 'nl-NL', 'pl', 'pl-PL', 'uk', 'uk-UA', 'cs', 'cs-CZ', 'tr', 'tr-TR', 'ar', 'ar-EG', 'ar-SA', 'hi', 'hi-IN', 'sv', 'sv-SE', 'da', 'da-DK', 'fi', 'fi-FI', 'he', 'he-IL'];
 for (const locale of locales) {
     for (const type of ['conjunction', 'disjunction', 'unit']) {
         for (const style of ['long', 'short', 'narrow']) {
