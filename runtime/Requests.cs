@@ -9,6 +9,7 @@ public static partial class Js
         internal bool KeepAlive, StreamBody;
         internal HeadersValue Headers;
         internal BufferedBody Body;
+        internal CustomReadableStream CustomBody;
         internal AbortSignalValue Signal;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)RequestConstructors.Value.Get("prototype");
     }
@@ -85,35 +86,52 @@ public static partial class Js
         if (!IsUndefined(signalValue)) signal = signalValue == null ? null : RequireAbortSignal(signalValue);
         object bodyValue = RequestSetting(options,"body"); bool overrideBody = !IsNullish(bodyValue);
         if (overrideBody) {
-            var body = ExtractResponseBody(bodyValue);
-            result.StreamBody = body.Stream != null;
+            result.CustomBody = bodyValue as CustomReadableStream;
+            if (result.CustomBody != null && (result.CustomBody.Disturbed || StreamLocked(result.CustomBody))) throw new InvalidOperationException("Body stream has already been consumed or locked");
+            var body = ExtractResponseBody(result.CustomBody == null ? bodyValue : null);
+            result.StreamBody = result.CustomBody != null || body.Stream != null;
             if (result.StreamBody && IsUndefined(duplex)) throw new InvalidOperationException("Stream request bodies require duplex: half");
-            result.Body = body.Stream ?? new BufferedBody(body.Bytes);
+            if (result.CustomBody == null) result.Body = body.Stream ?? new BufferedBody(body.Bytes);
             if (body.ContentType != null && !result.Headers.Fields.ContainsKey("content-type")) result.Headers.Append("content-type",body.ContentType);
+        } else if (source?.CustomBody != null) {
+            if (source.CustomBody.Disturbed || StreamLocked(source.CustomBody)) throw new InvalidOperationException("Source request body has already been consumed or locked");
+            result.CustomBody = source.CustomBody;
         } else if (source?.Body != null) {
             if (source.Body.Disturbed || source.Body.Locked) throw new InvalidOperationException("Source request body has already been consumed or locked");
             result.Body = new BufferedBody(source.Body.Bytes);
         }
-        if (result.Body != null && result.Method is "GET" or "HEAD") throw new InvalidOperationException("GET and HEAD requests cannot have a body");
+        if ((result.Body != null || result.CustomBody != null) && result.Method is "GET" or "HEAD") throw new InvalidOperationException("GET and HEAD requests cannot have a body");
         if (result.StreamBody && (result.KeepAlive || result.Mode == "no-cors")) throw new InvalidOperationException("Stream request bodies cannot use keepalive or no-cors mode");
         result.Signal = FollowRequestSignal(signal);
         // Ownership transfers only after validation succeeds. Buffered bytes can
         // be shared safely while the old request becomes unusable for reading.
         if (!overrideBody && source?.Body != null) {source.Body.Disturbed=true;source.Body.Consuming=true;source.Body.Closed=true;}
+        if (!overrideBody && source?.CustomBody != null) {
+            var proxy = new TransformStreamValue(Undefined,Undefined,Undefined);
+            var transfer = StartStreamPipe(source.CustomBody,proxy.Writable,Undefined);transfer.Handled = true;
+            result.CustomBody = proxy.Readable;
+        }
         return result;
     }
     static object CloneRequest(object receiver)
     {
         var source = RequireRequest(receiver);
+        if (source.CustomBody != null && (source.CustomBody.Disturbed || StreamLocked(source.CustomBody))) throw new InvalidOperationException("Request body cannot be cloned after use or while locked");
         if (source.Body != null && (source.Body.Disturbed || source.Body.Locked)) throw new InvalidOperationException("Request body cannot be cloned after use or while locked");
         var result = CopyRequest(source);
         source.Body?.Tee?.BranchRead();
         result.Body = source.Body == null ? null : new BufferedBody(source.Body.Bytes);
+        if (source.CustomBody != null) {
+            var branches = TeeCustomStream(source.CustomBody);
+            source.CustomBody = (CustomReadableStream)branches.Get("0");
+            result.CustomBody = (CustomReadableStream)branches.Get("1");
+        }
         result.Signal = FollowRequestSignal(source.Signal);
         return result;
     }
-    static object ConsumeRequest(object receiver, string kind) => BodyOperation(() => {
-        var request = RequireRequest(receiver); return ConsumeHttpBody(request.Body,request.Headers,kind);
+    static object ConsumeRequest(object receiver, string kind) => BodyPromiseOperation(() => {
+        var request = RequireRequest(receiver);
+        return request.CustomBody != null ? ConsumeStreamBody(request.CustomBody,request.Headers,kind) : BodyOperation(() => ConsumeHttpBody(request.Body,request.Headers,kind));
     });
     static class RequestConstructors {internal static readonly JsFunction Value = new RequestConstructor();}
     sealed class RequestConstructor : NativeNamespaceFunction
@@ -124,7 +142,7 @@ public static partial class Js
             prototype.DefineMethod("constructor",this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol),"Request",false);
             void Getter(string name, Func<RequestValue,object> read) => prototype.DefineAccessor(name,new CollectionMethod("get " + name,0,(receiver,_) => read(RequireRequest(receiver))),1);
             Getter("url",value=>value.Url); Getter("method",value=>value.Method); Getter("headers",value=>value.Headers);
-            Getter("body",value=>value.Body); Getter("bodyUsed",value=>BoxBoolean(value.Body?.Disturbed ?? false)); Getter("signal",value=>value.Signal);
+            Getter("body",value=>(object)value.CustomBody ?? value.Body); Getter("bodyUsed",value=>BoxBoolean(value.CustomBody?.Disturbed ?? value.Body?.Disturbed ?? false)); Getter("signal",value=>value.Signal);
             Getter("referrer",value=>value.Referrer); Getter("referrerPolicy",value=>value.ReferrerPolicy); Getter("mode",value=>value.Mode);
             Getter("credentials",value=>value.Credentials); Getter("cache",value=>value.Cache); Getter("redirect",value=>value.Redirect);
             Getter("integrity",value=>value.Integrity); Getter("keepalive",value=>BoxBoolean(value.KeepAlive)); Getter("destination",_=>""); Getter("duplex",_=>"half");
