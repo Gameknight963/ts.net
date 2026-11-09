@@ -342,6 +342,12 @@ internal static partial class CompilerFunctions
             b.call(receiver>=0 ? (count==0 ? RuntimeMember.CallMethodNumber0 : count==1 ? RuntimeMember.CallMethodNumber1 : RuntimeMember.CallMethodNumber2) :
                 (count == 0 ? RuntimeMember.CallFunctionNumber0 : count == 1 ? RuntimeMember.CallFunctionNumber1 : RuntimeMember.CallFunctionNumber2)); return;
         }
+        if (count == 1 && get_type(get_node(n.children, c).type, c).kind == TypeKind.Number)
+        {
+            il_expression(n.children, c, b);
+            b.call(receiver >= 0 ? RuntimeMember.CallMethodNumberArgument : RuntimeMember.CallFunctionNumberArgument);
+            il_function_result(n.type, c, b); return;
+        }
         if (count == 0) { b.call(receiver>=0 ? RuntimeMember.CallMethod0 : RuntimeMember.CallFunction0); il_function_result(n.type, c, b); return; }
         b.emit(0x20, count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType)); argument = n.children; int index = 0;
         while (argument != 0) { b.op(0x25); b.emit(0x20, index++); il_boxed(argument, c, b); b.op(0xa2); argument = get_node(argument, c).next; }
