@@ -17,7 +17,7 @@ public static partial class Js
             if (radix == 10 || !double.IsFinite(value) || value == 0) return StringValue(value);
             bool binary = (radix & (radix - 1)) == 0;
             double magnitude = Math.Abs(value), integral = Math.Truncate(magnitude), fraction = magnitude - integral;
-            if (!binary && (fraction != 0 || magnitude > 9007199254740991d)) throw new NotSupportedException("Radices other than 2, 4, 8, 10, 16 and 32 require safe integers");
+            if (!binary && (fraction != 0 || magnitude > 9007199254740991d)) return RoundedNumberRadix(value,radix);
             const string digits = "0123456789abcdefghijklmnopqrstuvwxyz";
             var integer = new BigInteger(integral); var reversed = new StringBuilder();
             do { integer = BigInteger.DivRem(integer, radix, out var digit); reversed.Append(digits[(int)digit]); } while (!integer.IsZero);
