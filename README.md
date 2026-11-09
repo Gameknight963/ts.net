@@ -83,16 +83,16 @@ Runtime performance:
 | String includes, 1M searches | 11.19 ms | 28.84 ms | 2.58x |
 | String lastIndexOf, 1M searches | 10.07 ms | 19.54 ms | 1.94x |
 | Create a Map, insert and read 10K entries, then delete half | 4.38 ms | 0.80 ms | 0.18x |
-| join, 20 joins of 10K numbers | 26 ms | 2 ms | 0.09x |
+| join, 20 joins of 10K integers from 0-99 | 1.64 ms | 2.23 ms | 1.36x |
 | map, filter and sum, 10 passes over 10K numbers | 23 ms | 2 ms | 0.09x |
 | reduce and reduceRight, 10 pairs over 10K numbers | 7 ms | 1 ms | 0.19x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
 | copyWithin, 1K copies of 5K entries in a 10K packed array | 1 ms | 269 ms | 321x |
 | Object.assign, create 1K objects with 3 fields | 1 ms | 0 ms | 0.10x |
 | Split 10K comma-separated strings, keep three parts, and sum lengths | 4 ms | 2 ms | 0.50x |
-| Create/read a two-field object in a 100K-iteration loop, with a read-only Reflect alias in the program | 8 ms | 0.077 ms | 0.01x |
+| Create/read a two-field object in a 100K-iteration loop, with a read-only Reflect alias in the program | 0.0706 ms | 0.0717 ms | 1.02x |
 | Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | 0.48x |
-| Serialize 1,000 three-field records 20 times, without a replacer | 20 ms | 2 ms | 0.08x |
+| Serialize 1,000 three-field records 20 times, without a replacer | 6.04 ms | 1.04 ms | 0.17x |
 | Construct and run a chain of 10K handlers | 12 ms | 1 ms | 0.08x |
 | Create 10K resolved promises, collect with all, and sum results | 7.00 ms | 0.499 ms | 0.07x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
@@ -134,7 +134,7 @@ Runtime performance:
 
 </details>
 
-The promise batch uses Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. It improved from 20.91 ms to 7.00 ms and allocations fell from 25.7 MB to 5.4 MB per batch; that helps, but Node is still about 14 times faster here.
+The Promise batch, numeric join, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric joins look much better, while promises and JSON serialization still need substantial work.
 
 Compilation times:
 
