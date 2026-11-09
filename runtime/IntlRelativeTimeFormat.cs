@@ -6,8 +6,9 @@ public static partial class Js
     static string RelativeTimeLocale(string name)
     {
         var locale = new LocaleValue(name, Undefined);
-        if (locale.Language is not ("en" or "de" or "fr" or "ja" or "ko" or "zh" or "es")) return null;
-        string selected = locale.BaseName is "en-US" or "de-DE" or "fr-FR" or "ja-JP" or "ko-KR" or "es-ES" ? locale.BaseName : locale.Language;
+        bool legacy=locale.Language is "en" or "de" or "fr" or "ja" or "ko" or "zh" or "es";
+        string selected=legacy ? locale.BaseName is "en-US" or "de-DE" or "fr-FR" or "ja-JP" or "ko-KR" or "es-ES" ? locale.BaseName : locale.Language : NativeRelativeTime.Lookup(locale.BaseName);
+        if(selected==null)return null;
         if (locale.Language == "zh") selected = locale.Script is "Hans" or "Hant" ? "zh-" + locale.Script : locale.Region is "CN" or "TW" ? "zh-" + locale.Region : "zh";
         return locale.Keyword("nu") is string digits ? selected + "-u-nu-" + digits : selected;
     }
@@ -26,6 +27,7 @@ public static partial class Js
     {
         readonly string locale, style, numeric, numberingSystem, one, zero, onePrefix, zeroPrefix;
         readonly NumberFormatValue numbers;
+        readonly NativeRelativeTime native;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : (TsObject)IntlRelativeTimeFormat.Constructor.Get("prototype");
         internal RelativeTimeFormatValue(object locales, object optionValue)
         {
@@ -48,6 +50,14 @@ public static partial class Js
             if (style is not ("long" or "short" or "narrow")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid relative-time style");
             numeric = Option("numeric", "always");
             if (numeric is not ("always" or "auto")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid relative-time numeric option");
+            var selectedLocale=new LocaleValue(selected,Undefined);
+            if(selectedLocale.Language is not ("en" or "de" or "fr" or "ja" or "ko" or "zh" or "es")) {
+                string keyword=selectedLocale.Keyword("nu") as string;
+                native=new NativeRelativeTime(selectedLocale.BaseName,style,IsUndefined(system) ? keyword : (string)system);
+                numberingSystem=native.NumberingSystem;locale=selectedLocale.BaseName;
+                if(keyword==numberingSystem && (IsUndefined(system) || Equals(system,keyword)))locale+="-u-nu-"+keyword;
+                return;
+            }
             var numberOptions = new JsDynamicObject();
             if (!IsUndefined(system)) numberOptions.DefineOwn("numberingSystem", system);
             numbers = new NumberFormatValue(selected, numberOptions);
@@ -73,6 +83,7 @@ public static partial class Js
             if (unit.EndsWith('s')) unit = unit[..^1];
             if (unit is not ("year" or "quarter" or "month" or "week" or "day" or "hour" or "minute" or "second"))
                 throw new ArgumentOutOfRangeException(nameof(requestedUnit), "Invalid relative-time unit");
+            if(native!=null)return native.Format(value,unit,numeric=="auto",parts);
             string automatic = numeric == "auto" ? RelativeTimeAutomatic(locale, style, value, unit) : null;
             var result = parts ? new JsArray(0) : null;
             void Literal(string text) {
