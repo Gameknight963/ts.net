@@ -467,7 +467,7 @@ internal static partial class CompilerFunctions
             il_boxed(n.right,c,b);b.call(numeric?RuntimeMember.InNumber:RuntimeMember.In);b.call(RuntimeMember.WrapBoolean);
         }
         else if(n.kind==NodeKind.OptionalChain){il_optional_chain(entry,false,c,b);}
-        else if(n.kind==NodeKind.BuiltinNamespace){il_text(get_token(n.token,c).text,c,b);b.call(RuntimeMember.BuiltinNamespace);}
+        else if(n.kind==NodeKind.BuiltinNamespace){il_builtin_namespace(get_token(n.token,c).text,c,b);}
         else if(n.kind==NodeKind.ResolveThis){il_boxed(n.left,c,b);b.call(n.constant ? RuntimeMember.NewTarget : RuntimeMember.ResolveThis);}
         else if(n.kind==NodeKind.AsyncAwait){il_boxed(n.left,c,b);if(n.right!=0){il_boxed(n.right,c,b);b.call(RuntimeMember.AsyncAwaitContinue);}else b.call(RuntimeMember.AsyncAwait);}
         else if(n.kind==NodeKind.SavedCall){il_saved_call(entry,c,b);}

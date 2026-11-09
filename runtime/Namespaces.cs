@@ -1,6 +1,7 @@
 using System.Numerics;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 public static partial class Js
 {
@@ -178,6 +179,26 @@ public static partial class Js
         result.Member("getPrototypeOf", new JsFunction((FunctionBody)(static args => ToObject(FunctionArgument(args, 0)).PropertyPrototype), null, "getPrototypeOf", 1));
         result.Member("setPrototypeOf", new JsFunction((FunctionBody)(static args => SetObjectPrototype(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "setPrototypeOf", 2)); return result;
     }
+    // IDs match compiler/il_builtins.cs. Built-in global bindings are fixed;
+    // their members are still read normally and may be replaced by user code.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object BuiltinNamespaceById(int id) => id switch
+    {
+        0 => RuntimeNamespaces.Promise,
+        1 => RuntimeNamespaces.Map,
+        2 => RuntimeNamespaces.Set,
+        3 => RuntimeNamespaces.Array,
+        4 => RuntimeNamespaces.Object,
+        5 => RuntimeNamespaces.Number,
+        6 => RuntimeNamespaces.String,
+        7 => RuntimeNamespaces.Boolean,
+        8 => RuntimeNamespaces.Math,
+        9 => RuntimeNamespaces.Reflect,
+        10 => RuntimeNamespaces.Json,
+        11 => RuntimeNamespaces.Console,
+        12 => RuntimeNamespaces.Performance,
+        _ => Undefined
+    };
     static class RuntimeNamespaces
     {
         internal static readonly TsObject Intl = CreateIntlNamespace();
