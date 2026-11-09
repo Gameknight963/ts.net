@@ -130,8 +130,6 @@ Runtime performance:
 
 </details>
 
-UTF-8 roundtrips, gzip, and list formatting are encouraging in these workloads. Buffered Response BYOB reads are close to Node, but small-chunk streams, queued writes, and configured collation comparisons remain slower. Local date-field reads, Chinese calendar formatting, compact number formatting, and number formatter construction are still much slower than Node.
-
 Compilation times:
 
 | Source | tsnetc | tsc |
