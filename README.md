@@ -56,7 +56,7 @@ Runtime performance:
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | 0.60x |
 | Captured numeric callback, 2M calls | 5.24 ms | 5.07 ms | 0.97x |
 | Local function, 2M direct calls | 0.461 ms | 0.825 ms | 1.79x |
-| Self-returning function, 2M calls | 8.39 ms | 0.760 ms | 0.09x |
+| Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | `Object.keys(value).length`, 100K calls | 0.095 ms | 0.953 ms | 10.05x |
 | `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | 0.46x |
 | Local object spread, 100K two-field copies | 0.095 ms | 1.02 ms | 10.77x |
@@ -85,7 +85,7 @@ Runtime performance:
 | Create a Map, insert and read 10K entries, then delete half | 4.38 ms | 0.80 ms | 0.18x |
 | join, 20 joins of 10K integers from 0-99 | 1.64 ms | 2.23 ms | 1.36x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 6.02 ms | 2.11 ms | 0.35x |
-| reduce and reduceRight, 10 pairs over 10K numbers | 7 ms | 1 ms | 0.19x |
+| reduce and reduceRight, 10 pairs over 10K integers from 0-255 | 3.08 ms | 1.27 ms | 0.41x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
 | copyWithin, 1K copies of 5K entries in a 10K packed array | 1 ms | 269 ms | 321x |
 | Object.assign, create 1K objects with 3 fields | 1 ms | 0 ms | 0.10x |
@@ -134,7 +134,7 @@ Runtime performance:
 
 </details>
 
-The Promise batch, numeric join, map/filter, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric joins and map/filter look much better, while promises and JSON serialization still need substantial work.
+The self-returning function, Promise batch, numeric join, map/filter, reduction, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric joins, map/filter, and reductions look much better, while promises and JSON serialization still need substantial work.
 
 Compilation times:
 
