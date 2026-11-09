@@ -9,12 +9,14 @@ public static partial class Js
         readonly object[] reasons = new object[2];
         readonly JsPromise cancellation = new();
         bool reading, readAgain, finished;
+        readonly bool byteMode=reader.Owner.ByteMode;
 
         internal JsArray CreateBranches()
         {
             for (int index = 0; index < 2; index++) {
                 int branch = index;
                 var source = new JsClassInstance();
+                if(byteMode)source.DefineOwn("type","bytes");
                 source.DefineOwn("pull",new JsFunction((FunctionBody)(_ => {Pull();return Undefined;}),null,"pull",1));
                 source.DefineOwn("cancel",new JsFunction((FunctionBody)(args => Cancel(branch,FunctionArgument(args,0))),null,"cancel",1));
                 branches[index] = new CustomReadableStream(source,Undefined);
@@ -41,9 +43,11 @@ public static partial class Js
                 }
                 readAgain = false;
                 object value = item.Get("value");
-                // Default streams share the original chunk. Byte streams need
-                // a separate tee algorithm and cannot reach this path.
-                for (int branch = 0; branch < 2; branch++) if (!cancelled[branch]) branches[branch].Enqueue(value);
+                if(byteMode && !cancelled[0] && !cancelled[1]) {
+                    var bytes=EncodingInput(value).ToArray();
+                    var copy=new TypedArrayValue("Uint8Array",new BinaryBuffer(0){Bytes=bytes},0,bytes.Length);
+                    branches[0].Enqueue(value);branches[1].Enqueue(copy);
+                } else for (int branch = 0; branch < 2; branch++) if (!cancelled[branch]) branches[branch].Enqueue(value);
                 reading = false;
                 if (readAgain) Pull();
             }));

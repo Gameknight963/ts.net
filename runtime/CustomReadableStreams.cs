@@ -30,11 +30,12 @@ public static partial class Js
         JsFunction pull, cancel, size;
         bool started, pulling, pullAgain, closeRequested;
         internal CustomStreamReader Reader;
+        internal readonly bool ByteMode;
         internal bool Disturbed;
         internal bool PipeReadable => state == 0;
         internal bool CanTransformClose => state == 0 && !closeRequested;
         internal bool TransformWantsPull => state == 0 && !closeRequested && ((Reader?.Pending.Count ?? 0) > 0 || highWaterMark > totalSize);
-        readonly CustomStreamController controller;
+        readonly TsObject controller;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : BufferedBodyMethods.Prototype;
         internal CustomReadableStream(object sourceValue, object strategyValue, double defaultHighWaterMark = 1)
         {
@@ -42,19 +43,29 @@ public static partial class Js
             if (!IsNullish(strategyValue) && strategyValue is not TsObject) throw new InvalidOperationException("Queuing strategy must be an object");
             source = sourceValue as TsObject;
             var strategy = strategyValue as TsObject;
-            size = StreamCallback(strategy,"size");
+            object sizeValue = strategy == null ? Undefined : strategy.Get("size");
             object mark = strategy == null ? Undefined : strategy.Get("highWaterMark");
             object type = source == null ? Undefined : source.Get("type");
             if (!IsUndefined(type)) {
                 if (StringValue(type) != "bytes") throw new InvalidOperationException("Invalid stream type");
-                throw new NotSupportedException("Custom byte streams and BYOB readers are not supported yet");
+                ByteMode = true;
             }
-            highWaterMark = IsUndefined(mark) ? defaultHighWaterMark : Number(mark);
+            if(ByteMode && !IsUndefined(sizeValue))throw new ArgumentOutOfRangeException(nameof(strategyValue),"Byte stream strategies cannot define size");
+            size = IsUndefined(sizeValue) ? null : sizeValue as JsFunction ?? throw new InvalidOperationException("Stream size must be callable");
+            highWaterMark = IsUndefined(mark) ? ByteMode ? 0 : defaultHighWaterMark : Number(mark);
             if (double.IsNaN(highWaterMark) || highWaterMark < 0) throw new ArgumentOutOfRangeException(nameof(strategyValue),"Invalid high water mark");
             var start = StreamCallback(source,"start",true);
             pull = StreamCallback(source,"pull",true);
             cancel = StreamCallback(source,"cancel",true);
-            controller = new CustomStreamController(this);
+            if(ByteMode) {
+                object allocation=source.Get("autoAllocateChunkSize");
+                if(!IsUndefined(allocation)) {
+                    double amount=Number(allocation);
+                    if(!double.IsFinite(amount) || amount<1 || amount>9007199254740991d || Math.Truncate(amount)!=amount)throw new ArgumentOutOfRangeException(nameof(sourceValue),"Invalid autoAllocateChunkSize");
+                    throw new NotSupportedException("Byte stream auto-allocation requires BYOB support");
+                }
+            }
+            controller = ByteMode ? new ByteStreamController(this) : new CustomStreamController(this);
             // start throws synchronously; its returned promise settles asynchronously.
             object result = start == null ? Undefined : start.InvokeWithReceiver(sourceValue,new object[] {controller});
             ObserveGeneratorAwait(result,(value,rejected) => {
@@ -68,6 +79,7 @@ public static partial class Js
             object mode = options is TsObject settings ? settings.Get("mode") : Undefined;
             if (!IsUndefined(mode)) {
                 if (StringValue(mode) != "byob") throw new InvalidOperationException("Invalid reader mode");
+                if(ByteMode)throw new NotSupportedException("BYOB readers are not supported yet");
                 throw new InvalidOperationException("A default stream cannot use a BYOB reader");
             }
             if (Reader != null) throw new InvalidOperationException("Stream is locked");
@@ -92,11 +104,12 @@ public static partial class Js
         internal void Enqueue(object value)
         {
             if (state != 0 || closeRequested) throw new InvalidOperationException("Stream is not open for enqueue");
+            if(ByteMode)value=TransferByteChunk(value);
             if (Reader != null && Reader.Pending.TryDequeue(out var waiting)) waiting.Settle(IteratorResult(value,false),false);
             else {
                 double amount;
                 try {
-                    amount = size == null ? 1 : Number(size.InvokeWithReceiver(Undefined,new[] {value}));
+                    amount = ByteMode ? ((TypedArrayValue)value).Count : size == null ? 1 : Number(size.InvokeWithReceiver(Undefined,new[] {value}));
                     if (!double.IsFinite(amount) || amount < 0) throw new ArgumentOutOfRangeException(nameof(value),"Invalid chunk size");
                 }
                 catch (Exception exception) {Error(CaughtValue(exception));throw;}

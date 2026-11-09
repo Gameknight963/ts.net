@@ -1,0 +1,31 @@
+export {};
+async function main():Promise<void>{
+    let controller!:ReadableByteStreamController;
+    const stream=new ReadableStream({type:'bytes',start(c){controller=c;}});
+    const reader=stream.getReader();const first=reader.read(),second=reader.read();
+    controller.enqueue(new Uint8Array([1,2]));controller.enqueue(new Uint8Array([3]));controller.close();
+    console.log('pending',Array.from((await first).value!).join(','),Array.from((await second).value!).join(','),(await reader.read()).done);
+    reader.releaseLock();
+    let cancelled:any;let cancelController!:ReadableByteStreamController;
+    const cancelStream=new ReadableStream({type:'bytes',start(c){cancelController=c;},cancel(reason){cancelled=reason;}});
+    const cancellationReader=cancelStream.getReader();const waiting=cancellationReader.read();
+    const reason={exact:true};await cancellationReader.cancel(reason);
+    console.log('cancel',cancelled===reason,(await waiting).done,cancelController.desiredSize);cancellationReader.releaseLock();
+    const original=new ReadableStream({type:'bytes',start(c){c.enqueue(new Uint8Array([1]));c.enqueue(new Uint8Array([2]));c.close();}});
+    const branches=original.tee();const a=branches[0].getReader(),b=branches[1].getReader();
+    console.log('one branch',Array.from((await a.read()).value!).join(','));
+    const cancelling=a.cancel('left');
+    console.log('other branch',Array.from((await b.read()).value!).join(','),Array.from((await b.read()).value!).join(','),(await b.read()).done);
+    await cancelling;
+    const response=new Response(new ReadableStream({type:'bytes',start(c){c.enqueue(new Uint8Array([65,66]));c.close();}}));
+    const copy=response.clone();console.log('response clones',await response.text(),await copy.text());
+    let pulls=0;
+    const pipe=new ReadableStream({type:'bytes',pull(c){c.enqueue(new Uint8Array([++pulls]));if(pulls===3)c.close();}});
+    const values:number[]=[];await pipe.pipeTo(new WritableStream({write(chunk){values.push(...chunk);}}));
+    console.log('pipe',values.join(','));
+    const buffer=new ArrayBuffer(8,{maxByteLength:16});const view=new Uint8Array(buffer,2,3);view.set([4,5,6]);
+    const resizable=new ReadableStream({type:'bytes',start(c){c.enqueue(view);c.close();}});
+    const chunk=(await resizable.getReader().read()).value!;
+    console.log('resizable',buffer.byteLength,chunk.byteOffset,chunk.buffer.byteLength,Array.from(chunk).join(','));
+}
+main();
