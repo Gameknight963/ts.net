@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.InteropServices;
 
@@ -59,6 +60,7 @@ public static partial class Js
         readonly string locale,currency,language;
         string previousRaw;int previousExponent;bool previousFinite;
         CurrencyNamePattern previousPattern;
+        readonly Dictionary<string,CurrencyNamePattern> pluralPatterns=new(StringComparer.Ordinal);
         static void Check(int error){if(error>0)throw new InvalidOperationException("Native currency names failed: ICU status "+error);}
         internal NativeCurrencyNames(string locale,string currency)
         {
@@ -116,6 +118,16 @@ public static partial class Js
             string raw=finite ? number.Replace(info.NumberGroupSeparator,"").Replace(info.NumberDecimalSeparator,".") : number;
             lock(gate) {
                 if(previousPattern!=null && previousRaw==raw && previousExponent==exponent && previousFinite==finite)return previousPattern;
+                string expanded=finite ? Expanded(raw,exponent) : null;
+                // CLDR currency names and unit patterns are selected by plural
+                // category. Cache those immutable affixes, never a numeric value.
+                string category=finite && SupportsPluralLanguage(language) ? PluralRulesValue.CategoryFor(language,"cardinal",expanded) : null;
+                string explicitCount=category!=null ? Canonical(expanded) : null;
+                bool explicitValue=explicitCount is "0" or "1";
+                string key=category==null ? null : explicitValue ? category+":"+explicitCount : category;
+                if(key!=null && pluralPatterns.TryGetValue(key,out var cached)) {
+                    previousRaw=raw;previousExponent=exponent;previousFinite=finite;previousPattern=cached;return cached;
+                }
                 using var thread=api.Module.Enter();int point=raw.IndexOf('.'),fraction=finite && point>=0 ? raw.Length-point-1 : 0;
                 api.Set(formatter,7,finite ? (int)Math.Clamp((long)fraction-exponent,0,999) : 0);
                 string input=finite ? raw+"E"+exponent.ToString(CultureInfo.InvariantCulture) : null;double special=number==info.NaNSymbol ? BitConverter.Int64BitsToDouble(0x7ff8000000000000) : double.PositiveInfinity;
@@ -123,7 +135,6 @@ public static partial class Js
                 var currency=new Position{Field=7};string check=Read(input,finite,special,ref currency);
                 if(check!=text || numeric.Begin==numeric.End || currency.Begin==currency.End)throw new NotSupportedException("System ICU did not supply currency-name fields");
                 int end=numeric.End;if(end+1<text.Length && text[end]=='.' && char.IsAsciiDigit(text[end+1])){end++;while(end<text.Length && char.IsAsciiDigit(text[end]))end++;}
-                string expanded=finite ? Expanded(raw,exponent) : null;
                 if(finite && Canonical(text[numeric.Begin..end])!=Canonical(expanded))throw new NotSupportedException("System ICU cannot represent this currency-name value");
                 bool prefix=currency.End<=numeric.Begin;if(!prefix && currency.Begin<end)throw new InvalidOperationException("Overlapping native currency name fields");
                 var result=new CurrencyNamePattern(text[..numeric.Begin],text[end..],prefix,prefix ? currency.Begin : currency.Begin-end,currency.End-currency.Begin);
@@ -135,6 +146,7 @@ public static partial class Js
                     if(SupportsPluralLanguage(language))result=result.WithName(Name(PluralRulesValue.CategoryFor(language,"cardinal",expanded)));
                     else if(language=="pt")result=result.WithName(Name("other"));
                 }
+                if(key!=null){if(!explicitValue)result=result.WithName(Name(category));pluralPatterns.Add(key,result);}
                 previousRaw=raw;previousExponent=exponent;previousFinite=finite;previousPattern=result;return result;
             }
         }
