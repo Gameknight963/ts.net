@@ -39,3 +39,13 @@ const failure: any[] = [{toString(): string { throw 'failed'; }}];
 try { failure.join(); } catch (error) { console.log('failure', error); }
 failure[0] = 'recovered';
 console.log('cleanup', failure.join());
+const shrinks: number[] = [1, 2, 3];
+const shrinkingSeparator: any = {toString(): string { shrinks.length = 1; return '|'; }};
+console.log('separator shrinks', shrinks.join(shrinkingSeparator));
+const accessorNumbers: number[] = [1, 2, 3];
+const accessorSeparator: any = {toString(): string {
+    Object.defineProperty(accessorNumbers, '1', {get() {return 7;}, configurable: true});
+    return '|';
+}};
+console.log('separator installs getter', accessorNumbers.join(accessorSeparator));
+console.log('numeric special values', [NaN, Infinity, -Infinity, -0, 0.5, 1e21].join('|'));
