@@ -110,6 +110,20 @@ internal static partial class CompilerFunctions
         }
         return count;
     }
+    // The frontend has checked these types. A receiver slot also carries
+    // arguments/new.target bookkeeping, so those functions retain generic calls.
+    internal static int il_numeric_array_callback(int symbol, Compiler c)
+    {
+        Node f = get_node(get_symbol(symbol, c).function, c);
+        if (f.fourth != 0 || f.right != 0) return -1;
+        int count = 0;
+        for (int parameter = f.children; parameter != 0; parameter = get_node(parameter, c).next)
+        {
+            Node p = get_node(parameter, c);
+            if (p.third != 0 || get_type(p.type, c).kind != TypeKind.Number || ++count > 2) return -1;
+        }
+        return count;
+    }
     internal static bool il_function_returns(int entry, Compiler c)
     {
         Node n = get_node(entry, c);
@@ -157,11 +171,11 @@ internal static partial class CompilerFunctions
         b.plan.number(b.method, 0); b.op(0x2a); b.raw_function_return = false;
         parameter = f.children; while (parameter != 0) { Node p = get_node(parameter, c); b.raw_slots.at_mut(p.symbol) = 0; parameter = p.next; }
     }
-    internal static // Give the CLR a virtual call it can devirtualize to the function body.
-                    // Other arities keep the base implementation, including missing arguments.
-void il_function_class(int symbol, Compiler c, IlBackend b)
+    internal static void il_function_class(int symbol, Compiler c, IlBackend b)
     {
-        int count = il_numeric_function(symbol, c); if (count < 0) { return; }
+        int count = il_numeric_function(symbol, c);
+        int callback = il_numeric_array_callback(symbol, c);
+        if (count < 0 && callback < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
         int parent = b.RuntimeToken(RuntimeMember.FunctionType); int type = b.plan.type(name.view(), parent, 0x101);
         Vector<int> parameters = new Vector<int>(); parameters.push(-5); parameters.push(-5); parameters.push(-4); parameters.push(-6);
@@ -173,17 +187,41 @@ void il_function_class(int symbol, Compiler c, IlBackend b)
         b.call(RuntimeMember.FunctionConstructor);
         if (context != 0) { b.emit(0xfe09, 0); b.emit(0xfe09, 5); b.emit(0x7d, environment_field); }
         b.op(0x2a);
-        int method = 0;
-        if (count == 0) { method = b.plan.method0(5, type, 0xc6, -10, "InvokeNumber0"); }
-        else if (count == 1) { method = b.plan.method1(5, type, 0xc6, -10, -10, "InvokeNumber1"); }
-        else { method = b.plan.method2(5, type, 0xc6, -10, -10, -10, "InvokeNumber2"); }
-        b.begin(method);
-        int raw = b.raw_functions.at(symbol);
-        if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
-        for (int i = 0; i < count; i++) { b.emit(0xfe09, i + 1); if (raw != 0) { b.call(RuntimeMember.NumberValue); } }
-        b.emit(0x28, raw != 0 ? raw : b.function(symbol));
-        if (raw != 0) { b.call(RuntimeMember.WrapNumber); }
-        b.op(0x2a);
+        if (count >= 0)
+        {
+            int method = 0;
+            if (count == 0) { method = b.plan.method0(5, type, 0xc6, -10, "InvokeNumber0"); }
+            else if (count == 1) { method = b.plan.method1(5, type, 0xc6, -10, -10, "InvokeNumber1"); }
+            else { method = b.plan.method2(5, type, 0xc6, -10, -10, -10, "InvokeNumber2"); }
+            b.begin(method);
+            int raw = b.raw_functions.at(symbol);
+            if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+            for (int i = 0; i < count; i++) { b.emit(0xfe09, i + 1); if (raw != 0) { b.call(RuntimeMember.NumberValue); } }
+            b.emit(0x28, raw != 0 ? raw : b.function(symbol));
+            if (raw != 0) { b.call(RuntimeMember.WrapNumber); }
+            b.op(0x2a);
+        }
+        if (callback >= 0)
+        {
+            int supported = b.plan.method0(5, type, 0xc6, -2, "SupportsArrayNumber");
+            b.begin(supported); b.emit(0x20, 1); b.op(0x2a);
+            Vector<int> args = new Vector<int>(); args.push(-5); args.push(-3); args.push(-3); args.push(-5);
+            int method = b.plan.method(5, type, 0xc6, -5, args.view(), "InvokeArrayNumber");
+            b.begin(method);
+            int raw = b.raw_functions.at(symbol);
+            if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+            for (int i = 0; i < callback; i++)
+            {
+                b.emit(0xfe09, i + 2);
+                if (raw == 0) b.call(RuntimeMember.WrapNumber);
+            }
+            b.emit(0x28, raw != 0 ? raw : b.function(symbol));
+            if (raw != 0) b.call(RuntimeMember.WrapNumber);
+            int result = get_node(get_symbol(symbol, c).function, c).type;
+            if (get_type(result, c).kind == TypeKind.Void) b.call(RuntimeMember.Undefined);
+            else b.box(result, c);
+            b.op(0x2a);
+        }
     }
     internal static void il_function_object(int symbol, Compiler c, IlBackend b)
     {
