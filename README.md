@@ -84,7 +84,7 @@ Runtime performance:
 | String lastIndexOf, 1M searches | 10.07 ms | 19.54 ms | 1.94x |
 | Create a Map, insert and read 10K entries, then delete half | 4.38 ms | 0.80 ms | 0.18x |
 | join, 20 joins of 10K integers from 0-99 | 1.64 ms | 2.23 ms | 1.36x |
-| map, filter and sum, 10 passes over 10K numbers | 23 ms | 2 ms | 0.09x |
+| map, filter and sum, 10 passes over 10K integers from 0-255 | 6.02 ms | 2.11 ms | 0.35x |
 | reduce and reduceRight, 10 pairs over 10K numbers | 7 ms | 1 ms | 0.19x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
 | copyWithin, 1K copies of 5K entries in a 10K packed array | 1 ms | 269 ms | 321x |
@@ -134,7 +134,7 @@ Runtime performance:
 
 </details>
 
-The Promise batch, numeric join, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric joins look much better, while promises and JSON serialization still need substantial work.
+The Promise batch, numeric join, map/filter, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric joins and map/filter look much better, while promises and JSON serialization still need substantial work.
 
 Compilation times:
 
