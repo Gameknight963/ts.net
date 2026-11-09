@@ -52,10 +52,13 @@ public static partial class Js
         }
         internal void Attach(JsPromise target, PromiseResolvingFunctions pair, AsyncExecution execution = null)
         {
-            var capability = new PromiseCapability { Promise = target, Intrinsic = pair };
             // Await uses intrinsic reactions, bypassing public then and species.
             // Even an already fulfilled value resumes through a queued job.
-            if (continuation == null && execution == null) { Then(new PromiseReaction(capability, null, null)); return; }
+            if (continuation == null && execution == null)
+            {
+                var capability = new PromiseCapability { Promise = target, Intrinsic = pair };
+                Then(new PromiseReaction(capability, null, null)); return;
+            }
             Then(new PromiseReaction(null, null, null, (value, rejected) =>
             {
                 if (rejected)
