@@ -115,10 +115,13 @@ Runtime performance:
 | Gzip-compress 1 MiB of repeated ASCII A | 3.54 ms | 6.71 ms | 1.90x |
 | Gzip-decompress 1,052 bytes into 1 MiB of repeated ASCII A | 1.19 ms | 4.38 ms | 3.68x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | 0.37x |
+| ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
+| Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | 0.83x |
+| Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
 
 </details>
 
-UTF-8 roundtrips and gzip are encouraging in these workloads, but queued writes and streamed Response reads are still slower than Node.
+UTF-8 roundtrips and gzip are encouraging in these workloads. Buffered Response BYOB reads are close to Node, but small-chunk streams, queued writes, and configured collation comparisons remain slower.
 
 Compilation times:
 
