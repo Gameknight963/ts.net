@@ -165,7 +165,7 @@ public static partial class Js
         {
             if(!checkAncientMonth || timestamp>=0)return;
             using var copy=new Handle(api.Module,api.CloseCalendar);int error=0;
-            copy.Initialize(api.CopyCalendar(api.Calendar(formatter),ref error));Check(error);
+            copy.Initialize(api.CopyCalendar(api.Calendar(formatter),ref error));GC.KeepAlive(formatter);Check(error);
             if(copy.IsInvalid)throw new InvalidOperationException("Native calendar was not copied");
             api.Time(copy,timestamp,ref error);Check(error);int month=api.Field(copy,2,ref error);Check(error);
             if(month is <0 or >11)throw new NotSupportedException("System ICU produced an invalid month for this historical calendar date");
@@ -174,6 +174,18 @@ public static partial class Js
         {
             if(!checkAncientMonth || timestamp>=0)return;
             lock(gate){using var thread=api.Module.Enter();ValidateCalendar(timestamp);}
+        }
+        internal long LocalDay(double timestamp)
+        {
+            lock(gate) {
+                using var thread=api.Module.Enter();using var copy=new Handle(api.Module,api.CloseCalendar);int error=0;
+                copy.Initialize(api.CopyCalendar(api.Calendar(formatter),ref error));GC.KeepAlive(formatter);Check(error);
+                if(copy.IsInvalid)throw new InvalidOperationException("Native calendar was not copied");
+                api.Time(copy,timestamp,ref error);Check(error);
+                int standard=api.Field(copy,15,ref error),daylight=api.Field(copy,16,ref error);Check(error);
+                long local=checked((long)timestamp+standard+daylight);
+                return local>=0 ? local/86400000 : (local-86399999)/86400000;
+            }
         }
         internal JsArray Parts(double timestamp)
         {

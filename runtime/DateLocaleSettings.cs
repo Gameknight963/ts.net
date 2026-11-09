@@ -177,6 +177,10 @@ public static partial class Js
         internal string Format(double timestamp) => NeedsExtended(timestamp) ? ExtendedFormatter().Text(timestamp) : LocalizeNumberDigits(FormatLatin(timestamp), digitCharacters);
         internal bool SameLocalDay(double first, double second)
         {
+            // ICU can format dates beyond the CLR's year limit. Avoid this
+            // DateTime shortcut there, including offsets crossing the boundary.
+            double lastSafeDay=DateTimeOffset.MaxValue.ToUnixTimeMilliseconds()-86400000;
+            if(first>lastSafeDay || second>lastSafeDay)return ExtendedFormatter().LocalDay(first)==ExtendedFormatter().LocalDay(second);
             DateTime Local(double value) => (fixedOffset.HasValue ? NativeDate(value + fixedOffset.Value * 60000d) : TimeZoneInfo.ConvertTime(NativeDate(value),Zone)).Date;
             return Local(first)==Local(second);
         }
