@@ -61,3 +61,25 @@ for (let i = 0; i < 64; i++) {
     queueMicrotask(() => {queuedOrder.push('q' + i);});
 }
 queueMicrotask(() => console.log('mixed queue order', queuedOrder.join(',')));
+
+Promise.resolve(4).then(value => value + 1).then(value => console.log('numeric callback', value));
+Promise.resolve('text').then((value, suffix = '!') => value + suffix).then(value => console.log('string callback', value));
+Promise.resolve({value: 5}).then(({value}) => value + 2).then(value => console.log('object callback', value));
+Promise.resolve([2, 3]).then(values => values[0] + values[1]).then(value => console.log('array callback', value));
+Promise.resolve<number | undefined>(undefined).then((value = 7) => value * 2).then(value => console.log('default callback', value));
+Promise.resolve(5).then(() => 99).then(value => console.log('zero parameter callback', value));
+Promise.resolve(2).then((first, second = 5) => first + second).then(value => console.log('optional callback', value));
+Promise.resolve(2).then((first, second = 5, third = 7) => first + second + third).then(value => console.log('generic optional callback', value));
+Promise.resolve(null).then(() => 'null').then(value => console.log('reference callback', value));
+Promise.resolve(8).then((...values: number[]) => values.length + values[0]).then(value => console.log('generic rest callback', value));
+Promise.resolve(-3).then(Math.abs).then(value => console.log('native callback', value));
+const boundPromiseCallback = ((first: number, second: number) => first * 10 + second).bind(undefined, 3);
+Promise.resolve(4).then(boundPromiseCallback).then(value => console.log('bound callback', value));
+Promise.resolve<number | string>(3).then(value => typeof value === 'number' ? value + 1 : value.length).then(value => console.log('union callback', value));
+Promise.resolve(4).then(value => value > 0).then(value => console.log('boolean callback', value));
+
+Promise.resolve(9n).then(value => value + 1n).then(value => console.log('bigint callback', value.toString()));
+const directCallbackSymbol = Symbol('direct');
+Promise.resolve(directCallbackSymbol).then(value => value).then(value => console.log('symbol callback', value === directCallbackSymbol));
+function directGenericCallback<T>(value: T): T {return value;}
+Promise.resolve('generic').then(directGenericCallback).then(value => console.log('generic callback', value));
