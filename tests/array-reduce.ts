@@ -1,4 +1,12 @@
 const values = [1, 2, 3];
+console.log('numeric order',values.reduce((acc,value)=>acc*10+value,0),values.reduceRight((acc,value)=>acc*10+value,0));
+function observed(acc:number,value:number):number{return acc+value+arguments.length;}
+console.log('argument count',values.reduce(observed,0));
+console.log('variadic native',values.reduce(Math.max as (acc:number,value:number)=>number,0));
+console.log('default accumulator',values.reduce<number|undefined>((acc=5,value)=>acc+value,undefined));
+console.log('default value',[1,undefined,3].reduce<number>((acc,value=8)=>acc+value,0));
+const changed=[1,2,3];let changes=0;
+console.log('numeric mutation',changed.reduce((acc,value)=>{if(changes++===0){changed[1]=7;changed.push(9);}return acc*10+value;},0),changes,changed.length);
 console.log('sum', values.reduce((sum, value) => sum + value), values.reduce((sum, value) => sum + value, 10));
 console.log('right', values.reduceRight((sum, value) => sum - value), values.reduceRight((sum, value) => sum - value, 10));
 console.log('generic-type', values.reduce((text, value) => text + value, 'start:'));

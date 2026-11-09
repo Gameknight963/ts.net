@@ -83,12 +83,16 @@ public static partial class Js
             long length = IndexedLength(source);
             if (FunctionArgument(arguments, 0) is not JsFunction callback) throw new InvalidOperationException("Array callback is not callable");
             bool initialized = arguments.Length > 1;
+            bool numericCallback = callback.SupportsArrayNumber();
             object accumulator = FunctionArgument(arguments, 1);
             long step = backwards ? -1 : 1;
             for (long i = backwards ? length - 1 : 0; i >= 0 && i < length; i += step)
             {
                 if (!TryIndexedValue(source, i, out object value)) continue;
                 if (!initialized) { accumulator = value; initialized = true; }
+                // Eligible callbacks use only their first two numeric arguments.
+                else if (numericCallback && accumulator is double first && value is double second)
+                    accumulator = callback.InvokeArrayNumber(Undefined, first, second, source);
                 else accumulator = callback.InvokeWithReceiver(Undefined, new object[] { accumulator, value, (double)i, source });
             }
             return initialized ? accumulator : throw new InvalidOperationException("Reduce of empty array with no initial value");
