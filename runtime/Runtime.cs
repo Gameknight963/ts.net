@@ -111,9 +111,11 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T Cast<T>(object value, string message)
     {
+        if (value is T result) return result;
         if (value == null && !typeof(T).IsValueType) return default;
-        if (ReferenceEquals(value, Undefined) && Nullable.GetUnderlyingType(typeof(T)) != null) return default;
-        return value is T result ? result : throw new InvalidCastException(message);
+        // Nullable value types are the value types whose default boxes to null.
+        if (ReferenceEquals(value, Undefined) && typeof(T).IsValueType && default(T) is null) return default;
+        throw new InvalidCastException(message);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
