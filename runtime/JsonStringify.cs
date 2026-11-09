@@ -31,14 +31,20 @@ public static partial class Js
         internal readonly TsObject Value;
         internal readonly bool Array;
         internal readonly JsArray Keys;
+        internal readonly object[] Names;
         internal readonly long Length;
         internal long Position;
         internal bool Written;
-        internal JsonWriteFrame(TsObject value, JsArray propertyList)
+        internal JsonWriteFrame(TsObject value, JsArray propertyList, object[] previousNames)
         {
             Value = value; Array = value is JsArray;
             if (Array) Length = IndexedLength(value);
-            else { Keys = propertyList ?? StringPropertyKeys(value.OwnKeys()); Length = (long)Keys.Length(); }
+            else
+            {
+                Names = propertyList == null ? value.JsonPropertyNames(previousNames) : null;
+                if (Names != null) Length = Names.LongLength;
+                else { Keys = propertyList ?? StringPropertyKeys(value.OwnKeys()); Length = (long)Keys.Length(); }
+            }
         }
     }
     sealed class JsonWriter
@@ -49,6 +55,7 @@ public static partial class Js
         readonly StringBuilder output = new();
         readonly List<JsonWriteFrame> frames = new();
         readonly HashSet<TsObject> active = new(ReferenceEqualityComparer.Instance);
+        object[] previousNames;
         internal JsonWriter(object replacement, object space)
         {
             replacer = replacement as JsFunction;
@@ -90,7 +97,9 @@ public static partial class Js
             else if (value is TsObject obj)
             {
                 if (!active.Add(obj)) throw new InvalidOperationException("Cannot serialize a cyclic object");
-                var frame = new JsonWriteFrame(obj, propertyList); frames.Add(frame); output.Append(frame.Array ? '[' : '{');
+                var frame = new JsonWriteFrame(obj, propertyList, previousNames);
+                if (frame.Names != null) previousNames = frame.Names;
+                frames.Add(frame); output.Append(frame.Array ? '[' : '{');
             }
             else throw new InvalidOperationException("Unsupported JSON value");
         }
@@ -111,7 +120,7 @@ public static partial class Js
                     if (completed.Written && gap.Length != 0) { output.Append('\n'); Indent(frames.Count); }
                     output.Append(completed.Array ? ']' : '}'); continue;
                 }
-                string key = frame.Array ? frame.Position.ToString(CultureInfo.InvariantCulture) : (string)frame.Keys.ElementAt((uint)frame.Position);
+                string key = frame.Array ? frame.Position.ToString(CultureInfo.InvariantCulture) : frame.Names != null ? (string)frame.Names[(int)frame.Position] : (string)frame.Keys.ElementAt((uint)frame.Position);
                 frame.Position++; object value = Prepare(frame.Value, key);
                 if (Omitted(value)) { if (!frame.Array) continue; value = null; }
                 if (frame.Written) output.Append(','); frame.Written = true;

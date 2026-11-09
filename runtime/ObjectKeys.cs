@@ -14,9 +14,10 @@ public abstract partial class TsObject
     // Extras may introduce indices, so they still need the general ordering path.
     public object KeysFromTextFields(object[] names) => extra == null || extra.Count == 0
         ? new JsArray(names) : KeysFromFixed(names);
-    public object KeysFromFixed(object[] names)
+    public object KeysFromFixed(object[] names) => new JsArray(KeyNamesFromFixed(names));
+    object[] KeyNamesFromFixed(object[] names)
     {
-        if (extra == null || extra.Count == 0) return Js.OrderOwnKeys(names);
+        if (extra == null || extra.Count == 0) return Js.OrderOwnKeyNames(names);
         var all = new object[names.Length + extra.Count];
         Array.Copy(names, all, names.Length);
         // With no fixed fields, every key comes from the unique property store.
@@ -25,7 +26,27 @@ public abstract partial class TsObject
         int count = names.Length;
         foreach (string name in extra.Keys) if (seen == null || seen.Add(name)) all[count++] = name;
         if (count != all.Length) Array.Resize(ref all, count);
-        return Js.OrderOwnKeys(all);
+        return Js.OrderOwnKeyNames(all);
+    }
+    internal object[] JsonPropertyNames(object[] previous)
+    {
+        if (GetType() != typeof(JsDynamicObject) || IsModuleNamespace || ((JsDynamicObject)this).HasPropertyDescriptors) return null;
+        if (previous != null && (extra?.Count ?? 0) == previous.Length)
+        {
+            // Compare every key before sharing an immutable snapshot. A nested
+            // toJSON or replacer may have changed this object's properties.
+            int index = 0;
+            bool matches = true;
+            if (extra != null)
+                foreach (string name in extra.Keys)
+                    if (name != (string)previous[index++]) { matches = false; break; }
+            if (matches) return previous;
+        }
+        var names = KeyNamesFromFixed(Array.Empty<object>());
+        int count = 0;
+        foreach (string name in names) if (!Js.IsSymbolKey(name)) names[count++] = name;
+        if (count != names.Length) Array.Resize(ref names, count);
+        return names;
     }
 }
 
@@ -126,7 +147,8 @@ public sealed partial class ReversibleArray
 
 public static partial class Js
 {
-    internal static object OrderOwnKeys(object[] names)
+    internal static object OrderOwnKeys(object[] names) => new JsArray(OrderOwnKeyNames(names));
+    internal static object[] OrderOwnKeyNames(object[] names)
     {
         bool text = false, unordered = false, haveIndex = false, symbol = false;
         uint previous = 0;
@@ -138,7 +160,7 @@ public static partial class Js
                 haveIndex = true; previous = index;
             } else text = true;
         }
-        if (!unordered) return new JsArray(names);
+        if (!unordered) return names;
         var indices = new List<KeyValuePair<uint, object>>();
         var strings = new List<object>();
         var symbols = new List<object>();
@@ -151,7 +173,7 @@ public static partial class Js
         foreach (var item in indices) names[position++] = item.Value;
         foreach (var name in strings) names[position++] = name;
         foreach (var name in symbols) names[position++] = name;
-        return new JsArray(names);
+        return names;
     }
     public static object ObjectKeys(object source)
     {

@@ -40,3 +40,26 @@ JSON.stringify(setup,list,gap);console.log('setup order',setupLog.join(','));
 const cut=JSON.stringify({a:1},undefined,'123456789\uD83D\uDE00')!;
 const cutCodes:number[]=[];for(let i=0;i<cut.length;i++)cutCodes.push(cut.charCodeAt(i));console.log('gap code units',cutCodes.join(','));
 const descriptor=Object.getOwnPropertyDescriptor(JSON,'stringify')!;console.log('descriptor',descriptor.writable,descriptor.enumerable,descriptor.configurable);
+const snapshot:any=JSON.parse('{"a":0,"b":2,"c":3}');
+snapshot[Symbol('hidden')]=99;
+snapshot.a={toJSON():number {
+    delete snapshot.b;
+    snapshot.d=4;
+    Object.setPrototypeOf(snapshot,{b:7});
+    Object.defineProperty(snapshot,'c',{get(){return 9;},enumerable:true,configurable:true});
+    return 1;
+}};
+show('key snapshot with nested mutation',snapshot);
+const ordered:any=JSON.parse('{"z":1,"10":2,"2":3,"a":4}');
+ordered[Symbol('omitted')]=5;
+show('dynamic key order and symbols',ordered);
+class JsonRecord {first=1;second=2;}
+show('class fields',new JsonRecord());
+const changingRecords:any[]=JSON.parse('[{"a":1,"b":2},{"a":3,"b":4},{"a":5,"b":6}]');
+changingRecords[0].a={toJSON():number {
+    delete changingRecords[1].b;
+    changingRecords[1].c=9;
+    changingRecords[2][Symbol('hidden')]=10;
+    return 1;
+}};
+show('different keys between records',changingRecords);
