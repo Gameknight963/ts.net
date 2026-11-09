@@ -27,8 +27,18 @@ public static partial class Js
                     position += Iteration.Step(input, position); closeable = true;
                     int index = state.Add();
                     object promise = CallMethod(resolve, receiver, new[] { item });
+                    object then = Js.Get(promise, "then");
+                    if (promise is JsPromise native && then is PromiseThenFunction)
+                    {
+                        // Species lookup and construction remain observable even
+                        // though the combinator discards the returned promise.
+                        var result = NewPromiseCapability(PromiseSpecies(native));
+                        native.Then(new PromiseReaction(result, null, null,
+                            (value, rejected) => state.Accept(index, value, rejected)));
+                        continue;
+                    }
                     var handlers = state.Handlers(index);
-                    CallMethod(Js.Get(promise, "then"), promise, handlers);
+                    CallMethod(then, promise, handlers);
                 }
                 state.Finish();
             }
@@ -46,6 +56,25 @@ public static partial class Js
             int index = checked((int)values.Length());
             values.Append(Undefined); remaining = checked(remaining + 1);
             return index;
+        }
+        internal void Accept(int index, object value, bool rejected)
+        {
+            if (mode == PromiseCombination.Race ||
+                mode == PromiseCombination.All && rejected ||
+                mode == PromiseCombination.Any && !rejected)
+            {
+                capability.Complete(value, rejected);
+                return;
+            }
+            if (mode == PromiseCombination.AllSettled)
+            {
+                var record = new JsDynamicObject();
+                record.DefineOwn("status", rejected ? "rejected" : "fulfilled");
+                record.DefineOwn(rejected ? "reason" : "value", value);
+                value = record;
+            }
+            values.SetAt(index, value);
+            Finish();
         }
         internal object[] Handlers(int index)
         {

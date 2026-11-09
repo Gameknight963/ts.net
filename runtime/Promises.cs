@@ -19,25 +19,64 @@ public static partial class Js
     sealed class PromiseCapability
     {
         internal TsObject Promise;
-        internal JsFunction Resolve, Reject;
-        internal void Complete(object value, bool rejected) => (rejected ? Reject : Resolve).InvokeWithReceiver(Undefined, new[] { value });
+        internal PromiseResolvingFunctions Intrinsic;
+        JsFunction resolve, reject;
+        internal JsFunction Resolve { get => resolve ?? Intrinsic.Resolve; set => resolve = value; }
+        internal JsFunction Reject { get => reject ?? Intrinsic.Reject; set => reject = value; }
+        internal void Complete(object value, bool rejected)
+        {
+            if (Intrinsic != null)
+            {
+                if (rejected) Intrinsic.RejectValue(value);
+                else Intrinsic.ResolveValue(value);
+                return;
+            }
+            (rejected ? Reject : Resolve).InvokeWithReceiver(Undefined, new[] { value });
+        }
     }
     sealed class PromiseResolvingFunctions
     {
         bool resolved;
-        internal readonly JsFunction Resolve, Reject;
+        readonly JsPromise promise;
+        JsFunction resolve, reject;
+        // Internal capabilities usually never expose these functions to JavaScript.
+        // Materialize each function only when needed, preserving its identity.
+        internal JsFunction Resolve => resolve ??= new JsFunction((FunctionBody)(args =>
+        {
+            ResolveValue(FunctionArgument(args, 0)); return Undefined;
+        }), null, "", 1);
+        internal JsFunction Reject => reject ??= new JsFunction((FunctionBody)(args =>
+        {
+            RejectValue(FunctionArgument(args, 0)); return Undefined;
+        }), null, "", 1);
         internal PromiseResolvingFunctions(JsPromise promise)
         {
-            Resolve = new JsFunction((FunctionBody)(args => { if (!resolved) { resolved = true; promise.ResolveValue(FunctionArgument(args, 0)); } return Undefined; }), null, "", 1);
-            Reject = new JsFunction((FunctionBody)(args => { if (!resolved) { resolved = true; promise.Settle(FunctionArgument(args, 0), true); } return Undefined; }), null, "", 1);
+            this.promise = promise;
         }
-        internal void RejectError(Exception error) => Reject.InvokeWithReceiver(Undefined, new[] { CaughtValue(error) });
+        internal void ResolveValue(object value)
+        {
+            if (resolved) return;
+            resolved = true; promise.ResolveValue(value);
+        }
+        internal void RejectValue(object value)
+        {
+            if (resolved) return;
+            resolved = true; promise.Settle(value, true);
+        }
+        internal void RejectError(Exception error) => RejectValue(CaughtValue(error));
     }
     sealed class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected, Action<object, bool> continuation = null)
     {
         internal void Enqueue(object value, bool isRejected) => EnqueuePromiseJob(() =>
         {
-            if (continuation != null) { continuation(value, isRejected); return; }
+            if (continuation != null)
+            {
+                if (capability == null) { continuation(value, isRejected); return; }
+                try { continuation(value, isRejected); }
+                catch (Exception error) { capability.Complete(CaughtValue(error), true); return; }
+                capability.Complete(Undefined, false);
+                return;
+            }
             var handler = isRejected ? rejected : fulfilled;
             if (handler == null) { capability.Complete(value, isRejected); return; }
             object result;
@@ -84,6 +123,11 @@ public static partial class Js
     }
     static PromiseCapability NewPromiseCapability(object constructor)
     {
+        if (ReferenceEquals(constructor, RuntimeNamespaces.Promise))
+        {
+            var intrinsic = new JsPromise();
+            return new PromiseCapability { Promise = intrinsic, Intrinsic = new PromiseResolvingFunctions(intrinsic) };
+        }
         if (constructor is not JsFunction function || !function.CanInitializeDerived) throw new InvalidOperationException("Promise receiver is not a constructor");
         object resolve = Undefined, reject = Undefined;
         var executor = new JsFunction((FunctionBody)(args =>

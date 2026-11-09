@@ -24,3 +24,20 @@ async function main():Promise<void>{
  const descriptor=Object.getOwnPropertyDescriptor(Promise,Symbol.species)!;console.log("metadata",descriptor.enumerable,descriptor.configurable,descriptor.set,descriptor.get!.name,descriptor.get!.length);
 }
 main().catch(error=>console.log("failure",String(error)));
+
+// Combinators must construct the species result even though they discard it.
+const speciesDescriptor = Object.getOwnPropertyDescriptor(Promise, Symbol.species)!;
+const combinatorInputs = [Promise.resolve(21), Promise.resolve(22)];
+class DiscardedResult {
+ constructor(executor: any) {
+  console.log('discarded constructor');
+  executor((value: any) => console.log('discarded resolve', value),
+   (reason: any) => console.log('discarded reject', reason));
+ }
+}
+Object.defineProperty(Promise, Symbol.species, {configurable: true, get() {
+ console.log('combinator species'); return DiscardedResult;
+}});
+const combined = Promise.all(combinatorInputs);
+Object.defineProperty(Promise, Symbol.species, speciesDescriptor);
+combined.then(values => console.log('combinator values', values.join(',')));
