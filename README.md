@@ -110,7 +110,8 @@ Runtime performance:
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | 0.33x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | 0.77x |
 | Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | 0.35x |
-| Currency names, 10K cached calls across German, French, Russian and British English | 86.32 ms | 12.25 ms | 0.14x |
+| Currency names, 10K cached calls across German, French, Russian and British English | 28.24 ms | 9.55 ms | 0.34x |
+| Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | ReadableStream, create and drain 1K numbers | 1.80 ms | 0.220 ms | 0.12x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | 0.50x |
 | WritableStream, queue and complete 1K numeric writes | 5.11 ms | 0.658 ms | 0.13x |
@@ -131,7 +132,7 @@ Runtime performance:
 
 </details>
 
-Currency-name formatting is about seven times slower than Node here, so this newly supported path still needs work. That row uses Release builds, 500 ms of warmup and medians from seven fresh processes, excluding startup and compilation; all output strings were checked against Node.
+Currency-name caching cut this workload from 66.34 ms to 28.24 ms in a paired run, which is encouraging. Node is still about three times faster for currency names and nearly six times faster for units. Both rows use Release builds, 500 ms of warmup and medians from seven fresh processes, excluding startup and compilation; all output strings were checked against Node.
 
 Compilation times:
 
