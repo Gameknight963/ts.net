@@ -17,7 +17,7 @@ public static partial class Js
         delegate int GetKeyName(NameHandle handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string key, [MarshalAs(UnmanagedType.LPUTF8Str)] string code,
             [Out, MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U2)] char[] buffer, int capacity, ref int error);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        delegate IntPtr CurrencyName([MarshalAs(UnmanagedType.LPWStr)] string code, [MarshalAs(UnmanagedType.LPUTF8Str)] string locale,
+        delegate IntPtr CurrencyName(IntPtr code, [MarshalAs(UnmanagedType.LPUTF8Str)] string locale,
             int style, out byte choice, out int length, ref int error);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         delegate IntPtr OpenDate([MarshalAs(UnmanagedType.LPUTF8Str)] string locale, ref int error);
@@ -162,11 +162,16 @@ public static partial class Js
             using var thread = api.Module.Enter();
             if (type == "currency") {
                 int error = 0;
-                IntPtr value = api.Currency(code, locale, 1, out byte choice, out int length, ref error);
-                if (error > 0 || value == IntPtr.Zero) return null;
-                if (choice != 0) throw new NotSupportedException("Legacy ICU currency choice formats are not supported");
-                string currency = Marshal.PtrToStringUni(value, length);
-                return currency == code ? null : currency;
+                // Unknown currencies can return the caller's input pointer.
+                IntPtr input=Marshal.StringToHGlobalUni(code);
+                try {
+                    IntPtr value = api.Currency(input, locale, 1, out byte choice, out int length, ref error);
+                    if (error > 0 || value == IntPtr.Zero || value==input) return null;
+                    if (choice != 0) throw new NotSupportedException("Legacy ICU currency choice formats are not supported");
+                    if(length<0 || length>4096)throw new InvalidOperationException("Invalid native currency name length");
+                    string currency = Marshal.PtrToStringUni(value, length);
+                    return currency == code ? null : currency;
+                }finally{Marshal.FreeHGlobal(input);}
             }
             if (fallback == "none" && type == "language" && !KnownLanguage(code)) return null;
             string result = Read(buffer => {

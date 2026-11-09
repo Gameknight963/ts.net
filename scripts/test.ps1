@@ -56,6 +56,11 @@ try {
     & dotnet tests/inspect-extended-dates/bin/Release/net10.0/Inspect.dll
     if ($LASTEXITCODE) { throw 'Extended date checks failed' }
 
+    & dotnet build tests/inspect-currency-buffers/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
+    if ($LASTEXITCODE) { throw "Currency buffer inspector build failed" }
+    & dotnet tests/inspect-currency-buffers/bin/Release/net10.0/Inspect.dll
+    if ($LASTEXITCODE) { throw "Currency buffer inspector failed" }
+
     & dotnet build tests/inspect-currency-accounting/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Accounting currency checks failed to build' }
     & dotnet tests/inspect-currency-accounting/bin/Release/net10.0/Inspect.dll
