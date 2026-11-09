@@ -4,6 +4,12 @@ func (a *asyncExpressionLowering) resume(symbol int) int {
 	return a.returned(a.transfer(symbol))
 }
 func (a *asyncExpressionLowering) transfer(symbol int) int {
+	if cached := a.cachedTransfers[symbol]; cached != 0 {
+		return a.reference(cached)
+	}
+	return a.newTransfer(symbol)
+}
+func (a *asyncExpressionLowering) newTransfer(symbol int) int {
 	resume := a.node(77, "async synchronous transfer")
 	a.b.nodes[resume-1].left = a.reference(symbol)
 	a.transfers = append(a.transfers, asyncTransfer{resume, symbol})

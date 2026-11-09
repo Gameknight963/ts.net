@@ -176,6 +176,15 @@ func (a *asyncExpressionLowering) sharedForStatement(id int, n irNode, next func
 	body := a.bind(continuation, func(done int) int {
 		step := a.symbol(a.any)
 		advance := a.symbol(a.any)
+		stepTransfer := a.symbol(a.any)
+		advanceTransfer := a.symbol(a.any)
+		if a.cachedTransfers == nil {
+			a.cachedTransfers = map[int]int{}
+		}
+		// Targets and regions are fixed for this invocation. Reuse immutable
+		// transfer records; captured per-iteration bindings use the other path.
+		a.cachedTransfers[step] = stepTransfer
+		a.cachedTransfers[advance] = advanceTransfer
 		a.rewriteBreaks(n.fourth, id, done)
 		a.rewriteJumps(n.fourth, id, advance, 26)
 		advanceFunction := a.function(false, func(_ int) int {
@@ -196,7 +205,10 @@ func (a *asyncExpressionLowering) sharedForStatement(id int, n irNode, next func
 			return a.expression(n.right, func(condition int) int { return a.branch(condition, execute, a.resume(done)) })
 		})
 		return a.statement(n.left, func() int {
-			return a.sequence(a.declaration(step, stepFunction), a.sequence(a.declaration(advance, advanceFunction), a.resume(step)))
+			return a.sequence(a.declaration(step, stepFunction),
+				a.sequence(a.declaration(advance, advanceFunction),
+					a.sequence(a.declaration(stepTransfer, a.newTransfer(step)),
+						a.sequence(a.declaration(advanceTransfer, a.newTransfer(advance)), a.resume(step)))))
 		})
 	})
 	a.b.nodes[id-1] = irNode{kind: 12, token: n.token, name: a.b.text("scope"), children: body}

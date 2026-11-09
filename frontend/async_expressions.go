@@ -46,6 +46,7 @@ type asyncExpressionLowering struct {
 	functionRegions     map[int]int
 	continuationRegions map[int]int
 	transfers           []asyncTransfer
+	cachedTransfers     map[int]int
 }
 type asyncTransfer struct{ node, symbol int }
 
