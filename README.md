@@ -110,6 +110,7 @@ Runtime performance:
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | 0.33x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | 0.77x |
 | Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | 0.35x |
+| Currency names, 10K cached calls across German, French, Russian and British English | 86.32 ms | 12.25 ms | 0.14x |
 | ReadableStream, create and drain 1K numbers | 1.80 ms | 0.220 ms | 0.12x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | 0.50x |
 | WritableStream, queue and complete 1K numeric writes | 5.11 ms | 0.658 ms | 0.13x |
@@ -129,6 +130,8 @@ Runtime performance:
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
 
 </details>
+
+Currency-name formatting is about seven times slower than Node here, so this newly supported path still needs work. That row uses Release builds, 500 ms of warmup and medians from seven fresh processes, excluding startup and compilation; all output strings were checked against Node.
 
 Compilation times:
 
