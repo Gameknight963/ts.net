@@ -30,11 +30,12 @@ public static partial class Js
                     object then = Js.Get(promise, "then");
                     if (promise is JsPromise native && then is PromiseThenFunction)
                     {
-                        // Species lookup and construction remain observable even
-                        // though the combinator discards the returned promise.
-                        var result = NewPromiseCapability(PromiseSpecies(native));
+                        // Always read species; a custom constructor can observe
+                        // the result even though the combinator discards it.
+                        var species = PromiseSpecies(native);
+                        var result = ReferenceEquals(species, RuntimeNamespaces.Promise) ? null : NewPromiseCapability(species);
                         native.Then(new PromiseReaction(result, null, null,
-                            (value, rejected) => state.Accept(index, value, rejected)));
+                            (value, rejected) => state.Accept(index, value, rejected), discardResult: true));
                         continue;
                     }
                     var handlers = state.Handlers(index);

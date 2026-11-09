@@ -65,16 +65,24 @@ public static partial class Js
         }
         internal void RejectError(Exception error) => RejectValue(CaughtValue(error));
     }
-    sealed class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected, Action<object, bool> continuation = null)
+    sealed class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected,
+        Action<object, bool> continuation = null, bool discardResult = false)
     {
         internal void Enqueue(object value, bool isRejected) => EnqueuePromiseJob(() =>
         {
             if (continuation != null)
             {
-                if (capability == null) { continuation(value, isRejected); return; }
+                if (capability == null && !discardResult) { continuation(value, isRejected); return; }
                 try { continuation(value, isRejected); }
-                catch (Exception error) { capability.Complete(CaughtValue(error), true); return; }
-                capability.Complete(Undefined, false);
+                catch (Exception error)
+                {
+                    // A discarded intrinsic result becomes observable only if
+                    // the callback throws, through unhandled-rejection reporting.
+                    if (capability == null) new JsPromise().Settle(CaughtValue(error), true);
+                    else capability.Complete(CaughtValue(error), true);
+                    return;
+                }
+                capability?.Complete(Undefined, false);
                 return;
             }
             var handler = isRejected ? rejected : fulfilled;
@@ -142,6 +150,10 @@ public static partial class Js
     {
         if (constructor is not TsObject) throw new InvalidOperationException("Promise receiver must be an object");
         if (value is JsPromise promise && ReferenceEquals(promise.Get("constructor"), constructor)) return value;
+        if (ReferenceEquals(constructor, RuntimeNamespaces.Promise))
+        {
+            var intrinsic = new JsPromise(); intrinsic.ResolveValue(value); return intrinsic;
+        }
         var capability = NewPromiseCapability(constructor); capability.Complete(value, false); return capability.Promise;
     }
     static JsFunction PromiseSpecies(TsObject promise)
@@ -196,6 +208,10 @@ public static partial class Js
         {
             object value = FunctionArgument(arguments, 0);
             if (!reject) return PromiseResolve(receiver, value);
+            if (ReferenceEquals(receiver, RuntimeNamespaces.Promise))
+            {
+                var intrinsic = new JsPromise(); intrinsic.Settle(value, true); return intrinsic;
+            }
             var capability = NewPromiseCapability(receiver); capability.Complete(value, true); return capability.Promise;
         }
     }

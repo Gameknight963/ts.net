@@ -94,7 +94,7 @@ Runtime performance:
 | Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | 0.48x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 20 ms | 2 ms | 0.08x |
 | Construct and run a chain of 10K handlers | 12 ms | 1 ms | 0.08x |
-| Create 10K resolved promises, collect with all, and sum results | 8.70 ms | 0.498 ms | 0.06x |
+| Create 10K resolved promises, collect with all, and sum results | 7.00 ms | 0.499 ms | 0.07x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
 | Sum 1K values in a loop, awaiting each value | 0.384 ms | 0.047 ms | 0.12x |
 | Sum 1K values with an await in try and an increment in finally each iteration | 0.860 ms | 0.092 ms | 0.11x |
@@ -134,7 +134,7 @@ Runtime performance:
 
 </details>
 
-The promise batch uses Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. It improved from 21.78 ms to 8.70 ms and allocations fell from 25.7 MB to 8.9 MB per batch; that helps, but Node is still about 17 times faster here.
+The promise batch uses Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. It improved from 20.91 ms to 7.00 ms and allocations fell from 25.7 MB to 5.4 MB per batch; that helps, but Node is still about 14 times faster here.
 
 Compilation times:
 
