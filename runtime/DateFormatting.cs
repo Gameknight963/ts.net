@@ -23,6 +23,7 @@ public static partial class Js
     {
         var date = RequireDate(receiver);
         if (double.IsNaN(date.Timestamp)) return "Invalid Date";
+        if(ExtendedLocalDate(date.Timestamp))return ExtendedLocalDateText(date.Timestamp,mode);
         var native = NativeDate(date); var zone = TimeZoneInfo.Local;
         var local = TimeZoneInfo.ConvertTime(native, zone);
         string day = mode == 1 ? null : local.ToString("ddd MMM dd yyyy", CultureInfo.InvariantCulture);
@@ -34,5 +35,16 @@ public static partial class Js
             + (magnitude / 60).ToString("00", CultureInfo.InvariantCulture) + (magnitude % 60).ToString("00", CultureInfo.InvariantCulture)
             + " (" + name + ")";
         return mode == 1 ? time : day + " " + time;
+    }
+    static string ExtendedLocalDateText(double timestamp,int mode)
+    {
+        var zone=TimeZoneInfo.Local;var offset=NativeExtendedDates.Offset(timestamp,LocalDateZone());
+        var fields=ExtendedUtcDateParts(timestamp+offset.Offset);
+        string day=mode==1 ? null : string.Create(CultureInfo.InvariantCulture,$"{DateWeekdayName(fields.Weekday)} {DateMonthName(fields.Month)} {fields.Day:D2} {fields.Year:D4}");
+        if(mode==0)return day;
+        int minutes=offset.Offset/60000,magnitude=Math.Abs(minutes);
+        string name=offset.Daylight!=0 ? zone.DaylightName : zone.StandardName;
+        string time=string.Create(CultureInfo.InvariantCulture,$"{fields.Hour:D2}:{fields.Minute:D2}:{fields.Second:D2} GMT{(minutes<0 ? "-" : "+")}{magnitude/60:D2}{magnitude%60:D2} ({name})");
+        return mode==1 ? time : day+" "+time;
     }
 }

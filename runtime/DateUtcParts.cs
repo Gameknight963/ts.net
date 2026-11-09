@@ -42,14 +42,18 @@ public static partial class Js
     static string ExtendedDateText(double timestamp)
     {
         var value = ExtendedUtcDateParts(timestamp);
-        string weekday = value.Weekday switch { 0 => "Sun", 1 => "Mon", 2 => "Tue", 3 => "Wed", 4 => "Thu", 5 => "Fri", _ => "Sat" };
-        string month = value.Month switch { 1 => "Jan", 2 => "Feb", 3 => "Mar", 4 => "Apr", 5 => "May", 6 => "Jun", 7 => "Jul", 8 => "Aug", 9 => "Sep", 10 => "Oct", 11 => "Nov", _ => "Dec" };
+        string weekday = DateWeekdayName(value.Weekday),month=DateMonthName(value.Month);
         string year = value.Year.ToString("D4", CultureInfo.InvariantCulture);
         return string.Create(CultureInfo.InvariantCulture, $"{weekday}, {value.Day:D2} {month} {year} {value.Hour:D2}:{value.Minute:D2}:{value.Second:D2} GMT");
     }
+    static string DateWeekdayName(int day)=>day switch {0=>"Sun",1=>"Mon",2=>"Tue",3=>"Wed",4=>"Thu",5=>"Fri",_=>"Sat"};
+    static string DateMonthName(int month)=>month switch {1=>"Jan",2=>"Feb",3=>"Mar",4=>"Apr",5=>"May",6=>"Jun",7=>"Jul",8=>"Aug",9=>"Sep",10=>"Oct",11=>"Nov",_=>"Dec"};
     static double ExtendedUtcDateField(double timestamp, string name)
     {
-        var value = ExtendedUtcDateParts(timestamp);
+        return DatePartsField(ExtendedUtcDateParts(timestamp),name);
+    }
+    static double DatePartsField(UtcDateParts value,string name)
+    {
         return name switch
         {
             "FullYear" => value.Year,

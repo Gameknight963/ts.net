@@ -19,22 +19,21 @@ public static partial class Js
                 {
                     var date = RequireDate(receiver);
                     if (double.IsNaN(date.Timestamp)) return double.NaN;
-                    if (utc && OutsideNativeDate(date.Timestamp)) return ExtendedUtcDateField(date.Timestamp, item.Name);
-                    var native = NativeDate(date);
-                    if (!utc) native = TimeZoneInfo.ConvertTime(native, TimeZoneInfo.Local);
-                    return item.Read(native);
+                    if(!utc)return LocalDateField(date.Timestamp,item.Name,item.Read);
+                    if (OutsideNativeDate(date.Timestamp)) return ExtendedUtcDateField(date.Timestamp, item.Name);
+                    return item.Read(NativeDate(date));
                 }));
             }
         }
         prototype.DefineMethod("getTimezoneOffset", new CollectionMethod("getTimezoneOffset", 0, (receiver, _) =>
         {
             var date = RequireDate(receiver);
-            return double.IsNaN(date.Timestamp) ? double.NaN : -TimeZoneInfo.Local.GetUtcOffset(NativeDate(date)).TotalMinutes;
+            return double.IsNaN(date.Timestamp) ? double.NaN : ExtendedLocalDate(date.Timestamp) ? Math.Truncate(-LocalDateFields(date.Timestamp).Offset/60000d) : -NativeLocalDate(date.Timestamp).Offset.TotalMinutes;
         }));
         prototype.DefineMethod("getYear", new CollectionMethod("getYear", 0, (receiver, _) =>
         {
             var date = RequireDate(receiver);
-            return double.IsNaN(date.Timestamp) ? double.NaN : TimeZoneInfo.ConvertTime(NativeDate(date), TimeZoneInfo.Local).Year - 1900d;
+            return double.IsNaN(date.Timestamp) ? double.NaN : ExtendedLocalDate(date.Timestamp) ? LocalDateFields(date.Timestamp).Fields.Year-1900d : NativeLocalDate(date.Timestamp).Year-1900d;
         }));
     }
 }

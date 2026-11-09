@@ -7,16 +7,17 @@ public static partial class Js
         var date = RequireDate(receiver);
         bool invalid = double.IsNaN(date.Timestamp);
         DateTime native = new(1970, 1, 1);
-        if (!invalid && !(utc && OutsideNativeDate(date.Timestamp)))
+        bool extended=!invalid && (utc ? OutsideNativeDate(date.Timestamp) : ExtendedLocalDate(date.Timestamp));
+        if (!invalid && !extended)
         {
             var current = NativeDate(date);
             native = utc ? current.DateTime : TimeZoneInfo.ConvertTime(current, TimeZoneInfo.Local).DateTime;
         }
         double[] parts = { native.Year, native.Month - 1, native.Day, native.Hour, native.Minute, native.Second, native.Millisecond };
-        if (!invalid && utc && OutsideNativeDate(date.Timestamp))
+        if (extended)
         {
-            var extended = ExtendedUtcDateParts(date.Timestamp);
-            parts = new double[] { extended.Year, extended.Month - 1, extended.Day, extended.Hour, extended.Minute, extended.Second, extended.Millisecond };
+            var fields = utc ? ExtendedUtcDateParts(date.Timestamp) : LocalDateFields(date.Timestamp).Fields;
+            parts = new double[] { fields.Year, fields.Month - 1, fields.Day, fields.Hour, fields.Minute, fields.Second, fields.Millisecond };
         }
         int supplied = Math.Max(1, Math.Min(count, arguments.Length));
         for (int index = 0; index < supplied; index++) parts[component + index] = Math.Truncate(Number(FunctionArgument(arguments, index)));

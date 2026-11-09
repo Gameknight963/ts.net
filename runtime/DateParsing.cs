@@ -84,7 +84,6 @@ public static partial class Js
         if (hasTime && !zoned)
         {
             // Local calendar construction continues to use the platform timezone.
-            if (year is < 1 or > 9999) return true;
             timestamp = DateFromComponents(parts.ToArray(), false, false);
         }
         else timestamp = ClipDate(UtcDateTimestamp(year, month, parts) - offset);
