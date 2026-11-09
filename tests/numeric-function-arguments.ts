@@ -28,3 +28,29 @@ const getter={get check(){lookup++;return (value:number):boolean=>value===1;}};
 console.log('evaluation',getter.check(++argument),lookup,argument);
 const invalid:any={check:0};
 try{invalid.check(++argument);}catch(error){console.log('invalid',(error as Error).name,argument);}
+{
+    type Method=(this:Method[],value:number)=>boolean;
+    const methods:Method[]=[function(this:Method[],value:number):boolean{return this===methods&&value===3;}];
+    console.log('array method receiver',methods[0](3));
+    let reads=0;
+    Object.defineProperty(methods,'0',{get(){reads++;return function(this:Method[],value:number):boolean{return this===methods&&value===4;};},configurable:true});
+    console.log('array method getter',methods[0](4),reads);
+    const inherited:Method[]=[];
+    const proto=Object.create(Array.prototype);
+    proto[0]=function(this:Method[],value:number):boolean{return this===inherited&&value===5;};
+    Object.setPrototypeOf(inherited,proto);
+    console.log('array inherited method',inherited[0](5));
+    const selected=[(value:number):boolean=>value===1];
+    function replace():number {selected[0]=()=>false;return 1;}
+    console.log('array method selection',selected[0](replace()),selected[0](1));
+    const arrayLike:any={0:(value:number):boolean=>value===6};
+    console.log('array-like method',arrayLike[0](6));
+}
+{
+    const raw:any={calculate(first:number,second:number):number{return first+second;}};
+    console.log('raw missing argument',Number.isNaN(raw.calculate(1)),Number.isNaN(raw.calculate(undefined as unknown as number)));
+    const observes:any={calculate(first:number,second:number):number{return second;}};
+    console.log('observed missing argument',observes.calculate(1)===undefined);
+    const testsUndefined:any={calculate(first:number,second:number):number{return second===undefined?7:second;}};
+    console.log('tested missing argument',testsUndefined.calculate(1));
+}
