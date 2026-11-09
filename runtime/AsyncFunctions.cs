@@ -59,25 +59,30 @@ public static partial class Js
                 var capability = new PromiseCapability { Promise = target, Intrinsic = pair };
                 Then(new PromiseReaction(capability, null, null)); return;
             }
-            Then(new PromiseReaction(null, null, null, (value, rejected) =>
+            Then(new AwaitContinuationReaction(continuation, target, pair, execution));
+        }
+    }
+    sealed class AwaitContinuationReaction(JsFunction continuation, JsPromise target,
+        PromiseResolvingFunctions pair, AsyncExecution execution) : PromiseReaction(null, null, null)
+    {
+        internal override void Run(object value, bool rejected)
+        {
+            if (rejected)
             {
-                if (rejected)
-                {
-                    if (execution != null) execution.Run(new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)));
-                    else pair.RejectValue(value);
-                    return;
-                }
-                object result;
-                try { result = continuation == null ? value : continuation.InvokeWithReceiver(Undefined, new[] { value }); }
-                catch (Exception error)
-                {
-                    if (execution != null) execution.Run(new AsyncCompletion(CompletionKind.Throw, error));
-                    else pair.RejectError(error);
-                    return;
-                }
-                if (execution != null) execution.Run(result);
-                else CompleteAsyncResult(result, target, pair);
-            }));
+                if (execution != null) execution.Run(new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)));
+                else pair.RejectValue(value);
+                return;
+            }
+            object result;
+            try { result = continuation == null ? value : continuation.InvokeWithReceiver(Undefined, new[] { value }); }
+            catch (Exception error)
+            {
+                if (execution != null) execution.Run(new AsyncCompletion(CompletionKind.Throw, error));
+                else pair.RejectError(error);
+                return;
+            }
+            if (execution != null) execution.Run(result);
+            else CompleteAsyncResult(result, target, pair);
         }
     }
     // Primitive resolution cannot invoke user code. Queue its reaction directly,
