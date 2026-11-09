@@ -51,8 +51,8 @@ public static partial class Js
             }catch{formatter.Dispose();throw;}
         }
         string Read(string number,ref Position position)
-            => Read(formatter,number,ref position);
-        string Read(Handle selected,string number,ref Position position)
+            => Read(api,formatter,number,ref position);
+        static string Read(Api api,Handle selected,string number,ref Position position)
         {
             var output=ArrayPool<char>.Shared.Rent(256);
             try {
@@ -66,15 +66,16 @@ public static partial class Js
                 return new string(output,0,length);
             }finally{ArrayPool<char>.Shared.Return(output);}
         }
-        internal string CurrencyPattern(string symbol,bool negative,bool accounting)
+        internal static string Pattern(string locale,string system,string symbol,bool negative,int style)
         {
+            var api=Backend.Value ?? throw new NotSupportedException("Native number patterns require system ICU");
             using var thread=api.Module.Enter();int error=0;
             using var currency=new Handle(api.Module,api.Close);
-            currency.Initialize(api.Open(accounting ? 12 : 2,IntPtr.Zero,0,locale.Replace('-','_')+"@numbers=latn",IntPtr.Zero,ref error));Check(error);
+            currency.Initialize(api.Open(style,IntPtr.Zero,0,locale.Replace('-','_')+"@numbers="+system,IntPtr.Zero,ref error));Check(error);
             if(currency.IsInvalid)throw new InvalidOperationException("Native currency formatter was not created");
-            api.Set(currency,6,0);api.Set(currency,7,0);api.Symbol(currency,8,symbol,symbol.Length,ref error);Check(error);
-            var position=new Position{Field=0};string text=Read(currency,negative ? "-1" : "1",ref position);
-            if(position.Begin==position.End)throw new InvalidOperationException("Native currency pattern has no number");
+            api.Set(currency,6,0);api.Set(currency,7,0);if(symbol!=null){api.Symbol(currency,8,symbol,symbol.Length,ref error);Check(error);}
+            var position=new Position{Field=0};string text=Read(api,currency,negative ? "-1" : "1",ref position);
+            if(position.Begin==position.End)throw new InvalidOperationException("Native number pattern has no number");
             return text[..position.Begin]+"1"+text[position.End..];
         }
         internal int Exponent(int magnitude)
@@ -95,6 +96,7 @@ public static partial class Js
                 return exponents[index]=exponent;
             }
         }
+        NumberFormatInfo symbolInfo;
         string lastInput,lastText,lastLabel;
         int lastExponent;
         NumberFormatInfo lastInfo;
@@ -108,6 +110,11 @@ public static partial class Js
                     if(lastLabel!=null)labels?.Add(lastLabel);return lastText;
                 }
                 lastInput=null;lastLabel=null;
+                if(!ReferenceEquals(symbolInfo,info)) {
+                    using var thread=api.Module.Enter();int error=0;
+                    api.Symbol(formatter,6,info.NegativeSign,info.NegativeSign.Length,ref error);Check(error);
+                    api.Symbol(formatter,7,info.PositiveSign,info.PositiveSign.Length,ref error);Check(error);symbolInfo=info;
+                }
                 string result=ApplyCore(number,exponent,info);
                 lastInput=number;lastExponent=exponent;lastInfo=info;lastText=result;
                 if(lastLabel!=null)labels?.Add(lastLabel);return result;

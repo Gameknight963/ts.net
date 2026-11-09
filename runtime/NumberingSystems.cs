@@ -11,17 +11,17 @@ public static partial class Js
                 if (!char.IsAsciiLetterOrDigit(ch)) throw new ArgumentOutOfRangeException(nameof(system), "Invalid numbering system");
         }
     }
-    static string ResolveNumberingSystem(string requested)
+    static string ResolveNumberingSystem(string requested,string fallback="latn")
     {
-        // Arabic digits also require separators and sign patterns. Keep their
-        // existing unsupported path until that formatting is implemented.
         if (requested is "latn" or "arab" or "arabext") return requested;
         try {NumberDigitCharacters(requested); return requested;}
-        catch (NotSupportedException) {return "latn";}
+        catch (NotSupportedException) {return fallback;}
     }
     static string NumberDigitCharacters(string system) => system switch
     {
         "latn" => null,
+        "arab" => "\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669",
+        "arabext" => "\u06f0\u06f1\u06f2\u06f3\u06f4\u06f5\u06f6\u06f7\u06f8\u06f9",
         "beng" => "\u09e6\u09e7\u09e8\u09e9\u09ea\u09eb\u09ec\u09ed\u09ee\u09ef",
         "deva" => "\u0966\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f",
         "thai" => "\u0e50\u0e51\u0e52\u0e53\u0e54\u0e55\u0e56\u0e57\u0e58\u0e59",

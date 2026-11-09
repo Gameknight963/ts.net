@@ -34,7 +34,7 @@ public static partial class Js
                 throw new InvalidOperationException("This date method does not accept the requested style");
             var localeFacts=new LocaleValue(locale?.BaseName ?? (culture.Name.Length==0 ? "en-US" : culture.Name),Undefined);
             string preferredCalendar=(string)((JsArray)LocaleCalendars(localeFacts)).ElementAt(0);
-            string preferredNumbers=(string)((JsArray)LocaleNumberingSystems(localeFacts)).ElementAt(0);
+            string preferredNumbers=LocaleDefaultNumberingSystem(localeFacts);
             string calendarDefault = locale?.Keyword("ca") as string, numberingDefault = locale?.Keyword("nu") as string;
             string cycleDefault = (locale?.Keyword("hc") as string) switch { "h11" => "h11", "h12" => "h12", "h23" => "h23", "h24" => "h24", _ => null };
             string CanonicalCalendar(string value) {
@@ -74,7 +74,7 @@ public static partial class Js
             calendarName = calendar ?? NativeCalendarName(Culture);
             if(calendarName is not ("gregory" or "iso8601") && NativeDateFormatting.Calendars!=null)nativeCalendarPath=true;
             ValidateNumberingSystem(numberingSystem);
-            numberingSystem = ResolveNumberingSystem(numberingSystem);
+            numberingSystem = ResolveNumberingSystem(numberingSystem,preferredNumbers);
             try { digitCharacters = numberingSystem switch {"arab"=>"\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669","arabext"=>"\u06f0\u06f1\u06f2\u06f3\u06f4\u06f5\u06f6\u06f7\u06f8\u06f9",_=>NumberDigitCharacters(numberingSystem)}; }
             catch (NotSupportedException) { throw new NotSupportedException("Date locale formatting option numberingSystem is not supported"); }
             string decimalSeparator=numberingSystem is "arab" or "arabext" ? "\u066b" : culture.NumberFormat.NumberDecimalSeparator=="\u066b" ? "." : culture.NumberFormat.NumberDecimalSeparator;

@@ -4,6 +4,13 @@ using System.Globalization;
 
 public static partial class Js
 {
+    // Older system ICU data omits these numbering-system-specific affixes.
+    static (string Positive,string Negative) ArabicCurrencyPatterns(string symbol,string system,string minus,bool accounting,bool compact)
+    {
+        string body="1\u00a0"+symbol;
+        if(accounting && system=="arabext" && !compact)return ("\u061c"+body,"(\u061c"+body+")");
+        return ("\u200f"+body,system=="arab" || compact ? minus+"\u200f"+body : "\u200f"+minus+body);
+    }
     readonly record struct CurrencyMetadata(string Symbol, int Digits);
     static CurrencyMetadata CurrencyFor(string code, CultureInfo locale, string display)
     {

@@ -67,9 +67,10 @@ public static partial class Js
         internal readonly string style;
         internal readonly string unit, unitDisplay;
         internal readonly string currency, currencyDisplay, currencySign;
-        readonly string positivePattern, negativePattern, compactNegativePattern;
+        readonly string positivePattern, negativePattern, compactNegativePattern, compactPositivePattern;
         readonly string format;
         internal readonly string numberingSystem, localeName;
+        internal readonly string exponentSeparator;
         readonly NativeCompactNumbers nativeCompact;
         internal bool UsesNativeCompact=>nativeCompact!=null;
         readonly string digitCharacters;
@@ -85,9 +86,11 @@ public static partial class Js
                 if (culture.NumberFormat.CurrencyGroupSeparator == "\u00a0") culture.NumberFormat.CurrencyGroupSeparator = "\u202f";
                 if (culture.NumberFormat.PercentGroupSeparator == "\u00a0") culture.NumberFormat.PercentGroupSeparator = "\u202f";
             }
-            numberingSystem = ResolveNumberingSystem(selectedLocale?.Keyword("nu") as string ?? "latn");
+            var localeFacts=new LocaleValue(selectedLocale?.BaseName ?? (culture.Name.Length==0 ? "en-US" : culture.Name),Undefined);
+            string preferredNumbers=LocaleDefaultNumberingSystem(localeFacts);
+            numberingSystem = ResolveNumberingSystem(selectedLocale?.Keyword("nu") as string ?? preferredNumbers,preferredNumbers);
             localeName = culture.Name + (selectedLocale?.Keyword("nu") as string == numberingSystem ? "-u-nu-" + numberingSystem : "");
-            notation = "standard"; roundingPriority = "auto";
+            exponentSeparator="E";notation = "standard"; roundingPriority = "auto";
             minimumSignificant = maximumSignificant = 0;
             roundingIncrement = 1; roundingMode = "halfExpand"; trailingZeroDisplay = "auto";
             style = "decimal"; positivePattern = negativePattern = null;
@@ -106,9 +109,10 @@ public static partial class Js
                 {
                     string system = StringValue(requestedNumberingSystem);
                     ValidateNumberingSystem(system);
-                    numberingSystem = ResolveNumberingSystem(system);
+                    numberingSystem = ResolveNumberingSystem(system,preferredNumbers);
                     if (selectedLocale?.Keyword("nu") as string != system) localeName = culture.Name;
                 }
+                culture=NativeNumberSymbols.Configure(culture,numberingSystem,out exponentSeparator);
                 object requestedStyle = options.Get("style");
                 if (!IsUndefined(requestedStyle)) style = StringValue(requestedStyle);
                 if (style is not ("decimal" or "percent" or "currency" or "unit")) throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid number formatting style");
@@ -144,6 +148,10 @@ public static partial class Js
                     culture = (CultureInfo)culture.Clone();
                     var info = culture.NumberFormat;
                     info.CurrencySymbol = metadata.Symbol;
+                    if(NativeNumberSymbols.Patterns(culture,numberingSystem)) {
+                        if(currencyDisplay is "symbol" or "narrowSymbol")info.CurrencySymbol=NativeNumberSymbols.CurrencySymbol(culture.Name,currency,currencyDisplay=="narrowSymbol") ?? info.CurrencySymbol;
+                        info.CurrencyGroupSizes=NativeNumberSymbols.Groups(culture.Name,numberingSystem,2) ?? info.CurrencyGroupSizes;
+                    }
                     // Keep native symbol placement and spacing inside parentheses.
                     if (currencySign == "accounting") info.CurrencyNegativePattern = info.CurrencyPositivePattern switch {
                         0 => 0, 1 => 4, 2 => 14, _ => 15
@@ -154,6 +162,13 @@ public static partial class Js
                     info.NumberNegativePattern = 1;
                     positivePattern = SpaceCurrencyTemplate(1d.ToString("C0", culture));
                     negativePattern = SpaceCurrencyTemplate((-1d).ToString("C0", culture));
+                    if(NativeNumberSymbols.Patterns(culture,numberingSystem)) {
+                        positivePattern=NativeCompactNumbers.Pattern(culture.Name,numberingSystem,info.CurrencySymbol,false,currencySign=="accounting" ? 12 : 2);
+                        negativePattern=NativeCompactNumbers.Pattern(culture.Name,numberingSystem,info.CurrencySymbol,true,currencySign=="accounting" ? 12 : 2);
+                        if(culture.TwoLetterISOLanguageName=="ar") {
+                            var patterns=ArabicCurrencyPatterns(info.CurrencySymbol,numberingSystem,info.NegativeSign,currencySign=="accounting",false);positivePattern=patterns.Positive;negativePattern=patterns.Negative;
+                        }
+                    }
                 }
                 object requestedNotation = options.Get("notation");
                 if (!IsUndefined(requestedNotation)) notation = StringValue(requestedNotation);
@@ -236,21 +251,33 @@ public static partial class Js
                         throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid sign display");
                 }
             }
+            if(IsUndefined(optionValue))culture=NativeNumberSymbols.Configure(culture,numberingSystem,out exponentSeparator);
             if (style == "percent")
             {
                 culture = (CultureInfo)culture.Clone();
                 var info = culture.NumberFormat;
+                if(NativeNumberSymbols.Patterns(culture,numberingSystem))info.PercentGroupSizes=NativeNumberSymbols.Groups(culture.Name,numberingSystem,3) ?? info.PercentGroupSizes;
                 info.NumberDecimalSeparator = info.PercentDecimalSeparator;
                 info.NumberGroupSeparator = info.PercentGroupSeparator;
                 info.NumberGroupSizes = info.PercentGroupSizes;
                 positivePattern = (0.01d).ToString("P0", culture);
                 negativePattern = (-0.01d).ToString("P0", culture);
+                if(NativeNumberSymbols.Patterns(culture,numberingSystem)) {
+                    positivePattern=NativeCompactNumbers.Pattern(culture.Name,numberingSystem,null,false,3);
+                    negativePattern=NativeCompactNumbers.Pattern(culture.Name,numberingSystem,null,true,3);
+                }
             }
             if (notation == "compact" && culture.Name is not ("en" or "en-US")) nativeCompact=new NativeCompactNumbers(culture.Name,LongCompact);
             if(nativeCompact!=null && style=="currency") {
-                positivePattern=nativeCompact.CurrencyPattern(culture.NumberFormat.CurrencySymbol,false,false);
-                negativePattern=nativeCompact.CurrencyPattern(culture.NumberFormat.CurrencySymbol,true,currencySign=="accounting");
-                compactNegativePattern=nativeCompact.CurrencyPattern(culture.NumberFormat.CurrencySymbol,true,false);
+                positivePattern=NativeCompactNumbers.Pattern(culture.Name,numberingSystem,culture.NumberFormat.CurrencySymbol,false,currencySign=="accounting" ? 12 : 2);
+                compactPositivePattern=NativeCompactNumbers.Pattern(culture.Name,numberingSystem,culture.NumberFormat.CurrencySymbol,false,2);
+                negativePattern=NativeCompactNumbers.Pattern(culture.Name,numberingSystem,culture.NumberFormat.CurrencySymbol,true,currencySign=="accounting" ? 12 : 2);
+                compactNegativePattern=NativeCompactNumbers.Pattern(culture.Name,numberingSystem,culture.NumberFormat.CurrencySymbol,true,2);
+                if(culture.TwoLetterISOLanguageName=="ar") {
+                    var ordinary=ArabicCurrencyPatterns(culture.NumberFormat.CurrencySymbol,numberingSystem,culture.NumberFormat.NegativeSign,currencySign=="accounting",false);
+                    var compact=ArabicCurrencyPatterns(culture.NumberFormat.CurrencySymbol,numberingSystem,culture.NumberFormat.NegativeSign,false,true);
+                    positivePattern=ordinary.Positive;negativePattern=ordinary.Negative;compactPositivePattern=compact.Positive;compactNegativePattern=compact.Negative;
+                }
             }
             if(nativeCompact!=null && style=="percent" && culture.TwoLetterISOLanguageName=="es") {positivePattern=positivePattern.Replace(" ","\u00a0");negativePattern=negativePattern.Replace(" ","\u00a0");}
             if(nativeCompact!=null && numberingSystem=="latn" && culture.NumberFormat.NegativeSign.Contains('\u061c')) {
@@ -473,14 +500,14 @@ public static partial class Js
             if(finite && nativeCompact!=null)result=nativeCompact.Apply(result,notationExponent,culture.NumberFormat,compactLabels);
             else if (finite && notation == "compact") { string compact = CompactLabel(notationExponent); if (compact.Length != 0) result += (LongCompact ? " " : "") + compact; }
             else if (finite && notation != "standard")
-                result += "E" + (notationExponent < 0 ? culture.NumberFormat.NegativeSign : "") + Math.Abs(notationExponent).ToString(CultureInfo.InvariantCulture);
+                result += exponentSeparator + (notationExponent < 0 ? culture.NumberFormat.NegativeSign : "") + Math.Abs(notationExponent).ToString(CultureInfo.InvariantCulture);
             if (CurrencyName) return includeAffix ? result + " " + CurrencyNameAffix(result) : result;
             if (style == "unit") { if (!includeAffix) return result; var affix = UnitAffix(result); return result + affix.Gap + affix.Name; }
             if (style == "decimal") return result;
             var info = culture.NumberFormat;
             bool negativeSign = result.StartsWith(info.NegativeSign, StringComparison.Ordinal);
             bool positiveSign = !negativeSign && result.StartsWith(info.PositiveSign, StringComparison.Ordinal);
-            string template = negativeSign || positiveSign ? nativeCompact!=null && notationExponent!=0 && compactNegativePattern!=null ? compactNegativePattern : negativePattern : positivePattern;
+            string template = negativeSign || positiveSign ? nativeCompact!=null && notationExponent!=0 && compactNegativePattern!=null ? compactNegativePattern : negativePattern : nativeCompact!=null && notationExponent!=0 && compactPositivePattern!=null ? compactPositivePattern : positivePattern;
             if (negativeSign) result = result[info.NegativeSign.Length..];
             if (positiveSign)
             {

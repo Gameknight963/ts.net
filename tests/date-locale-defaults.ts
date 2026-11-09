@@ -9,3 +9,8 @@ for(const locale of ['en-US','de-DE','ar','ar-SA','ar-EG','ar-AE','fa-IR','th-TH
         if(parts.map(part=>part.value).join('')!==format.format(value))throw new Error('Parts differ from text');
     }
 }
+
+for(const locale of ['ar-SA','fa-IR','bn-BD'])for(const extension of ['', '-u-nu-foobar']) {
+    const format=new Intl.DateTimeFormat(locale+extension,{numberingSystem:'foobar',timeZone:'UTC',year:'numeric'});
+    console.log('fallback',format.resolvedOptions().locale,format.resolvedOptions().numberingSystem,format.format(0));
+}

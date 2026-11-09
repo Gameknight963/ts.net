@@ -7,7 +7,7 @@ public static partial class Js
     static class IntlValueLists
     {
         internal static readonly string[] Units = "acre bit byte celsius centimeter day degree fahrenheit fluid-ounce foot gallon gigabit gigabyte gram hectare hour inch kilobit kilobyte kilogram kilometer liter megabit megabyte meter microsecond mile mile-scandinavian milliliter millimeter millisecond minute month nanosecond ounce percent petabyte pound second stone terabit terabyte week yard year".Split(' ');
-        internal static readonly string[] NumberingSystems = "adlm ahom bali beng bhks brah cakm cham deva diak fullwide gara gong gonm gujr gukh guru hanidec hmng hmnp java kali kawi khmr knda krai lana lanatham laoo latn lepc limb mathbold mathdbl mathmono mathsanb mathsans mlym modi mong mroo mtei mymr mymrepka mymrpao mymrshan mymrtlng nagm newa nkoo olck onao orya osma outlined rohg saur segment shrd sind sinh sora sund sunu takr talu tamldec telu thai tibt tirh tnsa tols vaii wara wcho".Split(' ');
+        internal static readonly string[] NumberingSystems = "adlm ahom arab arabext bali beng bhks brah cakm cham deva diak fullwide gara gong gonm gujr gukh guru hanidec hmng hmnp java kali kawi khmr knda krai lana lanatham laoo latn lepc limb mathbold mathdbl mathmono mathsanb mathsans mlym modi mong mroo mtei mymr mymrepka mymrpao mymrshan mymrtlng nagm newa nkoo olck onao orya osma outlined rohg saur segment shrd sind sinh sora sund sunu takr talu tamldec telu thai tibt tirh tnsa tols vaii wara wcho".Split(' ');
         internal static readonly Lazy<string[]> Calendars = new(() => {
             if(NativeDateFormatting.Calendars is string[] supported)return supported;
             var names = new SortedSet<string>(StringComparer.Ordinal) {"iso8601"};

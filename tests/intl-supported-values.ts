@@ -14,7 +14,7 @@ const trace: string[] = [];
 console.log('coercion', Intl.supportedValuesOf({[Symbol.toPrimitive](hint: string) {trace.push(hint); return 'unit';}} as any).includes('meter'), trace.join(','));
 console.log('metadata', Intl.supportedValuesOf.name, Intl.supportedValuesOf.length);
 console.log('unbound', Intl.supportedValuesOf.call(null, 'unit').includes('meter'));
-for (const [key, value] of [['calendar', 'gregory'], ['calendar', 'iso8601'], ['currency', 'USD'], ['numberingSystem', 'latn'], ['timeZone', 'America/New_York'], ['unit', 'meter']]) console.log('known', key, Intl.supportedValuesOf(key as any).includes(value));
+for (const [key, value] of [['calendar', 'gregory'], ['calendar', 'iso8601'], ['currency', 'USD'], ['numberingSystem', 'latn'], ['numberingSystem', 'arab'], ['numberingSystem', 'arabext'], ['timeZone', 'America/New_York'], ['unit', 'meter']]) console.log('known', key, Intl.supportedValuesOf(key as any).includes(value));
 
 for (const locale of ['en-US', 'en-US-u-ca-iso8601', 'de-DE', 'ja-JP', 'th-TH']) {
  const f = new Intl.DateTimeFormat(locale, {calendar: 'iso8601', timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit'});

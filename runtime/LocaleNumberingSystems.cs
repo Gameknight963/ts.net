@@ -4,6 +4,10 @@ public static partial class Js
     {
         object requested = locale.Keyword("nu");
         if (!IsUndefined(requested)) return new JsArray(new[]{requested});
+        return new JsArray(new object[]{LocaleDefaultNumberingSystem(locale)});
+    }
+    static string LocaleDefaultNumberingSystem(LocaleValue locale)
+    {
         string language = locale.Language, script = locale.Script;
         string system = (language, script) switch {
             ("ff", "Adlm") => "adlm", ("pa" or "uz", "Arab") => "arabext",
@@ -17,6 +21,6 @@ public static partial class Js
             ("ar", null or "Arab") => locale.Region is "BH" or "DJ" or "EG" or "ER" or "IL" or "IQ" or "JO" or "KM" or "KW" or "LB" or "MR" or "NT" or "OM" or "PS" or "QA" or "SA" or "SD" or "SO" or "SS" or "SY" or "TD" or "YD" or "YE" ? "arab" : "latn",
             _ => "latn"
         };
-        return new JsArray(new object[]{system});
+        return system;
     }
 }
