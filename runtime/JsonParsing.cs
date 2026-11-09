@@ -12,8 +12,9 @@ public static partial class Js
         internal int End;
         internal Dictionary<string, JsonValue> Children;
     }
-    sealed class JsonParseFrame(JsonValue node)
+    sealed class JsonParseFrame(object value, JsonValue node)
     {
+        internal readonly object Value = value;
         internal readonly JsonValue Node = node;
         internal int State;
         internal string Key;
@@ -55,16 +56,17 @@ public static partial class Js
             }
             throw Invalid();
         }
-        JsonValue ReadValue()
+        object ReadValue(out JsonValue record)
         {
+            record = null;
             Space(); int start = position;
             if (position == text.Length) throw Invalid();
             char ch = text[position]; object value;
             if (ch is '{' or '[')
             {
-                position++; var container = new JsonValue(ch == '{' ? new JsDynamicObject() : new JsArray(0), start);
-                if (remember) container.Children = new(StringComparer.Ordinal);
-                frames.Push(new(container)); return container;
+                position++; value = ch == '{' ? new JsDynamicObject() : new JsArray(0);
+                if (remember) record = new JsonValue(value, start) { Children = new(StringComparer.Ordinal) };
+                frames.Push(new(value, record)); return value;
             }
             if (ch == '"') value = ReadString();
             else if (ch is 'n' or 't' or 'f')
@@ -86,32 +88,36 @@ public static partial class Js
                 if (!double.TryParse(text.AsSpan(start, position - start), NumberStyles.Float, CultureInfo.InvariantCulture, out double number)) throw Invalid();
                 value = number;
             }
-            return new JsonValue(value, start) { End = position };
+            if (remember) record = new JsonValue(value, start) { End = position };
+            return value;
         }
         internal JsonValue Parse()
         {
-            JsonValue root = ReadValue();
+            Space(); int start = position;
+            object root = ReadValue(out JsonValue rootRecord);
             while (frames.Count != 0)
             {
                 var frame = frames.Peek(); Space();
-                if (frame.Node.Value is JsArray array)
+                if (frame.Value is JsArray array)
                 {
-                    if (frame.State == 0 && Consume(']') || frame.State == 1 && Consume(']')) { frame.Node.End = position; frames.Pop(); continue; }
+                    if (frame.State == 0 && Consume(']') || frame.State == 1 && Consume(']')) { if (frame.Node != null) frame.Node.End = position; frames.Pop(); continue; }
                     if (frame.State == 1) { Expect(','); frame.State = 2; continue; }
-                    string key = array.Length().ToString(CultureInfo.InvariantCulture);
-                    JsonValue child = ReadValue(); array.Append(child.Value); if (remember) frame.Node.Children[key] = child;
+                    string key = remember ? array.Length().ToString(CultureInfo.InvariantCulture) : null;
+                    object child = ReadValue(out JsonValue childRecord); array.Append(child); if (remember) frame.Node.Children[key] = childRecord;
                     frame.State = 1;
                 }
                 else
                 {
-                    if (frame.State == 0 && Consume('}') || frame.State == 2 && Consume('}')) { frame.Node.End = position; frames.Pop(); continue; }
+                    if (frame.State == 0 && Consume('}') || frame.State == 2 && Consume('}')) { if (frame.Node != null) frame.Node.End = position; frames.Pop(); continue; }
                     if (frame.State == 2) { Expect(','); frame.State = 3; continue; }
                     if (frame.State is 0 or 3) { frame.Key = ReadString(); frame.State = 1; continue; }
-                    Expect(':'); JsonValue child = ReadValue(); ((TsObject)frame.Node.Value).DefineOwn(frame.Key, child.Value);
-                    if (remember) frame.Node.Children[frame.Key] = child; frame.State = 2;
+                    Expect(':'); object child = ReadValue(out JsonValue childRecord); ((TsObject)frame.Value).DefineOwn(frame.Key, child);
+                    if (remember) frame.Node.Children[frame.Key] = childRecord; frame.State = 2;
                 }
             }
-            Space(); if (position != text.Length) throw Invalid(); return root;
+            int end = position;
+            Space(); if (position != text.Length) throw Invalid();
+            return rootRecord ?? new JsonValue(root, start) { End = end };
         }
     }
     sealed class JsonReviveFrame
