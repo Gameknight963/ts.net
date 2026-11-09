@@ -69,7 +69,7 @@ public static partial class Js
                             result = Invoke(((AsyncResumeRecord)completion.Value).Continuation);
                             continue;
                         }
-                        else pair.Resolve.InvokeWithReceiver(Undefined, new[] { completion.Value });
+                        else pair.ResolveValue(completion.Value);
                         return;
                     }
                     var frame = frames.Peek();

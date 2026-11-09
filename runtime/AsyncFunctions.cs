@@ -24,7 +24,7 @@ public static partial class Js
         catch (Exception error) { pair.RejectError(error); return; }
         if (result is AsyncTryRecord) new AsyncExecution(promise, pair).Run(result);
         else if (result is AsyncAwaitRecord awaiting) awaiting.Attach(promise, pair);
-        else pair.Resolve.InvokeWithReceiver(Undefined, new[] { result });
+        else pair.ResolveValue(result);
     }
     sealed class AsyncResumeRecord(JsFunction continuation, int region = 0)
     {
@@ -47,7 +47,7 @@ public static partial class Js
         }
         internal void Attach(JsPromise target, PromiseResolvingFunctions pair, AsyncExecution execution = null)
         {
-            var capability = new PromiseCapability { Promise = target, Resolve = pair.Resolve, Reject = pair.Reject };
+            var capability = new PromiseCapability { Promise = target, Intrinsic = pair };
             // Await uses intrinsic reactions, bypassing public then and species.
             // Even an already fulfilled value resumes through a queued job.
             if (continuation == null && execution == null) { awaited.Then(new PromiseReaction(capability, null, null)); return; }
@@ -56,7 +56,7 @@ public static partial class Js
                 if (rejected)
                 {
                     if (execution != null) execution.Run(new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)));
-                    else pair.Reject.InvokeWithReceiver(Undefined, new[] { value });
+                    else pair.RejectValue(value);
                     return;
                 }
                 object result;
