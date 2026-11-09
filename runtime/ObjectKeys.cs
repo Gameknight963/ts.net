@@ -19,10 +19,11 @@ public abstract partial class TsObject
         if (extra == null || extra.Count == 0) return Js.OrderOwnKeys(names);
         var all = new object[names.Length + extra.Count];
         Array.Copy(names, all, names.Length);
-        var seen = new HashSet<string>();
+        // With no fixed fields, every key comes from the unique property store.
+        var seen = names.Length == 0 ? null : new HashSet<string>();
         foreach (string name in names) seen.Add(name);
         int count = names.Length;
-        foreach (string name in extra.Keys) if (seen.Add(name)) all[count++] = name;
+        foreach (string name in extra.Keys) if (seen == null || seen.Add(name)) all[count++] = name;
         if (count != all.Length) Array.Resize(ref all, count);
         return Js.OrderOwnKeys(all);
     }
