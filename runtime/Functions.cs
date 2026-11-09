@@ -12,12 +12,7 @@ public delegate double RawNumberFunction2(double first, double second);
 public partial class JsFunction : JsDescriptorObject
 {
     readonly FunctionBody body;
-    readonly NumberFunction0 number0;
-    readonly NumberFunction1 number1;
-    readonly NumberFunction2 number2;
-    readonly RawNumberFunction0 raw0;
-    readonly RawNumberFunction1 raw1;
-    readonly RawNumberFunction2 raw2;
+    readonly Delegate numeric;
     string name;
     internal string DisplayName => name;
     readonly int length;
@@ -33,12 +28,7 @@ public partial class JsFunction : JsDescriptorObject
     public JsFunction(object body, object numeric, string name, int length)
     {
         this.body = (FunctionBody)body;
-        number0 = numeric as NumberFunction0;
-        number1 = numeric as NumberFunction1;
-        number2 = numeric as NumberFunction2;
-        raw0 = numeric as RawNumberFunction0;
-        raw1 = numeric as RawNumberFunction1;
-        raw2 = numeric as RawNumberFunction2;
+        this.numeric = numeric as Delegate;
         this.name = name;this.length = length;
     }
     internal override void Define(Descriptor descriptor)
@@ -90,34 +80,34 @@ public partial class JsFunction : JsDescriptorObject
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual double? InvokeNumber0()
     {
-        if (raw0 != null) return raw0();
-        if (raw1 != null) return raw1(double.NaN);
-        if (raw2 != null) return raw2(double.NaN, double.NaN);
-        if (number0 != null) return number0();
-        if (number1 != null) return number1(null);
-        if (number2 != null) return number2(null, null);
+        if (numeric is RawNumberFunction0 raw0) return raw0();
+        if (numeric is RawNumberFunction1 raw1) return raw1(double.NaN);
+        if (numeric is RawNumberFunction2 raw2) return raw2(double.NaN, double.NaN);
+        if (numeric is NumberFunction0 number0) return number0();
+        if (numeric is NumberFunction1 number1) return number1(null);
+        if (numeric is NumberFunction2 number2) return number2(null, null);
         return Js.Cast<double?>(body(Array.Empty<object>()), "Function result violates number type");
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual double? InvokeNumber1(double? first)
     {
-        if (raw1 != null) return raw1(Js.NumberValue(first));
-        if (raw0 != null) return raw0();
-        if (raw2 != null) return raw2(Js.NumberValue(first), double.NaN);
-        if (number1 != null) return number1(first);
-        if (number0 != null) return number0();
-        if (number2 != null) return number2(first, null);
+        if (numeric is RawNumberFunction1 raw1) return raw1(Js.NumberValue(first));
+        if (numeric is RawNumberFunction0 raw0) return raw0();
+        if (numeric is RawNumberFunction2 raw2) return raw2(Js.NumberValue(first), double.NaN);
+        if (numeric is NumberFunction1 number1) return number1(first);
+        if (numeric is NumberFunction0 number0) return number0();
+        if (numeric is NumberFunction2 number2) return number2(first, null);
         return Js.Cast<double?>(body(new[] { Js.BoxNumber(first) }), "Function result violates number type");
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual double? InvokeNumber2(double? first, double? second)
     {
-        if (raw2 != null) return raw2(Js.NumberValue(first), Js.NumberValue(second));
-        if (raw1 != null) return raw1(Js.NumberValue(first));
-        if (raw0 != null) return raw0();
-        if (number2 != null) return number2(first, second);
-        if (number1 != null) return number1(first);
-        if (number0 != null) return number0();
+        if (numeric is RawNumberFunction2 raw2) return raw2(Js.NumberValue(first), Js.NumberValue(second));
+        if (numeric is RawNumberFunction1 raw1) return raw1(Js.NumberValue(first));
+        if (numeric is RawNumberFunction0 raw0) return raw0();
+        if (numeric is NumberFunction2 number2) return number2(first, second);
+        if (numeric is NumberFunction1 number1) return number1(first);
+        if (numeric is NumberFunction0 number0) return number0();
         return Js.Cast<double?>(body(new[] { Js.BoxNumber(first), Js.BoxNumber(second) }), "Function result violates number type");
     }
 }

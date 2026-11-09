@@ -32,3 +32,32 @@ long boundBytes=GC.GetAllocatedBytesForCurrentThread()-before;
 if(boundSum!=5000250000d || boundBytes!=0)throw new Exception($"Bound numeric calls changed results or allocated: {boundSum}, {boundBytes}");
 Console.WriteLine("PASS bound numeric callbacks: matching results and zero allocations for 100000 calls");
 static double RunBoundCalls(JsFunction function,int count){double sum=0;for(int i=0;i<count;i++)sum+=function.InvokeNumber1(i).GetValueOrDefault();return sum;}
+
+FunctionBody nativeBody = static values => (double)values.Length;
+object[] numericDelegates = {
+    (RawNumberFunction0)(() => 11),
+    (RawNumberFunction1)(value => value + 1),
+    (RawNumberFunction2)((first,second) => first*10+second),
+    (NumberFunction0)(() => 11),
+    (NumberFunction1)(value => value ?? 7),
+    (NumberFunction2)((first,second) => (first ?? 7)*10+(second ?? 9))
+};
+double[][] expectedByDelegate = {
+    new[]{11d,11,11}, new[]{double.NaN,3,3}, new[]{double.NaN,double.NaN,23},
+    new[]{11d,11,11}, new[]{7d,2,2}, new[]{79d,29,23}
+};
+for (int kind=0;kind<numericDelegates.Length;kind++) {
+    var numberFunction = new JsFunction(nativeBody,numericDelegates[kind],"native",2);
+    double?[] results = {numberFunction.InvokeNumber0(),numberFunction.InvokeNumber1(2),numberFunction.InvokeNumber2(2,3)};
+    for(int arity=0;arity<3;arity++)
+        if(!results[arity].HasValue || !results[arity].Value.Equals(expectedByDelegate[kind][arity]))
+            throw new Exception($"Numeric delegate dispatch mismatch: {kind}, {arity}");
+}
+var genericFunction = new JsFunction(nativeBody,null,"generic",0);
+if(genericFunction.InvokeNumber0()!=0 || genericFunction.InvokeNumber1(2)!=1 || genericFunction.InvokeNumber2(2,3)!=2)
+    throw new Exception("Generic numeric fallback changed argument counts");
+var nullableFunction = new JsFunction(nativeBody,(NumberFunction1)(value=>value),"nullable",1);
+var rawFunction = new JsFunction(nativeBody,numericDelegates[1],"raw",1);
+if(nullableFunction.InvokeNumber0()!=null || nullableFunction.InvokeNumber1(null)!=null || !double.IsNaN(rawFunction.InvokeNumber1(null).GetValueOrDefault()))
+    throw new Exception("Missing numeric arguments changed");
+Console.WriteLine("PASS native numeric delegates, missing arguments, and generic call fallbacks");

@@ -93,7 +93,7 @@ Runtime performance:
 | Create/read a two-field object in a 100K-iteration loop, with a read-only Reflect alias in the program | 0.0706 ms | 0.0717 ms | 1.02x |
 | Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | 0.48x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 6.04 ms | 1.04 ms | 0.17x |
-| Construct and run a chain of 10K handlers | 4.87 ms | 0.338 ms | 0.07x |
+| Construct and run a chain of 10K handlers | 3.61 ms | 0.318 ms | 0.09x |
 | Create 10K resolved promises, collect with all, and sum results | 3.76 ms | 0.515 ms | 0.14x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
 | Sum 1K values in a loop, awaiting each value | 0.194 ms | 0.0468 ms | 0.24x |
