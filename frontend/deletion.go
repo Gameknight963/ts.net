@@ -80,11 +80,15 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 				return 2
 			}
 		}
+		if declaration.Kind == ast.KindBindingElement {
+			return b.reflectionBindingValue(declaration, seen, b.reflectionDeletionValue)
+		}
 	case ast.KindCallExpression:
 		owner, method := deletionAccess(n.Expression())
 		if method == "bind" && len(n.AsCallExpression().Arguments.Nodes) <= 1 && b.reflectionDeletionValue(owner, seen) == 2 {
 			return 2
 		}
+		return b.reflectionReturnedValue(n, seen, b.reflectionDeletionValue)
 	case ast.KindBinaryExpression:
 		expression := n.AsBinaryExpression()
 		if expression.OperatorToken.Kind == ast.KindCommaToken || expression.OperatorToken.Kind == ast.KindEqualsToken {
@@ -114,11 +118,13 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 		if n.Name().Text() == "deleteProperty" && b.reflectionDeletionValue(n.Expression(), seen) == 1 {
 			return 2
 		}
+		return b.reflectionPropertyValue(n, seen, b.reflectionDeletionValue)
 	case ast.KindElementAccessExpression:
 		key := n.AsElementAccessExpression().ArgumentExpression
 		if key.Kind == ast.KindStringLiteral && key.Text() == "deleteProperty" && b.reflectionDeletionValue(n.Expression(), seen) == 1 {
 			return 2
 		}
+		return b.reflectionPropertyValue(n, seen, b.reflectionDeletionValue)
 	}
 	return 0
 }

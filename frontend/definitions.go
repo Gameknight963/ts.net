@@ -67,11 +67,15 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 				return 2
 			}
 		}
+		if declaration.Kind == ast.KindBindingElement {
+			return b.reflectionBindingValue(declaration, seen, b.reflectionDefinitionValue)
+		}
 	case ast.KindCallExpression:
 		owner, method := deletionAccess(n.Expression())
 		if method == "bind" && len(n.AsCallExpression().Arguments.Nodes) <= 1 && b.reflectionDefinitionValue(owner, seen) == 2 {
 			return 2
 		}
+		return b.reflectionReturnedValue(n, seen, b.reflectionDefinitionValue)
 	case ast.KindBinaryExpression:
 		expression := n.AsBinaryExpression()
 		if expression.OperatorToken.Kind == ast.KindCommaToken || expression.OperatorToken.Kind == ast.KindEqualsToken {
@@ -101,11 +105,13 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 		if (n.Name().Text() == "defineProperty" || n.Name().Text() == "defineProperties" || n.Name().Text() == "preventExtensions" || n.Name().Text() == "seal" || n.Name().Text() == "freeze") && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
 			return 2
 		}
+		return b.reflectionPropertyValue(n, seen, b.reflectionDefinitionValue)
 	case ast.KindElementAccessExpression:
 		key := n.AsElementAccessExpression().ArgumentExpression
 		if key.Kind == ast.KindStringLiteral && (key.Text() == "defineProperty" || key.Text() == "defineProperties" || key.Text() == "preventExtensions" || key.Text() == "seal" || key.Text() == "freeze") && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
 			return 2
 		}
+		return b.reflectionPropertyValue(n, seen, b.reflectionDefinitionValue)
 	}
 	return 0
 }
