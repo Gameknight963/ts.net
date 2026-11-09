@@ -530,6 +530,8 @@ func (a *asyncExpressionLowering) target(id int, next func(func() int) int) int 
 	n := a.b.nodes[id-1]
 	a.discard(id)
 	switch n.kind {
+	case 9: // assertions do not change the referenced storage location
+		return a.target(n.left, next)
 	case 3:
 		return next(func() int { return a.operation(n) })
 	case 5, 33:

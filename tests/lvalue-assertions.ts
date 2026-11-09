@@ -24,3 +24,14 @@ function loop():number {
     return total;
 }
 console.log('written induction variable',loop());
+async function awaitedTargets():Promise<void> {
+    let current:number|undefined=2,reads=0,writes=0,owners=0;
+    const target={get value():number|undefined {reads++;return current;},set value(next:number|undefined){writes++;current=next;}};
+    async function owner():Promise<typeof target> {owners++;return target;}
+    (await owner()).value!+=await 3;
+    const previous=(await owner()).value!++;
+    let absent:number|undefined;
+    absent!??=await 9;
+    console.log('awaited targets',previous,current,reads,writes,owners,absent);
+}
+awaitedTargets();
