@@ -135,8 +135,6 @@ Runtime performance:
 
 </details>
 
-The self-returning function, Promise chain and batch, three await loops, numeric join, map/filter, forEach/every/findIndex, reduction, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric reductions are faster than Node in this workload, but callback loops, promises, and JSON serialization still lag.
-
 Compilation times:
 
 | Source | tsnetc | tsc |
