@@ -13,6 +13,9 @@ public static partial class Js
         readonly string mode, dateStyle, timeStyle;
         readonly DateLocaleFields dateFields;
         readonly DateLocaleTimeFields timeFields;
+        readonly double nativeStart,nativeEnd;
+        NativeDateFormatting extended;
+        readonly bool nativeCalendarPath;
         internal DateLocaleSettings(CultureInfo culture, object optionValue, string mode, LocaleValue locale = null)
         {
             Culture = culture; this.mode = mode;
@@ -31,7 +34,14 @@ public static partial class Js
                 throw new InvalidOperationException("This date method does not accept the requested style");
             string calendarDefault = locale?.Keyword("ca") as string, numberingDefault = locale?.Keyword("nu") as string;
             string cycleDefault = (locale?.Keyword("hc") as string) switch { "h11" => "h11", "h12" => "h12", "h23" => "h23", "h24" => "h24", _ => null };
-            string calendar = Option("calendar") ?? calendarDefault;
+            string CanonicalCalendar(string value) {
+                if(value==null)return null;
+                ValidateNumberingSystem(value);
+                return value.ToLowerInvariant() switch {"islamicc"=>"islamic-civil","ethiopic-amete-alem"=>"ethioaa",var other=>other};
+            }
+            calendarDefault=CanonicalCalendar(calendarDefault);
+            string calendar = CanonicalCalendar(Option("calendar") ?? calendarDefault);
+            if(calendar!=null && Array.IndexOf(IntlValueLists.Calendars.Value,calendar)<0)calendar=null;
             string requestedNumbering = Option("numberingSystem");
             numberingSystem = requestedNumbering ?? numberingDefault ?? "latn";
             string nativeCalendar = calendar == "iso8601" ? "gregory" : calendar;
@@ -40,10 +50,12 @@ public static partial class Js
                 Calendar selected = null;
                 foreach (var candidate in culture.OptionalCalendars)
                     if (NativeCalendarName(candidate) == nativeCalendar) { selected = candidate; break; }
-                if (selected == null) throw new NotSupportedException("Date locale formatting option calendar is not supported for this culture");
-                culture = (CultureInfo)culture.Clone();
-                culture.DateTimeFormat.Calendar = selected;
-                Culture = culture;
+                if (selected == null) nativeCalendarPath=true;
+                else {
+                    culture = (CultureInfo)culture.Clone();
+                    culture.DateTimeFormat.Calendar = selected;
+                    Culture = culture;
+                }
             }
             if (calendar == "iso8601") {
                 culture = (CultureInfo)culture.Clone();
@@ -55,7 +67,8 @@ public static partial class Js
                 dateInfo.CalendarWeekRule = CalendarWeekRule.FirstFourDayWeek;
                 Culture = culture;
             }
-            calendarName = calendar == "iso8601" ? "iso8601" : NativeCalendarName(Culture);
+            calendarName = calendar ?? NativeCalendarName(Culture);
+            if(calendarName is not ("gregory" or "iso8601") && NativeDateFormatting.Calendars!=null)nativeCalendarPath=true;
             ValidateNumberingSystem(numberingSystem);
             numberingSystem = ResolveNumberingSystem(numberingSystem);
             try { digitCharacters = NumberDigitCharacters(numberingSystem); }
@@ -87,7 +100,10 @@ public static partial class Js
             catch (InvalidTimeZoneException) { throw new ArgumentOutOfRangeException(nameof(optionValue), "Invalid time zone"); }
 
             if (mode == "intl" && dateStyle == null && timeStyle == null && !dateFields.HasDateRequest && !timeFields.HasClockFields)
-                dateFields.UseDateDefaults(culture);
+                dateFields.UseDateDefaults(culture,!nativeCalendarPath);
+            var supported=Culture.DateTimeFormat.Calendar;
+            nativeStart=(supported.MinSupportedDateTime.Ticks-DateTime.UnixEpoch.Ticks)/(double)TimeSpan.TicksPerMillisecond+86400000;
+            nativeEnd=(supported.MaxSupportedDateTime.Ticks-DateTime.UnixEpoch.Ticks)/(double)TimeSpan.TicksPerMillisecond-86400000;
         }
         static bool TryDateOffsetZone(string name, out int offset, out string canonical)
         {
@@ -111,6 +127,16 @@ public static partial class Js
         };
         internal TsObject Options()
         {
+            var result=RawOptions();
+            if(nativeCalendarPath && dateStyle==null && timeStyle==null) {
+                if(result.HasOwn("month") && ExtendedFormatter().MonthWidth is string width)result.Set("month",width);
+                if(calendarName is "chinese" or "dangi")result.DeleteOwn("year");
+                if(calendarName=="japanese" && IsUndefined(result.Get("era")))result.DefineOwn("era","narrow");
+            }
+            return result;
+        }
+        TsObject RawOptions()
+        {
             var result = new JsDynamicObject();
             result.DefineOwn("locale", localeName);
             result.DefineOwn("calendar", calendarName); result.DefineOwn("numberingSystem", numberingSystem); result.DefineOwn("timeZone", Zone.Id);
@@ -120,7 +146,27 @@ public static partial class Js
             timeFields.WriteOptions(result, Culture, dateStyle != null || timeStyle != null, timeStyle != null);
             return result;
         }
-        internal string Format(double timestamp) => LocalizeNumberDigits(FormatLatin(timestamp), digitCharacters);
+        internal TsObject RequestedOptions()=>RawOptions();
+        internal void ValidateRangeEndpoint(double timestamp)
+        {
+            if(timestamp<0 && calendarName is "indian" or "islamic" or "islamic-rgsa")ExtendedFormatter().CheckCalendar(timestamp);
+        }
+        bool NeedsExtended(double timestamp)=>nativeCalendarPath || timestamp<nativeStart || timestamp>nativeEnd;
+        NativeDateFormatting ExtendedFormatter()
+        {
+            if(extended!=null)return extended;
+            var options=RawOptions();
+            if(dateStyle==null && timeStyle==null) {
+                bool defaults=!dateFields.HasDateRequest && !timeFields.HasClockFields;
+                if(mode=="d" && !dateFields.HasDateRequest || mode=="G" && defaults) {options.DefineOwn("year","numeric");options.DefineOwn("month","numeric");options.DefineOwn("day","numeric");}
+                if(mode=="T" && !timeFields.HasClockFields || mode=="G" && defaults) {
+                    options.DefineOwn("hour","numeric");options.DefineOwn("minute","2-digit");options.DefineOwn("second","2-digit");
+                    timeFields.WriteOptions(options,Culture,false,true);
+                }
+            }
+            return extended=new NativeDateFormatting(options,Culture.Name);
+        }
+        internal string Format(double timestamp) => NeedsExtended(timestamp) ? ExtendedFormatter().Text(timestamp) : LocalizeNumberDigits(FormatLatin(timestamp), digitCharacters);
         internal bool SameLocalDay(double first, double second)
         {
             DateTime Local(double value) => (fixedOffset.HasValue ? NativeDate(value + fixedOffset.Value * 60000d) : TimeZoneInfo.ConvertTime(NativeDate(value),Zone)).Date;
@@ -128,6 +174,7 @@ public static partial class Js
         }
         internal JsArray Parts(double timestamp)
         {
+            if(NeedsExtended(timestamp))return ExtendedFormatter().Parts(timestamp);
             var parts = new List<(string Type, string Value)>();
             FormatLatin(timestamp, parts);
             var result = new JsArray(0);

@@ -43,3 +43,22 @@ Parallel.For(0,8,worker=>{
 TimeZoneInfo.ClearCachedData();
 if(!Equals(getter.InvokeWithReceiver(ordinary,Array.Empty<object>()),2020d))throw new Exception("Date field cache survived an incompatible timezone refresh");
 Console.WriteLine("PASS date field caches remain independent across threads and timezone refreshes");
+var formats=(JsFunction)((TsObject)Js.BuiltinNamespace("Intl")).Get("DateTimeFormat");
+foreach(var item in new[]{("indian","10","11","-79"),("islamic","05","08","-641"),("islamic-rgsa","05","08","-641")}) {
+    var options=new JsDynamicObject();options.Set("calendar",item.Item1);options.Set("timeZone","UTC");options.Set("year","numeric");options.Set("month","2-digit");options.Set("day","2-digit");
+    var format=(TsObject)formats.Construct(new object[]{"en-US",options});
+    try {
+        var parts=(JsArray)((JsFunction)format.Get("formatToParts")).InvokeWithReceiver(format,new object[]{-62167219200000d});
+        var fields=new Dictionary<string,string>();
+        for(uint i=0;i<parts.Length();i++){var part=(TsObject)parts.ElementAt(i);fields[(string)part.Get("type")]=(string)part.Get("value");}
+        if(fields["month"]!=item.Item2 || fields["day"]!=item.Item3 || fields["year"]!=item.Item4)throw new Exception("Historical calendar produced incorrect fields");
+    }catch(NotSupportedException error) when(error.Message.Contains("invalid month")) {
+        // System ICU predates its negative-year month fixes. Both entrypoints
+        // must reject the broken native result rather than returning month -7.
+        try{((JsFunction)format.Get("format")).Invoke(new object[]{-62167219200000d});throw new Exception("Historical calendar text bypassed the month guard");}
+        catch(NotSupportedException textError) when(textError.Message.Contains("invalid month")){}
+        try{((JsFunction)format.Get("formatRange")).InvokeWithReceiver(format,new object[]{-62167219200000d,-62167132800000d});throw new Exception("Historical calendar range bypassed the month guard");}
+        catch(NotSupportedException rangeError) when(rangeError.Message.Contains("invalid month")){}
+    }
+}
+Console.WriteLine("PASS historical calendar fields or explicit guards for broken system ICU month calculations");

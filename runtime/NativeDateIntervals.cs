@@ -39,7 +39,7 @@ public static partial class Js
         {
             api=Backend.Value ?? throw new NotSupportedException("Date ranges require system ICU");
             string Read(string key) => options.Get(key) as string;
-            string locale=culture.Replace('-','_')+"@calendar="+Read("calendar")+";numbers="+Read("numberingSystem");
+            string locale=culture.Replace('-','_')+"@calendar="+NativeDateFormatting.IcuCalendar(Read("calendar"))+";numbers="+Read("numberingSystem");
             string zone=Read("timeZone");
             if(zone.StartsWith('+') || zone.StartsWith('-'))zone="GMT"+zone;
             else if(System.TimeZoneInfo.TryConvertWindowsIdToIanaId(zone,out var iana))zone=iana;
@@ -68,7 +68,9 @@ public static partial class Js
                 void Width(string key,string numeric,string two,string narrow=null,string shortName=null,string longName=null) {
                     string width=Read(key);fields.Append(width switch {"numeric"=>numeric,"2-digit"=>two,"narrow"=>narrow,"short"=>shortName,"long"=>longName,_=>null});
                 }
-                Width("era",null,null,"GGGGG","G","GGGG");Width("year","y","yy");Width("month","M","MM","MMMMM","MMM","MMMM");
+                Width("era",null,null,"GGGGG","G","GGGG");
+                string year=Read("calendar") is "chinese" or "dangi" ? "r" : "y";
+                Width("year",year,year+year);Width("month","M","MM","MMMMM","MMM","MMMM");
                 Width("day","d","dd");Width("weekday",null,null,"EEEEE","EEE","EEEE");
                 Width("hour",hour,hour+hour);Width("minute","m","mm");Width("second","s","ss");
                 Width("dayPeriod",null,null,"BBBBB","B","BBBB");

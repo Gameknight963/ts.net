@@ -27,8 +27,9 @@ public static partial class Js
             weekday = Read("weekday", "long", "short", "narrow");
             era = Read("era", "long", "short", "narrow");
         }
-        internal void UseDateDefaults(CultureInfo culture)
+        internal void UseDateDefaults(CultureInfo culture,bool nativePattern=true)
         {
+            if(!nativePattern){year="numeric";month="numeric";day="numeric";return;}
             string pattern = culture.DateTimeFormat.ShortDatePattern;
             year = pattern.Contains("yyyy", StringComparison.Ordinal) ? "numeric" : "2-digit";
             month = pattern.Contains("MM", StringComparison.Ordinal) ? "2-digit" : "numeric";

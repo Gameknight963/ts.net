@@ -16,7 +16,7 @@ public static partial class Js
     }
     static string FormatLocaleDate(JsDate date, CultureInfo culture, object optionValue, string mode, LocaleValue locale = null)
     {
-        if (IsUndefined(optionValue) && (locale == null || IsUndefined(locale.Keyword("ca")) && IsUndefined(locale.Keyword("hc")) && IsUndefined(locale.Keyword("nu")))) return TimeZoneInfo.ConvertTime(NativeDate(date), TimeZoneInfo.Local).ToString(mode, culture);
+        if (!ExtendedLocalDate(date.Timestamp) && DateLocaleSettings.NativeCalendarName(culture.DateTimeFormat.Calendar)=="gregory" && IsUndefined(optionValue) && (locale == null || IsUndefined(locale.Keyword("ca")) && IsUndefined(locale.Keyword("hc")) && IsUndefined(locale.Keyword("nu")))) return TimeZoneInfo.ConvertTime(NativeDate(date), TimeZoneInfo.Local).ToString(mode, culture);
         return new DateLocaleSettings(culture, optionValue, mode, locale).Format(date.Timestamp);
     }
     static string LocalDateText(object receiver, int mode)

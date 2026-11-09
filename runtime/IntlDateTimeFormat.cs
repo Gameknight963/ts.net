@@ -30,13 +30,23 @@ public static partial class Js
             double from=Number(start),to=Number(end);
             from=ClipDate(from);to=ClipDate(to);
             if(double.IsNaN(from) || double.IsNaN(to))throw new ArgumentOutOfRangeException(nameof(start),"Invalid date range");
+            Settings.ValidateRangeEndpoint(from);Settings.ValidateRangeEndpoint(to);
             if(from==to)return Settings.Format(from);
             if(Settings.SameLocalDay(from,to)) {
                 string first=Settings.Format(from);
                 if(first==Settings.Format(to))return first;
             }
             // The legacy ICU interval API can collapse distinct fractional seconds.
-            var options=rangeOptions ??= Settings.Options();
+            var options=rangeOptions ??= Settings.RequestedOptions();
+            // Older system ICU versions ignore ISO date order in interval patterns.
+            if(options.Get("calendar") is "iso8601" && options.Get("year") is "numeric" or "2-digit" &&
+                options.Get("month") is "numeric" or "2-digit" && options.Get("day") is "numeric" or "2-digit" &&
+                IsUndefined(options.Get("era")) && IsUndefined(options.Get("weekday")) &&
+                IsUndefined(options.Get("hour")) && IsUndefined(options.Get("minute")) && IsUndefined(options.Get("second")) &&
+                IsUndefined(options.Get("fractionalSecondDigits")) && IsUndefined(options.Get("dayPeriod")) && IsUndefined(options.Get("timeZoneName"))) {
+                string first=Settings.Format(from),last=Settings.Format(to);
+                return first==last ? first : first+"\u2009–\u2009"+last;
+            }
             if(options.Get("hourCycle") is "h11" or "h24")throw new NotSupportedException("Date ranges with h11 and h24 hour cycles are not supported by the native interval backend");
             if(options.Get("fractionalSecondDigits") is double && Math.Floor(from/1000)==Math.Floor(to/1000) && Settings.Format(from)!=Settings.Format(to))
                 throw new NotSupportedException("Date ranges within one second are not supported with fractionalSecondDigits");
