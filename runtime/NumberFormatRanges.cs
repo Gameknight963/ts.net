@@ -15,7 +15,7 @@ public static partial class Js
             }
             start = Convert(start); end = Convert(end);
             if (start is double a && double.IsNaN(a) || end is double b && double.IsNaN(b)) throw new ArgumentOutOfRangeException(nameof(start), "Range endpoints cannot be NaN");
-            if (settings.culture.Name is not ("en" or "en-US")) throw new NotSupportedException("Number ranges currently support US English");
+            if (settings.culture.Name is not ("en" or "en-US")) return RegionalRange(start,end,parts);
             var left = (JsArray)Parts(start); var right = (JsArray)Parts(end);
             string Type(JsArray list, int index) => (string)((TsObject)list.ElementAt((uint)index)).Get("type");
             string Value(JsArray list, int index) => (string)((TsObject)list.ElementAt((uint)index)).Get("value");
