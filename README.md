@@ -134,8 +134,6 @@ Runtime performance:
 
 </details>
 
-Digital durations and simple decimal ranges look promising here, while currency names and units still need work. Currency-name caching cut its workload from 66.34 ms to 28.24 ms in a paired run. These four rows use Release builds, 500 ms of warmup and medians from seven fresh processes, excluding startup and compilation; all output strings were checked against Node.
-
 Compilation times:
 
 | Source | tsnetc | tsc |

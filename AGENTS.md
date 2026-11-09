@@ -56,9 +56,6 @@ Include enough context to understand what the measurements compare.
 Leave the rest of the README to the maintainer unless something is factually
 incorrect. Do not create additional documentation unless requested.
 
-Below the performance tables, include a remark of 1–3 sentences. Interpret
-the results and give a candid reaction grounded in the measurements.
-
 | Avoid | Prefer |
 |---|---|
 | These groundbreaking results demonstrate the tremendous potential of our architecture. | Arithmetic seems quite fast, which gives me hope that other workloads can improve too. Objects and any operations still need substantial optimization. |
