@@ -12,8 +12,26 @@ public static partial class Js
         internal int End;
         internal Dictionary<string, JsonValue> Children;
     }
-    sealed class JsonParseFrame(object value, JsonValue node)
+    sealed class JsonKeyCache
     {
+        string first, second, third, fourth;
+        internal string Read(ReadOnlySpan<char> text)
+        {
+            if (first != null && text.SequenceEqual(first)) return first;
+            if (second != null && text.SequenceEqual(second)) return second;
+            if (third != null && text.SequenceEqual(third)) return third;
+            if (fourth != null && text.SequenceEqual(fourth)) return fourth;
+            string value = text.ToString();
+            if (first == null) first = value;
+            else if (second == null) second = value;
+            else if (third == null) third = value;
+            else if (fourth == null) fourth = value;
+            return value;
+        }
+    }
+    sealed class JsonParseFrame(object value, JsonValue node, JsonKeyCache keys)
+    {
+        internal JsonKeyCache Keys = keys;
         internal readonly object Value = value;
         internal readonly JsonValue Node = node;
         internal int State;
@@ -27,13 +45,18 @@ public static partial class Js
         void Space() { while (position < text.Length && text[position] is ' ' or '\t' or '\r' or '\n') position++; }
         bool Consume(char ch) { if (position < text.Length && text[position] == ch) { position++; return true; } return false; }
         void Expect(char ch) { if (!Consume(ch)) throw Invalid(); }
-        string ReadString()
+        string ReadString(JsonKeyCache keys = null)
         {
             Expect('"'); int start = position; StringBuilder result = null;
             while (position < text.Length)
             {
                 char ch = text[position++];
-                if (ch == '"') return result is null ? text.Substring(start, position - start - 1) : result.Append(text, start, position - start - 1).ToString();
+                if (ch == '"')
+                {
+                    if (result != null) return result.Append(text, start, position - start - 1).ToString();
+                    var value = text.AsSpan(start, position - start - 1);
+                    return keys == null ? value.ToString() : keys.Read(value);
+                }
                 if (ch < 32) throw Invalid();
                 if (ch != '\\') continue;
                 result ??= new StringBuilder(); result.Append(text, start, position - start - 1);
@@ -66,7 +89,7 @@ public static partial class Js
             {
                 position++; value = ch == '{' ? new JsDynamicObject() : new JsArray(0);
                 if (remember) record = new JsonValue(value, start) { Children = new(StringComparer.Ordinal) };
-                frames.Push(new(value, record)); return value;
+                frames.Push(new(value, record, frames.Count == 0 ? null : frames.Peek().Keys)); return value;
             }
             if (ch == '"') value = ReadString();
             else if (ch is 'n' or 't' or 'f')
@@ -110,7 +133,15 @@ public static partial class Js
                 {
                     if (frame.State == 0 && Consume('}') || frame.State == 2 && Consume('}')) { if (frame.Node != null) frame.Node.End = position; frames.Pop(); continue; }
                     if (frame.State == 2) { Expect(','); frame.State = 3; continue; }
-                    if (frame.State is 0 or 3) { frame.Key = ReadString(); frame.State = 1; continue; }
+                    if (frame.State is 0 or 3)
+                    {
+                        if (frame.Keys == null)
+                        {
+                            var keys = new JsonKeyCache();
+                            foreach (var owner in frames) owner.Keys = keys;
+                        }
+                        frame.Key = ReadString(frame.Keys); frame.State = 1; continue;
+                    }
                     Expect(':'); object child = ReadValue(out JsonValue childRecord); ((TsObject)frame.Value).DefineOwn(frame.Key, child);
                     if (remember) frame.Node.Children[frame.Key] = childRecord; frame.State = 2;
                 }
