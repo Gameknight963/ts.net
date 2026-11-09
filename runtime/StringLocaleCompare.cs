@@ -30,6 +30,7 @@ public static partial class Js
             var culture = CaseCulture(locales);
             if (culture.Name.Contains("-u-", StringComparison.OrdinalIgnoreCase) || culture.CompareInfo.Name.Contains('_'))
                 return SelectCollationSettings(FunctionArgument(arguments, 1), optionValue).Compare(text, other);
+            if(culture.TwoLetterISOLanguageName=="th")return new CollationSettings(culture,optionValue).Compare(text,other);
             return IsUndefined(optionValue) ? Math.Sign(culture.CompareInfo.Compare(text, other))
                 : new CollationSettings(culture, optionValue).Compare(text, other);
         }

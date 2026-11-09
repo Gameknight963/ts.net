@@ -21,6 +21,7 @@ public static partial class Js
             return [..names];
         });
         internal static readonly Lazy<string[]> Collations = new(() => {
+            if(NativeCollation.Available)return NativeCollation.Values();
             var names = new List<string>();
             foreach (var (locale, name) in new[]{("de-DE", "phonebk"), ("es-ES", "trad"), ("zh-CN", "stroke"), ("zh-TW", "zhuyin")}) {
                 try {CollationSettings.NativeComparer(CultureInfo.GetCultureInfo(locale), "sort", null, name); names.Add(name);}
