@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 public static partial class Js
@@ -10,18 +11,22 @@ public static partial class Js
     {
         const string hex = "0123456789abcdef";
         output.Append('"');
+        int start = 0;
         for (int i = 0; i < text.Length; i++)
         {
             char ch = text[i];
+            if (char.IsHighSurrogate(ch) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1])) { i++; continue; }
             string escape = ch switch { '"' => "\\\"", '\\' => "\\\\", '\b' => "\\b", '\f' => "\\f", '\n' => "\\n", '\r' => "\\r", '\t' => "\\t", _ => null };
-            if (escape != null) { output.Append(escape); continue; }
-            if (char.IsHighSurrogate(ch) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1])) { output.Append(ch).Append(text[++i]); continue; }
-            if (ch < 32 || char.IsSurrogate(ch)) output.Append("\\u").Append(hex[ch >> 12]).Append(hex[ch >> 8 & 15]).Append(hex[ch >> 4 & 15]).Append(hex[ch & 15]);
-            else output.Append(ch);
+            if (escape == null && ch >= 32 && !char.IsSurrogate(ch)) continue;
+            output.Append(text, start, i - start);
+            if (escape != null) output.Append(escape);
+            else output.Append("\\u").Append(hex[ch >> 12]).Append(hex[ch >> 8 & 15]).Append(hex[ch >> 4 & 15]).Append(hex[ch & 15]);
+            start = i + 1;
         }
+        output.Append(text, start, text.Length - start);
         output.Append('"');
     }
-    sealed class JsonWriteFrame
+    struct JsonWriteFrame
     {
         internal readonly TsObject Value;
         internal readonly bool Array;
@@ -42,7 +47,7 @@ public static partial class Js
         readonly JsArray propertyList;
         readonly string gap;
         readonly StringBuilder output = new();
-        readonly Stack<JsonWriteFrame> frames = new();
+        readonly List<JsonWriteFrame> frames = new();
         readonly HashSet<TsObject> active = new(ReferenceEqualityComparer.Instance);
         internal JsonWriter(object replacement, object space)
         {
@@ -85,7 +90,7 @@ public static partial class Js
             else if (value is TsObject obj)
             {
                 if (!active.Add(obj)) throw new InvalidOperationException("Cannot serialize a cyclic object");
-                var frame = new JsonWriteFrame(obj, propertyList); frames.Push(frame); output.Append(frame.Array ? '[' : '{');
+                var frame = new JsonWriteFrame(obj, propertyList); frames.Add(frame); output.Append(frame.Array ? '[' : '{');
             }
             else throw new InvalidOperationException("Unsupported JSON value");
         }
@@ -96,12 +101,15 @@ public static partial class Js
             WriteValue(root);
             while (frames.Count != 0)
             {
-                var frame = frames.Peek();
+                // WriteValue can grow the list, so do not use this reference
+                // after that call. Completed frames are copied before removal.
+                ref var frame = ref CollectionsMarshal.AsSpan(frames)[^1];
                 if (frame.Position == frame.Length)
                 {
-                    frames.Pop(); active.Remove(frame.Value);
-                    if (frame.Written && gap.Length != 0) { output.Append('\n'); Indent(frames.Count); }
-                    output.Append(frame.Array ? ']' : '}'); continue;
+                    var completed = frame;
+                    frames.RemoveAt(frames.Count - 1); active.Remove(completed.Value);
+                    if (completed.Written && gap.Length != 0) { output.Append('\n'); Indent(frames.Count); }
+                    output.Append(completed.Array ? ']' : '}'); continue;
                 }
                 string key = frame.Array ? frame.Position.ToString(CultureInfo.InvariantCulture) : (string)frame.Keys.ElementAt((uint)frame.Position);
                 frame.Position++; object value = Prepare(frame.Value, key);
