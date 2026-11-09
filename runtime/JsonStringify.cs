@@ -93,7 +93,7 @@ public static partial class Js
             else if (value == null) output.Append("null");
             else if (value is string text) QuoteJson(output, text);
             else if (value is bool boolean) output.Append(boolean ? "true" : "false");
-            else if (value is double number) output.Append(double.IsFinite(number) ? StringValue(number) : "null");
+            else if (value is double number) output.Append(double.IsFinite(number) ? NumberKeyString(number) : "null");
             else if (value is TsObject obj)
             {
                 if (!active.Add(obj)) throw new InvalidOperationException("Cannot serialize a cyclic object");
