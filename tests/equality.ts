@@ -6,7 +6,7 @@ const values: any[] = [undefined, null, false, true, 0, -0, 1, 2, NaN, Infinity,
 for (let i=0;i<values.length;i++) {
     for (let j=0;j<values.length;j++) {
         const left=values[i],right=values[j];
-        console.log(i,j,left == right,left != right);
+        console.log(i,j,left == right,left != right,left === right,left !== right);
     }
 }
 function nullableNumbers(left: number | undefined, right: number | undefined): void {

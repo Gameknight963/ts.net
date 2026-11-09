@@ -474,13 +474,19 @@ public static partial class Js
         return value % divisor;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Equal(object left, object right)
     {
-        if (left is double a && right is double b) return a == b;
+        // Number equality must still reject NaN, including an aliased box.
+        if (left is double a) return right is double b && a == b;
+        return ReferenceEquals(left, right) || EqualDistinct(left, right);
+    }
+    static bool EqualDistinct(object left, object right)
+    {
         if (left is string x && right is string y) return x == y;
         if (left is BigInteger m && right is BigInteger n) return m == n;
         if (left is bool p && right is bool q) return p == q;
-        return ReferenceEquals(left, right);
+        return false;
     }
 
     public static string Text(object value) => value switch
