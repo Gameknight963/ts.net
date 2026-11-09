@@ -11,6 +11,7 @@ string Text(TsObject format,params (string Field,double Value)[] fields) {
  if(text!=joined.ToString())throw new Exception("Duration parts differ from text");return text;
 }
 var exact=Formatter("en-US");
+if(Text(exact,("seconds",1d),("milliseconds",481d))!="0:00:01.481")throw new Exception("Milliseconds lost a nanosecond during formatting");
 if(Text(exact,("nanoseconds",9007199254740992d))!="0:00:9007199.254740992")throw new Exception("Large nanoseconds lost precision");
 if(Text(exact,("seconds",9007199254740991d),("milliseconds",999d))!="0:00:9007199254740991.999")throw new Exception("Large seconds lost precision");
 foreach(string locale in new[]{"ar-EG","fa-IR","bn-BD"})if(Text(Formatter(locale,"latn"),("seconds",1d))!="0:00:01")throw new Exception("Explicit Latin digits were ignored");
