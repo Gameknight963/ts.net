@@ -57,3 +57,18 @@ try {values.reduce(() => {throw 'failure';});} catch(error) {console.log('thrown
 const initial = {total: 0};
 const result = values.reduce((state, value) => {state.total += value;return state;}, initial);
 console.log('object-accumulator', result === initial, result.total);
+
+let packedGetterReads = 0;
+const packedGetterSource = [1, 2, 3, 4];
+const packedGetterSum = packedGetterSource.reduce((sum, value) => {
+    if (value === 1) Object.defineProperty(packedGetterSource, '1', {get() {packedGetterReads++; return 5;}, configurable: true});
+    return sum + value;
+}, 0);
+console.log('packed reduce getter', packedGetterSum, packedGetterReads);
+let packedRightGetterReads = 0;
+const packedRightGetterSource = [1, 2, 3, 4];
+const packedRightGetterSum = packedRightGetterSource.reduceRight((sum, value) => {
+    if (value === 4) Object.defineProperty(packedRightGetterSource, '2', {get() {packedRightGetterReads++; return 7;}, configurable: true});
+    return sum + value;
+}, 0);
+console.log('packed reduceRight getter', packedRightGetterSum, packedRightGetterReads);

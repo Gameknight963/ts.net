@@ -88,6 +88,12 @@ public static partial class Js
             long step = backwards ? -1 : 1;
             for (long i = backwards ? length - 1 : 0; i >= 0 && i < length; i += step)
             {
+                if (initialized && numericCallback && accumulator is double rawAccumulator &&
+                    source is NumberArray numbers && !numbers.HasIndexedAccessors && numbers.TryPacked(i + 1) is { } packed)
+                {
+                    accumulator = callback.InvokeArrayNumber(Undefined, rawAccumulator, packed[(int)i], source);
+                    continue;
+                }
                 if (!TryIndexedValue(source, i, out object value)) continue;
                 if (!initialized) { accumulator = value; initialized = true; }
                 // Eligible callbacks use only their first two numeric arguments.
