@@ -229,6 +229,27 @@ internal static partial class CompilerFunctions
             else b.box(result, c);
             b.op(0x2a);
         }
+        if (callback >= 0)
+        {
+            // The same proof as array callbacks excludes observable this/arguments.
+            b.plan.implements(type, b.RuntimeToken(RuntimeMember.NumberArgumentFunctionType));
+            int method = b.plan.method1(5, type, 0x1e6, -5, -10, "InvokeNumberArgument");
+            b.begin(method);
+            int raw = b.raw_functions.at(symbol);
+            if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+            for (int i = 0; i < callback; i++)
+            {
+                if (i == 0) b.emit(0xfe09, 1);
+                else b.call(RuntimeMember.EmptyNumber);
+                if (raw != 0) b.call(RuntimeMember.NumberValue);
+            }
+            b.emit(0x28, raw != 0 ? raw : b.function(symbol));
+            if (raw != 0) b.call(RuntimeMember.WrapNumber);
+            int result = get_node(get_symbol(symbol, c).function, c).type;
+            if (get_type(result, c).kind == TypeKind.Void) b.call(RuntimeMember.Undefined);
+            else b.box(result, c);
+            b.op(0x2a);
+        }
         if (count >= 0)
         {
             int supported = b.plan.method0(5, type, 0xc6, -2, "SupportsNumberResult");

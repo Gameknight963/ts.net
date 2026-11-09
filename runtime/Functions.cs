@@ -9,6 +9,11 @@ public delegate double RawNumberFunction0();
 public delegate double RawNumberFunction1(double first);
 public delegate double RawNumberFunction2(double first, double second);
 
+public interface INumberArgumentFunction
+{
+    object InvokeNumberArgument(double? value);
+}
+
 public partial class JsFunction : JsDescriptorObject
 {
     readonly FunctionBody body;

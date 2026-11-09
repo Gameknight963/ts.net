@@ -72,3 +72,31 @@ Promise.all(new Set([Promise.resolve(1),Promise.resolve(2)])).then(values=>conso
     const invalid:any={has:0};let effects=0;
     try{invalid.has(++effects);}catch(error){console.log('noncallable keyed method',(error as Error).name,effects);}
 }
+{
+    const missing={has(first:number,second?:number):boolean{return first===1&&second===undefined;}};
+    const defaults={has(first:number,second:number=7):boolean{return first===1&&second===7;}};
+    console.log('keyed missing argument',missing.has(1),defaults.has(1));
+    let captured=3;
+    const closure={has(value:number):boolean{captured+=value;return captured===4;}};
+    console.log('keyed closure',closure.has(1),captured);
+    const noArguments={has():boolean{return true;}} as {has(value:number):boolean};
+    console.log('keyed unused argument',noArguments.has(4));
+    const rest={has(...values:number[]):boolean{return values.length===1&&values[0]===2;}};
+    console.log('keyed rest argument',rest.has(2));
+    const object={value:7};
+    const results={get(value:number):typeof object{return object;},delete(value:number):string{return String(value);}};
+    console.log('keyed return values',results.get(3)===object,results.delete(4));
+}
+{
+    const missingFirst={has(value:number=5):boolean{return value===5;}};
+    console.log('keyed default first',missingFirst.has(undefined as unknown as number));
+    let effect=0;
+    const returnsVoid={delete(value:number):void{effect+=value;}};
+    console.log('keyed void result',returnsVoid.delete(3),effect);
+    const usesArguments={has(value:number):boolean{return arguments.length===1&&arguments[0]===value;}};
+    console.log('keyed arguments fallback',usesArguments.has(2));
+    const receiver={value:8,has(value:number):boolean{return this.value===value;}};
+    console.log('keyed receiver fallback',receiver.has(8));
+    const undefinedResult={get(value:number):string|undefined{return value===1?'one':undefined;}};
+    console.log('keyed undefined result',undefinedResult.get(2));
+}
