@@ -35,8 +35,7 @@ public static partial class Js
                         // the result even though the combinator discards it.
                         var species = PromiseSpecies(native);
                         var result = ReferenceEquals(species, RuntimeNamespaces.Promise) ? null : NewPromiseCapability(species);
-                        native.Then(new PromiseReaction(result, null, null,
-                            (value, rejected) => state.Accept(index, value, rejected), discardResult: true));
+                        native.Then(new PromiseCombinationReaction(result, state, index));
                         continue;
                     }
                     var handlers = state.Handlers(index);
@@ -46,6 +45,16 @@ public static partial class Js
             }
             catch (Exception error) { if (closeable) CloseIterationAt(input, position, true); capability.Complete(CaughtValue(error), true); }
             return capability.Promise;
+        }
+    }
+    sealed class PromiseCombinationReaction(PromiseCapability capability, PromiseCombinationState state, int index)
+        : PromiseReaction(capability, null, null, discardResult: true)
+    {
+        internal override void Run(object value, bool rejected)
+        {
+            try { state.Accept(index, value, rejected); }
+            catch (Exception error) { RejectContinuation(error); return; }
+            CompleteContinuation();
         }
     }
     sealed class PromiseCombinationState(PromiseCombination mode, PromiseCapability capability)

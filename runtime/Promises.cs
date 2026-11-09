@@ -78,11 +78,11 @@ public static partial class Js
         }
         internal void RejectError(Exception error) => RejectValue(CaughtValue(error));
     }
-    sealed class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected,
+    class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected,
         Action<object, bool> continuation = null, bool discardResult = false)
     {
         internal void Enqueue(object value, bool isRejected) => EnqueuePromiseReaction(this, value, isRejected);
-        internal void Run(object value, bool isRejected)
+        internal virtual void Run(object value, bool isRejected)
         {
             if (continuation != null)
             {
@@ -90,13 +90,10 @@ public static partial class Js
                 try { continuation(value, isRejected); }
                 catch (Exception error)
                 {
-                    // A discarded intrinsic result becomes observable only if
-                    // the callback throws, through unhandled-rejection reporting.
-                    if (capability == null) new JsPromise().Settle(CaughtValue(error), true);
-                    else capability.Complete(CaughtValue(error), true);
+                    RejectContinuation(error);
                     return;
                 }
-                capability?.Complete(Undefined, false);
+                CompleteContinuation();
                 return;
             }
             var handler = isRejected ? rejected : fulfilled;
@@ -105,6 +102,14 @@ public static partial class Js
             try { result = handler.InvokeWithReceiver(Undefined, new[] { value }); }
             catch (Exception error) { capability.Complete(CaughtValue(error), true); return; }
             capability.Complete(result, false);
+        }
+        internal void CompleteContinuation() => capability?.Complete(Undefined, false);
+        internal void RejectContinuation(Exception error)
+        {
+            // A discarded intrinsic result becomes observable only if the
+            // callback throws, through unhandled-rejection reporting.
+            if (capability == null) new JsPromise().Settle(CaughtValue(error), true);
+            else capability.Complete(CaughtValue(error), true);
         }
     }
     sealed class JsPromise : JsDescriptorObject

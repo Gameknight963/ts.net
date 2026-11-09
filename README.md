@@ -94,7 +94,7 @@ Runtime performance:
 | Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | 0.48x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 6.04 ms | 1.04 ms | 0.17x |
 | Construct and run a chain of 10K handlers | 3.10 ms | 0.317 ms | 0.10x |
-| Create 10K resolved promises, collect with all, and sum results | 3.76 ms | 0.515 ms | 0.14x |
+| Create 10K resolved promises, collect with all, and sum results | 3.48 ms | 0.489 ms | 0.14x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
 | Sum 1K values in a loop, awaiting each value | 0.194 ms | 0.0468 ms | 0.24x |
 | Sum 1K values with an await in try and an increment in finally each iteration | 0.274 ms | 0.0504 ms | 0.18x |
