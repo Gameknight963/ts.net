@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 public static partial class Js
 {
-    sealed record FetchInput(Uri Url, string Method, byte[] Body, List<KeyValuePair<string, string[]>> Headers, string Redirect, string Integrity);
+    sealed record FetchInput(Uri Url, string Method, byte[] Body, List<KeyValuePair<string, string[]>> Headers, string Redirect, string Integrity, StreamUpload Upload = null);
     sealed record FetchOutput(int Status, string StatusText, string Url, bool Redirected, List<KeyValuePair<string, string[]>> Headers, byte[] Body);
     static class FetchFunctions
     {
@@ -33,7 +33,12 @@ public static partial class Js
         try
         {
             var request = CreateRequest(args);
-            if (request.Signal.Aborted) { result.Settle(request.Signal.Reason, true); return result; }
+            if (request.Signal.Aborted) {
+                if (request.CustomBody != null) {
+                    var cancelled = BodyPromiseOperation(() => request.CustomBody.Cancel(request.Signal.Reason));cancelled.Handled = true;
+                }
+                result.Settle(request.Signal.Reason, true);return result;
+            }
             var uri = new Uri(request.Url);
             if (uri.Scheme == "data") { FetchData(request, result); return result; }
             if (uri.Scheme == "blob") { FetchBlob(request, result); return result; }
@@ -41,8 +46,10 @@ public static partial class Js
             var headers = new List<KeyValuePair<string, string[]>>();
             foreach (var header in request.Headers.Fields) headers.Add(new(header.Key, header.Value.ToArray()));
             byte[] body = request.Body?.Consume();
-            var input = new FetchInput(new UriBuilder(uri) { Fragment = "" }.Uri, request.Method, body, headers, request.Redirect, request.Integrity);
-            new FetchWork(result, request.Signal, CaptureHostEvents()).Start(input);
+            var inbox = CaptureHostEvents();
+            var upload = request.CustomBody == null ? null : new StreamUpload(request.CustomBody,inbox);
+            var input = new FetchInput(new UriBuilder(uri) { Fragment = "" }.Uri, request.Method, body, headers, request.Redirect, request.Integrity,upload);
+            new FetchWork(result, request.Signal, inbox).Start(input);
         }
         catch (Exception error) { result.Settle(CaughtValue(error), true); }
         return result;
@@ -52,8 +59,11 @@ public static partial class Js
         readonly CancellationTokenSource cancellation = new();
         Action unsubscribe;
         bool finished;
+        StreamUpload upload;
         internal void Start(FetchInput input)
         {
+            upload = input.Upload;
+            if (upload != null) upload.NetworkCancellation = cancellation.Token;
             inbox.Register(Shutdown, referenced: true);
             unsubscribe = signal.Subscribe(Abort);
             if (finished) { unsubscribe(); return; }
@@ -65,12 +75,14 @@ public static partial class Js
         }
         void Release()
         {
+            upload?.Stop(Undefined);
             inbox.Unregister(Shutdown); unsubscribe?.Invoke(); cancellation.Dispose();
         }
         void Abort()
         {
             if (finished) return;
             finished = true; cancellation.Cancel();
+            upload?.Stop(signal.Reason);
             promise.Settle(signal.Reason, true); Release();
         }
         void Shutdown()
@@ -108,11 +120,13 @@ public static partial class Js
     static async Task<FetchOutput> FetchHttp(FetchInput input, CancellationToken cancellation)
     {
         Uri url = input.Url; string method = input.Method; byte[] body = input.Body;
+        StreamUpload upload = input.Upload;
         var headers = new List<KeyValuePair<string, string[]>>(input.Headers);
         for (int redirects = 0; ; redirects++)
         {
             using var message = new HttpRequestMessage(new HttpMethod(method), url);
             if (body != null) message.Content = new ByteArrayContent(body);
+            else if (upload != null) message.Content = upload;
             foreach (var item in headers)
             {
                 if (!message.Headers.TryAddWithoutValidation(item.Key, item.Value))
@@ -130,12 +144,13 @@ public static partial class Js
             if (redirect && location != null && input.Redirect != "manual")
             {
                 if (input.Redirect == "error" || redirects == 20) throw new HttpRequestException("Fetch redirect is not permitted");
+                if (upload != null && status != 303) throw new HttpRequestException("Stream upload cannot be replayed after a redirect");
                 var next = new Uri(url, location);
                 if (next.Scheme is not ("http" or "https") || next.UserInfo.Length != 0) throw new HttpRequestException("Invalid fetch redirect URL");
                 if (!SameFetchOrigin(url, next)) headers.RemoveAll(item => item.Key is "authorization" or "proxy-authorization" or "cookie" or "cookie2");
                 if (status is 301 or 302 && method == "POST" || status == 303 && method is not ("GET" or "HEAD"))
                 {
-                    method = "GET"; body = null;
+                    method = "GET"; body = null; upload = null;
                     headers.RemoveAll(item => item.Key.StartsWith("content-", StringComparison.OrdinalIgnoreCase));
                 }
                 url = new UriBuilder(next) { Fragment = "" }.Uri; continue;

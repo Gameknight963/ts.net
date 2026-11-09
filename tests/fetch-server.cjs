@@ -1,11 +1,16 @@
 ﻿const http=require('node:http');
 const zlib=require('node:zlib');
+let uploadObserved=false;
 const server=http.createServer(async(req,res)=>{
+  if(new URL(req.url,'http://localhost').pathname==='/upload-progress')req.on('data',()=>{uploadObserved=true;});
   const chunks=[];
   try{for await(const chunk of req)chunks.push(chunk);}catch{return;}
   const body=Buffer.concat(chunks).toString('utf8');
   const path=new URL(req.url,'http://localhost').pathname;
   const text=(status,value,headers={})=>{res.writeHead(status,{'content-type':'text/plain;charset=utf-8',...headers});res.end(value);};
+  if(path==='/upload-reset'){uploadObserved=false;return text(200,'reset');}
+  if(path==='/upload-observed')return text(200,String(uploadObserved));
+  if(path==='/upload-progress')return text(200,body);
   if(path==='/text')return text(200,'hello',{'x-test':'value'});
   if(path==='/echo'){res.writeHead(200,{'content-type':'application/json'});return res.end(JSON.stringify({method:req.method,body,header:req.headers['x-test']??null,contentType:req.headers['content-type']??null}));}
   if(path==='/redirect'){res.writeHead(302,{location:'/text'});return res.end();}
