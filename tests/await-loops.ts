@@ -139,3 +139,48 @@ async function loopTdz():Promise<void> {
     for(let value of (queueMicrotask(()=>{try{console.log(typeof value);}catch(error){console.log('rhs tdz',(error as Error).name);}}),await Promise.resolve([1])))await 0;
 }
 loopTdz().catch(error=>console.log('loop tdz',error.name));
+async function uncapturedFor():Promise<string> {
+    const readers:(()=>number)[]=[];
+    let total=0;
+    for(let i=0;await(i<4);i+=await 1) {
+        let saved=i;
+        readers.push(()=>saved);
+        await 0;
+        saved+=10;
+        if(i===1)continue;
+        total+=i;
+    }
+    return total+':'+readers.map(read=>read()).join(',');
+}
+uncapturedFor().then(value=>console.log('shared header, separate bodies',value));
+async function classForCapture():Promise<string> {
+    const readers:(()=>number)[]=[];
+    for(let i=0;i<3;i++) {
+        class Reader {read():number{return i;}}
+        readers.push(new Reader().read);
+        await 0;
+    }
+    return readers.map(read=>read()).join(',');
+}
+classForCapture().then(value=>console.log('class iteration captures',value));
+async function uncapturedPattern():Promise<number> {
+    let total=0;
+    for(let [i=await 0,j=await 4]=[] as number[];await(i<j);i++)total+=await i;
+    return total;
+}
+uncapturedPattern().then(value=>console.log('shared pattern header',value));
+async function rareForAwait():Promise<number> {
+    let total=0;
+    for(let i=0;i<50000;i++){if(i===49999)await 0;total+=i;}
+    return total;
+}
+rareForAwait().then(value=>console.log('long for run',value));
+async function asyncForCapture():Promise<string> {
+    const readers:(()=>Promise<number>)[]=[];
+    for(let i=0;i<3;i++) {
+        readers.push(async()=>{await 0;return i;});
+        await 0;
+    }
+    return (await Promise.all(readers.map(read=>read()))).join(',');
+}
+asyncForCapture().then(value=>console.log('async iteration captures',value));

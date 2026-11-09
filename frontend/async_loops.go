@@ -82,6 +82,9 @@ func (a *asyncExpressionLowering) forStatement(id int, n irNode, next func() int
 	bindings := map[int]int{}
 	var originals []int
 	a.loopBindings(n.left, bindings, &originals)
+	if !a.capturedForBinding(id, bindings, false, map[[2]int]bool{}) {
+		return a.sharedForStatement(id, n, next)
+	}
 	var copies []int
 	for _, symbol := range originals {
 		copies = append(copies, bindings[symbol])
@@ -127,6 +130,74 @@ func (a *asyncExpressionLowering) forStatement(id int, n irNode, next func() int
 			return iteration
 		})
 		return a.statement(n.left, func() int { return a.sequence(a.declaration(step, function), a.callLoop(step, false, originals)) })
+	})
+	a.b.nodes[id-1] = irNode{kind: 12, token: n.token, name: a.b.text("scope"), children: body}
+	return id
+}
+
+// Per-iteration let bindings need separate storage only when a nested function
+// or class can retain them. Be conservative about every reference in those trees.
+func (a *asyncExpressionLowering) capturedForBinding(id int, bindings map[int]int, nested bool, seen map[[2]int]bool) bool {
+	if id == 0 {
+		return false
+	}
+	n := a.b.nodes[id-1]
+	// Break and continue contain back references to their target statements.
+	if n.kind == 25 || n.kind == 26 {
+		return false
+	}
+	nested = nested || n.kind == 19 || n.kind == 38 || n.kind == 55
+	key := [2]int{id, 0}
+	if nested {
+		key[1] = 1
+	}
+	if seen[key] {
+		return false
+	}
+	seen[key] = true
+	if nested && n.kind == 3 && bindings[n.symbol] != 0 {
+		return true
+	}
+	for _, child := range []int{n.left, n.right, n.third, n.fourth} {
+		if a.capturedForBinding(child, bindings, nested, seen) {
+			return true
+		}
+	}
+	for child := n.children; child != 0; child = a.b.nodes[child-1].next {
+		if a.capturedForBinding(child, bindings, nested, seen) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *asyncExpressionLowering) sharedForStatement(id int, n irNode, next func() int) int {
+	continuation := a.function(false, func(_ int) int { return next() })
+	body := a.bind(continuation, func(done int) int {
+		step := a.symbol(a.any)
+		advance := a.symbol(a.any)
+		a.rewriteBreaks(n.fourth, id, done)
+		a.rewriteJumps(n.fourth, id, advance, 26)
+		advanceFunction := a.function(false, func(_ int) int {
+			if n.third == 0 {
+				return a.resume(step)
+			}
+			return a.expression(n.third, func(value int) int {
+				statement := a.node(18, "for update")
+				a.b.nodes[statement-1].left = value
+				return a.sequence(statement, a.resume(step))
+			})
+		})
+		stepFunction := a.function(false, func(_ int) int {
+			execute := a.statement(n.fourth, func() int { return a.resume(advance) })
+			if n.right == 0 {
+				return execute
+			}
+			return a.expression(n.right, func(condition int) int { return a.branch(condition, execute, a.resume(done)) })
+		})
+		return a.statement(n.left, func() int {
+			return a.sequence(a.declaration(step, stepFunction), a.sequence(a.declaration(advance, advanceFunction), a.resume(step)))
+		})
 	})
 	a.b.nodes[id-1] = irNode{kind: 12, token: n.token, name: a.b.text("scope"), children: body}
 	return id
