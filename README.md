@@ -106,6 +106,7 @@ Runtime performance:
 | Object valueOf, 1M numeric conversions | 121 ms | 122 ms | 0.99x |
 | Intl.Segmenter, 100 word-segmentation calls and full traversal | 4.14 ms | 2.59 ms | 0.63x |
 | Intl.DisplayNames, 6K region-name lookups | 7.64 ms | 13.70 ms | 1.79x |
+| Cached list formatters, 10K three-element lists across four locales and all types/styles | 4.31 ms | 10.40 ms | 2.41x |
 | ReadableStream, create and drain 1K numbers | 1.80 ms | 0.220 ms | 0.12x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | 0.50x |
 | WritableStream, queue and complete 1K numeric writes | 5.11 ms | 0.658 ms | 0.13x |
@@ -126,7 +127,7 @@ Runtime performance:
 
 </details>
 
-UTF-8 roundtrips and gzip are encouraging in these workloads. Buffered Response BYOB reads are close to Node, but small-chunk streams, queued writes, and configured collation comparisons remain slower. Local date-field reads and Chinese calendar formatting are still much slower than Node.
+UTF-8 roundtrips, gzip, and list formatting are encouraging in these workloads. Buffered Response BYOB reads are close to Node, but small-chunk streams, queued writes, and configured collation comparisons remain slower. Local date-field reads and Chinese calendar formatting are still much slower than Node.
 
 Compilation times:
 
