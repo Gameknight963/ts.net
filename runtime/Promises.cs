@@ -160,6 +160,11 @@ public static partial class Js
             var intrinsic = new JsPromise();
             return new PromiseCapability { Promise = intrinsic, Intrinsic = new PromiseResolvingFunctions(intrinsic) };
         }
+        return NewCustomPromiseCapability(constructor);
+    }
+    // Isolate the executor's closure so intrinsic promises do not allocate it.
+    static PromiseCapability NewCustomPromiseCapability(object constructor)
+    {
         if (constructor is not JsFunction function || !function.CanInitializeDerived) throw new InvalidOperationException("Promise receiver is not a constructor");
         object resolve = Undefined, reject = Undefined;
         var executor = new JsFunction((FunctionBody)(args =>
