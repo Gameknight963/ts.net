@@ -762,8 +762,12 @@ internal static partial class CompilerFunctions
 
             if (is_text(op, text_and, c) || is_text(op, text_or, c))
             {
-                int done = b.label(); il_as(n.left, n.type, c, b); b.op(0x25); b.truth(n.type, c);
-                b.emit(is_text(op, text_and, c) ? 0x39 : 0x3a, done); b.op(0x26); il_as(n.right, n.type, c, b); b.mark(done);
+                int keep_left = b.label(), done = b.label();
+                int left_type = get_node(n.left, c).type;
+                il_expression(n.left,c,b); b.op(0x25); b.truth(left_type,c);
+                b.emit(is_text(op,text_and,c) ? 0x39 : 0x3a,keep_left);
+                b.op(0x26); il_as(n.right,n.type,c,b); b.emit(0x38,done);
+                b.mark(keep_left); b.convert(left_type,n.type,c); b.mark(done);
             }
             else if (is_text(op, text_strict_equal, c) || is_text(op, text_strict_not_equal, c) || il_is_loose_equality(op, c))
             {
