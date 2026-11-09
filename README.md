@@ -93,11 +93,11 @@ Runtime performance:
 | Create/read a two-field object in a 100K-iteration loop, with a read-only Reflect alias in the program | 0.0706 ms | 0.0717 ms | 1.02x |
 | Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | 0.48x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 6.04 ms | 1.04 ms | 0.17x |
-| Construct and run a chain of 10K handlers | 12 ms | 1 ms | 0.08x |
-| Create 10K resolved promises, collect with all, and sum results | 4.24 ms | 0.512 ms | 0.12x |
+| Construct and run a chain of 10K handlers | 4.87 ms | 0.338 ms | 0.07x |
+| Create 10K resolved promises, collect with all, and sum results | 3.76 ms | 0.515 ms | 0.14x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
-| Sum 1K values in a loop, awaiting each value | 0.384 ms | 0.047 ms | 0.12x |
-| Sum 1K values with an await in try and an increment in finally each iteration | 0.860 ms | 0.092 ms | 0.11x |
+| Sum 1K values in a loop, awaiting each value | 0.194 ms | 0.0468 ms | 0.24x |
+| Sum 1K values with an await in try and an increment in finally each iteration | 0.274 ms | 0.0504 ms | 0.18x |
 | Traverse 1K array values with for-await-of and sum them | 0.737 ms | 0.126 ms | 0.17x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 8 ms | 1 ms | 0.07x |
 | Numeric loop, 20M iterations | 19 ms | 19 ms | 0.99x |
@@ -134,7 +134,7 @@ Runtime performance:
 
 </details>
 
-The self-returning function, Promise batch, numeric join, map/filter, reduction, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric joins, map/filter, and reductions look much better, while promises and JSON serialization still need substantial work.
+The self-returning function, Promise chain and batch, two 1K-value await loops, numeric join, map/filter, reduction, JSON serialization, and Reflect-alias rows use Release builds, one second of warmup, and medians from seven fresh processes, excluding startup and compilation. Numeric joins, map/filter, and reductions look much better, while promises and JSON serialization still need substantial work.
 
 Compilation times:
 
