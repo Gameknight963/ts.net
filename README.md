@@ -120,10 +120,13 @@ Runtime performance:
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
+| Cached date formatter, 1K daily UTC dates in 2024, Gregorian calendar | 0.312 ms | 1.22 ms | 3.90x |
+| Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | 0.59x |
+| Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
 
 </details>
 
-UTF-8 roundtrips and gzip are encouraging in these workloads. Buffered Response BYOB reads are close to Node, but small-chunk streams, queued writes, and configured collation comparisons remain slower. Local date-field reads are still much slower than Node.
+UTF-8 roundtrips and gzip are encouraging in these workloads. Buffered Response BYOB reads are close to Node, but small-chunk streams, queued writes, and configured collation comparisons remain slower. Local date-field reads and Chinese calendar formatting are still much slower than Node.
 
 Compilation times:
 
