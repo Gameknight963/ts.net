@@ -23,7 +23,7 @@ public static partial class Js
             object Read(string key)=>options==null ? Undefined : options.Get(key);
             string Option(string key,string fallback){object value=Read(key);return IsUndefined(value) ? fallback : StringValue(value);}
             var numberOptions=new JsDynamicObject();
-            object matcher=Read("localeMatcher");if(!IsUndefined(matcher))numberOptions.Set("localeMatcher",matcher);
+            object matcher=Read("localeMatcher");if(!IsUndefined(matcher))numberOptions.Set("localeMatcher",StringValue(matcher));
             IntlLocaleMatcher(numberOptions);
             object system=Read("numberingSystem");if(!IsUndefined(system))numberOptions.Set("numberingSystem",system);
             var settings=new NumberLocaleSettings(locales,numberOptions);locale=settings.localeName.Length==0 ? "en-US" : settings.localeName;numberingSystem=settings.numberingSystem;

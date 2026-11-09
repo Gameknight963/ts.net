@@ -16,3 +16,10 @@ const derived=new Derived('en-US',{style:'digital'});console.log(derived instanc
 const frozen=Object.freeze(new Intl.DurationFormat('en-US',{style:'digital'}));console.log('frozen',frozen.format({hours:1}));
 const parts=f.formatToParts({hours:1});parts[0].value='changed';console.log('fresh',f.formatToParts({hours:1})[0].value!=='changed');
 console.log('supported',Intl.DurationFormat.supportedLocalesOf(['en-US','de-DE','xx-YY']).join(','));
+
+trace.length=0;let matcherCalls=0;
+const matcher={toString(){trace.push('matcher value');matcherCalls++;return matcherCalls===1 ? 'lookup' : 'bad';}};
+const digits={toString(){trace.push('numbers value');return 'latn';}};
+const style={toString(){trace.push('style value');return 'digital';}};
+const coerced=new Intl.DurationFormat('en-US',{localeMatcher:matcher,numberingSystem:digits,style} as any);
+console.log('option coercion',coerced.format({seconds:1}),trace.join(','),matcherCalls);
