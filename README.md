@@ -108,6 +108,8 @@ Runtime performance:
 | Intl.DisplayNames, 6K region-name lookups | 7.64 ms | 13.70 ms | 1.79x |
 | Cached list formatters, 10K three-element lists across four locales and all types/styles | 4.31 ms | 10.40 ms | 2.41x |
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | 0.33x |
+| Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | 0.77x |
+| Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | 0.35x |
 | ReadableStream, create and drain 1K numbers | 1.80 ms | 0.220 ms | 0.12x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | 0.50x |
 | WritableStream, queue and complete 1K numeric writes | 5.11 ms | 0.658 ms | 0.13x |
@@ -128,7 +130,7 @@ Runtime performance:
 
 </details>
 
-UTF-8 roundtrips, gzip, and list formatting are encouraging in these workloads. Buffered Response BYOB reads are close to Node, but small-chunk streams, queued writes, and configured collation comparisons remain slower. Local date-field reads, Chinese calendar formatting, and compact number formatting are still much slower than Node.
+UTF-8 roundtrips, gzip, and list formatting are encouraging in these workloads. Buffered Response BYOB reads are close to Node, but small-chunk streams, queued writes, and configured collation comparisons remain slower. Local date-field reads, Chinese calendar formatting, compact number formatting, and number formatter construction are still much slower than Node.
 
 Compilation times:
 
