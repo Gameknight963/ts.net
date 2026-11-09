@@ -121,6 +121,7 @@ public static partial class Js
         result.DefineMethod("Collator", IntlCollator.Constructor);
         result.DefineMethod("NumberFormat", IntlNumberFormat.Constructor);
         result.DefineMethod("DateTimeFormat", IntlDateTimeFormat.Constructor);
+        result.DefineMethod("DurationFormat", IntlDurationFormat.Constructor);
         result.DefineMethod("Segmenter", IntlSegmenter.Constructor);
         result.DefineMethod("DisplayNames", IntlDisplayNames.Constructor);
         result.DefineMethod("ListFormat", IntlListFormat.Constructor);
