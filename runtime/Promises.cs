@@ -119,6 +119,11 @@ public static partial class Js
             try { then = obj.Get("then"); }
             catch (Exception error) { Settle(CaughtValue(error), true); return; }
             if (then is not JsFunction function) { Settle(value, false); return; }
+            EnqueueThenable(value, function);
+        }
+        // Keep the captured job state off the primitive-resolution path.
+        void EnqueueThenable(object value, JsFunction function)
+        {
             EnqueuePromiseJob(() =>
             {
                 var pair = new PromiseResolvingFunctions(this);
