@@ -118,10 +118,12 @@ Runtime performance:
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
 | Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | 0.83x |
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
+| Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
+| Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
 
 </details>
 
-UTF-8 roundtrips and gzip are encouraging in these workloads. Buffered Response BYOB reads are close to Node, but small-chunk streams, queued writes, and configured collation comparisons remain slower.
+UTF-8 roundtrips and gzip are encouraging in these workloads. Buffered Response BYOB reads are close to Node, but small-chunk streams, queued writes, and configured collation comparisons remain slower. Local date-field reads are still much slower than Node.
 
 Compilation times:
 
