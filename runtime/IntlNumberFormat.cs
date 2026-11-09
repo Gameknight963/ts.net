@@ -17,8 +17,8 @@ public static partial class Js
         internal string DecimalSeparator => settings.culture.NumberFormat.NumberDecimalSeparator;
         internal string Text(object value)
         {
-            if(!settings.CurrencyName)return settings.LocalizeDigits(LatinText(value));
-            var details=new NumberFormatAnnotations();string number=LatinText(value,false,null,details);return details.Currency.Apply(settings.LocalizeDigits(number));
+            if(!settings.CurrencyName && !settings.UsesNativeUnit)return settings.LocalizeDigits(LatinText(value));
+            var details=new NumberFormatAnnotations();string number=LatinText(value,false,null,details);return details.Apply(settings.LocalizeDigits(number));
         }
         string LatinText(object value, bool includeAffix = true, List<string> compactLabels = null, NumberFormatAnnotations details = null)
         {
@@ -31,7 +31,7 @@ public static partial class Js
         internal object Parts(object value)
         {
             var compactLabels=settings.UsesNativeCompact ? new List<string>() : null;
-            var details=settings.CurrencyName ? new NumberFormatAnnotations() : null;
+            var details=settings.CurrencyName || settings.UsesNativeUnit ? new NumberFormatAnnotations() : null;
             string text = LatinText(value, false,compactLabels,details);
             var info = settings.culture.NumberFormat;
             var result = new JsArray(0);
@@ -41,7 +41,9 @@ public static partial class Js
                 if(type=="literal" && previousLiteral!=null){previousLiteral.Set("value",(string)previousLiteral.Get("value")+contents);return;}
                 var part = new JsDynamicObject();previousLiteral=type=="literal" ? part : null; part.DefineOwn("type", type); part.DefineOwn("value", type is "integer" or "fraction" or "exponentInteger" ? settings.LocalizeDigits(contents) : contents); result.Append(part);
             }
-            details?.Currency.Parts(true,Part);
+            details?.Currency?.Parts(true,Part);
+            details?.Unit?.Parts(true,Part);
+            if(details?.Unit?.OmitNumber==true)text="";
             int position = 0; bool fraction = false, exponent = false;
             while (position < text.Length)
             {
@@ -78,8 +80,9 @@ public static partial class Js
                 }
                 else { Part("literal", text.Substring(position, 1)); position++; }
             }
-            details?.Currency.Parts(false,Part);
-            if (settings.style == "unit") { var affix = settings.UnitAffix(text); if (affix.Gap.Length != 0) Part("literal", affix.Gap); Part("unit", affix.Name); }
+            details?.Currency?.Parts(false,Part);
+            details?.Unit?.Parts(false,Part);
+            if (settings.style == "unit" && !settings.UsesNativeUnit) { var affix = settings.UnitAffix(text); if (affix.Gap.Length != 0) Part("literal", affix.Gap); Part("unit", affix.Name); }
             return result;
         }
         internal object Options()

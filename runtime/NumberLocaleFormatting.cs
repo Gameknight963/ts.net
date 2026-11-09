@@ -74,6 +74,8 @@ public static partial class Js
         internal readonly string exponentSeparator;
         readonly NativeCompactNumbers nativeCompact;
         readonly NativeCurrencyNames nativeCurrencyNames;
+        readonly NativeUnitFormatting nativeUnit;
+        internal bool UsesNativeUnit=>nativeUnit!=null;
         internal bool UsesNativeCompact=>nativeCompact!=null;
         readonly string digitCharacters;
         internal NumberLocaleSettings(object locales, object optionValue)
@@ -293,7 +295,7 @@ public static partial class Js
             if(nativeCompact!=null && culture.TwoLetterISOLanguageName=="ar" && culture.NumberFormat.NaNSymbol=="\u0644\u064a\u0633\u00a0\u0631\u0642\u0645") {
                 culture=(CultureInfo)culture.Clone();culture.NumberFormat.NaNSymbol="\u0644\u064a\u0633\u00a0\u0631\u0642\u0645\u064b\u0627";
             }
-            if (style == "unit" && culture.Name is not ("en" or "en-US")) throw new NotSupportedException("Unit formatting currently supports US English");
+            if (style == "unit" && culture.Name is not ("en" or "en-US")) nativeUnit=new NativeUnitFormatting(culture.Name,unit,unitDisplay,numberingSystem);
             minimumGrouping = groupingOption is "min2" || groupingOption is "auto" && culture.Name is "es" or "es-ES" or "pl" or "pl-PL";
             minimumGroupingWidth = int.MaxValue;
             if (minimumGrouping)
@@ -452,8 +454,8 @@ public static partial class Js
         internal string LocalizeDigits(string text) => LocalizeNumberDigits(text, digitCharacters);
         internal string Format<T>(T value, bool finite) where T : struct, IFormattable
         {
-            if(!CurrencyName)return LocalizeDigits(FormatLatin(value,finite));
-            var details=new NumberFormatAnnotations();string number=FormatLatin(value,finite,false,null,details);return details.Currency.Apply(LocalizeDigits(number));
+            if(!CurrencyName && !UsesNativeUnit)return LocalizeDigits(FormatLatin(value,finite));
+            var details=new NumberFormatAnnotations();string number=FormatLatin(value,finite,false,null,details);return details.Apply(LocalizeDigits(number));
         }
         internal string FormatLatin<T>(T value, bool finite, bool includeAffix = true, List<string> compactLabels = null, NumberFormatAnnotations details = null) where T : struct, IFormattable
         {
@@ -511,6 +513,8 @@ public static partial class Js
                 }
             }
             var namePattern=nativeCurrencyNames?.Pattern(result,notationExponent,culture.NumberFormat,finite);
+            var unitPattern=nativeUnit?.Pattern(result,notationExponent,culture.NumberFormat,finite);
+            if(details!=null)details.Unit=unitPattern;
             if(finite && nativeCompact!=null)result=nativeCompact.Apply(result,notationExponent,culture.NumberFormat,compactLabels);
             else if (finite && notation == "compact") { string compact = CompactLabel(notationExponent); if (compact.Length != 0) result += (LongCompact ? " " : "") + compact; }
             else if (finite && notation != "standard")
@@ -519,6 +523,7 @@ public static partial class Js
                 namePattern??=CurrencyNamePattern.English(CurrencyNameAffix(result));if(details!=null)details.Currency=namePattern;
                 return includeAffix ? namePattern.Apply(result) : result;
             }
+            if(unitPattern!=null)return includeAffix ? unitPattern.Apply(result) : result;
             if (style == "unit") { if (!includeAffix) return result; var affix = UnitAffix(result); return result + affix.Gap + affix.Name; }
             if (style == "decimal") return result;
             var info = culture.NumberFormat;

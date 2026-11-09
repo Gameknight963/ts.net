@@ -20,7 +20,12 @@ public static partial class Js
             if(NameStart+NameLength<text.Length)add("literal",text[(NameStart+NameLength)..]);
         }
     }
-    sealed class NumberFormatAnnotations {internal CurrencyNamePattern Currency;}
+    sealed class NumberFormatAnnotations
+    {
+        internal CurrencyNamePattern Currency;
+        internal UnitAffixPattern Unit;
+        internal string Apply(string number)=>Currency!=null ? Currency.Apply(number) : Unit.Apply(number);
+    }
     sealed class NativeCurrencyNames
     {
         [StructLayout(LayoutKind.Sequential)] struct Position {internal int Field,Begin,End;}
