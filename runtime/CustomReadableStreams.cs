@@ -30,6 +30,7 @@ public static partial class Js
         JsFunction pull, cancel, size;
         bool started, pulling, pullAgain, closeRequested;
         internal CustomStreamReader Reader;
+        internal bool Disturbed;
         internal bool PipeReadable => state == 0;
         internal bool CanTransformClose => state == 0 && !closeRequested;
         internal bool TransformWantsPull => state == 0 && !closeRequested && ((Reader?.Pending.Count ?? 0) > 0 || highWaterMark > totalSize);
@@ -123,6 +124,7 @@ public static partial class Js
         }
         internal JsPromise Read(CustomStreamReader reader)
         {
+            Disturbed = true;
             var result = new JsPromise();
             if (state == 2) result.Settle(error,true);
             else if (chunks.TryDequeue(out var chunk)) {
@@ -141,6 +143,7 @@ public static partial class Js
         }
         internal JsPromise Cancel(object reason)
         {
+            Disturbed = true;
             if (state == 1) return BodyOperation(() => Undefined);
             if (state == 2) {var failed = new JsPromise();failed.Settle(error,true);return failed;}
             var operation = cancel;var receiver = source;

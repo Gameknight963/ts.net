@@ -20,6 +20,7 @@ public static partial class Js
             this.source = source;this.destination = destination;this.preventAbort = preventAbort;this.preventCancel = preventCancel;this.preventClose = preventClose;this.signal = signal;
             reader = GetDefaultStreamReader(source,Undefined);writer = destination.GetWriter();
             if (source is BufferedBody body) body.Disturbed = true;
+            else if (source is CustomReadableStream stream) stream.Disturbed = true;
         }
         bool SourceReadable => source is CustomReadableStream stream ? stream.PipeReadable : !((BufferedBody)source).Closed;
         JsPromise ReaderClosed => reader is CustomStreamReader custom ? custom.ClosedPromise : ((BufferedBodyReader)reader).ClosedPromise;

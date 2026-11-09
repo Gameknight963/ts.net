@@ -10,12 +10,16 @@ public static partial class Js
         internal bool Redirected;
         internal HeadersValue Headers;
         internal BufferedBody Body;
+        internal CustomReadableStream StreamBody;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)ResponseConstructors.Value.Get("prototype");
     }
     static ResponseValue RequireResponse(object receiver) => receiver as ResponseValue ?? throw new InvalidOperationException("Response receiver required");
     static ResponseValue CreateResponse(object[] args, string contentType = null)
     {
-        var body = ExtractResponseBody(FunctionArgument(args,0));
+        object input = FunctionArgument(args,0);
+        var stream = input as CustomReadableStream;
+        if (stream != null && (stream.Disturbed || StreamLocked(stream))) throw new InvalidOperationException("Body stream has already been consumed or locked");
+        var body = ExtractResponseBody(stream == null ? input : null);
         object options = FunctionArgument(args,1);
         if (!IsNullish(options) && options is not TsObject) throw new InvalidOperationException("Response options must be an object");
         var settings = options as TsObject;
@@ -27,9 +31,10 @@ public static partial class Js
         result.StatusText = IsUndefined(text) ? "" : HeaderByteString(text);
         foreach (char character in result.StatusText)
             if (character < 32 && character != '\t' || character == 127) throw new InvalidOperationException("Invalid response status text");
-        if (body.Bytes != null) {
+        if (body.Bytes != null || stream != null) {
             if (result.Status is 204 or 205 or 304) throw new InvalidOperationException("This response status cannot have a body");
-            result.Body = body.Stream ?? new BufferedBody(body.Bytes);
+            if (stream != null) result.StreamBody = stream;
+            else result.Body = body.Stream ?? new BufferedBody(body.Bytes);
             string type = contentType ?? body.ContentType;
             if (type != null && !result.Headers.Fields.ContainsKey("content-type")) result.Headers.Append("content-type",type);
         }
@@ -44,6 +49,15 @@ public static partial class Js
     static object CloneResponse(object receiver)
     {
         var source = RequireResponse(receiver);
+        if (source.StreamBody != null) {
+            if (source.StreamBody.Disturbed || StreamLocked(source.StreamBody)) throw new InvalidOperationException("Response body cannot be cloned after use or while locked");
+            var branches = TeeCustomStream(source.StreamBody);
+            source.StreamBody = (CustomReadableStream)Get(branches,"0");
+            return new ResponseValue {
+                Status=source.Status, StatusText=source.StatusText, Type=source.Type, Url=source.Url, Redirected=source.Redirected,
+                Headers=CopyResponseHeaders(source.Headers), StreamBody=(CustomReadableStream)Get(branches,"1")
+            };
+        }
         if (source.Body != null && (source.Body.Disturbed || source.Body.Locked)) throw new InvalidOperationException("Response body cannot be cloned after use or while locked");
         source.Body?.Tee?.BranchRead();
         return new ResponseValue {
@@ -51,13 +65,18 @@ public static partial class Js
             Headers = CopyResponseHeaders(source.Headers), Body = source.Body == null ? null : new BufferedBody(source.Body.Bytes)
         };
     }
-    static object ConsumeResponse(object receiver, string kind) => BodyOperation(() => {
+    static object ConsumeResponse(object receiver, string kind) => BodyPromiseOperation(() => {
         var response = RequireResponse(receiver);
-        return ConsumeHttpBody(response.Body,response.Headers,kind);
+        if (response.StreamBody != null) return ConsumeStreamBody(response.StreamBody,response.Headers,kind);
+        return BodyOperation(() => ConsumeHttpBody(response.Body,response.Headers,kind));
     });
     static object ConsumeHttpBody(BufferedBody body, HeadersValue headers, string kind)
     {
         byte[] bytes = body?.Consume() ?? Array.Empty<byte>();
+        return ConvertHttpBody(bytes,headers,kind);
+    }
+    static object ConvertHttpBody(byte[] bytes, HeadersValue headers, string kind)
+    {
         if (kind == "text") return ResponseText(bytes);
         if (kind == "json") return new JsonParser(ResponseText(bytes),false).Parse().Value;
         if (kind == "formData") return ParseHttpFormData(bytes,headers);
@@ -78,7 +97,7 @@ public static partial class Js
             prototype.DefineMethod("constructor",this); prototype.DefineMethod(PropertyKey(ToStringTagSymbol),"Response",false);
             void Getter(string name, Func<ResponseValue,object> read) => prototype.DefineAccessor(name,new CollectionMethod("get " + name,0,(receiver,_) => read(RequireResponse(receiver))),1);
             Getter("status",value => (double)value.Status); Getter("statusText",value => value.StatusText); Getter("ok",value => BoxBoolean(value.Status >= 200 && value.Status <= 299));
-            Getter("headers",value => value.Headers); Getter("body",value => value.Body); Getter("bodyUsed",value => BoxBoolean(value.Body?.Disturbed ?? false));
+            Getter("headers",value => value.Headers); Getter("body",value => (object)value.StreamBody ?? value.Body); Getter("bodyUsed",value => BoxBoolean(value.StreamBody?.Disturbed ?? value.Body?.Disturbed ?? false));
             Getter("url",value => value.Url); Getter("redirected",value => BoxBoolean(value.Redirected)); Getter("type",value => value.Type);
             prototype.DefineOwn("clone",new CollectionMethod("clone",0,(receiver,_) => CloneResponse(receiver)));
             foreach (string kind in new[] {"text","json","arrayBuffer","blob","bytes","formData"})
