@@ -31,8 +31,8 @@ public static partial class Js
             // loop then awaits the resulting iterator-result promise separately.
             value.Then(new PromiseReaction(null, null, null, (resolved, rejected) =>
             {
-                if (rejected) { if (more) CloseIterationAt(cursor.Source, unchecked((int)cursor.Position), true); pair.Reject.InvokeWithReceiver(Undefined, new[] { resolved }); }
-                else pair.Resolve.InvokeWithReceiver(Undefined, new[] { IteratorResult(resolved, !more) });
+                if (rejected) { if (more) CloseIterationAt(cursor.Source, unchecked((int)cursor.Position), true); pair.RejectValue(resolved); }
+                else pair.ResolveValue(IteratorResult(resolved, !more));
             }));
         }
         catch (Exception error) { if (more) CloseIterationAt(cursor.Source, unchecked((int)cursor.Position), true); pair.RejectError(error); }
@@ -67,7 +67,7 @@ public static partial class Js
         {
             TsObject iterator = IterationObjectAt(cursor.Source, unchecked((int)cursor.Position));
             object method = iterator == null ? Undefined : iterator.Get("return");
-            if (IsNullish(method)) pair.Resolve.InvokeWithReceiver(Undefined, new[] { IteratorResult(Undefined, true) });
+            if (IsNullish(method)) pair.ResolveValue(IteratorResult(Undefined, true));
             else
             {
                 if (method is not JsFunction function) throw new InvalidOperationException("Iterator return is not callable");
@@ -76,8 +76,8 @@ public static partial class Js
                 var value = (JsPromise)PromiseResolve(RuntimeNamespaces.Promise, Get(returned, "value"));
                 value.Then(new PromiseReaction(null, null, null, (resolved, rejected) =>
                 {
-                    if (rejected) pair.Reject.InvokeWithReceiver(Undefined, new[] { resolved });
-                    else pair.Resolve.InvokeWithReceiver(Undefined, new[] { IteratorResult(resolved, done) });
+                    if (rejected) pair.RejectValue(resolved);
+                    else pair.ResolveValue(IteratorResult(resolved, done));
                 }));
             }
         }
