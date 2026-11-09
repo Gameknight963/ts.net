@@ -85,23 +85,7 @@ public static partial class Js
             prototype.DefineMethod("getTimeZones", new CollectionMethod("getTimeZones", 0, static (receiver, _) => LocaleTimeZones(RequireLocale(receiver))));
             prototype.DefineMethod("maximize", new CollectionMethod("maximize", 0, static (receiver, _) => LocaleSubtags(RequireLocale(receiver), false)));
             prototype.DefineMethod("minimize", new CollectionMethod("minimize", 0, static (receiver, _) => LocaleSubtags(RequireLocale(receiver), true)));
-            prototype.DefineMethod("getCalendars", new CollectionMethod("getCalendars", 0, static (receiver, _) =>
-            {
-                var locale = RequireLocale(receiver);
-                object calendar = locale.Keyword("ca");
-                if (!IsUndefined(calendar)) return new JsArray(new[] { calendar });
-                var result = new JsArray(0);
-                var names = new HashSet<string>(StringComparer.Ordinal);
-                var culture = LocaleCulture(locale.BaseName);
-                void Add(System.Globalization.Calendar value)
-                {
-                    string name = DateLocaleSettings.NativeCalendarName(value);
-                    if (name != null && names.Add(name)) result.Append(name);
-                }
-                Add(culture.DateTimeFormat.Calendar);
-                foreach (var available in culture.OptionalCalendars) Add(available);
-                return result;
-            }));
+            prototype.DefineMethod("getCalendars", new CollectionMethod("getCalendars", 0, static (receiver, _) => LocaleCalendars(RequireLocale(receiver))));
             prototype.DefineMethod("getHourCycles", new CollectionMethod("getHourCycles", 0, static (receiver, _) => LocaleHourCycles(RequireLocale(receiver))));
             prototype.DefineMethod("getTextInfo", new CollectionMethod("getTextInfo", 0, static (receiver, _) =>
             {
