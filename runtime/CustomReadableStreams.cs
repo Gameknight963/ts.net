@@ -4,12 +4,12 @@ using System.Collections.Generic;
 public static partial class Js
 {
     static bool StreamLocked(object receiver) => receiver switch {
-        CustomReadableStream stream => stream.Reader != null,
+        CustomReadableStream stream => stream.Locked,
         BufferedBody body => body.Locked,
         _ => throw new InvalidOperationException("Readable stream receiver required")
     };
     static TsObject GetDefaultStreamReader(object receiver, object options) => receiver switch {
-        CustomReadableStream stream => stream.GetReader(options),
+        CustomReadableStream stream => stream.AcquireReader(options),
         BufferedBody body => body.GetReader(options),
         _ => throw new InvalidOperationException("Readable stream receiver required")
     };
@@ -18,12 +18,12 @@ public static partial class Js
         object value = source == null ? Undefined : source.Get(name);
         return IsUndefined(value) || nullIsAbsent && value == null ? null : value as JsFunction ?? throw new InvalidOperationException("Stream callback must be callable");
     }
-    sealed class CustomReadableStream : JsDescriptorObject
+    sealed partial class CustomReadableStream : JsDescriptorObject
     {
         // 0 readable, 1 closed, 2 errored. Closing waits for queued chunks.
         int state;
         object error;
-        readonly Queue<(object Value, double Size)> chunks = new();
+        readonly LinkedList<(object Value, double Size)> chunks = new();
         double totalSize;
         readonly double highWaterMark;
         TsObject source;
@@ -34,7 +34,7 @@ public static partial class Js
         internal bool Disturbed;
         internal bool PipeReadable => state == 0;
         internal bool CanTransformClose => state == 0 && !closeRequested;
-        internal bool TransformWantsPull => state == 0 && !closeRequested && ((Reader?.Pending.Count ?? 0) > 0 || highWaterMark > totalSize);
+        internal bool TransformWantsPull => state == 0 && !closeRequested && (HasPendingReads || highWaterMark > totalSize);
         readonly TsObject controller;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : BufferedBodyMethods.Prototype;
         internal CustomReadableStream(object sourceValue, object strategyValue, double defaultHighWaterMark = 1)
@@ -62,7 +62,7 @@ public static partial class Js
                 if(!IsUndefined(allocation)) {
                     double amount=Number(allocation);
                     if(!double.IsFinite(amount) || amount<1 || amount>9007199254740991d || Math.Truncate(amount)!=amount)throw new ArgumentOutOfRangeException(nameof(sourceValue),"Invalid autoAllocateChunkSize");
-                    throw new NotSupportedException("Byte stream auto-allocation requires BYOB support");
+                    autoAllocateChunkSize = BinaryIndex(amount);
                 }
             }
             controller = ByteMode ? new ByteStreamController(this) : new CustomStreamController(this);
@@ -79,17 +79,16 @@ public static partial class Js
             object mode = options is TsObject settings ? settings.Get("mode") : Undefined;
             if (!IsUndefined(mode)) {
                 if (StringValue(mode) != "byob") throw new InvalidOperationException("Invalid reader mode");
-                if(ByteMode)throw new NotSupportedException("BYOB readers are not supported yet");
                 throw new InvalidOperationException("A default stream cannot use a BYOB reader");
             }
-            if (Reader != null) throw new InvalidOperationException("Stream is locked");
+            if (Locked) throw new InvalidOperationException("Stream is locked");
             return Reader = new CustomStreamReader(this);
         }
         internal object DesiredSize => state == 2 ? null : BoxNumber(state == 1 ? 0 : highWaterMark-totalSize);
         void ClearAlgorithms() {source = null; pull = cancel = size = null;}
         void PullIfNeeded()
         {
-            if (!started || state != 0 || closeRequested || !((Reader?.Pending.Count ?? 0) > 0 || highWaterMark > totalSize)) return;
+            if (!started || state != 0 || closeRequested || !(HasPendingReads || highWaterMark > totalSize)) return;
             if (pulling) {pullAgain = true;return;}
             pulling = true;
             object result;
@@ -104,7 +103,7 @@ public static partial class Js
         internal void Enqueue(object value)
         {
             if (state != 0 || closeRequested) throw new InvalidOperationException("Stream is not open for enqueue");
-            if(ByteMode)value=TransferByteChunk(value);
+            if(ByteMode) {EnqueueBytes(TransferByteChunk(value));return;}
             if (Reader != null && Reader.Pending.TryDequeue(out var waiting)) waiting.Settle(IteratorResult(value,false),false);
             else {
                 double amount;
@@ -113,25 +112,27 @@ public static partial class Js
                     if (!double.IsFinite(amount) || amount < 0) throw new ArgumentOutOfRangeException(nameof(value),"Invalid chunk size");
                 }
                 catch (Exception exception) {Error(CaughtValue(exception));throw;}
-                chunks.Enqueue((value,amount));totalSize += amount;
+                chunks.AddLast((value,amount));totalSize += amount;
             }
             PullIfNeeded();
         }
         internal void Close()
         {
             if (state != 0 || closeRequested) throw new InvalidOperationException("Stream is not open for close");
+            ValidateByteClose();
             closeRequested = true;
             if (chunks.Count == 0) FinishClose();
         }
         void FinishClose()
         {
-            state = 1;ClearAlgorithms();Reader?.ClosedPromise.Settle(Undefined,false);
+            state = 1;ClearAlgorithms();Reader?.ClosedPromise.Settle(Undefined,false);ByobReader?.ClosedPromise.Settle(Undefined,false);
             if (Reader != null) while (Reader.Pending.TryDequeue(out var pending)) pending.Settle(IteratorResult(Undefined,true),false);
         }
         internal void Error(object reason)
         {
             if (state != 0) return;
             state = 2;error = reason;chunks.Clear();totalSize = 0;ClearAlgorithms();
+            ClearPullIntos(reason,true);ByobReader?.ClosedPromise.Settle(reason,true);
             Reader?.ClosedPromise.Settle(reason,true);
             if (Reader != null) while (Reader.Pending.TryDequeue(out var pending)) pending.Settle(reason,true);
         }
@@ -140,18 +141,18 @@ public static partial class Js
             Disturbed = true;
             var result = new JsPromise();
             if (state == 2) result.Settle(error,true);
-            else if (chunks.TryDequeue(out var chunk)) {
+            else if (TakeChunk(out var chunk)) {
                 totalSize = Math.Max(0,totalSize-chunk.Size);
                 if (closeRequested && chunks.Count == 0) FinishClose();else PullIfNeeded();
                 result.Settle(IteratorResult(chunk.Value,false),false);
             }
             else if (state == 1) result.Settle(IteratorResult(Undefined,true),false);
-            else {reader.Pending.Enqueue(result);PullIfNeeded();}
+            else {reader.Pending.Enqueue(result);if(autoAllocateChunkSize>0)AllocateDefaultRead(result);PullIfNeeded();}
             return result;
         }
         internal JsPromise CancelUnlocked(object reason)
         {
-            if (Reader != null) throw new InvalidOperationException("Stream is locked");
+            if (Locked) throw new InvalidOperationException("Stream is locked");
             return Cancel(reason);
         }
         internal JsPromise Cancel(object reason)
@@ -160,7 +161,7 @@ public static partial class Js
             if (state == 1) return BodyOperation(() => Undefined);
             if (state == 2) {var failed = new JsPromise();failed.Settle(error,true);return failed;}
             var operation = cancel;var receiver = source;
-            chunks.Clear();totalSize = 0;FinishClose();
+            chunks.Clear();totalSize = 0;ClearPullIntos(Undefined,false);FinishClose();
             var result = new JsPromise();
             try {
                 object completion = operation == null ? Undefined : operation.InvokeWithReceiver(receiver,new[] {reason});
@@ -186,7 +187,7 @@ public static partial class Js
         internal void Release()
         {
             if (Owner == null) return;
-            Owner.Reader = null;Owner = null;
+            Owner.ReleasePullIntos();Owner.Reader = null;Owner = null;
             var reason = new JsCaughtError("TypeError","Reader lock has been released");
             ClosedPromise.Settle(reason,true);
             ClosedPromise = new JsPromise {Handled = true};

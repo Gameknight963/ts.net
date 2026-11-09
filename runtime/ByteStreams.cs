@@ -35,7 +35,7 @@ public static partial class Js
             var value=new JsClassInstance {ParentPrototype=DefaultClassObjectPrototype};
             value.DefineMethod(PropertyKey(ToStringTagSymbol),"ReadableByteStreamController",false);
             value.DefineAccessor("desiredSize",new CollectionMethod("get desiredSize",0,(receiver,_)=>Require(receiver).Owner.DesiredSize),1);
-            value.DefineAccessor("byobRequest",new CollectionMethod("get byobRequest",0,(receiver,_)=>{Require(receiver);return null;}),1);
+            value.DefineAccessor("byobRequest",new CollectionMethod("get byobRequest",0,(receiver,_)=>Require(receiver).Owner.ByobRequest),1);
             value.DefineOwn("enqueue",new CollectionMethod("enqueue",1,(receiver,args)=>{Require(receiver).Owner.Enqueue(FunctionArgument(args,0));return Undefined;}));
             value.DefineOwn("close",new CollectionMethod("close",0,(receiver,_)=>{Require(receiver).Owner.Close();return Undefined;}));
             value.DefineOwn("error",new CollectionMethod("error",0,(receiver,args)=>{Require(receiver).Owner.Error(FunctionArgument(args,0));return Undefined;}));

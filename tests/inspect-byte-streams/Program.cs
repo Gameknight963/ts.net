@@ -25,3 +25,31 @@ int status=Js.Run(()=>{
 });
 if(status!=0 || !complete)throw new Exception("Byte stream transfer check did not complete");
 Console.WriteLine("PASS byte stream enqueue transfers ownership without copying the backing byte array");
+complete=false;
+status=Js.Run(()=>{
+    var input=(TsObject)((JsFunction)Js.BuiltinNamespace("Uint8Array")).Construct(new object[]{8d});
+    var sourceBuffer=(TsObject)input.Get("buffer");
+    var storage=sourceBuffer.GetType().GetField("Bytes",BindingFlags.Instance|BindingFlags.NonPublic)!;
+    var original=(byte[])storage.GetValue(sourceBuffer)!;
+    var source=new JsDynamicObject();source.Set("type","bytes");
+    source.Set("pull",new JsFunction((FunctionBody)(args=>{
+        var controller=(TsObject)args[0];var request=(TsObject)controller.Get("byobRequest");var view=(TsObject)request.Get("view");
+        foreach(double invalid in new[]{-1d,double.PositiveInfinity}) {
+            bool rejected=false;try{Call(request,"respond",invalid);}catch(InvalidOperationException){rejected=true;}
+            if(!rejected || request.Get("view")==null)throw new Exception("Invalid BYOB count changed the pending request");
+        }
+        if(!ReferenceEquals(original,storage.GetValue(view.Get("buffer"))))throw new Exception("BYOB request copied the caller buffer");
+        Js.IndexSet(view,0d,42d);Call(request,"respond",1d);Call(controller,"close");return Js.Undefined;
+    }),null,"pull",1));
+    var stream=(TsObject)((JsFunction)Js.BuiltinNamespace("ReadableStream")).Construct(new object[]{source});
+    var options=new JsDynamicObject();options.Set("mode","byob");var reader=(TsObject)Call(stream,"getReader",options);
+    var read=(TsObject)Call(reader,"read",input);
+    if((double)sourceBuffer.Get("byteLength")!=0)throw new Exception("BYOB read did not detach the caller buffer");
+    Call(read,"then",new JsFunction((FunctionBody)(args=>{
+        var view=(TsObject)((TsObject)args[0]).Get("value");
+        if(!ReferenceEquals(original,storage.GetValue(view.Get("buffer"))))throw new Exception("BYOB response copied the caller buffer");
+        if((double)Js.IndexGet(view,0d)!=42)throw new Exception("BYOB bytes changed");complete=true;return Js.Undefined;
+    }),null,"read",1));
+});
+if(status!=0 || !complete)throw new Exception("BYOB transfer check did not complete");
+Console.WriteLine("PASS BYOB requests and responses preserve the caller's backing byte array");
