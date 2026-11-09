@@ -66,3 +66,20 @@ console.log('rest',input.map(rest).join(','));
 console.log('default index',input.map((value:number,index=42)=>value+index).join(','));
 try {input.map(value=>{if(value===2)throw new Error('mapper');return value;});}
 catch(error){console.log('callback error',(error as Error).message);}
+const numericTruth = [0, -0, NaN, 2, 3];
+console.log('numeric predicates', numericTruth.filter(value=>value).join(','),
+ numericTruth.every(value=>value),numericTruth.some(value=>value),
+ numericTruth.find(value=>value),numericTruth.findIndex(value=>value));
+console.log('missing numeric result',input.filter((value:number):number|undefined=>value===2?undefined:value).join(','));
+const findMutation=[1,2,3];
+console.log('find original value',findMutation.find(value=>{findMutation[0]=99;return value;}),findMutation[0]);
+const predicateGetter=[1,2,3];
+let predicateReads=0;
+console.log('predicate getter',predicateGetter.every((value,index)=>{
+ if(index===0)Object.defineProperty(predicateGetter,'1',{get(){predicateReads++;return 0;},configurable:true});
+ return value;
+}),predicateReads);
+const visitRemoved=[1,2,3];
+let removalVisits=0;
+visitRemoved.find((value,index)=>{removalVisits++;if(index===0)visitRemoved.length=1;return value===undefined;});
+console.log('find removed slot',removalVisits);

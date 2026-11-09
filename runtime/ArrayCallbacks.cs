@@ -46,18 +46,35 @@ public static partial class Js
             bool backwards = kind is ArrayCallbackKind.FindLast or ArrayCallbackKind.FindLastIndex;
             TsObject result = kind is ArrayCallbackKind.Map or ArrayCallbackKind.Filter ? ArraySpeciesCreate(source, kind == ArrayCallbackKind.Map ? length : 0) : null;
             bool numericCallback = callback.SupportsArrayNumber();
+            bool numericResult = numericCallback && callback.SupportsNumberResult();
+            bool testResult = kind is not ArrayCallbackKind.Map and not ArrayCallbackKind.ForEach;
             long selected = 0;
             for (long i = backwards ? length - 1 : 0; i >= 0 && i < length; i += backwards ? -1 : 1)
             {
                 // Callbacks can replace storage, remove elements, or install
                 // getters. Recheck the current element on every iteration.
-                if (numericCallback && (kind is ArrayCallbackKind.Map or ArrayCallbackKind.Filter) &&
+                if (numericCallback &&
                     source is NumberArray numbers && !numbers.HasIndexedAccessors && numbers.TryPacked(i + 1) is { } packed)
                 {
                     double numberValue = packed[(int)i];
-                    object numericMapped = callback.InvokeArrayNumber(thisValue, numberValue, i, source);
+                    object numericMapped;
+                    bool truth;
+                    if (numericResult)
+                    {
+                        double? mappedNumber = callback.InvokeNumber2(numberValue, i);
+                        numericMapped = kind == ArrayCallbackKind.Map ? BoxNumber(mappedNumber) : Undefined;
+                        truth = testResult && NumberTruthy(mappedNumber);
+                    }
+                    else
+                    {
+                        numericMapped = callback.InvokeArrayNumber(thisValue, numberValue, i, source);
+                        truth = testResult && Truthy(numericMapped);
+                    }
+                    if (find && truth) return kind is ArrayCallbackKind.FindIndex or ArrayCallbackKind.FindLastIndex ? (object)(double)i : BoxNumber(numberValue);
                     if (kind == ArrayCallbackKind.Map) ArraySpeciesSet(result, i, numericMapped);
-                    else if (Truthy(numericMapped)) ArraySpeciesSet(result, selected++, BoxNumber(numberValue));
+                    else if (kind == ArrayCallbackKind.Filter && truth) ArraySpeciesSet(result, selected++, BoxNumber(numberValue));
+                    else if (kind == ArrayCallbackKind.Every && !truth) return BoxBoolean(false);
+                    else if (kind == ArrayCallbackKind.Some && truth) return BoxBoolean(true);
                     continue;
                 }
                 object value;

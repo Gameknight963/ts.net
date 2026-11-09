@@ -76,6 +76,38 @@ var nullableRightResult = Js.CallMethod(Js.Get(nullableReduceInput,"reduceRight"
 if(!ReferenceEquals(nullableRightResult,Js.Undefined))throw new Exception("Unboxed reduceRight lost its undefined result");
 Console.WriteLine("PASS nullable numeric reduction state and undefined results");
 
+var smallCallbackInput=new NumberArray(1);
+var largeCallbackInput=new NumberArray(1000);
+smallCallbackInput.SetNumberAt(0,1);
+for(int i=0;i<1000;i++)largeCallbackInput.SetNumberAt(i,1);
+var numericPredicate=new NumericPredicate();
+object[] predicateArguments={numericPredicate};
+foreach(string name in new[]{"forEach","every"})
+{
+    var callbackMethod=Js.Get(smallCallbackInput,name);
+    for(int i=0;i<100;i++){
+        Js.CallMethod(callbackMethod,smallCallbackInput,predicateArguments);
+        Js.CallMethod(callbackMethod,largeCallbackInput,predicateArguments);
+    }
+    before=GC.GetAllocatedBytesForCurrentThread();
+    for(int i=0;i<100;i++)Js.CallMethod(callbackMethod,smallCallbackInput,predicateArguments);
+    long smallAllocation=GC.GetAllocatedBytesForCurrentThread()-before;
+    before=GC.GetAllocatedBytesForCurrentThread();
+    for(int i=0;i<100;i++)Js.CallMethod(callbackMethod,largeCallbackInput,predicateArguments);
+    long largeAllocation=GC.GetAllocatedBytesForCurrentThread()-before;
+    if(largeAllocation!=smallAllocation)
+        throw new Exception($"Numeric {name} allocated per element: {smallAllocation}, {largeAllocation}");
+}
+Console.WriteLine("PASS numeric predicates and forEach without per-element allocations");
+
+sealed class NumericPredicate : JsFunction
+{
+    internal NumericPredicate() : base((FunctionBody)(static _=>throw new Exception("Unexpected generic predicate")),null,"numeric",1) { }
+    public override bool SupportsArrayNumber()=>true;
+    public override bool SupportsNumberResult()=>true;
+    public override double? InvokeNumber2(double? first,double? second)=>first;
+}
+
 sealed class NullableReducer : JsFunction
 {
     internal bool SawUndefined;

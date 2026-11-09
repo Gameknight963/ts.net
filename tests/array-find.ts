@@ -43,3 +43,8 @@ for (const method of [find, findIndex, findLast, findLastIndex]) {
 try {values.find(() => {throw 'predicate failure';});} catch(error) {console.log('thrown', error);}
 const mixed: (string | number)[] = ['one', 2, 'three', 4];
 console.log('type-guard', mixed.find((value): value is number => typeof value === 'number'), mixed.findLast((value): value is number => typeof value === 'number'));
+console.log('numeric backwards', [0,2,NaN,3,0].findLast(value=>value), [0,2,NaN,3,0].findLastIndex(value=>value));
+const reverseMutation=[1,2,3];
+console.log('numeric backwards mutation', reverseMutation.findLast((value,index)=>{
+ reverseMutation[index]=99;return value;
+}),reverseMutation.join(','));
