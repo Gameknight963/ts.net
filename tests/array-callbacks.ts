@@ -131,4 +131,10 @@ for (const prototype of [Array.prototype, Object.prototype]) {
     let count = 0, sum = 0;
     many.forEach(value => {count++; sum += value;});
     console.log('many sparse entries', count, sum);
+    const boundaries: number[] = [];
+    for (let i = 0; i <= 256; i++) boundaries.push(i);
+    for (let i = 0; i <= 256; i++) if (i % 31 !== 0 && i !== 256) delete boundaries[i];
+    let boundaryVisits = '';
+    boundaries.forEach((value, index) => {boundaryVisits += index + ':' + value + ';';});
+    console.log('hole search boundaries', boundaryVisits);
 }

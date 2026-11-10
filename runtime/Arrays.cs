@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 // Dense storage handles ordinary arrays. Distant indices stay sparse so a write
 // near the JavaScript length limit does not request a multi-gigabyte buffer.
@@ -344,8 +345,13 @@ public sealed partial class NumberArray : JsArray
         uint end = Math.Min(limit, numbers.Length);
         double[] dense = numbers.Dense;
         uint denseEnd = Math.Min(end, (uint)dense.Length);
-        for (uint i = start; i < denseEnd; i++)
-            if (BitConverter.DoubleToInt64Bits(dense[i]) != MissingBits) return i;
+        if (start < denseEnd)
+        {
+            // Compare payload bits: NaN and explicit undefined are present elements.
+            var slots = MemoryMarshal.Cast<double, long>(dense.AsSpan((int)start, (int)(denseEnd - start)));
+            int offset = slots.IndexOfAnyExcept(MissingBits);
+            if (offset >= 0) return start + (uint)offset;
+        }
         uint next = numbers.NextSparseIndex(start, end);
         return next < end ? next : limit;
     }
