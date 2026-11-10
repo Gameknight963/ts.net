@@ -76,6 +76,7 @@ console.log('bound', values.map(Bound, {offset: 100}).join(','));
     console.log('sparse result holes',sparseResult.length,Object.keys(sparseResult).join(','),sparseResult[0],sparseResult[9999]);
 }
 for (const prototype of [Array.prototype, Object.prototype]) {
+    const prototypeLength = Array.prototype.length;
     const source = [1];
     source.length = 6;
     source.map(value => value); // Exercise the cached absence check first.
@@ -90,6 +91,7 @@ for (const prototype of [Array.prototype, Object.prototype]) {
         console.log('prototype changes during map', visited, result.length, Object.keys(result).join(','), result[3]);
     } finally {
         delete (prototype as any)[3];
+        Array.prototype.length = prototypeLength;
     }
 }
 {
