@@ -125,3 +125,17 @@ for (const count of [0, 1, 2, 7]) {
     fail('reason');
     pending.catch(error => console.log('late rejection handler', error));
 }
+Promise.resolve(2).then((value, other = 7) => value + other).then(value => console.log('numeric handler default second', value));
+Promise.resolve(undefined as unknown as number).then((value = 5) => value + 1).then(value => console.log('numeric handler default first', value));
+Promise.resolve(3).then(() => 12).then(value => console.log('numeric handler ignores number', value));
+Promise.resolve('text').then(() => 13).then(value => console.log('numeric handler ignores text', value));
+Promise.resolve(null).then(() => 14).then(value => console.log('numeric handler ignores null', value));
+Promise.resolve({value: 4}).then(() => 15).then(value => console.log('numeric handler ignores object', value));
+Promise.reject<number>('numeric rejection').then(value => value + 1).catch(error => console.log('numeric handler forwards rejection', error));
+Promise.resolve(1).then((value): number => {
+    if (value > 0) throw new Error('numeric callback failed');
+    return value;
+}).catch(error => console.log('numeric handler exception', (error as Error).message));
+Promise.resolve(4).then(() => undefined as unknown as number).then(value => value + 1).then(value => console.log('numeric handler undefined result', Number.isNaN(value)));
+Promise.resolve(3).then(function(value): number {return value + arguments.length;}).then(value => console.log('handler sees arguments', value));
+Promise.resolve(3).then(function(this: unknown, value): number {return this === undefined ? value : 100;}).then(value => console.log('handler sees receiver', value));
