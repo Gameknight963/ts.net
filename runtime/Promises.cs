@@ -200,11 +200,22 @@ public static partial class Js
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
             if (receiver is not JsPromise promise) throw new InvalidOperationException("then requires a promise");
+            return Then(promise, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1));
+        }
+        internal object InvokeSingle(object receiver, object handler)
+        {
+            if (receiver is not JsPromise promise) throw new InvalidOperationException("then requires a promise");
+            return Then(promise, handler, Undefined);
+        }
+        static object Then(JsPromise promise, object fulfilled, object rejected)
+        {
             var capability = NewPromiseCapability(PromiseSpecies(promise));
-            promise.Then(new PromiseReaction(capability, FunctionArgument(arguments, 0) as JsFunction, FunctionArgument(arguments, 1) as JsFunction));
+            promise.Then(new PromiseReaction(capability, fulfilled as JsFunction, rejected as JsFunction));
             return capability.Promise;
         }
     }
+    public static object CallPromiseThen(object target, object receiver, object handler) => target is PromiseThenFunction method
+        ? method.InvokeSingle(SuperReceiver(receiver), handler) : CallMethod(target, receiver, new[] { handler });
     sealed class PromiseCatchFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("catch requires a receiver")), null, "catch", 1)
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments) => CallMethod(Js.Get(receiver, "then"), receiver, new[] { Undefined, FunctionArgument(arguments, 0) });

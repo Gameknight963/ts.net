@@ -83,3 +83,27 @@ const directCallbackSymbol = Symbol('direct');
 Promise.resolve(directCallbackSymbol).then(value => value).then(value => console.log('symbol callback', value === directCallbackSymbol));
 function directGenericCallback<T>(value: T): T {return value;}
 Promise.resolve('generic').then(directGenericCallback).then(value => console.log('generic callback', value));
+class SuperThenPromise extends Promise<number> {
+    read():Promise<number>{return super.then(value=>value+1);}
+}
+new SuperThenPromise(resolve=>resolve(4)).read().then(value=>console.log('super then',value));
+{
+    let gets=0,calls=0;
+    const custom={value:7,get then(){gets++;return function(this:{value:number},callback:(value:number)=>number):number{calls++;return callback(this.value)+arguments.length;};}};
+    console.log('overridden then',custom.then(value=>value+1),gets,calls);
+    const invalid:any={then:0};let effects=0;
+    try{invalid.then((effects++,()=>0));}catch(error){console.log('noncallable then',(error as Error).name,effects);}
+}
+{
+    const savedThen=Promise.prototype.then;let overrides=0;
+    (Promise.prototype as any).then=function(this:Promise<unknown>,fulfilled:any,rejected?:any):Promise<unknown>{
+        overrides++;console.log('prototype then override',arguments.length);
+        return savedThen.call(this,fulfilled,rejected);
+    };
+    const result=Promise.resolve(8).then(value=>value+1);
+    Promise.prototype.then=savedThen;
+    console.log('prototype then calls',overrides);
+    result.then(value=>console.log('prototype then result',value));
+    const borrowed={then:Promise.prototype.then};
+    try{borrowed.then(()=>0);}catch(error){console.log('borrowed then brand',(error as Error).name);}
+}
