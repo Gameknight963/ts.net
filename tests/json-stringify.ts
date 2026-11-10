@@ -71,3 +71,13 @@ show('repeated names with indentation', [escapedRecord, escapedRecord, escapedRe
 const longName = String.fromCharCode(0xd800).repeat(129);
 const longRecord: any = {}; longRecord[longName] = 1; longRecord.short = 2;
 show('long escaped name', [longRecord, longRecord]);
+for (const depth of [0, 1, 15, 16, 17, 40]) {
+    const root: any = {value: 1};
+    let leaf = root;
+    for (let i = 0; i < depth; i++) {leaf.next = {value: i}; leaf = leaf.next;}
+    show('nested shared values ' + depth, [root, root]);
+    leaf.loop = root;
+    try {JSON.stringify(root);} catch (error) {console.log('nested cycle', depth, (error as Error).name);}
+    delete leaf.loop;
+    show('shared after cycle ' + depth, [root, {value: 2}, root]);
+}

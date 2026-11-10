@@ -55,7 +55,7 @@ public static partial class Js
         readonly string gap;
         readonly StringBuilder output = new();
         readonly List<JsonWriteFrame> frames = new();
-        readonly HashSet<TsObject> active = new(ReferenceEqualityComparer.Instance);
+        HashSet<TsObject> active;
         object[] previousNames;
         KeyValuePair<string, string>[] quotedNames;
         int quotedNameCount;
@@ -105,6 +105,21 @@ public static partial class Js
             }
         }
         void Indent(int depth) { for (int i = 0; i < depth; i++) output.Append(gap); }
+        bool Enter(TsObject value)
+        {
+            if (active != null) return active.Add(value);
+            // Shallow trees need only a few identity comparisons. Deep trees
+            // switch once to a set so cycle checks do not become quadratic.
+            if (frames.Count < 16)
+            {
+                foreach (ref readonly var frame in CollectionsMarshal.AsSpan(frames))
+                    if (ReferenceEquals(frame.Value, value)) return false;
+                return true;
+            }
+            active = new(frames.Count + 1, ReferenceEqualityComparer.Instance);
+            foreach (ref readonly var frame in CollectionsMarshal.AsSpan(frames)) active.Add(frame.Value);
+            return active.Add(value);
+        }
         void WriteValue(object value)
         {
             if (value is JsRawJson raw) output.Append(raw.Text);
@@ -114,7 +129,7 @@ public static partial class Js
             else if (value is double number) output.Append(double.IsFinite(number) ? NumberKeyString(number) : "null");
             else if (value is TsObject obj)
             {
-                if (!active.Add(obj)) throw new InvalidOperationException("Cannot serialize a cyclic object");
+                if (!Enter(obj)) throw new InvalidOperationException("Cannot serialize a cyclic object");
                 var frame = new JsonWriteFrame(obj, propertyList, previousNames);
                 if (frame.Names != null) previousNames = frame.Names;
                 frames.Add(frame); output.Append(frame.Array ? '[' : '{');
@@ -134,7 +149,7 @@ public static partial class Js
                 if (frame.Position == frame.Length)
                 {
                     var completed = frame;
-                    frames.RemoveAt(frames.Count - 1); active.Remove(completed.Value);
+                    frames.RemoveAt(frames.Count - 1); active?.Remove(completed.Value);
                     if (completed.Written && gap.Length != 0) { output.Append('\n'); Indent(frames.Count); }
                     output.Append(completed.Array ? ']' : '}'); continue;
                 }
