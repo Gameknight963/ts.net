@@ -63,3 +63,11 @@ changingRecords[0].a={toJSON():number {
     return 1;
 }};
 show('different keys between records',changingRecords);
+const escapedNames = [String.fromCharCode(0xd800), 'a"b', 'slash\\key', 'face' + String.fromCharCode(0xd83d, 0xde00), 'nul' + String.fromCharCode(0)];
+const escapedRecord: any = JSON.parse('{}');
+for (const name of escapedNames) escapedRecord[name] = name.length;
+show('repeated escaped names', [escapedRecord, escapedRecord, escapedRecord]);
+show('repeated names with indentation', [escapedRecord, escapedRecord, escapedRecord], undefined, 2);
+const longName = String.fromCharCode(0xd800).repeat(129);
+const longRecord: any = {}; longRecord[longName] = 1; longRecord.short = 2;
+show('long escaped name', [longRecord, longRecord]);

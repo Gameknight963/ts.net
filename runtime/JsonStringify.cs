@@ -29,7 +29,7 @@ public static partial class Js
     struct JsonWriteFrame
     {
         internal readonly TsObject Value;
-        internal readonly bool Array;
+        internal readonly bool Array, RepeatedNames;
         internal readonly JsArray Keys;
         internal readonly object[] Names;
         internal readonly long Length;
@@ -42,6 +42,7 @@ public static partial class Js
             else
             {
                 Names = propertyList == null ? value.JsonPropertyNames(previousNames) : null;
+                RepeatedNames = Names != null && ReferenceEquals(Names, previousNames);
                 if (Names != null) Length = Names.LongLength;
                 else { Keys = propertyList ?? StringPropertyKeys(value.OwnKeys()); Length = (long)Keys.Length(); }
             }
@@ -56,6 +57,8 @@ public static partial class Js
         readonly List<JsonWriteFrame> frames = new();
         readonly HashSet<TsObject> active = new(ReferenceEqualityComparer.Instance);
         object[] previousNames;
+        KeyValuePair<string, string>[] quotedNames;
+        int quotedNameCount;
         internal JsonWriter(object replacement, object space)
         {
             replacer = replacement as JsFunction;
@@ -86,6 +89,21 @@ public static partial class Js
             return value;
         }
         static bool Omitted(object value) => IsUndefined(value) || value is JsFunction or JsSymbol;
+        void WritePropertyName(string key)
+        {
+            // Repeated records share short names. Bound both cache size and text length.
+            bool cacheable = key.Length <= 128;
+            if (cacheable && quotedNames != null)
+                for (int i = 0; i < quotedNameCount; i++)
+                    if (ReferenceEquals(quotedNames[i].Key, key)) { output.Append(quotedNames[i].Value); return; }
+            int start = output.Length;
+            QuoteJson(output, key); output.Append(gap.Length != 0 ? ": " : ":");
+            if (cacheable && quotedNameCount < 4)
+            {
+                quotedNames ??= new KeyValuePair<string, string>[4];
+                quotedNames[quotedNameCount++] = new(key, output.ToString(start, output.Length - start));
+            }
+        }
         void Indent(int depth) { for (int i = 0; i < depth; i++) output.Append(gap); }
         void WriteValue(object value)
         {
@@ -125,7 +143,11 @@ public static partial class Js
                 if (Omitted(value)) { if (!frame.Array) continue; value = null; }
                 if (frame.Written) output.Append(','); frame.Written = true;
                 if (gap.Length != 0) { output.Append('\n'); Indent(frames.Count); }
-                if (!frame.Array) { QuoteJson(output, key); output.Append(gap.Length != 0 ? ": " : ":"); }
+                if (!frame.Array)
+                {
+                    if (frame.RepeatedNames) WritePropertyName(key);
+                    else { QuoteJson(output, key); output.Append(gap.Length != 0 ? ": " : ":"); }
+                }
                 WriteValue(value);
             }
             return output.ToString();
