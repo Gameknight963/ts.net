@@ -373,8 +373,14 @@ public static partial class Js
         return result;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double? ArrayGetNumber(object receiver, double index) => receiver is NumberArray numbers ? numbers.GetNumber(index) :
-        Cast<double?>(IndexGet(receiver, index), "Array element is not a number");
+    public static double? ArrayGetNumber(object receiver, double index)
+    {
+        if (receiver is NumberArray numbers) return numbers.GetNumber(index);
+        if (receiver is JsArray array && array.GetType() == typeof(JsArray) &&
+            index >= 0 && index < uint.MaxValue && index == Math.Truncate(index))
+            return Cast<double?>(array.ElementAt((uint)index), "Array element is not a number");
+        return Cast<double?>(IndexGet(receiver, index), "Array element is not a number");
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ArraySetNumber(object receiver, double index, double? value)
     {
@@ -389,7 +395,13 @@ public static partial class Js
         array.SetLength(length);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double? ArrayGetNumberAt(object receiver, int index) => receiver is NumberArray numbers ? numbers.GetNumberAt(index) : ArrayGetNumber(receiver, index);
+    public static double? ArrayGetNumberAt(object receiver, int index)
+    {
+        if (receiver is NumberArray numbers) return numbers.GetNumberAt(index);
+        if (index >= 0 && receiver is JsArray array && array.GetType() == typeof(JsArray))
+            return Cast<double?>(array.ElementAt((uint)index), "Array element is not a number");
+        return Cast<double?>(IndexGet(receiver, (double)index), "Array element is not a number");
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ArraySetNumberAt(object receiver, int index, double? value)
     {

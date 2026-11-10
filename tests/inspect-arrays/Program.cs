@@ -161,3 +161,25 @@ if (freezeAllocated > 16000 || frozenNumbers.GetNumberAt(9999) != 9999) {
     return;
 }
 Console.WriteLine("PASS freezing numeric arrays keeps compact storage: " + freezeAllocated + " bytes");
+var ordinaryNumbers = new JsArray(new object[] {3d, 4d});
+for (int i = 0; i < 10; i++) ReadOrdinaryNumbers(ordinaryNumbers, 1000);
+long ordinaryStart = GC.GetAllocatedBytesForCurrentThread();
+double ordinaryTotal = ReadOrdinaryNumbers(ordinaryNumbers, 100000);
+long ordinaryBytes = GC.GetAllocatedBytesForCurrentThread() - ordinaryStart;
+if (ordinaryTotal != 350000 || ordinaryBytes != 0 || Js.ArrayGetNumber(new NumericReadOverride(), 0) != 99 || Js.ArrayGetNumberAt(new NumericReadOverride(), 0) != 99)
+{
+    Console.Error.WriteLine("Ordinary numeric reads allocated, lost values, or bypassed a subclass: " + ordinaryBytes);
+    Environment.ExitCode = 1;return;
+}
+Console.WriteLine("PASS allocation-free ordinary numeric reads and virtual subclass fallback");
+static double ReadOrdinaryNumbers(JsArray source, int count)
+{
+    double sum = 0;
+    for (int i = 0; i < count; i++) sum += Js.ArrayGetNumberAt(source, i & 1).GetValueOrDefault();
+    return sum;
+}
+sealed class NumericReadOverride : JsArray
+{
+    public NumericReadOverride() : base(1) { SetAt(0, 1d); }
+    public override object Get(string key) => key == "0" ? 99d : base.Get(key);
+}

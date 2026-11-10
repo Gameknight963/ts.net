@@ -75,3 +75,16 @@ console.log(defaults(), defaults());
 const special: (number | undefined)[] = [0 / 0, -0, 1 / 0, undefined];
 console.log(special[0], special[0] !== special[0], special[0] === undefined);
 console.log(1 / special[1]!, special[2], special[3], typeof special[3]);
+{
+    const ordinary=Array.from([1,2,3],value=>value*2);
+    ordinary[-1]=7;ordinary[1.5]=8;ordinary[NaN]=9;ordinary[Infinity]=10;
+    ordinary[4294967294]=11;ordinary[4294967295]=12;
+    console.log('ordinary numeric keys',ordinary[0],ordinary[-0],ordinary[-1],ordinary[1.5],ordinary[NaN],ordinary[Infinity],ordinary[4294967294],ordinary[4294967295]);
+    let reads=0;
+    Object.defineProperty(ordinary,'0',{get(){reads++;return 13;},configurable:true});
+    console.log('ordinary numeric getter',ordinary[0],reads);
+    delete ordinary[1];let inherited=0,value=0;
+    Object.defineProperty(Array.prototype,'1',{get(){inherited++;return 14;},configurable:true});
+    try{value=ordinary[1];}finally{delete (Array.prototype as any)[1];}
+    console.log('ordinary inherited numeric getter',value,inherited);
+}
