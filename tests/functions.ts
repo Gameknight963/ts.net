@@ -99,3 +99,16 @@ const twoAsOne = arityTwo as unknown as (first: number) => number;
 const defaultsAsZero = arityDefaults as unknown as () => number;
 const defaultsAsOne = arityDefaults as unknown as (first: number) => number;
 console.log('numeric arity', zeroAsTwo(1, 2), Number.isNaN(oneAsZero()), oneAsTwo(4, 9), Number.isNaN(twoAsZero()), Number.isNaN(twoAsOne(4)), defaultsAsZero(), defaultsAsOne(7));
+
+function uncapturedFactory(): (value: number) => number {return value => value + 1;}
+const firstFunction = uncapturedFactory(), secondFunction = uncapturedFactory();
+(firstFunction as any).note = 'first';
+console.log('fresh function identity', firstFunction !== secondFunction, firstFunction(3), secondFunction(4), (secondFunction as any).note);
+function capturedFactory(offset: number): (value: number) => number {return value => value + offset;}
+const firstCapture = capturedFactory(10), secondCapture = capturedFactory(20);
+console.log('separate captured targets', firstCapture !== secondCapture, firstCapture(1), secondCapture(1));
+function receiverFactory() {
+    return function(this: {offset: number}, value: number): number {return this.offset + value + arguments.length;};
+}
+const firstReceiver = receiverFactory(), secondReceiver = receiverFactory();
+console.log('separate receiver functions', firstReceiver !== secondReceiver, firstReceiver.call({offset: 3}, 4), secondReceiver.call({offset: 5}, 6), firstReceiver.prototype !== secondReceiver.prototype);

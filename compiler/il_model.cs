@@ -12,7 +12,7 @@ internal enum RuntimeMember
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
-    ForInStart, ForInNext, ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, IsArrayBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionType, FunctionConstructor, ReceiverFunctionConstructor, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction0, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, BuiltinNamespaceById, CallCollectionNumberKey, NumberArgumentFunctionType, CallFunctionNumberArgument, CallMethodNumberArgument, CallPromiseThen, Count
+    ForInStart, ForInNext, ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, IsArrayBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionType, FunctionConstructor, ReceiverFunctionConstructor, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction0, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, BuiltinNamespaceById, CallCollectionNumberKey, NumberArgumentFunctionType, CallFunctionNumberArgument, CallMethodNumberArgument, CallPromiseThen, FunctionBodyType, Count
 }
 
 internal struct ScalarField
@@ -69,6 +69,7 @@ internal sealed partial class IlBackend
     public Vector<int> function_adapters;
     public Vector<int> raw_functions;
     public Vector<int> function_caches;
+    public Vector<int> function_body_caches;
     public Vector<int> function_constructors;
     public Vector<int> capture_fields;
     public Vector<int> capture_flags;
@@ -147,6 +148,7 @@ internal sealed partial class IlBackend
             function_adapters = zero_ids(symbols),
             raw_functions = zero_ids(symbols),
             function_caches = zero_ids(symbols),
+            function_body_caches = zero_ids(symbols),
             function_constructors = zero_ids(symbols),
             capture_fields = zero_ids(symbols),
             capture_flags = zero_ids(symbols),
@@ -603,6 +605,7 @@ bool il_logical_assignment(int op, Compiler c)
         int source_attribute = b.plan.reference("Tsnet.Runtime", "", "FunctionSourceAttribute");
         b.source_constructor = b.plan.method1(6, source_attribute, 1, -1, -4, ".ctor");
         int function_body = b.plan.reference("Tsnet.Runtime", "", "FunctionBody");
+        b.ref_set(RuntimeMember.FunctionBodyType, function_body);
         int function_type = b.plan.reference("Tsnet.Runtime", "", "JsFunction");
         b.ref_set(RuntimeMember.FunctionType, function_type);
         b.ref_set(RuntimeMember.NumberArgumentFunctionType, b.plan.reference("Tsnet.Runtime", "", "INumberArgumentFunction"));

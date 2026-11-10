@@ -96,6 +96,16 @@ internal static partial class CompilerFunctions
                 }
             }
         }
+        for (int i = 1; i <= c.node_store.count(); i++)
+        {
+            Node n = get_node(i, c);
+            if (n.symbol == 0 || (n.kind != NodeKind.FunctionValue &&
+                (n.kind != NodeKind.Name || b.function_caches.at(n.symbol) == 0))) continue;
+            if (get_symbol(n.symbol, c).function == 0 || b.function_contexts.at(n.symbol) != 0 ||
+                b.function_body_caches.at(n.symbol) != 0) continue;
+            Vector<byte> name = numbered_name('d', get_symbol(n.symbol, c).id);
+            b.function_body_caches.at_mut(n.symbol) = b.plan.field(program, 0x13, b.RuntimeToken(RuntimeMember.FunctionBodyType), name.view());
+        }
     }
     internal static int il_numeric_function(int symbol, Compiler c)
     {
@@ -277,8 +287,20 @@ internal static partial class CompilerFunctions
     internal static void il_function_object(int symbol, Compiler c, IlBackend b)
     {
         int context = b.function_contexts.at(symbol); int adapter = b.function_adapters.at(symbol);
-        if (context != 0) { b.load_context(context); } else { b.op(0x14); }
-        b.emit(0xfe06, adapter); b.emit(0x73, b.RuntimeToken(RuntimeMember.FunctionBodyConstructor));
+        int bodyCache = b.function_body_caches.at(symbol);
+        if (bodyCache != 0)
+        {
+            // Share only the hidden static delegate, never the JavaScript function.
+            int ready = b.label();
+            b.emit(0x7e, bodyCache); b.op(0x25); b.emit(0x3a, ready); b.op(0x26);
+            b.op(0x14); b.emit(0xfe06, adapter); b.emit(0x73, b.RuntimeToken(RuntimeMember.FunctionBodyConstructor));
+            b.op(0x25); b.emit(0x80, bodyCache); b.mark(ready);
+        }
+        else
+        {
+            if (context != 0) { b.load_context(context); } else { b.op(0x14); }
+            b.emit(0xfe06, adapter); b.emit(0x73, b.RuntimeToken(RuntimeMember.FunctionBodyConstructor));
+        }
         int numeric = il_numeric_function(symbol, c);
         // Generated numeric classes handle all supported argument counts directly.
         if (numeric < 0 || b.function_constructors.at(symbol) != 0) { b.op(0x14); }
