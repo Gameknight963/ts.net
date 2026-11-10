@@ -83,3 +83,34 @@ const visitRemoved=[1,2,3];
 let removalVisits=0;
 visitRemoved.find((value,index)=>{removalVisits++;if(index===0)visitRemoved.length=1;return value===undefined;});
 console.log('find removed slot',removalVisits);
+{
+    const values=[2,4,6];let total=0;
+    console.log('source parameter',values.map((value,index,array)=>{
+        if(array!==values)throw 'wrong source';return value+array[index]+index;
+    }).join(','));
+    values.forEach((value,index,array)=>{total+=value+array[index];});
+    console.log('source captured total',total);
+    const changing=[1,2,3];
+    console.log('source filter original',changing.filter((value,index,array)=>{if(index===0)array[0]=9;return true;}).join(','),changing.join(','));
+    const access=[1,2,3];let reads=0,sum=0;
+    access.forEach((value,index,array)=>{
+        if(index===0)Object.defineProperty(array,'1',{get(){reads++;return 4;},configurable:true});
+        sum+=value;
+    });
+    console.log('source getter fallback',sum,reads);
+    console.log('mapper missing third',Array.from([3],(value:number,index:number,third?:unknown)=>third===undefined?value+index:-1).join(','));
+    console.log('reduce third index',[1,2,3].reduce((acc:number,value:number,index:any)=>acc+value+index,0));
+    let observed=0;
+    values.forEach(function(this:{factor:number},value,index,array){observed+=this.factor*value+arguments.length+(array===values?0:100);},{factor:2});
+    console.log('source this arguments',observed);
+}
+{
+    const holes=[1,,3];const visited:number[]=[];
+    holes.forEach((value,index,array)=>{if(array!==holes)throw 'wrong sparse source';visited.push(index);});
+    console.log('source holes',visited.join(','),holes.findIndex((value,index,array)=>array===holes&&value===undefined));
+    const arrayLike={0:2,1:3,length:2};let total=0;
+    Array.prototype.forEach.call(arrayLike,(value:number,index:number,array:any)=>{
+        if(array!==arrayLike)throw 'wrong array-like source';total+=value+index;
+    });
+    console.log('array-like source callback',total);
+}

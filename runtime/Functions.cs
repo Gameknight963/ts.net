@@ -117,6 +117,9 @@ public partial class JsFunction : JsDescriptorObject
     }
     // Generated number-returning functions support nullable numeric results.
     public virtual bool SupportsNumberResult() => false;
+    // Reduce supplies an index as its third argument, so source-array
+    // callbacks advertise a separate calling convention.
+    public virtual bool SupportsArrayNumberSource() => false;
 }
 
 public static partial class Js

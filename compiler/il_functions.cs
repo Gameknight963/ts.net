@@ -124,6 +124,20 @@ internal static partial class CompilerFunctions
         }
         return count;
     }
+    internal static bool il_source_array_callback(int symbol, Compiler c)
+    {
+        Node f = get_node(get_symbol(symbol, c).function, c);
+        if (f.fourth != 0 || f.right != 0) return false;
+        int parameter = f.children;
+        for (int i = 0; i < 3; i++)
+        {
+            if (parameter == 0) return false;
+            Node p = get_node(parameter, c); TypeKind kind = get_type(p.type, c).kind;
+            if (p.third != 0 || (i < 2 ? kind != TypeKind.Number : kind is not (TypeKind.Array or TypeKind.Any or TypeKind.Unknown))) return false;
+            parameter = p.next;
+        }
+        return parameter == 0;
+    }
     internal static bool il_function_returns(int entry, Compiler c)
     {
         Node n = get_node(entry, c);
@@ -175,7 +189,8 @@ internal static partial class CompilerFunctions
     {
         int count = il_numeric_function(symbol, c);
         int callback = il_numeric_array_callback(symbol, c);
-        if (count < 0 && callback < 0) return;
+        bool source_callback = il_source_array_callback(symbol, c);
+        if (count < 0 && callback < 0 && !source_callback) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
         int parent = b.RuntimeToken(RuntimeMember.FunctionType); int type = b.plan.type(name.view(), parent, 0x101);
         Vector<int> parameters = new Vector<int>(); parameters.push(-5); parameters.push(-5); parameters.push(-4); parameters.push(-6);
@@ -208,19 +223,22 @@ internal static partial class CompilerFunctions
                 b.op(0x2a);
             }
         }
-        if (callback >= 0)
+        if (callback >= 0 || source_callback)
         {
-            int supported = b.plan.method0(5, type, 0xc6, -2, "SupportsArrayNumber");
+            int supported = b.plan.method0(5, type, 0xc6, -2, source_callback ? "SupportsArrayNumberSource" : "SupportsArrayNumber");
             b.begin(supported); b.emit(0x20, 1); b.op(0x2a);
             Vector<int> args = new Vector<int>(); args.push(-5); args.push(-3); args.push(-3); args.push(-5);
             int method = b.plan.method(5, type, 0xc6, -5, args.view(), "InvokeArrayNumber");
             b.begin(method);
             int raw = b.raw_functions.at(symbol);
             if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
-            for (int i = 0; i < callback; i++)
+            int parameter = get_node(get_symbol(symbol, c).function, c).children;
+            for (int i = 0; i < (source_callback ? 3 : callback); i++)
             {
                 b.emit(0xfe09, i + 2);
-                if (raw == 0) b.call(RuntimeMember.WrapNumber);
+                if (i < 2) { if (raw == 0) b.call(RuntimeMember.WrapNumber); }
+                else b.from_object(get_node(parameter, c).type, c);
+                parameter = get_node(parameter, c).next;
             }
             b.emit(0x28, raw != 0 ? raw : b.function(symbol));
             if (raw != 0) b.call(RuntimeMember.WrapNumber);
