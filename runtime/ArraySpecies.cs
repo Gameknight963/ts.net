@@ -42,7 +42,16 @@ public static partial class Js
         return ReferenceEquals(function, RuntimeNamespaces.Array) ? null : function;
     }
 
-    static TsObject ArraySpeciesCreate(TsObject source, long length) => ArraySpeciesCreate(ArraySpeciesConstructor(source, out _), length);
+    static TsObject ArraySpeciesCreate(TsObject source, long length, bool reserveDense = false)
+    {
+        var constructor = ArraySpeciesConstructor(source, out bool native);
+        var result = ArraySpeciesCreate(constructor, length);
+        // A packed range also bounds the reservation by a CLR buffer length.
+        if (reserveDense && native && length > 0 && source is NumberArray numbers && !numbers.HasIndexedAccessors &&
+            numbers.TryPacked(length) != null && result.GetType() == typeof(JsArray))
+            ((JsArray)result).ReserveCapacity((int)length);
+        return result;
+    }
     static TsObject ArraySpeciesCreate(JsFunction constructor, long length)
     {
         if (constructor != null) return constructor.Construct(new object[] { (double)length }) as TsObject ?? throw new InvalidOperationException("Array species returned a primitive");

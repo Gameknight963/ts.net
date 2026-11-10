@@ -67,3 +67,11 @@ function strictThis(this: unknown): boolean { return this === undefined; }
 console.log('strict-this', values.map(strictThis).join(','));
 const Bound = function(this: typeof context, prefix: number, value: number): number { return this.offset + prefix + value; }.bind(context, 5);
 console.log('bound', values.map(Bound, {offset: 100}).join(','));
+{
+    const shrinking=[1,2,3,4];
+    const mapped=shrinking.map((value,index,array)=>{if(index===0)array.length=1;return value*2;});
+    console.log('reserved result holes',mapped.length,Object.keys(mapped).join(','),mapped[0],mapped[1]);
+    const sparse:number[]=[1];sparse.length=10000;sparse[9999]=3;
+    const sparseResult=sparse.map(value=>value*2);
+    console.log('sparse result holes',sparseResult.length,Object.keys(sparseResult).join(','),sparseResult[0],sparseResult[9999]);
+}

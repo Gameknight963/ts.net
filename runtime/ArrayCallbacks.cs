@@ -57,7 +57,7 @@ public static partial class Js
             object thisValue = FunctionArgument(arguments, 1);
             bool find = kind is ArrayCallbackKind.Find or ArrayCallbackKind.FindIndex or ArrayCallbackKind.FindLast or ArrayCallbackKind.FindLastIndex;
             bool backwards = kind is ArrayCallbackKind.FindLast or ArrayCallbackKind.FindLastIndex;
-            TsObject result = kind is ArrayCallbackKind.Map or ArrayCallbackKind.Filter ? ArraySpeciesCreate(source, kind == ArrayCallbackKind.Map ? length : 0) : null;
+            TsObject result = kind is ArrayCallbackKind.Map or ArrayCallbackKind.Filter ? ArraySpeciesCreate(source, kind == ArrayCallbackKind.Map ? length : 0, kind == ArrayCallbackKind.Map) : null;
             bool numericCallback = callback.SupportsArrayNumber() || callback.SupportsArrayNumberSource();
             bool numericResult = numericCallback && callback.SupportsNumberResult();
             bool testResult = kind is not ArrayCallbackKind.Map and not ArrayCallbackKind.ForEach;
