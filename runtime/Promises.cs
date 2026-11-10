@@ -115,7 +115,8 @@ public static partial class Js
     sealed class JsPromise : JsDescriptorObject
     {
         int state; // 0 pending, 1 fulfilled, 2 rejected
-        List<PromiseReaction> reactions;
+        // Most pending promises have one reaction; allocate a list only for fan-out.
+        object reactions; // null, PromiseReaction, or List<PromiseReaction>
         internal object Result;
         internal bool Handled;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)RuntimeNamespaces.Promise.Get("prototype");
@@ -144,12 +145,20 @@ public static partial class Js
             if (state != 0) return;
             state = rejected ? 2 : 1; Result = value;
             if (rejected && !Handled) (unhandledPromises ??= new()).Add(this);
-            if (reactions != null) { foreach (var reaction in reactions) reaction.Enqueue(value, rejected); reactions = null; }
+            if (reactions is PromiseReaction single) single.Enqueue(value, rejected);
+            else if (reactions is List<PromiseReaction> multiple)
+                foreach (var reaction in multiple) reaction.Enqueue(value, rejected);
+            reactions = null;
         }
         internal void Then(PromiseReaction reaction)
         {
             Handled = true; unhandledPromises?.Remove(this);
-            if (state == 0) (reactions ??= new()).Add(reaction);
+            if (state == 0)
+            {
+                if (reactions == null) reactions = reaction;
+                else if (reactions is List<PromiseReaction> multiple) multiple.Add(reaction);
+                else reactions = new List<PromiseReaction> { (PromiseReaction)reactions, reaction };
+            }
             else reaction.Enqueue(Result, state == 2);
         }
     }

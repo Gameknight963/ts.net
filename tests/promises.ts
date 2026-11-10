@@ -107,3 +107,21 @@ new SuperThenPromise(resolve=>resolve(4)).read().then(value=>console.log('super 
     const borrowed={then:Promise.prototype.then};
     try{borrowed.then(()=>0);}catch(error){console.log('borrowed then brand',(error as Error).name);}
 }
+for (const count of [0, 1, 2, 7]) {
+    let finish!: (value: number) => void;
+    const pending = new Promise<number>(resolve => {finish = resolve;});
+    for (let i = 0; i < count; i++) pending.then(value => {
+        console.log('pending fan-out', count, i, value);
+        if (i === 0) pending.then(next => console.log('reentrant handler', count, next));
+    });
+    finish(count);
+    finish(99);
+    pending.then(value => console.log('late handler', count, value));
+}
+{
+    let fail!: (reason: string) => void;
+    const pending = new Promise<number>((resolve, reject) => {fail = reject;});
+    for (let i = 0; i < 7; i++) pending.catch(error => console.log('rejected fan-out', i, error));
+    fail('reason');
+    pending.catch(error => console.log('late rejection handler', error));
+}
