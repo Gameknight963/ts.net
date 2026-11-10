@@ -108,6 +108,7 @@ Runtime performance:
 | `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | 0.46x |
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | 0.46x |
+| Serialize 10K numbers from 0-255, 20 times | 3.91 ms | 1.62 ms | 0.41x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 5.60 ms | 2.05 ms | 0.37x |
@@ -120,10 +121,10 @@ Runtime performance:
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
 | Sum 1K values with an await in try and an increment in finally each iteration | 0.168 ms | 0.0468 ms | 0.28x |
+| Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | Object spread, 100K copies stored in an array | 11.34 ms | 2.42 ms | 0.21x |
 | Create a Map, insert and read 10K entries, then delete half | 4.38 ms | 0.80 ms | 0.18x |
-| Serialize 1,000 three-field records 20 times, without a replacer | 6.04 ms | 1.04 ms | 0.17x |
 | Traverse 1K array values with for-await-of and sum them | 0.737 ms | 0.126 ms | 0.17x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 2.55 ms | 0.442 ms | 0.17x |
