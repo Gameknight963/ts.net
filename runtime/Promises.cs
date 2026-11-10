@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
-    readonly struct PromiseJob(Action callback, PromiseReaction reaction, object value, bool rejected)
+    readonly struct PromiseJob(Action callback, PromiseReactionBase reaction, object value, bool rejected)
     {
         internal void Run()
         {
@@ -17,7 +17,7 @@ public static partial class Js
     static void EnqueuePromiseJob(Action job) => (promiseJobs ??= new()).Enqueue(new(job, null, null, false));
     static void EnqueueMicrotask(JsFunction callback) =>
         (promiseJobs ??= new()).Enqueue(new(null, null, callback, false));
-    static void EnqueuePromiseReaction(PromiseReaction reaction, object value, bool rejected) =>
+    static void EnqueuePromiseReaction(PromiseReactionBase reaction, object value, bool rejected) =>
         (promiseJobs ??= new()).Enqueue(new(null, reaction, value, rejected));
     static void DrainPromiseJobs()
     {
@@ -76,11 +76,16 @@ public static partial class Js
         }
         internal void RejectError(Exception error) => RejectValue(CaughtValue(error));
     }
+    abstract class PromiseReactionBase
+    {
+        internal void Enqueue(object value, bool rejected) => EnqueuePromiseReaction(this, value, rejected);
+        internal abstract void Run(object value, bool rejected);
+    }
     class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected,
         Action<object, bool> continuation = null, bool discardResult = false)
+        : PromiseReactionBase
     {
-        internal void Enqueue(object value, bool isRejected) => EnqueuePromiseReaction(this, value, isRejected);
-        internal virtual void Run(object value, bool isRejected)
+        internal override void Run(object value, bool isRejected)
         {
             if (continuation != null)
             {
@@ -110,11 +115,29 @@ public static partial class Js
             else capability.Complete(CaughtValue(error), true);
         }
     }
+    sealed class NativePromiseReaction(JsPromise target, JsFunction fulfilled, JsFunction rejected) : PromiseReactionBase
+    {
+        internal override void Run(object value, bool isRejected)
+        {
+            var handler = isRejected ? rejected : fulfilled;
+            if (handler == null) { Complete(value, isRejected); return; }
+            object result;
+            try { result = handler.InvokeWithReceiver(Undefined, new[] { value }); }
+            catch (Exception error) { Complete(CaughtValue(error), true); return; }
+            Complete(result, false);
+        }
+        void Complete(object value, bool rejected)
+        {
+            // Each reaction runs once, and these results expose no resolver functions.
+            if (rejected) target.Settle(value, true);
+            else target.ResolveValue(value);
+        }
+    }
     sealed class JsPromise : JsDescriptorObject
     {
         int state; // 0 pending, 1 fulfilled, 2 rejected
         // Most pending promises have one reaction; allocate a list only for fan-out.
-        object reactions; // null, PromiseReaction, or List<PromiseReaction>
+        object reactions; // null, PromiseReactionBase, or List<PromiseReactionBase>
         internal object Result;
         internal bool Handled;
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)RuntimeNamespaces.Promise.Get("prototype");
@@ -143,19 +166,19 @@ public static partial class Js
             if (state != 0) return;
             state = rejected ? 2 : 1; Result = value;
             if (rejected && !Handled) (unhandledPromises ??= new()).Add(this);
-            if (reactions is PromiseReaction single) single.Enqueue(value, rejected);
-            else if (reactions is List<PromiseReaction> multiple)
+            if (reactions is PromiseReactionBase single) single.Enqueue(value, rejected);
+            else if (reactions is List<PromiseReactionBase> multiple)
                 foreach (var reaction in multiple) reaction.Enqueue(value, rejected);
             reactions = null;
         }
-        internal void Then(PromiseReaction reaction)
+        internal void Then(PromiseReactionBase reaction)
         {
             Handled = true; unhandledPromises?.Remove(this);
             if (state == 0)
             {
                 if (reactions == null) reactions = reaction;
-                else if (reactions is List<PromiseReaction> multiple) multiple.Add(reaction);
-                else reactions = new List<PromiseReaction> { (PromiseReaction)reactions, reaction };
+                else if (reactions is List<PromiseReactionBase> multiple) multiple.Add(reaction);
+                else reactions = new List<PromiseReactionBase> { (PromiseReactionBase)reactions, reaction };
             }
             else reaction.Enqueue(Result, state == 2);
         }
@@ -216,7 +239,14 @@ public static partial class Js
         }
         static object Then(JsPromise promise, object fulfilled, object rejected)
         {
-            var capability = NewPromiseCapability(PromiseSpecies(promise));
+            var constructor = PromiseSpecies(promise);
+            if (ReferenceEquals(constructor, RuntimeNamespaces.Promise))
+            {
+                var target = new JsPromise();
+                promise.Then(new NativePromiseReaction(target, fulfilled as JsFunction, rejected as JsFunction));
+                return target;
+            }
+            var capability = NewPromiseCapability(constructor);
             promise.Then(new PromiseReaction(capability, fulfilled as JsFunction, rejected as JsFunction));
             return capability.Promise;
         }

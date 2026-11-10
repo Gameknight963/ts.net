@@ -139,3 +139,27 @@ Promise.resolve(1).then((value): number => {
 Promise.resolve(4).then(() => undefined as unknown as number).then(value => value + 1).then(value => console.log('numeric handler undefined result', Number.isNaN(value)));
 Promise.resolve(3).then(function(value): number {return value + arguments.length;}).then(value => console.log('handler sees arguments', value));
 Promise.resolve(3).then(function(this: unknown, value): number {return this === undefined ? value : 100;}).then(value => console.log('handler sees receiver', value));
+{
+    let unlock!: (value: number) => void;
+    const nested = new Promise<number>(resolve => {unlock = resolve;});
+    const returned: any = {then(resolve: any, reject: any): void {
+        resolve(nested);
+        reject('ignored while adopting');
+        resolve(99);
+        queueMicrotask(() => unlock(23));
+    }};
+    Promise.resolve(0).then(() => returned).then(value => console.log('returned thenable resolves once', value));
+}
+{
+    let finish!: (value: number) => void;
+    const pending = new Promise<number>(resolve => {finish = resolve;});
+    pending.then(value => console.log('mixed reaction first', value));
+    Promise.all([pending]).then(values => console.log('mixed reaction all', values[0]));
+    async function observe(): Promise<void> {
+        const value = await pending;
+        console.log('mixed reaction await', value);
+    }
+    observe();
+    pending.then(value => console.log('mixed reaction last', value));
+    finish(6);
+}
