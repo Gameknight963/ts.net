@@ -15,7 +15,7 @@ public static partial class Js
             {
                 string key = (string)keys.ElementAt(index);
                 if (source.HasOwn(key) && source.ForInEnumerable(key))
-                    target.SetWithReceiver(key, source.Get(key), target);
+                    target.Set(key, source.Get(key));
             }
         }
         return target;

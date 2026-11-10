@@ -30,3 +30,19 @@ const methods={value:15,method(this:{value:number}):number{return this.value;}};
 const chained:{a:number,b:number}=Object.assign(Object.assign({},{a:1}),{b:2});console.log('chained',chained.a,chained.b);
 const escapedArray=(Object.assign as any)({},[,2]);console.log('array source escape',Object.keys(escapedArray).join(','),escapedArray[1]);
 const escapedPrimitive=(Object.assign as any)(3);console.log('primitive result escape',typeof escapedPrimitive,escapedPrimitive.valueOf());
+{
+    let owner:unknown,received=0;
+    const prototype={set value(value:number){owner=this;received=value;}};
+    const inherited=Object.create(prototype);
+    Object.assign(inherited,{value:9});
+    console.log('inherited setter receiver',owner===inherited,received,Object.hasOwn(inherited,'value'));
+    let setterCalls=0;
+    const shadow={value:1};Object.setPrototypeOf(shadow,{set value(value:number){setterCalls++;}});
+    Object.assign(shadow,{value:5});console.log('own data shadows setter',shadow.value,setterCalls);
+    const readonlyPrototype=Object.create(null);Object.defineProperty(readonlyPrototype,'blocked',{value:1,writable:false});
+    const blocked=Object.create(readonlyPrototype);
+    try{Object.assign(blocked,{blocked:2,later:3});}catch(error){console.log('inherited readonly',(error as Error).name,Object.hasOwn(blocked,'blocked'),Object.hasOwn(blocked,'later'));}
+    const bytes=new Uint8Array(2);Object.assign(bytes,{0:258,1:-1});
+    console.log('assign typed array',bytes[0],bytes[1]);
+    const big=new BigInt64Array(1);Object.assign(big,{0:7n});console.log('assign bigint array',String(big[0]));
+}
