@@ -100,3 +100,17 @@ Promise.all(new Set([Promise.resolve(1),Promise.resolve(2)])).then(values=>conso
     const undefinedResult={get(value:number):string|undefined{return value===1?'one':undefined;}};
     console.log('keyed undefined result',undefinedResult.get(2));
 }
+{
+    class SuperMap extends Map<number,string> {
+        read(key:number):string|undefined{return super.get(key);}
+        contains(key:number):boolean{return super.has(key);}
+        remove(key:number):boolean{return super.delete(key);}
+    }
+    class SuperSet extends Set<number> {
+        contains(key:number):boolean{return super.has(key);}
+        remove(key:number):boolean{return super.delete(key);}
+    }
+    const map=new SuperMap([[1,'one']]);const set=new SuperSet([2]);
+    console.log('super map methods',map.read(1),map.contains(1),map.remove(1),map.contains(1));
+    console.log('super set methods',set.contains(2),set.remove(2),set.contains(2));
+}

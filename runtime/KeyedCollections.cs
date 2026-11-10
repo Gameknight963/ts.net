@@ -158,7 +158,7 @@ public static partial class Js
         object InvokeNumberKey(object receiver, double? key);
     }
     public static object CallCollectionNumberKey(object target, object receiver, double? key) =>
-        target is ICollectionNumberKeyMethod method ? method.InvokeNumberKey(receiver, key)
+        target is ICollectionNumberKeyMethod method ? method.InvokeNumberKey(SuperReceiver(receiver), key)
         : target is INumberArgumentFunction function ? function.InvokeNumberArgument(key)
         : InvokeReceiver(target, receiver, new[] { BoxNumber(key) });
     sealed class CollectionKeyFunction(bool set, bool remove) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Collection method requires a receiver")), null, remove ? "delete" : "has", 1), ICollectionNumberKeyMethod
