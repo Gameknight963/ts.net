@@ -91,6 +91,13 @@ public static partial class Js
                     else if (kind == ArrayCallbackKind.Some && truth) return BoxBoolean(true);
                     continue;
                 }
+                if (!find && numericCallback && source is NumberArray sparse && !sparse.HasIndexedAccessors &&
+                    !sparse.HasElement((uint)i) && ReferenceEquals(sparse.PropertyPrototype, ArrayPrototype) && ArraySlicePrototypesHaveNoIndices())
+                {
+                    // No user code runs while crossing holes. Recheck after every callback.
+                    i = sparse.NextPresentIndex((uint)i, (uint)length);
+                    if (i == length) break;
+                }
                 object value;
                 if (find) value = IndexedValue(source, i);
                 else if (!TryIndexedValue(source, i, out value)) continue;

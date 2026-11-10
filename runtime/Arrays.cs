@@ -12,6 +12,7 @@ partial struct ArrayStorage<T>
     readonly T missing;
     public uint Length;
     public T[] Dense => dense;
+    internal int SparseCount => sparse?.Count ?? 0;
     public bool InitializeCopy(T[] source, int count, int extra)
     {
         if (Length != 0 || dense.Length != 0) return false;
@@ -92,6 +93,14 @@ partial struct ArrayStorage<T>
         if(index>=Length)return;
         if(index<(uint)dense.Length)dense[index]=missing;
         else sparse?.Remove(index);
+    }
+    internal uint NextSparseIndex(uint start, uint limit)
+    {
+        uint next = limit;
+        if (sparse != null)
+            foreach (var item in sparse)
+                if (item.Key >= start && item.Key < next) next = item.Key;
+        return next;
     }
     public uint? ExtremePresent(Func<T, bool> present, bool last)
     {
@@ -327,6 +336,19 @@ public sealed partial class NumberArray : JsArray
     }
     public double[] TryPacked(double limit) =>
         limit >= 0 && limit <= packedPrefix && limit <= numbers.Dense.Length ? numbers.Dense : null;
+    // Call only after ruling out indexed accessors and inherited elements.
+    internal uint NextPresentIndex(uint start, uint limit)
+    {
+        // Repeatedly searching a large dictionary could make traversal quadratic.
+        if (numbers.SparseCount > 16) return start;
+        uint end = Math.Min(limit, numbers.Length);
+        double[] dense = numbers.Dense;
+        uint denseEnd = Math.Min(end, (uint)dense.Length);
+        for (uint i = start; i < denseEnd; i++)
+            if (BitConverter.DoubleToInt64Bits(dense[i]) != MissingBits) return i;
+        uint next = numbers.NextSparseIndex(start, end);
+        return next < end ? next : limit;
+    }
     internal double[] TryWritablePacked(double limit) => ElementsFrozen ? null : TryPacked(limit);
     public bool AppendPacked(NumberArray source, int extra)
     {

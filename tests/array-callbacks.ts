@@ -92,3 +92,41 @@ for (const prototype of [Array.prototype, Object.prototype]) {
         delete (prototype as any)[3];
     }
 }
+{
+    const source: number[] = [1];
+    source.length = 10000;
+    source[9999] = 2;
+    let visited = '';
+    source.forEach((value, index) => {
+        visited += index + ':' + value + ';';
+        if (index === 0) {source[2500] = 3; source[7500] = 4;}
+        if (index === 2500) {delete source[7500]; source[5000] = 5;}
+        if (index === 5000) {source.length = 6000; source[5001] = 6;}
+    });
+    console.log('sparse callback mutations', visited, source.length, Object.keys(source).join(','));
+    const defined: number[] = [1];
+    defined.length = 100;
+    defined[10] = undefined as any;
+    defined[11] = NaN;
+    let seen = '';
+    defined.forEach((value, index) => {seen += index + ':' + value + ';';});
+    console.log('present undefined and NaN', seen);
+    let finds = 0;
+    defined.find((value, index) => {finds++; return index === 12;});
+    console.log('find visits holes', finds);
+    const dense: number[] = [];
+    for (let i = 0; i < 128; i++) dense.push(i);
+    for (let i = 1; i < 128; i++) delete dense[i];
+    let denseVisits = '';
+    dense.forEach((value, index) => {
+        denseVisits += index + ':' + value + ';';
+        if (index === 0) dense[64] = 8;
+    });
+    console.log('holes in dense storage', denseVisits);
+    const many: number[] = [1];
+    many.length = 10000;
+    for (let i = 1; i <= 64; i++) many[i * 100] = i;
+    let count = 0, sum = 0;
+    many.forEach(value => {count++; sum += value;});
+    console.log('many sparse entries', count, sum);
+}
