@@ -99,6 +99,7 @@ Runtime performance:
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | 0.60x |
 | Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | 0.59x |
 | forEach sum, every and findIndex, 10 passes over 10K integers from 0-255 | 1.57 ms | 0.876 ms | 0.56x |
+| Sum 1K values in a loop, awaiting each value | 0.0798 ms | 0.0420 ms | 0.53x |
 | Split 10K comma-separated strings, keep three parts, and sum lengths | 4 ms | 2 ms | 0.50x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | 0.50x |
 | Object valueOf, 1M numeric conversions | 48.94 ms | 23.64 ms | 0.48x |
@@ -106,7 +107,6 @@ Runtime performance:
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | 0.48x |
 | `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | 0.46x |
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
-| Sum 1K values in a loop, awaiting each value | 0.0964 ms | 0.0431 ms | 0.45x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 5.60 ms | 2.05 ms | 0.37x |
@@ -117,17 +117,17 @@ Runtime performance:
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | 0.33x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
-| Sum 1K values with an await in try and an increment in finally each iteration | 0.202 ms | 0.0536 ms | 0.27x |
+| Sum 1K values with an await in try and an increment in finally each iteration | 0.168 ms | 0.0468 ms | 0.28x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | Object spread, 100K copies stored in an array | 11.34 ms | 2.42 ms | 0.21x |
 | Create a Map, insert and read 10K entries, then delete half | 4.38 ms | 0.80 ms | 0.18x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 6.04 ms | 1.04 ms | 0.17x |
 | Traverse 1K array values with for-await-of and sum them | 0.737 ms | 0.126 ms | 0.17x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
+| Sum 100K values in a loop, awaiting only on the final iteration | 2.55 ms | 0.442 ms | 0.17x |
+| Construct and run a chain of 10K handlers | 2.05 ms | 0.301 ms | 0.15x |
 | Create 10K resolved promises, collect with all, and sum results | 3.48 ms | 0.489 ms | 0.14x |
-| Sum 100K values in a loop, awaiting only on the final iteration | 3.29 ms | 0.456 ms | 0.14x |
 | WritableStream, queue and complete 1K numeric writes | 5.11 ms | 0.658 ms | 0.13x |
-| Construct and run a chain of 10K handlers | 2.61 ms | 0.309 ms | 0.12x |
 | ReadableStream, create and drain 1K numbers | 1.80 ms | 0.220 ms | 0.12x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
 | Object.assign, create 1K objects with 3 fields | 1 ms | 0 ms | 0.10x |
