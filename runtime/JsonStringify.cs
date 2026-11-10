@@ -29,7 +29,7 @@ public static partial class Js
     struct JsonWriteFrame
     {
         internal readonly TsObject Value;
-        internal readonly bool Array, RepeatedNames;
+        internal readonly bool Array, RepeatedNames, DirectArray;
         internal readonly JsArray Keys;
         internal readonly object[] Names;
         internal readonly long Length;
@@ -38,7 +38,11 @@ public static partial class Js
         internal JsonWriteFrame(TsObject value, JsArray propertyList, object[] previousNames)
         {
             Value = value; Array = value is JsArray;
-            if (Array) Length = IndexedLength(value);
+            if (Array)
+            {
+                DirectArray = value.GetType() == typeof(JsArray) || value is NumberArray;
+                Length = DirectArray ? (long)((JsArray)value).Length() : IndexedLength(value);
+            }
             else
             {
                 Names = propertyList == null ? value.JsonPropertyNames(previousNames) : null;
@@ -82,9 +86,23 @@ public static partial class Js
         }
         object Prepare(TsObject holder, string key)
         {
-            object value = holder.Get(key);
+            return Prepare(holder, key, holder.Get(key));
+        }
+        object Prepare(TsObject holder, string key, object value)
+        {
             if (value is TsObject or BigInteger && Get(value, "toJSON") is JsFunction method) value = method.InvokeWithReceiver(value, new object[] { key });
             if (replacer != null) value = replacer.InvokeWithReceiver(holder, new[] { key, value });
+            return Unbox(value);
+        }
+        static object PrepareArrayElement(JsArray holder, long position)
+        {
+            object value = holder.ElementAt((uint)position);
+            if (value is TsObject or BigInteger && Get(value, "toJSON") is JsFunction method)
+                value = method.InvokeWithReceiver(value, new object[] { position.ToString(CultureInfo.InvariantCulture) });
+            return Unbox(value);
+        }
+        static object Unbox(object value)
+        {
             if (value is JsBoxedPrimitive boxed && boxed.Value is not JsSymbol) value = boxed.Value is double ? Number(value) : boxed.Value is string ? StringValue(value) : boxed.Value;
             return value;
         }
@@ -153,8 +171,17 @@ public static partial class Js
                     if (completed.Written && gap.Length != 0) { output.Append('\n'); Indent(frames.Count); }
                     output.Append(completed.Array ? ']' : '}'); continue;
                 }
-                string key = frame.Array ? frame.Position.ToString(CultureInfo.InvariantCulture) : frame.Names != null ? (string)frame.Names[(int)frame.Position] : (string)frame.Keys.ElementAt((uint)frame.Position);
-                frame.Position++; object value = Prepare(frame.Value, key);
+                long position = frame.Position++;
+                string key = null;
+                object value;
+                if (frame.DirectArray && replacer == null) value = PrepareArrayElement((JsArray)frame.Value, position);
+                else
+                {
+                    key = frame.Array ? position.ToString(CultureInfo.InvariantCulture) : frame.Names != null ? (string)frame.Names[(int)position] : (string)frame.Keys.ElementAt((uint)position);
+                    value = frame.DirectArray
+                        ? Prepare(frame.Value, key, ((JsArray)frame.Value).ElementAt((uint)position))
+                        : Prepare(frame.Value, key);
+                }
                 if (Omitted(value)) { if (!frame.Array) continue; value = null; }
                 if (frame.Written) output.Append(','); frame.Written = true;
                 if (gap.Length != 0) { output.Append('\n'); Indent(frames.Count); }

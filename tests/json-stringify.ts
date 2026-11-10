@@ -81,3 +81,29 @@ for (const depth of [0, 1, 15, 16, 17, 40]) {
     delete leaf.loop;
     show('shared after cycle ' + depth, [root, {value: 2}, root]);
 }
+{
+    const values: any[] = JSON.parse('[0,2,3]');
+    let calls = '';
+    const item: any = {toJSON(this: unknown, key: string): string {
+        calls += 'T' + key + (this === item ? '+' : '-');
+        values.length = 1;
+        return key;
+    }};
+    Object.defineProperty(values, '0', {get() {calls += 'G0'; return item;}, configurable: true, enumerable: true});
+    const prototype = Object.create(Array.prototype);
+    Object.defineProperty(prototype, '1', {get: function(this: unknown) {
+        calls += this === values ? 'G1+' : 'G1-';
+        return {toJSON(key: string): string {calls += 'T' + key; return key;}};
+    }});
+    Object.setPrototypeOf(values, prototype);
+    show('array keys after shrinking', values);
+    console.log('array getter order', calls);
+    values.length = 3;
+    calls = '';
+    show('array replacer keys after shrinking', values, function(this: unknown, key: string, value: any): any {
+        if (Array.isArray(this)) calls += 'R' + key;
+        return value;
+    });
+    console.log('array replacer order', calls);
+}
+show('numeric array values', [-0, 1, NaN, Infinity, 1e-7, 1e21]);
