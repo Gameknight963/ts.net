@@ -112,10 +112,10 @@ Runtime performance:
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 5.60 ms | 2.05 ms | 0.37x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | 0.37x |
+| Construct and run a chain of 10K handlers | 0.798 ms | 0.296 ms | 0.37x |
 | Mixed array, 100K elements and 5 traversals | 3.19 ms | 1.15 ms | 0.36x |
 | Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | 0.35x |
 | Currency names, 10K cached calls across German, French, Russian and British English | 28.24 ms | 9.55 ms | 0.34x |
-| Construct and run a chain of 10K handlers | 0.889 ms | 0.298 ms | 0.34x |
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | 0.33x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
