@@ -34,10 +34,23 @@ public static partial class Js
         return source.Get(index.ToString(CultureInfo.InvariantCulture));
     }
     enum ArrayCallbackKind { Map, Filter, ForEach, Every, Some, Find, FindIndex, FindLast, FindLastIndex }
-    sealed class ArrayCallbackFunction(string name, ArrayCallbackKind kind) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Array method requires a receiver")), null, name, 1)
+    // Value-type kinds let the JIT specialize the shared loop for each method.
+    interface IArrayCallbackKind { static abstract ArrayCallbackKind Value { get; } }
+    readonly struct MapCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.Map; }
+    readonly struct FilterCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.Filter; }
+    readonly struct ForEachCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.ForEach; }
+    readonly struct EveryCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.Every; }
+    readonly struct SomeCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.Some; }
+    readonly struct FindCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.Find; }
+    readonly struct FindIndexCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.FindIndex; }
+    readonly struct FindLastCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.FindLast; }
+    readonly struct FindLastIndexCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.FindLastIndex; }
+    sealed class ArrayCallbackFunction<TKind>(string name) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Array method requires a receiver")), null, name, 1)
+        where TKind : struct, IArrayCallbackKind
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)
         {
+            ArrayCallbackKind kind = TKind.Value;
             var source = ToObject(receiver);
             long length = IndexedLength(source);
             if (FunctionArgument(arguments, 0) is not JsFunction callback) throw new InvalidOperationException("Array callback is not callable");

@@ -23,8 +23,8 @@ public static partial class Js
     }
     static class ArrayMethods
     {
-        internal static readonly JsFunction Map = new ArrayCallbackFunction("map", ArrayCallbackKind.Map), Filter = new ArrayCallbackFunction("filter", ArrayCallbackKind.Filter), ForEach = new ArrayCallbackFunction("forEach", ArrayCallbackKind.ForEach), Every = new ArrayCallbackFunction("every", ArrayCallbackKind.Every), Some = new ArrayCallbackFunction("some", ArrayCallbackKind.Some);
-        internal static readonly JsFunction Find = new ArrayCallbackFunction("find", ArrayCallbackKind.Find), FindIndex = new ArrayCallbackFunction("findIndex", ArrayCallbackKind.FindIndex), FindLast = new ArrayCallbackFunction("findLast", ArrayCallbackKind.FindLast), FindLastIndex = new ArrayCallbackFunction("findLastIndex", ArrayCallbackKind.FindLastIndex);
+        internal static readonly JsFunction Map = new ArrayCallbackFunction<MapCallbackKind>("map"), Filter = new ArrayCallbackFunction<FilterCallbackKind>("filter"), ForEach = new ArrayCallbackFunction<ForEachCallbackKind>("forEach"), Every = new ArrayCallbackFunction<EveryCallbackKind>("every"), Some = new ArrayCallbackFunction<SomeCallbackKind>("some");
+        internal static readonly JsFunction Find = new ArrayCallbackFunction<FindCallbackKind>("find"), FindIndex = new ArrayCallbackFunction<FindIndexCallbackKind>("findIndex"), FindLast = new ArrayCallbackFunction<FindLastCallbackKind>("findLast"), FindLastIndex = new ArrayCallbackFunction<FindLastIndexCallbackKind>("findLastIndex");
         internal static readonly JsFunction Fill = new ArrayFillFunction(), CopyWithin = new ArrayCopyWithinFunction();
         internal static readonly JsFunction ToSorted = new ArrayToSortedFunction(), Sort = new ArrayToSortedFunction(true);
         internal static readonly JsFunction Keys = new ArrayIteratorFunction("keys", 1), Values = new ArrayIteratorFunction("values", 0), Entries = new ArrayIteratorFunction("entries", 2);
