@@ -56,10 +56,17 @@ public static partial class Js
             // Even an already fulfilled value resumes through a queued job.
             if (continuation == null && execution == null)
             {
-                var capability = new PromiseCapability { Promise = target, Intrinsic = pair };
-                Then(new PromiseReaction(capability, null, null)); return;
+                Then(new AwaitForwardReaction(pair)); return;
             }
             Then(new AwaitContinuationReaction(continuation, target, pair, execution));
+        }
+    }
+    sealed class AwaitForwardReaction(PromiseResolvingFunctions pair) : PromiseReaction(null, null, null)
+    {
+        internal override void Run(object value, bool rejected)
+        {
+            if (rejected) pair.RejectValue(value);
+            else pair.ResolveValue(value);
         }
     }
     sealed class AwaitContinuationReaction(JsFunction continuation, JsPromise target,

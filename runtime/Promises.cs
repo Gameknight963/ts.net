@@ -29,29 +29,27 @@ public static partial class Js
             foreach (var promise in unhandledPromises)
                 if (!promise.Handled) throw MakeThrown(promise.Result);
     }
-    sealed class PromiseCapability
+    sealed class PromiseCapability(JsPromise native = null) : PromiseResolvingFunctions(native)
     {
         internal TsObject Promise;
-        internal PromiseResolvingFunctions Intrinsic;
-        JsFunction resolve, reject;
-        internal JsFunction Resolve { get => resolve ?? Intrinsic.Resolve; set => resolve = value; }
-        internal JsFunction Reject { get => reject ?? Intrinsic.Reject; set => reject = value; }
+        internal new JsFunction Resolve { get => base.Resolve; set => resolve = value; }
+        internal new JsFunction Reject { get => base.Reject; set => reject = value; }
         internal void Complete(object value, bool rejected)
         {
-            if (Intrinsic != null)
+            if (promise != null)
             {
-                if (rejected) Intrinsic.RejectValue(value);
-                else Intrinsic.ResolveValue(value);
+                if (rejected) RejectValue(value);
+                else ResolveValue(value);
                 return;
             }
             (rejected ? Reject : Resolve).InvokeWithReceiver(Undefined, new[] { value });
         }
     }
-    sealed class PromiseResolvingFunctions
+    class PromiseResolvingFunctions
     {
         bool resolved;
-        readonly JsPromise promise;
-        JsFunction resolve, reject;
+        protected readonly JsPromise promise;
+        protected JsFunction resolve, reject;
         // Internal capabilities usually never expose these functions to JavaScript.
         // Materialize each function only when needed, preserving its identity.
         internal JsFunction Resolve => resolve ??= new JsFunction((FunctionBody)(args =>
@@ -167,7 +165,7 @@ public static partial class Js
         if (ReferenceEquals(constructor, RuntimeNamespaces.Promise))
         {
             var intrinsic = new JsPromise();
-            return new PromiseCapability { Promise = intrinsic, Intrinsic = new PromiseResolvingFunctions(intrinsic) };
+            return new PromiseCapability(intrinsic) { Promise = intrinsic };
         }
         return NewCustomPromiseCapability(constructor);
     }
