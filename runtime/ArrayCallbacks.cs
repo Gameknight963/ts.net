@@ -15,6 +15,7 @@ public static partial class Js
         {
             if (array.HasElement((uint)index)) { value = array.ElementAt((uint)index); return true; }
             var prototype = array.PropertyPrototype;
+            if (ReferenceEquals(prototype, ArrayPrototype) && ArraySlicePrototypesHaveNoIndices()) return false;
             string key = index.ToString(CultureInfo.InvariantCulture);
             if (prototype is null || !prototype.HasInProperty(key)) return false;
             value = prototype.GetWithReceiver(key, array); return true;
