@@ -40,7 +40,7 @@ public static partial class Js
             Value = value; Array = value is JsArray;
             if (Array)
             {
-                DirectArray = value.GetType() == typeof(JsArray) || value is NumberArray;
+                DirectArray = value.GetType() == typeof(JsArray) || value is NumberArray or TaggedArray;
                 Length = DirectArray ? (long)((JsArray)value).Length() : IndexedLength(value);
             }
             else
@@ -123,12 +123,12 @@ public static partial class Js
             }
         }
         void Indent(int depth) { for (int i = 0; i < depth; i++) output.Append(gap); }
-        bool WritePackedNumbers(NumberArray array)
+        bool WritePackedNumbers(JsArray array)
         {
             if (replacer != null || array.HasIndexedAccessors)
                 return false;
             double count = array.Length();
-            double[] numbers = array.TryPacked(count);
+            double[] numbers = array is NumberArray numeric ? numeric.TryPacked(count) : ((TaggedArray)array).TryPackedNumbers(count);
             if (numbers == null) return false;
             int length = (int)count;
 
@@ -169,7 +169,7 @@ public static partial class Js
             else if (value is TsObject obj)
             {
                 if (!Enter(obj)) throw new InvalidOperationException("Cannot serialize a cyclic object");
-                if (obj is NumberArray numbers && WritePackedNumbers(numbers)) { active?.Remove(obj); return; }
+                if (obj is NumberArray or TaggedArray && WritePackedNumbers((JsArray)obj)) { active?.Remove(obj); return; }
                 var frame = new JsonWriteFrame(obj, propertyList, previousNames);
                 if (frame.Names != null) previousNames = frame.Names;
                 frames.Add(frame); output.Append(frame.Array ? '[' : '{');

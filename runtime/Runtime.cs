@@ -235,6 +235,8 @@ public static partial class Js
         if (index.HasValue) {
             if (receiver is NumberArray numbers) return numbers.GetNumber(index.GetValueOrDefault());
             if (receiver is TypedArrayValue typed) return typed.ReadNumberIndex(index.GetValueOrDefault());
+            if (receiver is TaggedArray tagged && index.Value >= 0 && index.Value <= int.MaxValue && index.Value == (int)index.Value)
+                return tagged.GetNumberAt((int)index.Value);
         }
         return Cast<double?>(IndexGetNumberKey(receiver, index), "checked conversion failed");
     }
@@ -428,6 +430,7 @@ public static partial class Js
     public static double? ArrayGetNumberAt(object receiver, int index)
     {
         if (receiver is NumberArray numbers) return numbers.GetNumberAt(index);
+        if (receiver is TaggedArray tagged) return tagged.GetNumberAt(index);
         if (index >= 0 && receiver is JsArray array && array.GetType() == typeof(JsArray))
             return Cast<double?>(array.ElementAt((uint)index), "Array element is not a number");
         return Cast<double?>(IndexGet(receiver, (double)index), "Array element is not a number");

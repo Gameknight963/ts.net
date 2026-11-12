@@ -67,5 +67,6 @@ public static class Iteration
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double? Number(object value, int position) => value is NumberArray array ? array.GetNumberAt(position) :
+        value is TaggedArray tagged ? tagged.GetNumberAt(position) :
         Js.Cast<double?>(Value(value, position), "Iteration value violates number binding type");
 }

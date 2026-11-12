@@ -44,11 +44,17 @@ public static partial class Js
 
     static TsObject ArraySpeciesCreate(TsObject source, long length, bool reserveDense = false)
         => ArraySpeciesCreate(source, length, reserveDense, out _);
-    static TsObject ArraySpeciesCreate(TsObject source, long length, bool reserveDense, out bool privateResult)
+    static TsObject ArraySpeciesCreate(TsObject source, long length, bool reserveDense, out bool privateResult, bool numericStorage = false)
     {
         var constructor = ArraySpeciesConstructor(source, out bool native);
         privateResult = constructor == null;
-        var result = ArraySpeciesCreate(constructor, length);
+        TsObject result;
+        if (constructor == null && numericStorage && length <= Array.MaxLength && source is NumberArray numericSource &&
+            !numericSource.HasIndexedAccessors && numericSource.TryPacked(length) != null)
+        {
+            var tagged = new TaggedArray((int)length); tagged.ReserveCapacity((int)length); result = tagged;
+        }
+        else result = ArraySpeciesCreate(constructor, length);
         // A packed range also bounds the reservation by a CLR buffer length.
         if (reserveDense && native && length > 0 && source is NumberArray numbers && !numbers.HasIndexedAccessors &&
             numbers.TryPacked(length) != null && result.GetType() == typeof(JsArray))

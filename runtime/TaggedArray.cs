@@ -19,6 +19,27 @@ public sealed partial class TaggedArray : JsArray
         for (int i = 0; i < items.Length; i++)
             if (!ReferenceEquals(items[i], HoleValue())) Write((uint)i, items[i]);
     }
+    // Only for a fresh map result that cannot escape until mapping completes.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void StoreMappedNumber(int index, double? value)
+    {
+        tags[index] = value.HasValue ? (byte)1 : (byte)2;
+        numbers[index] = value.GetValueOrDefault();
+        references[index] = value.HasValue ? null : Js.Undefined;
+    }
+    internal double[] TryPackedNumbers(double limit)
+    {
+        if (TryTags(limit) == null) return null;
+        for (int i = 0; i < (int)limit; i++) if (tags[i] != 1) return null;
+        return numbers;
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public double? GetNumberAt(int index)
+    {
+        if (!HasIndexedAccessors && materialized == null && (uint)index < length && (uint)index < (uint)tags.Length && tags[index] == 1)
+            return numbers[index];
+        return Js.Cast<double?>(Js.IndexGet(this, (double)index), "Array element is not a number");
+    }
     protected override uint Count => materialized != null ? (uint)materialized.Length() : length;
     public override bool HasElement(uint index) => HasDefinedElement(index) || (materialized != null ? materialized.HasElement(index) : index < length && index < (uint)tags.Length && tags[index] != 0);
     protected override object Read(uint index)

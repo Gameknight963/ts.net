@@ -58,18 +58,20 @@ public static partial class Js
             object thisValue = FunctionArgument(arguments, 1);
             bool find = kind is ArrayCallbackKind.Find or ArrayCallbackKind.FindIndex or ArrayCallbackKind.FindLast or ArrayCallbackKind.FindLastIndex;
             bool backwards = kind is ArrayCallbackKind.FindLast or ArrayCallbackKind.FindLastIndex;
-            TsObject result = null;
-            Span<object> mapSlots = default;
-            if (kind is ArrayCallbackKind.Map or ArrayCallbackKind.Filter) {
-                result = ArraySpeciesCreate(source, kind == ArrayCallbackKind.Map ? length : 0, kind == ArrayCallbackKind.Map, out bool privateResult);
-                // The intrinsic result cannot escape to callbacks. Its length,
-                // storage and property attributes stay unchanged until return.
-                if (kind == ArrayCallbackKind.Map && privateResult && ((JsArray)result).DenseRange(length) is object[] slots) mapSlots = slots;
-            }
             bool numericCallback = callback.SupportsArrayNumber() || callback.SupportsArrayNumberSource();
             bool numericResult = numericCallback && callback.SupportsNumberResult();
             bool sourceNumberResult = numericCallback && callback.SupportsArrayNumberResult();
             bool unboxedResult = numericResult || sourceNumberResult;
+            TsObject result = null;
+            Span<object> mapSlots = default;
+            bool privateResult = false;
+            if (kind is ArrayCallbackKind.Map or ArrayCallbackKind.Filter) {
+                result = ArraySpeciesCreate(source, kind == ArrayCallbackKind.Map ? length : 0, kind == ArrayCallbackKind.Map, out privateResult, kind == ArrayCallbackKind.Map && unboxedResult);
+                // The intrinsic result cannot escape to callbacks. Its length,
+                // storage and property attributes stay unchanged until return.
+                if (kind == ArrayCallbackKind.Map && privateResult && result.GetType() == typeof(JsArray) && ((JsArray)result).DenseRange(length) is object[] slots) mapSlots = slots;
+            }
+            TaggedArray numericMap = kind == ArrayCallbackKind.Map && privateResult ? result as TaggedArray : null;
             bool testResult = kind is not ArrayCallbackKind.Map and not ArrayCallbackKind.ForEach;
             long selected = 0;
             for (long i = backwards ? length - 1 : 0; i >= 0 && i < length; i += backwards ? -1 : 1)
@@ -86,6 +88,7 @@ public static partial class Js
                     {
                         double? mappedNumber = numericResult ? callback.InvokeNumber2(numberValue, i)
                             : callback.InvokeArrayNumberResult(thisValue, numberValue, i, source);
+                        if (numericMap != null) { numericMap.StoreMappedNumber((int)i, mappedNumber); continue; }
                         numericMapped = kind == ArrayCallbackKind.Map ? BoxNumber(mappedNumber) : Undefined;
                         truth = testResult && NumberTruthy(mappedNumber);
                     }
@@ -116,6 +119,7 @@ public static partial class Js
                 {
                     double? mappedNumber = numericResult ? callback.InvokeNumber2(sourceNumber, i)
                         : callback.InvokeArrayNumberResult(thisValue, sourceNumber, i, source);
+                    if (numericMap != null) { numericMap.StoreMappedNumber((int)i, mappedNumber); continue; }
                     mapped = kind == ArrayCallbackKind.Map ? BoxNumber(mappedNumber)
                         : testResult ? BoxBoolean(NumberTruthy(mappedNumber)) : Undefined;
                 }
@@ -123,7 +127,7 @@ public static partial class Js
                     ? callback.InvokeArrayNumber(thisValue, number, i, source)
                     : callback.InvokeWithReceiver(thisValue, new object[] { value, (double)i, source });
                 if (find && Truthy(mapped)) return kind is ArrayCallbackKind.FindIndex or ArrayCallbackKind.FindLastIndex ? (object)(double)i : value;
-                if (kind == ArrayCallbackKind.Map) { if (!mapSlots.IsEmpty) mapSlots[(int)i] = mapped; else ArraySpeciesSet(result, i, mapped); }
+                if (kind == ArrayCallbackKind.Map) { if (numericMap != null) numericMap.SetOwnElement((uint)i, mapped); else if (!mapSlots.IsEmpty) mapSlots[(int)i] = mapped; else ArraySpeciesSet(result, i, mapped); }
                 else if (kind == ArrayCallbackKind.Filter) { if (Truthy(mapped)) ArraySpeciesSet(result, selected++, value); }
                 else if (kind == ArrayCallbackKind.Every && !Truthy(mapped)) return BoxBoolean(false);
                 else if (kind == ArrayCallbackKind.Some && Truthy(mapped)) return BoxBoolean(true);

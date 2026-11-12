@@ -24,7 +24,9 @@ public static partial class Js
             var result = new StringBuilder();
             // Separator conversion has already run. A fully present numeric
             // range with no accessors cannot invoke user code while joining.
-            if (receiver is NumberArray numeric && !numeric.HasIndexedAccessors && numeric.TryPacked(length) is { } packed)
+            double[] packed = receiver is NumberArray numeric && !numeric.HasIndexedAccessors ? numeric.TryPacked(length)
+                : receiver is TaggedArray tagged ? tagged.TryPackedNumbers(length) : null;
+            if (packed != null)
             {
                 for (int i = 0; i < (int)length; i++)
                 {
