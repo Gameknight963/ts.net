@@ -88,14 +88,14 @@ internal static partial class CompilerFunctions
             if (!literal && (value.kind != NodeKind.Undefined || value.constant)) return null;
             values.Add((field.name, field.right));
         }
-        if (values.Count != count || !scalar_constructor(entry, klass.right, c, b)) return null;
+        if (!scalar_constructor(entry, klass.right, values.Select(value => value.Name).ToList(), count, c, b)) return null;
         return values;
     }
 
-    internal static bool scalar_constructor(int entry, int constructor, Compiler c, IlBackend b)
+    internal static bool scalar_constructor(int entry, int constructor, List<int> owned, int count, Compiler c, IlBackend b)
     {
         Node construction = get_node(entry, c);
-        if (constructor == 0) return construction.children == 0;
+        if (constructor == 0) return construction.children == 0 && owned.Count == count;
         int target = scalar_field_function(constructor, c);
         if (target == 0) return false;
         Node function = get_node(target, c);
@@ -124,21 +124,42 @@ internal static partial class CompilerFunctions
         for (int statement = body.children; statement != 0; statement = get_node(statement, c).next)
         {
             Node expression = get_node(statement, c);
-            if (expression.kind != NodeKind.Expression || expression.left == 0) return false;
-            Node assign = get_node(expression.left, c);
-            if (assign.kind != NodeKind.Assign || assign.left == 0 || assign.right == 0 ||
-                !is_text(get_token(assign.token, c).text, text_assign, c)) return false;
-            Node property = get_node(assign.left, c);
-            if (property.kind != NodeKind.Property || property.left == 0 || property.fourth != 0) return false;
-            Node owner = get_node(property.left, c), value = get_node(assign.right, c);
-            if (owner.kind != NodeKind.ResolveThis || owner.left == 0 || get_node(owner.left, c).kind != NodeKind.Name ||
-                get_node(owner.left, c).symbol != receiver.symbol || value.kind != NodeKind.Name) return false;
-            int member = field(construction.type, property.name, c);
+            int name;
+            Node value;
+            if (expression.kind == NodeKind.ClassField)
+            {
+                if (expression.name == 0 || expression.left == 0 || expression.right == 0 ||
+                    expression.third != 0 || expression.fourth != 0) return false;
+                Node owner = get_node(expression.left, c);
+                if (owner.kind != NodeKind.Name || owner.symbol != receiver.symbol) return false;
+                name = expression.name;
+                value = get_node(expression.right, c);
+                if (!owned.Any(previous => same(previous, name, c))) owned.Add(name);
+            }
+            else
+            {
+                if (expression.kind != NodeKind.Expression || expression.left == 0) return false;
+                Node assign = get_node(expression.left, c);
+                if (assign.kind != NodeKind.Assign || assign.left == 0 || assign.right == 0 ||
+                    !is_text(get_token(assign.token, c).text, text_assign, c)) return false;
+                Node property = get_node(assign.left, c);
+                if (property.kind != NodeKind.Property || property.left == 0 || property.fourth != 0) return false;
+                Node owner = get_node(property.left, c);
+                if (owner.kind != NodeKind.ResolveThis || owner.left == 0 || get_node(owner.left, c).kind != NodeKind.Name ||
+                    get_node(owner.left, c).symbol != receiver.symbol) return false;
+                name = property.name;
+                value = get_node(assign.right, c);
+                // Assignments must not skip a possible inherited setter.
+                if (!owned.Any(previous => same(previous, name, c))) return false;
+            }
+            if (value.kind != NodeKind.Name) return false;
+            int member = field(construction.type, name, c);
             if (member == 0 || !arguments.Any(p => p.Symbol == value.symbol &&
                 get_type(p.Type, c).kind == get_type(get_field(member, c).type, c).kind)) return false;
             if (assignments.Count == 32) return false;
-            assignments.Add((property.name, value.symbol));
+            assignments.Add((name, value.symbol));
         }
+        if (owned.Count != count) return false;
         b.scalar_constructor_arguments[entry] = arguments;
         b.scalar_constructor_assignments[entry] = assignments;
         return true;
