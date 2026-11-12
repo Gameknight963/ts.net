@@ -14,7 +14,7 @@ console.log('borrow', child.read.call({base: 11}), Child.read.call({base: 13}));
 const arrow = child.arrow();
 Object.setPrototypeOf(Child.prototype, {get value(): number {return (this as any).base * 10;}});
 console.log('changed', child.value, child.read(), arrow());
-Object.setPrototypeOf(Child, {base: 5, get value(): number {return (this as any).base * 10;}});
+Object.setPrototypeOf(Child, {get value(): number {return (this as any).base * 10;}});
 console.log('static changed', Child.value, Child.read());
 Object.setPrototypeOf(Child.prototype, {get value(): number {throw new Error('getter');}});
 try {child.read();} catch (error) {console.log('thrown', (error as Error).message);}

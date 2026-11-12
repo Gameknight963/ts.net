@@ -58,7 +58,7 @@ public static partial class Js
         return new JsSuperReference(home is JsObjectMethodReceiver method ? method.Home : (TsObject)home, receiver, isStatic);
     }
     internal static TsObject SuperTarget(TsObject home, bool isStatic) => home is JsClassFunction klass
-        ? isStatic ? klass.TryExplicitPrototype(out var prototype) ? prototype : klass.Parent : klass.Prototype.PropertyPrototype
+        ? isStatic ? klass.PropertyPrototype : klass.Prototype.PropertyPrototype
         : home.PropertyPrototype;
     public static double? SuperGetNumber(object home, object receiver, bool isStatic, string key)
     {

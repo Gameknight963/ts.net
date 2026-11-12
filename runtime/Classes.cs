@@ -62,13 +62,13 @@ public sealed class JsClassFunction : JsFunction
     public override bool DeleteOwn(string key) { if (key == "prototype") return false; bool removed = base.DeleteOwn(key); if (removed) hidden.Remove(key); return removed; }
     internal override bool IsReadOnlyOwnProperty(string key) => key == "prototype" || base.IsReadOnlyOwnProperty(key);
     public override bool HasOwn(string key) => key == "prototype" || base.HasOwn(key);
-    public override bool HasProperty(string key) => HasOwn(key) || (Parent is not null ? Parent.HasProperty(key):base.HasProperty(key));
+    public override bool HasProperty(string key) => HasOwn(key) || PropertyPrototype is TsObject prototype && prototype.HasProperty(key);
     public override object Get(string key) => GetWithReceiver(key, this);
-    public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : key == "prototype" ? Prototype : HasOwn(key) ? base.Get(key) : Parent is null ? base.Get(key) : Parent.GetWithReceiver(key, receiver);
+    public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : key == "prototype" ? Prototype : HasOwn(key) ? base.Get(key) : PropertyPrototype is TsObject prototype ? prototype.GetWithReceiver(key, receiver) : Js.Undefined;
     public override double? GetNumberProperty(string key) => GetNumberWithReceiver(key, this);
     public override double? GetNumberWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.ReadNumber(receiver)
         : key == "prototype" ? Js.Cast<double?>(Prototype, "checked conversion failed")
-        : HasOwn(key) || Parent is null ? Js.Cast<double?>(base.Get(key), "checked conversion failed") : Parent.GetNumberWithReceiver(key, receiver);
+        : HasOwn(key) ? Js.Cast<double?>(base.Get(key), "checked conversion failed") : PropertyPrototype is TsObject prototype ? prototype.GetNumberWithReceiver(key, receiver) : null;
     public override object Set(string key, object value) => SetWithReceiver(key, value, this);
     public override object SetOwnValue(string key, object value)
     {
