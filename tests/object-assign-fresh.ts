@@ -30,7 +30,7 @@ const saved = Object.assign;
 (Object as any).assign = function(this: any, target: any, input: any) {console.log('override', this === Object, Object.keys(target).length, input === source); return input;};
 console.log('override result', Object.assign({}, source) === source);
 const holder = {assign: saved};
-console.log('borrowed native', JSON.stringify((holder.assign as any)({}, source)));
+console.log('borrowed native', JSON.stringify(holder.assign({}, source)));
 
 (Object as any).assign = saved;
 {

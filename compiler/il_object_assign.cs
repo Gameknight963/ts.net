@@ -10,6 +10,28 @@ internal sealed partial class IlBackend
 internal static partial class CompilerFunctions
 {
     internal static readonly TextBytes text_object_assign = "assign";
+    internal static int il_assignment_member_name(Node node, Compiler c)
+    {
+        if (node.kind == NodeKind.Property) return node.name;
+        if (node.kind == NodeKind.Index && node.right != 0 && get_node(node.right, c).kind == NodeKind.String)
+            return get_token(get_node(node.right, c).token, c).text;
+        return 0;
+    }
+    internal static int il_assignment_property(int entry, int name, Compiler c, IlBackend b, System.Collections.Generic.HashSet<int> visited = null)
+    {
+        visited ??= new(); if (entry == 0 || !visited.Add(entry)) return 0;
+        Node owner = get_node(entry, c);
+        if (owner.kind == NodeKind.Assert) return il_assignment_property(owner.left, name, c, b, visited);
+        if (owner.kind == NodeKind.Name && owner.symbol != 0 && b.assignment_initializers.count() > owner.symbol)
+            return il_assignment_property(b.assignment_initializers.at(owner.symbol), name, c, b, visited);
+        if (owner.kind != NodeKind.Object || il_object_needs_entries(entry, c)) return 0;
+        int result = 0;
+        for (int property = owner.children; property != 0; property = get_node(property, c).next) {
+            Node value = get_node(property, c);
+            if (value.kind == NodeKind.Property && same(value.name, name, c)) result = value.left;
+        }
+        return result;
+    }
     internal static bool il_is_object_namespace(int entry,Compiler c,IlBackend b,System.Collections.Generic.HashSet<int> visited=null)
     {
         visited ??= new();if(!visited.Add(entry))return false;
@@ -24,9 +46,13 @@ internal static partial class CompilerFunctions
     {
         visited ??= new();if(!visited.Add(entry))return false;
         Node callee=get_node(entry,c);
-        if(callee.kind==NodeKind.Property && is_text(callee.name,text_object_assign,c))
+        if (callee.kind == NodeKind.Assert) return il_is_object_assign(callee.left, c, b, visited);
+        int name = il_assignment_member_name(callee, c);
+        if (name != 0)
         {
-            return il_is_object_namespace(callee.left,c,b);
+            if (is_text(name, text_object_assign, c) && il_is_object_namespace(callee.left, c, b)) return true;
+            int value = il_assignment_property(callee.left, name, c, b);
+            if (value != 0) return il_is_object_assign(value, c, b, visited);
         }
         if(callee.kind==NodeKind.Name && callee.symbol!=0 && b.assignment_initializers.count()>callee.symbol)
         {
@@ -82,7 +108,7 @@ internal static partial class CompilerFunctions
     internal static void il_prepare_assignments(Compiler c, IlBackend b)
     {
         bool used=false;
-        for(int i=1;i<=c.node_store.count();i++)if(get_node(i,c).kind==NodeKind.Property && is_text(get_node(i,c).name,text_object_assign,c)){used=true;break;}
+        for(int i=1;i<=c.node_store.count();i++) { int name = il_assignment_member_name(get_node(i,c), c); if (name != 0 && is_text(name, text_object_assign, c)) { used=true;break; } }
         if(!used)return;
         b.assignment_initializers=zero_ids(c.symbol_store.count()+1);
         for(int i=1;i<=c.node_store.count();i++){Node definition=get_node(i,c);if(definition.kind==NodeKind.Variable && definition.symbol!=0 && definition.left!=0 && b.assignment_initializers.at(definition.symbol)==0)b.assignment_initializers.at_mut(definition.symbol)=definition.left;}

@@ -1,0 +1,13 @@
+export {};
+const tools = {copy: Object.assign};
+const source = {throughProperty: 1};
+console.log('property copy', tools.copy({}, source).throughProperty);
+const alias = tools.copy;
+console.log('property function alias', alias({}, {throughAlias: 2}).throughAlias);
+const holderAlias = tools;
+console.log('holder alias', holderAlias.copy({}, {throughHolderAlias: 3}).throughHolderAlias);
+const named = {assign: Object.assign};
+console.log('named assign property', named.assign({}, {throughNamedProperty: 4}).throughNamedProperty);
+console.log('indexed copy property', tools['copy']({}, {throughIndexedProperty: 5}).throughIndexedProperty);
+const asserted = tools.copy as typeof Object.assign;
+console.log('asserted copy alias', asserted({}, {throughAssertedAlias: 6}).throughAssertedAlias);
