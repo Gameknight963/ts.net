@@ -72,6 +72,7 @@ Runtime performance:
 | `any` property loop, 350K iterations | 0.266 ms | 0.435 ms | 1.64x |
 | WritableStream, queue and complete 1K numeric writes | 0.394 ms | 0.618 ms | 1.57x |
 | reduce and reduceRight, 10 pairs over 10K integers from 0-255 | 0.775 ms | 1.21 ms | 1.56x |
+| forEach sum, every and findIndex, 10 passes over 10K integers from 0-255 | 0.577 ms | 0.865 ms | 1.50x |
 | Typed-object loop, 500K iterations | 0.5 ms | 0.4 ms | 1.49x |
 | UTF-8 roundtrip, 1K chunks of 80 UTF-16 code units | 11.23 ms | 16.11 ms | 1.43x |
 | `==` on mixed values, 1M comparisons | 5.15 ms | 7.26 ms | 1.41x |
@@ -106,7 +107,6 @@ Runtime performance:
 | Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | 0.60x |
 | Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | 0.59x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 0.717 ms | 0.415 ms | 0.58x |
-| forEach sum, every and findIndex, 10 passes over 10K integers from 0-255 | 1.57 ms | 0.876 ms | 0.56x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | 0.54x |
 | Split 10K comma-separated strings, keep three parts, and sum lengths | 4 ms | 2 ms | 0.50x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | 0.50x |
