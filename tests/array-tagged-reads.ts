@@ -33,3 +33,13 @@ const copied: any[] = [5, 'copy', 6];
 console.log('copied numeric tag', typeof copied[0] === 'number', copied[0]);
 copied.reverse();
 console.log('materialized reads', copied.join(','), copied[2]);
+
+const changing: any[] = [1, , 3];
+console.log('changing numeric tag', typeof changing[0] === 'number');
+const changingPrototype = Object.create(Array.prototype);
+Object.defineProperty(changingPrototype, '1', {get() {
+    changing[1000] = 7;
+    return changing[0];
+}});
+Object.setPrototypeOf(changing, changingPrototype);
+console.log('getter changes storage', changing[1], changing[0], changing[1000], changing.length);

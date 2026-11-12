@@ -21,7 +21,13 @@ public sealed partial class TaggedArray : JsArray
     }
     protected override uint Count => materialized != null ? (uint)materialized.Length() : length;
     public override bool HasElement(uint index) => HasDefinedElement(index) || (materialized != null ? materialized.HasElement(index) : index < length && index < (uint)tags.Length && tags[index] != 0);
-    protected override object Read(uint index) => TryReadDefinedElement(index, out var defined) ? defined : HasElement(index) ? BoxAt(index) : InheritedElement(index);
+    protected override object Read(uint index)
+    {
+        if (TryReadDefinedElement(index, out var defined)) return defined;
+        if (materialized != null)
+            return materialized.HasElement(index) ? materialized.ElementAt(index) : InheritedElement(index);
+        return index < length && index < (uint)tags.Length && tags[index] != 0 ? BoxAt(index) : InheritedElement(index);
+    }
     protected override void DeleteElement(uint index)
     {
         if(materialized!=null){materialized.DeleteOwn(index.ToString(System.Globalization.CultureInfo.InvariantCulture));return;}
@@ -30,8 +36,7 @@ public sealed partial class TaggedArray : JsArray
     }
     object BoxAt(uint index)
     {
-        if (materialized != null) return materialized.ElementAt(index);
-        if (index >= length || index >= (uint)tags.Length) return Js.Undefined;
+        // Read and the internal copy loop check the representation and range.
         // Reuse the reference slot to cache a box only when this numeric slot
         // is read as an object. Numeric writes already clear that slot.
         if (tags[index] == 1) return references[index] ??= numbers[index];
