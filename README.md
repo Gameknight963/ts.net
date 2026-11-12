@@ -136,7 +136,7 @@ Runtime performance:
 | Traverse 1K array values with for-await-of and sum them | 0.737 ms | 0.126 ms | 0.17x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 2.55 ms | 0.442 ms | 0.17x |
-| map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.98 ms | 0.235 ms | 0.12x |
+| map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.94 ms | 0.271 ms | 0.14x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
