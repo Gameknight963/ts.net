@@ -138,10 +138,18 @@ public static partial class Js
     public static object NamePropertyFunction(object value, string name) { ((JsFunction)value).InferPropertyName(name); return value; }
     public static object CallFunction0(object target) => target is JsFunction function ? function.Invoke(Array.Empty<object>()) : throw new InvalidOperationException("Value is not callable");
     public static object CallFunction(object target, object[] arguments) => target is JsFunction function ? function.Invoke(arguments) : throw new InvalidOperationException("Value is not callable");
-    public static object CallFunctionNumberArgument(object target, double? value) => target is INumberArgumentFunction function
-        ? function.InvokeNumberArgument(value) : CallFunction(target, new[] { BoxNumber(value) });
-    public static object CallMethodNumberArgument(object target, object receiver, double? value) => target is INumberArgumentFunction function
-        ? function.InvokeNumberArgument(value) : CallMethod(target, receiver, new[] { BoxNumber(value) });
+    public static object CallFunctionNumberArgument(object target, double? value)
+    {
+        if (target is INumberArgumentFunction function) return function.InvokeNumberArgument(value);
+        if (target is JsReceiverFunction receiverFunction) return receiverFunction.InvokeNumberArgument(Undefined, value);
+        return CallFunction(target, new[] { BoxNumber(value) });
+    }
+    public static object CallMethodNumberArgument(object target, object receiver, double? value)
+    {
+        if (target is INumberArgumentFunction function) return function.InvokeNumberArgument(value);
+        if (target is JsReceiverFunction receiverFunction) return receiverFunction.InvokeNumberArgument(receiver, value);
+        return CallMethod(target, receiver, new[] { BoxNumber(value) });
+    }
     public static object CallFunctionArguments(object target, object arguments)
     {
         int length = checked((int)Iteration.Length(arguments));

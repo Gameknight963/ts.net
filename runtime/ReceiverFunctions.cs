@@ -15,12 +15,17 @@ public sealed class JsReceiverFunction : JsFunction
         {
             var values = new object[arguments.Length + 1];
             Array.Copy(arguments, 0, values, 1, arguments.Length);
-            receiver = WrapReceiver(receiver);
+            values[0] = receiver;
+            return InvokeValues(values);
+        }
+        internal object InvokeValues(object[] values)
+        {
+            // Callers own this array; slot zero is reserved for the receiver.
+            object receiver = WrapReceiver(values[0]);
             if (UsesArguments) receiver = new JsArgumentsReceiver(receiver, values);
             values[0] = receiver;
             return body(values);
         }
-        internal object InvokeValues(object[] values) { values[0] = WrapReceiver(values[0]); return body(values); }
     }
     public JsReceiverFunction(object body, object numeric, string name, int length)
         : this(new Invocation((FunctionBody)body), numeric, name, length) { }
@@ -33,7 +38,8 @@ public sealed class JsReceiverFunction : JsFunction
     internal override void SetObjectHome(TsObject home) => invocation.Home = home;
     internal void EnableArguments() => invocation.UsesArguments = true;
     public override object InvokeWithReceiver(object receiver, object[] arguments) => invocation.Invoke(receiver, arguments);
-    public override double? InvokeMethodNumber0(object receiver) => Js.Cast<double?>(invocation.UsesArguments ? invocation.Invoke(receiver, Array.Empty<object>()) : invocation.InvokeValues(new[] { receiver }), "Function result violates number type");
-    public override double? InvokeMethodNumber1(object receiver, double? first) => Js.Cast<double?>(invocation.UsesArguments ? invocation.Invoke(receiver, new[] { Js.BoxNumber(first) }) : invocation.InvokeValues(new[] { receiver, Js.BoxNumber(first) }), "Function result violates number type");
-    public override double? InvokeMethodNumber2(object receiver, double? first, double? second) => Js.Cast<double?>(invocation.UsesArguments ? invocation.Invoke(receiver, new[] { Js.BoxNumber(first), Js.BoxNumber(second) }) : invocation.InvokeValues(new[] { receiver, Js.BoxNumber(first), Js.BoxNumber(second) }), "Function result violates number type");
+    internal object InvokeNumberArgument(object receiver, double? value) => invocation.InvokeValues(new[] { receiver, Js.BoxNumber(value) });
+    public override double? InvokeMethodNumber0(object receiver) => Js.Cast<double?>(invocation.InvokeValues(new[] { receiver }), "Function result violates number type");
+    public override double? InvokeMethodNumber1(object receiver, double? first) => Js.Cast<double?>(invocation.InvokeValues(new[] { receiver, Js.BoxNumber(first) }), "Function result violates number type");
+    public override double? InvokeMethodNumber2(object receiver, double? first, double? second) => Js.Cast<double?>(invocation.InvokeValues(new[] { receiver, Js.BoxNumber(first), Js.BoxNumber(second) }), "Function result violates number type");
 }
