@@ -2,7 +2,7 @@ using System;
 
 // The hidden first argument is a normal compiler parameter, so arrows can
 // capture it without a global receiver or a mutable thread-local slot.
-public sealed class JsReceiverFunction : JsFunction
+public class JsReceiverFunction : JsFunction
 {
     readonly Invocation invocation;
     sealed class Invocation(FunctionBody body)
@@ -10,7 +10,7 @@ public sealed class JsReceiverFunction : JsFunction
         internal string SourceText => Js.SourceOf(body);
         internal bool UsesArguments;
         internal TsObject Home;
-        object WrapReceiver(object receiver) => Home == null ? receiver : new JsObjectMethodReceiver(Home, receiver);
+        internal object WrapReceiver(object receiver) => Home == null ? receiver : new JsObjectMethodReceiver(Home, receiver);
         internal object Invoke(object receiver, object[] arguments)
         {
             var values = new object[arguments.Length + 1];
@@ -37,7 +37,8 @@ public sealed class JsReceiverFunction : JsFunction
     internal override string SourceText => invocation.SourceText;
     internal override void SetObjectHome(TsObject home) => invocation.Home = home;
     internal void EnableArguments() => invocation.UsesArguments = true;
-    public override object InvokeWithReceiver(object receiver, object[] arguments) => invocation.Invoke(receiver, arguments);
+    protected object PrepareReceiver(object receiver) => invocation.WrapReceiver(receiver);
+    public sealed override object InvokeWithReceiver(object receiver, object[] arguments) => invocation.Invoke(receiver, arguments);
     internal object InvokeNumberArgument(object receiver, double? value) => invocation.InvokeValues(new[] { receiver, Js.BoxNumber(value) });
     public override double? InvokeMethodNumber0(object receiver) => Js.Cast<double?>(invocation.InvokeValues(new[] { receiver }), "Function result violates number type");
     public override double? InvokeMethodNumber1(object receiver, double? first) => Js.Cast<double?>(invocation.InvokeValues(new[] { receiver, Js.BoxNumber(first) }), "Function result violates number type");

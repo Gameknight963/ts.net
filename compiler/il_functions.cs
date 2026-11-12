@@ -202,18 +202,24 @@ internal static partial class CompilerFunctions
         int callback = il_numeric_array_callback(symbol, c);
         bool source_callback = il_source_array_callback(symbol, c);
         bool continuation = get_node(get_symbol(symbol, c).function, c).internal_continuation;
-        if (count < 0 && callback < 0 && !source_callback && !continuation) return;
+        int receiver_count = il_numeric_receiver_function(symbol, c);
+        if (count < 0 && callback < 0 && !source_callback && !continuation && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
-        int parent = b.RuntimeToken(RuntimeMember.FunctionType); int type = b.plan.type(name.view(), parent, 0x101);
+        int parent = b.RuntimeToken(receiver_count >= 0 ? RuntimeMember.ReceiverFunctionType : RuntimeMember.FunctionType); int type = b.plan.type(name.view(), parent, 0x101);
         Vector<int> parameters = new Vector<int>(); parameters.push(-5); parameters.push(-5); parameters.push(-4); parameters.push(-6);
         int context = b.function_contexts.at(symbol); int environment_field = 0;
         if (context != 0) { int environment_type = b.context_types.at((int)context); parameters.push(environment_type); environment_field = b.plan.field(type, 0x26, environment_type, "environment"); }
         int constructor = b.plan.method(5, type, 0x1886, -1, parameters.view(), ".ctor");
         b.function_constructors.at_mut(symbol) = constructor; b.begin(constructor);
         for (int i = 0; i < 5; i++) { b.emit(0xfe09, i); }
-        b.call(RuntimeMember.FunctionConstructor);
+        b.call(receiver_count >= 0 ? RuntimeMember.ReceiverFunctionConstructor : RuntimeMember.FunctionConstructor);
         if (context != 0) { b.emit(0xfe09, 0); b.emit(0xfe09, 5); b.emit(0x7d, environment_field); }
         b.op(0x2a);
+        if (receiver_count >= 0)
+        {
+            il_numeric_receiver_methods(symbol, type, context, environment_field, receiver_count, c, b);
+            return;
+        }
         // Call the same adapter as the stored delegate. Compiler-only
         // continuations can omit that delegate entirely.
         for (int receiver = 0; receiver < 2; receiver++)
