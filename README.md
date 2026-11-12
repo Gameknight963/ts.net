@@ -100,6 +100,7 @@ Runtime performance:
 | TransformStream pipeline, double 1K numbers | 5.17 ms | 3.57 ms | 0.69x |
 | Sum 1K values in a loop, awaiting each value | 0.0633 ms | 0.0434 ms | 0.69x |
 | ReadableStream, create and drain 1K numbers | 0.281 ms | 0.189 ms | 0.67x |
+| Numeric getter on an Object.create object, 100K reads | 1.95 ms | 1.27 ms | 0.65x |
 | String `codePointAt(index)`, 1M calls | 3.00 ms | 1.90 ms | 0.63x |
 | Intl.Segmenter, 100 word-segmentation calls and full traversal | 4.14 ms | 2.59 ms | 0.63x |
 | String slice and first-character read, 1M calls | 14.55 ms | 8.98 ms | 0.62x |
@@ -146,6 +147,7 @@ Runtime performance:
 | Class method through a helper, 100K calls | 1.10 ms | 0.0619 ms | 0.06x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
+| Class numeric getter, 100K reads | 2.38 ms | 0.0273 ms | 0.01x |
 
 </details>
 
