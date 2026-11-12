@@ -14,6 +14,19 @@ public static partial class Js
         else reaction.Enqueue(value, false);
     }
 
+    sealed class SyncIteratorResultReaction(PromiseResolvingFunctions pair, bool done, AsyncIterationState cursor = null) : PromiseReactionBase
+    {
+        internal override void Run(object value, bool rejected)
+        {
+            if (rejected)
+            {
+                if (cursor != null && !done) CloseIterationAt(cursor.Source, unchecked((int)cursor.Position), true);
+                pair.RejectValue(value);
+            }
+            else pair.ResolveValue(IteratorResult(value, done));
+        }
+    }
+
     public static object ForAwaitNext(object state)
     {
         var cursor = (AsyncIterationState)state;
@@ -38,11 +51,7 @@ public static partial class Js
             cursor.NeedsClose = false;
             // Unwrap the sync iterator's value in an intrinsic reaction. The
             // loop then awaits the resulting iterator-result promise separately.
-            ObserveSyncIteratorValue(more ? cursor.Current : Undefined, new PromiseContinuationReaction((resolved, rejected) =>
-            {
-                if (rejected) { if (more) CloseIterationAt(cursor.Source, unchecked((int)cursor.Position), true); pair.RejectValue(resolved); }
-                else pair.ResolveValue(IteratorResult(resolved, !more));
-            }));
+            ObserveSyncIteratorValue(more ? cursor.Current : Undefined, new SyncIteratorResultReaction(pair, !more, cursor));
         }
         catch (Exception error) { if (more) CloseIterationAt(cursor.Source, unchecked((int)cursor.Position), true); pair.RejectError(error); }
         return result;
@@ -85,11 +94,7 @@ public static partial class Js
                 if (method is not JsFunction function) throw new InvalidOperationException("Iterator return is not callable");
                 object returned = RequireIteratorResult(function.InvokeWithReceiver(iterator, Array.Empty<object>()));
                 bool done = Truthy(Get(returned, "done"));
-                ObserveSyncIteratorValue(Get(returned, "value"), new PromiseContinuationReaction((resolved, rejected) =>
-                {
-                    if (rejected) pair.RejectValue(resolved);
-                    else pair.ResolveValue(IteratorResult(resolved, done));
-                }));
+                ObserveSyncIteratorValue(Get(returned, "value"), new SyncIteratorResultReaction(pair, done));
             }
         }
         catch (Exception error) { pair.RejectError(error); }
