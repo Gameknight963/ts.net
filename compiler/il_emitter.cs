@@ -603,6 +603,7 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Property)
         {
+            if (il_scalar_class_property(entry, c, b)) return;
             if (n.fourth != 0) { il_boxed(n.left, c, b); il_boxed(n.fourth, c, b); b.call(RuntimeMember.PrivateGet); b.from_object(n.type, c); return; }
             TypeKind atOwner=get_type(get_node(n.left,c).type,c).kind;
             if ((atOwner==TypeKind.Array || atOwner==TypeKind.String) && is_text(n.name,text_at_method,c)) {

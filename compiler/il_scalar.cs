@@ -100,6 +100,15 @@ internal static partial class CompilerFunctions
             if (n.fourth != 0) { parents.at_mut(n.fourth) = (int)i; }
             int child = n.children;
             while (child != 0) { parents.at_mut(child) = (int)i; child = get_node(child, c).next; }
+            if (n.kind == NodeKind.Property && n.fourth == 0 && n.left != 0 && get_node(n.left, c).kind == NodeKind.Construct)
+            {
+                Node construction = get_node(n.left, c);
+                if (field(construction.type, n.name, c) != 0)
+                {
+                    var fields = scalar_class_fields(n.left, initializers, declarations, parameters, c, b);
+                    if (fields != null) b.scalar_class_initializers[n.left] = fields;
+                }
+            }
             if (n.kind == NodeKind.Variable && n.left != 0 && parameters.at(n.symbol) == 0 && declarations.at(n.symbol) == 1 && (get_type(n.type, c).kind == TypeKind.Shape || get_type(n.type, c).kind == TypeKind.Any) && scalar_initial_value(n.left, initializers, declarations, parameters, c, b))
             {
                 b.scalar_roots.at_mut(n.symbol) = (int)n.symbol; definitions.at_mut(n.symbol) = (int)i;
@@ -216,18 +225,7 @@ internal static partial class CompilerFunctions
         }
         if (b.scalar_class_initializers.TryGetValue(n.left, out var initializers))
         {
-            // Keep the original constructor binding read, including TDZ checks.
-            il_boxed(value.left, c, b); b.op(0x26);
-            foreach (var initializer in initializers)
-            {
-                int f = field(value.type, initializer.Name, c);
-                il_as(initializer.Value, get_field(f, c).type, c, b);
-                for (int i = 0; i < b.scalar_fields.count(); i++)
-                {
-                    ScalarField storage = b.scalar_fields.at(i);
-                    if (storage.root == n.symbol && same(storage.name, initializer.Name, c)) { b.emit(0xfe0e, storage.slot); break; }
-                }
-            }
+            il_scalar_class_initialize(n.left, b.scalar_fields.view().Where(storage => storage.root == n.symbol).ToList(), c, b);
             return;
         }
         if (il_object_needs_entries(n.left, c)) { il_scalar_spread_initialize(entry, c, b); return; }

@@ -5,14 +5,17 @@ using static Tsnet.Compiler.CompilerFunctions;
 internal sealed partial class IlBackend
 {
     internal readonly Dictionary<int, List<(int Name, int Value)>> scalar_class_initializers = [];
+    internal readonly Dictionary<int, List<(int Argument, int Type, int Symbol)>> scalar_constructor_arguments = [];
+    internal readonly Dictionary<int, List<(int Name, int Symbol)>> scalar_constructor_assignments = [];
 }
 
 internal static partial class CompilerFunctions
 {
     internal static int scalar_field_function(int value, Compiler c)
     {
+        if (value == 0) return 0;
         Node reference = get_node(value, c);
-        if (reference.kind != NodeKind.FunctionValue || reference.symbol == 0 ||
+        if (reference.kind != NodeKind.FunctionValue || reference.symbol == 0 || reference.left == 0 ||
             get_symbol(reference.symbol, c).function != reference.left) return 0;
         Node function = get_node(reference.left, c);
         return function.kind == NodeKind.Function && function.right == 0 && !function.internal_continuation ? reference.left : 0;
@@ -22,35 +25,43 @@ internal static partial class CompilerFunctions
         Vector<int> declarations, Vector<int> parameters, Compiler c, IlBackend b)
     {
         Node construction = get_node(entry, c);
-        if (construction.kind != NodeKind.Construct || construction.children != 0 || get_type(construction.type, c).kind != TypeKind.Shape) return null;
+        if (construction.kind != NodeKind.Construct || construction.left == 0 || construction.type == 0 ||
+            get_type(construction.type, c).kind != TypeKind.Shape) return null;
         Node reference = get_node(construction.left, c);
         if (reference.kind != NodeKind.Name || reference.symbol == 0 || parameters.at(reference.symbol) != 0 ||
             declarations.at(reference.symbol) != 1 || b.written_symbols.at(reference.symbol) != 0) return null;
-        Node definition = get_node((int)definitions.at(reference.symbol), c);
+        int declaration = (int)definitions.at(reference.symbol);
+        if (declaration == 0) return null;
+        Node definition = get_node(declaration, c);
+        if (definition.kind != NodeKind.Variable || definition.left == 0) return null;
         Node call = get_node(definition.left, c);
-        if (call.kind != NodeKind.Call || call.children != 0) return null;
+        if (call.kind != NodeKind.Call || call.children != 0 || call.left == 0) return null;
         int factory = scalar_field_function(call.left, c);
-        if (factory == 0 || get_node(factory, c).children != 0) return null;
+        if (factory == 0 || get_node(factory, c).children != 0 || get_node(factory, c).left == 0) return null;
         Node scope = get_node(get_node(factory, c).left, c);
-        if (scope.kind != NodeKind.Block) return null;
+        if (scope.kind != NodeKind.Block || scope.children == 0) return null;
         Node binding = get_node(scope.children, c);
+        if (binding.kind != NodeKind.Variable || binding.symbol == 0 || binding.left == 0 || binding.next == 0) return null;
         Node initialize = get_node(binding.next, c);
+        if (initialize.kind != NodeKind.ClassStatic || initialize.left == 0 || initialize.right == 0 || initialize.next == 0) return null;
         Node result = get_node(initialize.next, c);
         if (binding.kind != NodeKind.Variable || binding.symbol == 0 || b.written_symbols.at(binding.symbol) != 0 ||
-            initialize.kind != NodeKind.ClassStatic || result.kind != NodeKind.Return || result.next != 0 ||
+            result.kind != NodeKind.Return || result.left == 0 || result.next != 0 ||
             get_node(initialize.left, c).kind != NodeKind.Name || get_node(initialize.left, c).symbol != binding.symbol ||
             get_node(result.left, c).kind != NodeKind.Name || get_node(result.left, c).symbol != binding.symbol) return null;
         Node klass = get_node(binding.left, c);
-        // Constructors, inheritance, methods, computed keys and decorators keep
-        // the ordinary construction path. Static initializers must also be empty.
-        if (klass.kind != NodeKind.ClassValue || klass.right != 0 || klass.third != 0 || klass.children != 0 ||
+        // Inheritance, methods, computed keys and decorators keep the ordinary
+        // construction path. Static initializers must also be empty.
+        if (klass.kind != NodeKind.ClassValue || klass.left == 0 || klass.fourth == 0 || klass.third != 0 || klass.children != 0 ||
             get_node(klass.fourth, c).type != construction.type) return null;
         int statics = scalar_field_function(initialize.right, c);
-        if (statics == 0 || get_node(get_node(statics, c).left, c).kind != NodeKind.Block ||
+        if (statics == 0 || get_node(statics, c).left == 0 || get_node(get_node(statics, c).left, c).kind != NodeKind.Block ||
             get_node(get_node(statics, c).left, c).children != 0) return null;
         int fields = scalar_field_function(klass.left, c);
         if (fields == 0) return null;
-        Node function = get_node(fields, c), body = get_node(get_node(fields, c).left, c);
+        Node function = get_node(fields, c);
+        if (function.left == 0 || function.fourth == 0) return null;
+        Node body = get_node(function.left, c);
         Node receiver = get_node(function.fourth, c);
         if (body.kind != NodeKind.Block || function.fourth == 0 || function.children != function.fourth || receiver.next != 0) return null;
         int count = 0;
@@ -64,7 +75,7 @@ internal static partial class CompilerFunctions
         for (int statement = body.children; statement != 0; statement = get_node(statement, c).next)
         {
             Node field = get_node(statement, c);
-            if (field.kind != NodeKind.ClassField || field.name == 0 || field.third != 0 || field.fourth != 0 ||
+            if (field.kind != NodeKind.ClassField || field.name == 0 || field.left == 0 || field.right == 0 || field.third != 0 || field.fourth != 0 ||
                 get_node(field.left, c).kind != NodeKind.Name || get_node(field.left, c).symbol != receiver.symbol ||
                 values.Any(previous => same(previous.Name, field.name, c))) return null;
             int member = CompilerFunctions.field(construction.type, field.name, c);
@@ -77,7 +88,116 @@ internal static partial class CompilerFunctions
             if (!literal && (value.kind != NodeKind.Undefined || value.constant)) return null;
             values.Add((field.name, field.right));
         }
-        return values.Count == count ? values : null;
+        if (values.Count != count || !scalar_constructor(entry, klass.right, c, b)) return null;
+        return values;
+    }
+
+    internal static bool scalar_constructor(int entry, int constructor, Compiler c, IlBackend b)
+    {
+        Node construction = get_node(entry, c);
+        if (constructor == 0) return construction.children == 0;
+        int target = scalar_field_function(constructor, c);
+        if (target == 0) return false;
+        Node function = get_node(target, c);
+        if (function.left == 0 || function.fourth == 0) return false;
+        Node body = get_node(function.left, c);
+        Node receiver = get_node(function.fourth, c);
+        if (body.kind != NodeKind.Block || function.fourth == 0 || function.children != function.fourth ||
+            receiver.kind != NodeKind.Variable || receiver.symbol == 0 || receiver.name != 0 || receiver.constant) return false;
+        var arguments = new List<(int Argument, int Type, int Symbol)>();
+        int parameter = receiver.next, argument = construction.children;
+        while (parameter != 0 && argument != 0)
+        {
+            Node p = get_node(parameter, c), value = get_node(argument, c);
+            if (p.type == 0 || value.type == 0) return false;
+            TypeKind kind = get_type(p.type, c).kind;
+            if (p.kind != NodeKind.Variable || p.symbol == 0 || p.constant || p.left != 0 || p.right != 0 ||
+                p.third != 0 || p.fourth != 0 || p.children != 0 ||
+                kind is not (TypeKind.Number or TypeKind.String or TypeKind.Boolean) ||
+                value.kind == NodeKind.Spread || get_type(value.type, c).kind != kind) return false;
+            if (arguments.Count == 8) return false;
+            arguments.Add((argument, p.type, p.symbol));
+            parameter = p.next; argument = value.next;
+        }
+        if (parameter != 0 || argument != 0) return false;
+        var assignments = new List<(int Name, int Symbol)>();
+        for (int statement = body.children; statement != 0; statement = get_node(statement, c).next)
+        {
+            Node expression = get_node(statement, c);
+            if (expression.kind != NodeKind.Expression || expression.left == 0) return false;
+            Node assign = get_node(expression.left, c);
+            if (assign.kind != NodeKind.Assign || assign.left == 0 || assign.right == 0 ||
+                !is_text(get_token(assign.token, c).text, text_assign, c)) return false;
+            Node property = get_node(assign.left, c);
+            if (property.kind != NodeKind.Property || property.left == 0 || property.fourth != 0) return false;
+            Node owner = get_node(property.left, c), value = get_node(assign.right, c);
+            if (owner.kind != NodeKind.ResolveThis || owner.left == 0 || get_node(owner.left, c).kind != NodeKind.Name ||
+                get_node(owner.left, c).symbol != receiver.symbol || value.kind != NodeKind.Name) return false;
+            int member = field(construction.type, property.name, c);
+            if (member == 0 || !arguments.Any(p => p.Symbol == value.symbol &&
+                get_type(p.Type, c).kind == get_type(get_field(member, c).type, c).kind)) return false;
+            if (assignments.Count == 32) return false;
+            assignments.Add((property.name, value.symbol));
+        }
+        b.scalar_constructor_arguments[entry] = arguments;
+        b.scalar_constructor_assignments[entry] = assignments;
+        return true;
+    }
+
+    internal static void il_scalar_class_initialize(int entry, List<ScalarField> fields, Compiler c, IlBackend b)
+    {
+        Node value = get_node(entry, c);
+        // Keep the constructor binding read, including TDZ checks, before arguments.
+        il_boxed(value.left, c, b); b.op(0x26);
+        var parameters = new Dictionary<int, (int Slot, int Type)>();
+        if (b.scalar_constructor_arguments.TryGetValue(entry, out var arguments))
+        {
+            var evaluated = new List<(int Slot, int Type)>();
+            // Evaluate all arguments before checking any constructor parameters.
+            foreach (var argument in arguments)
+            {
+                int type = get_node(argument.Argument, c).type, slot = b.local(b.type(type, c));
+                il_expression(argument.Argument, c, b); b.emit(0xfe0e, slot); evaluated.Add((slot, type));
+            }
+            for (int i = 0; i < arguments.Count; i++)
+            {
+                var parameter = arguments[i]; int slot = b.local(b.type(parameter.Type, c));
+                b.emit(0xfe0c, evaluated[i].Slot); b.convert(evaluated[i].Type, parameter.Type, c); b.emit(0xfe0e, slot);
+                parameters[parameter.Symbol] = (slot, parameter.Type);
+            }
+        }
+        foreach (var initializer in b.scalar_class_initializers[entry])
+        {
+            ScalarField storage = fields.First(field => same(field.name, initializer.Name, c));
+            il_as(initializer.Value, storage.type, c, b); b.emit(0xfe0e, storage.slot);
+        }
+        if (b.scalar_constructor_assignments.TryGetValue(entry, out var assignments))
+        {
+            foreach (var assignment in assignments)
+            {
+                var parameter = parameters[assignment.Symbol];
+                ScalarField storage = fields.First(field => same(field.name, assignment.Name, c));
+                b.emit(0xfe0c, parameter.Slot); b.convert(parameter.Type, storage.type, c); b.emit(0xfe0e, storage.slot);
+            }
+        }
+    }
+
+    internal static bool il_scalar_class_property(int entry, Compiler c, IlBackend b)
+    {
+        Node property = get_node(entry, c);
+        if (property.fourth != 0 || !b.scalar_class_initializers.ContainsKey(property.left)) return false;
+        int member = field(get_node(property.left, c).type, property.name, c);
+        if (member == 0) return false;
+        var fields = new List<ScalarField>();
+        for (int item = get_type(get_node(property.left, c).type, c).fields; item != 0; item = get_field(item, c).next)
+        {
+            Field field = get_field(item, c);
+            fields.Add(new ScalarField {name = field.name, type = field.type, slot = b.local(b.type(field.type, c))});
+        }
+        il_scalar_class_initialize(property.left, fields, c, b);
+        ScalarField result = fields.First(field => same(field.name, property.name, c));
+        b.emit(0xfe0c, result.slot); b.convert(result.type, property.type, c);
+        return true;
     }
 
     internal static bool scalar_initial_value(int entry, Vector<int> definitions, Vector<int> declarations,

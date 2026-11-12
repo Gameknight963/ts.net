@@ -50,7 +50,8 @@ try
     long before = GC.GetAllocatedBytesForCurrentThread();
     double? checksum = run(1000);
     long bytesAllocated = GC.GetAllocatedBytesForCurrentThread() - before;
-    if (bytesAllocated != 0 || checksum != 251000) throw new Exception($"Local classes allocated {bytesAllocated} bytes or produced {checksum}");
+    double expected = args.Length > 1 ? double.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture) : 251000;
+    if (bytesAllocated != 0 || checksum != expected) throw new Exception($"Local classes allocated {bytesAllocated} bytes or produced {checksum}");
     Console.WriteLine("PASS local classes allocate zero bytes; escaping classes retain construction");
 
     return 0;
