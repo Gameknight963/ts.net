@@ -242,6 +242,18 @@ public static partial class Js
         if (index.HasValue && arguments.TryReadIndex(index.Value, out object value)) return value;
         return IndexGetNumberKey(receiver, index);
     }
+    public static object ArrayIndexGetNumberKey(object receiver, double? index)
+    {
+        if (receiver is JsArray array && index.HasValue) {
+            double number = index.Value;
+            // These built-in representations use the ordinary numeric
+            // property lookup. Unknown CLR subclasses keep virtual Get.
+            if (number >= 0 && number < uint.MaxValue && number == (uint)number &&
+                (array.GetType() == typeof(JsArray) || array is NumberArray or TaggedArray or ReversibleArray or JsTemplateArray))
+                return array.ElementAt((uint)number);
+        }
+        return IndexGetNumberKey(receiver, index);
+    }
     public static object IndexGetNumberKey(object receiver, double? index)
     {
         if (IsNullish(receiver)) throw new InvalidOperationException("Cannot read property of null or undefined");

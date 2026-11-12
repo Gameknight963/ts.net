@@ -177,12 +177,26 @@ for (int i = 0; i < 10; i++) ReadOrdinaryNumbers(ordinaryNumbers, 1000);
 long ordinaryStart = GC.GetAllocatedBytesForCurrentThread();
 double ordinaryTotal = ReadOrdinaryNumbers(ordinaryNumbers, 100000);
 long ordinaryBytes = GC.GetAllocatedBytesForCurrentThread() - ordinaryStart;
-if (ordinaryTotal != 350000 || ordinaryBytes != 0 || Js.ArrayGetNumber(new NumericReadOverride(), 0) != 99 || Js.ArrayGetNumberAt(new NumericReadOverride(), 0) != 99)
+if (ordinaryTotal != 350000 || ordinaryBytes != 0 || Js.ArrayGetNumber(new NumericReadOverride(), 0) != 99 || Js.ArrayGetNumberAt(new NumericReadOverride(), 0) != 99 || !Equals(Js.ArrayIndexGetNumberKey(new NumericReadOverride(), 0), 99d))
 {
     Console.Error.WriteLine("Ordinary numeric reads allocated, lost values, or bypassed a subclass: " + ordinaryBytes);
     Environment.ExitCode = 1;return;
 }
 Console.WriteLine("PASS allocation-free ordinary numeric reads and virtual subclass fallback");
+var numericKeyArray = new JsArray(1002);
+numericKeyArray.SetAt(1000, 3d);numericKeyArray.SetAt(1001, 4d);
+for (int i = 0; i < 10; i++) ReadNumericKeys(numericKeyArray, 1000);
+ordinaryStart = GC.GetAllocatedBytesForCurrentThread();
+ordinaryTotal = ReadNumericKeys(numericKeyArray, 100000);
+ordinaryBytes = GC.GetAllocatedBytesForCurrentThread() - ordinaryStart;
+if (ordinaryTotal != 350000 || ordinaryBytes != 0) throw new Exception("Numeric array keys allocated or lost values: " + ordinaryBytes);
+Console.WriteLine("PASS numeric array keys avoid string allocations");
+static double ReadNumericKeys(JsArray source, int count)
+{
+    double sum = 0;
+    for (int i = 0; i < count; i++) sum += (double)Js.ArrayIndexGetNumberKey(source, 1000 + (i & 1));
+    return sum;
+}
 static double ReadOrdinaryNumbers(JsArray source, int count)
 {
     double sum = 0;
