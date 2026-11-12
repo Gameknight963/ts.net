@@ -31,8 +31,12 @@ internal sealed class JsSuperReference(TsObject home, object receiver, bool isSt
 }
 public static partial class Js
 {
+    // Hidden receiver wrappers are not TsObjects; ordinary objects need no unwrapping.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static object ResolveThis(object receiver)
+    public static object ResolveThis(object receiver) => receiver is TsObject ? receiver : ResolveWrappedThis(receiver);
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static object ResolveWrappedThis(object receiver)
     {
         receiver = ArgumentsReceiver(receiver);
         if (receiver is JsObjectMethodReceiver method) return ResolveThis(method.Receiver);
