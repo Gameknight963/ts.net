@@ -74,6 +74,7 @@ internal static partial class CompilerFunctions
     {
         Vector<int> parents = zero_ids(c.node_store.count() + 1);
         Vector<int> definitions = zero_ids(c.symbol_store.count() + 1);
+        Vector<int> initializers = zero_ids(c.symbol_store.count() + 1);
         Vector<int> invalid = zero_ids(c.symbol_store.count() + 1);
         Vector<int> declarations = zero_ids(c.symbol_store.count() + 1);
         Vector<int> parameters = zero_ids(c.symbol_store.count() + 1);
@@ -81,6 +82,7 @@ internal static partial class CompilerFunctions
         {
             Node n = get_node(i, c);
             if (n.kind == NodeKind.Variable || n.kind == NodeKind.Binding) { declarations.at_mut(n.symbol)++; }
+            if (n.kind == NodeKind.Variable && n.left != 0) initializers.at_mut(n.symbol) = i;
             if (n.kind == NodeKind.Function)
             {
                 int parameter = n.children;
@@ -98,7 +100,7 @@ internal static partial class CompilerFunctions
             if (n.fourth != 0) { parents.at_mut(n.fourth) = (int)i; }
             int child = n.children;
             while (child != 0) { parents.at_mut(child) = (int)i; child = get_node(child, c).next; }
-            if (n.kind == NodeKind.Variable && n.left != 0 && parameters.at(n.symbol) == 0 && declarations.at(n.symbol) == 1 && (get_type(n.type, c).kind == TypeKind.Shape || get_type(n.type, c).kind == TypeKind.Any) && scalar_literal(n.left, c))
+            if (n.kind == NodeKind.Variable && n.left != 0 && parameters.at(n.symbol) == 0 && declarations.at(n.symbol) == 1 && (get_type(n.type, c).kind == TypeKind.Shape || get_type(n.type, c).kind == TypeKind.Any) && scalar_initial_value(n.left, initializers, declarations, parameters, c, b))
             {
                 b.scalar_roots.at_mut(n.symbol) = (int)n.symbol; definitions.at_mut(n.symbol) = (int)i;
             }
@@ -138,6 +140,7 @@ internal static partial class CompilerFunctions
                 // Literal members share Property's representation with field reads.
                 // Storing the whole object as a literal member is an escape.
                 Node container = get_node((int)parents.at(parent_id), c);
+                if (container.kind == NodeKind.Unary && is_text(get_token(container.token, c).text, text_delete, c)) { invalid.at_mut(root) = 1; continue; }
                 // Assertions preserve a method reference, including its receiver.
                 int reference=parent_id;Node use=container;
                 while(use.kind==NodeKind.Assert){reference=(int)parents.at(reference);use=get_node((int)parents.at(reference),c);}
@@ -210,6 +213,22 @@ internal static partial class CompilerFunctions
             }
             if (!found) { b.scalar_fields.push(new ScalarField { root = n.symbol, name = f.name, type = f.type, slot = slot }); }
             member = f.next;
+        }
+        if (b.scalar_class_initializers.TryGetValue(n.left, out var initializers))
+        {
+            // Keep the original constructor binding read, including TDZ checks.
+            il_boxed(value.left, c, b); b.op(0x26);
+            foreach (var initializer in initializers)
+            {
+                int f = field(value.type, initializer.Name, c);
+                il_as(initializer.Value, get_field(f, c).type, c, b);
+                for (int i = 0; i < b.scalar_fields.count(); i++)
+                {
+                    ScalarField storage = b.scalar_fields.at(i);
+                    if (storage.root == n.symbol && same(storage.name, initializer.Name, c)) { b.emit(0xfe0e, storage.slot); break; }
+                }
+            }
+            return;
         }
         if (il_object_needs_entries(n.left, c)) { il_scalar_spread_initialize(entry, c, b); return; }
         int property = value.children;
