@@ -121,3 +121,12 @@ show('numeric array values', [-0, 1, NaN, Infinity, 1e-7, 1e21]);
     delete missing[1];
     show('numeric holes', missing);
 }
+{
+    const order: string[] = [];
+    const list: any[] = [];
+    Object.defineProperty(list, '0', {get() {order.push('list'); return 'field';}, configurable: true});
+    const spacing: any = Object(2);
+    spacing.valueOf = () => {order.push('space'); return 2;};
+    console.log('scalar setup order', JSON.stringify(3, list, spacing), order.join(','));
+    console.log('scalar replacer', JSON.stringify(3, (key, value) => key === '' ? value + 1 : value));
+}

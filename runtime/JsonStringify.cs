@@ -178,6 +178,21 @@ public static partial class Js
         }
         internal object Write(object input)
         {
+            if (replacer == null)
+            {
+                if (input == null) return "null";
+                if (input is bool boolean) return boolean ? "true" : "false";
+                if (input is double number) return double.IsFinite(number) ? NumberKeyString(number) : "null";
+                if (input is string text)
+                {
+                    QuoteJson(output, text);
+                    return output.ToString();
+                }
+            }
+            return WriteStructured(input);
+        }
+        object WriteStructured(object input)
+        {
             var holder = new JsDynamicObject(); holder.DefineOwn("", input);
             object root = Prepare(holder, ""); if (Omitted(root)) return Undefined;
             WriteValue(root);
