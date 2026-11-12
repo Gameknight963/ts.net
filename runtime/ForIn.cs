@@ -15,7 +15,7 @@ public abstract partial class TsObject
 
 public partial class JsFunction
 {
-    internal override object ForInOwnKeys() => HasOwn("prototype") ? Js.ForInNames(base.ForInOwnKeys(), "length", "name", "prototype") : Js.ForInNames(base.ForInOwnKeys(), "length", "name");
+    internal override object ForInOwnKeys() => OwnPropertyNames();
     internal override bool ForInEnumerable(string key) => (key != "prototype" || ordinaryPrototype == null) && (key is not ("length" or "name") || base.HasOwn(key)) && base.ForInEnumerable(key);
 }
 

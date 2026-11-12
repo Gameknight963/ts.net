@@ -7,6 +7,16 @@ public abstract partial class TsObject
 }
 public partial class JsFunction
 {
+    public override object OwnKeys()
+    {
+        if (!base.HasOwn("length") && !base.HasOwn("name")) return base.OwnKeys();
+        var names = (JsArray)OwnPropertyNames(); var result = new JsArray(0);
+        for (uint i = 0; i < names.Length(); i++) {
+            string key = (string)names.ElementAt(i);
+            if (ForInEnumerable(key)) result.Append(key);
+        }
+        return result;
+    }
     internal override object OwnPropertyNames() => Js.MergeOwnNames(this, base.ForInOwnKeys(),
         lengthSlotDeleted ? null : "length", nameSlotDeleted ? null : "name",
         ordinaryPrototype != null || this is JsClassFunction ? "prototype" : null);

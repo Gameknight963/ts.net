@@ -23,3 +23,18 @@ Object.defineProperty(Holder.prototype, 'constructor', {enumerable: true});
 console.log('prototype keys', Object.keys(Holder.prototype).join(','));
 Object.freeze(Holder.prototype);
 console.log('prototype freeze', Object.isFrozen(Holder.prototype), Reflect.deleteProperty(Holder.prototype, 'constructor'));
+
+{
+    function ordered(value: number): number {return value;}
+    const callable: any = ordered;
+    callable.extra = 7;
+    callable[1] = 'index';
+    Object.defineProperty(callable, 'name', {value: 'changed', writable: true, enumerable: true, configurable: true});
+    Object.defineProperty(callable, 'length', {value: 2, writable: true, enumerable: true, configurable: true});
+    console.log('function metadata key order', Object.keys(callable).join(','), Object.getOwnPropertyNames(callable).join(','));
+    let keys = ''; for (const key in callable) keys += key + ',';
+    console.log('function metadata enumeration', keys);
+    delete callable.name;
+    Object.defineProperty(callable, 'name', {value: 'again', writable: true, enumerable: true, configurable: true});
+    console.log('function metadata reinsertion', Object.keys(callable).join(','), Object.getOwnPropertyNames(callable).join(','));
+}
