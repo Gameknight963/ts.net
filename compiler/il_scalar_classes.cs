@@ -11,6 +11,21 @@ internal sealed partial class IlBackend
 
 internal static partial class CompilerFunctions
 {
+    internal static bool scalar_class_literal(int entry, TypeKind kind, Compiler c)
+    {
+        Node value = get_node(entry, c);
+        if (kind == TypeKind.Number && value.kind == NodeKind.Unary && value.left != 0 &&
+            value.right == 0 && value.third == 0 && value.fourth == 0 && value.children == 0)
+        {
+            int operation = get_token(value.token, c).text;
+            if (!is_text(operation, text_plus, c) && !is_text(operation, text_minus, c)) return false;
+            value = get_node(value.left, c);
+        }
+        if (value.left != 0 || value.right != 0 || value.third != 0 || value.fourth != 0 || value.children != 0) return false;
+        return kind == TypeKind.Number && value.kind == NodeKind.Number ||
+            kind == TypeKind.String && value.kind == NodeKind.String || kind == TypeKind.Boolean && value.kind == NodeKind.Boolean;
+    }
+
     internal static int scalar_field_function(int value, Compiler c)
     {
         if (value == 0) return 0;
@@ -81,10 +96,8 @@ internal static partial class CompilerFunctions
             int member = CompilerFunctions.field(construction.type, field.name, c);
             if (member == 0) return null;
             Node value = get_node(field.right, c);
-            if (value.left != 0 || value.right != 0 || value.third != 0 || value.fourth != 0 || value.children != 0) return null;
             TypeKind kind = get_type(get_field(member, c).type, c).kind;
-            bool literal = kind == TypeKind.Number && value.kind == NodeKind.Number ||
-                kind == TypeKind.String && value.kind == NodeKind.String || kind == TypeKind.Boolean && value.kind == NodeKind.Boolean;
+            bool literal = scalar_class_literal(field.right, kind, c);
             if (!literal && (value.kind != NodeKind.Undefined || value.constant)) return null;
             values.Add((field.name, field.right));
         }
@@ -123,7 +136,7 @@ internal static partial class CompilerFunctions
             // A supplied nullable value can still trigger its default. Keep that
             // case on the ordinary path; omitted literal defaults have no effects.
             if (supplied && p.left != 0) return false;
-            if (!supplied && value.kind is not (NodeKind.Number or NodeKind.String or NodeKind.Boolean)) return false;
+            if (!supplied && !scalar_class_literal(source, kind, c)) return false;
             if (arguments.Count == 8) return false;
             arguments.Add((source, storageType, p.symbol));
             parameter = p.next;
