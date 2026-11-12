@@ -18,6 +18,8 @@ public abstract partial class TsObject
     public virtual object Get(string key) =>
         TryOwnAccessor(key,out var accessor)?accessor.Read(this):extra != null && extra.TryGetValue(key, out var value) ? value : InheritedValue(key, this);
 
+    public virtual double? GetNumberProperty(string key) => Js.Cast<double?>(Get(key), "checked conversion failed");
+
     public virtual object Set(string key, object value)
     {
         if (IsModuleNamespace) throw new InvalidOperationException("Module namespace is read-only");
@@ -226,7 +228,7 @@ public static partial class Js
             if (receiver is string text) return text.Length;
             if (receiver is JsArray array) return array.Length();
         }
-        return Cast<double?>(Get(receiver, key), "checked conversion failed");
+        return receiver is TsObject obj ? obj.GetNumberProperty(key) : Cast<double?>(Get(receiver, key), "checked conversion failed");
     }
     public static double? IndexGetNumber(object receiver, double? index)
     {
