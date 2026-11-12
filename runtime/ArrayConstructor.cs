@@ -4,7 +4,8 @@ using System.Globalization;
 
 public static partial class Js
 {
-    internal static TsObject ArrayPrototype => (TsObject)RuntimeNamespaces.Array.Get("prototype");
+    // The constructor's prototype property cannot be replaced or reconfigured.
+    internal static TsObject ArrayPrototype => ((ArrayConstructorFunction)RuntimeNamespaces.Array).InstancePrototype;
     static JsArray CreateArray(object[] arguments)
     {
         var result = new JsArray(0);
@@ -32,11 +33,13 @@ public static partial class Js
     }
     sealed class ArrayConstructorFunction : NativeNamespaceFunction
     {
+        internal readonly TsObject InstancePrototype;
         internal ArrayConstructorFunction() : base("Array", static args => CreateArray(args), 1)
         {
             string speciesKey = PropertyKey(SpeciesSymbol); var getter = new ConstructorSpeciesGetter();
             Member(speciesKey, Undefined); DefineAccessor(speciesKey, getter, 1); getter.InferPropertyName("get [Symbol.species]");
             var prototype = new ArrayPrototypeObject();
+            InstancePrototype = prototype;
             UseObjectPrototype(prototype); prototype.Member("constructor", this); prototype.Member("toString", ArrayStringMethod.Value);
             foreach (string name in new[] { "at", "push", "pop", "slice", "reverse", "indexOf", "includes", "join", "map", "filter", "forEach", "every", "some", "reduce", "reduceRight", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "lastIndexOf", "toReversed", "toSorted", "sort", "toLocaleString", "keys", "values", "entries", "concat", "splice", "shift", "unshift", "toSpliced", "with", "fill", "copyWithin" })
                 prototype.Member(name, ArrayMethodValue(name));
