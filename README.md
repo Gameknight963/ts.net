@@ -124,11 +124,11 @@ Runtime performance:
 | Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | Object spread, 100K copies stored in an array | 11.34 ms | 2.42 ms | 0.21x |
+| Create 10K resolved promises, collect with all, and sum results | 2.47 ms | 0.495 ms | 0.20x |
 | Create a Map, insert and read 10K entries, then delete half | 4.38 ms | 0.80 ms | 0.18x |
 | Traverse 1K array values with for-await-of and sum them | 0.737 ms | 0.126 ms | 0.17x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 2.55 ms | 0.442 ms | 0.17x |
-| Create 10K resolved promises, collect with all, and sum results | 3.48 ms | 0.489 ms | 0.14x |
 | WritableStream, queue and complete 1K numeric writes | 5.11 ms | 0.658 ms | 0.13x |
 | ReadableStream, create and drain 1K numbers | 1.80 ms | 0.220 ms | 0.12x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.98 ms | 0.235 ms | 0.12x |
