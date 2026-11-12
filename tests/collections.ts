@@ -139,3 +139,26 @@ Promise.all(new Set([Promise.resolve(1),Promise.resolve(2)])).then(values=>conso
     const derived = new NumericSuperMap();
     console.log('numeric super set', derived.write(11, 12) === derived, derived.get(11));
 }
+
+{
+    const map = new Map<number, {value: number}>();
+    const items: {value: number}[] = [];
+    for (let i = 0; i < 200; i++) {const item = {value: i}; items.push(item); map.set(i, item);}
+    const iterator = map.entries();
+    const first = iterator.next();
+    for (let i = 0; i < 150; i++) map.delete(i);
+    console.log('compacted map iterator', JSON.stringify(iterator.next()), map.get(150) === items[150]);
+    const replacement = {value: 900};
+    map.set(150, replacement);
+    console.log('updated map entry', map.get(150) === replacement, items[150].value);
+    map.clear(); map.set(900, replacement);
+    console.log('cleared map iterator', JSON.stringify(iterator.next()), JSON.stringify(first));
+    const small = new Map([[1, items[0]], [2, items[1]]]);
+    const values = small.values(); values.next(); small.clear(); small.set(3, replacement);
+    console.log('cleared small map iterator', JSON.stringify(values.next()), small.size);
+    const set = new Set<number>(); for (let i = 0; i < 200; i++) set.add(i);
+    const keys = set.values(); keys.next(); for (let i = 0; i < 150; i++) set.delete(i);
+    console.log('compacted set iterator', JSON.stringify(keys.next()), set.has(150), set.has(149));
+    set.clear(); set.add(700);
+    console.log('cleared set iterator', JSON.stringify(keys.next()), set.size);
+}
