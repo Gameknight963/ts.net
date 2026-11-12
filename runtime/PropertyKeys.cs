@@ -63,7 +63,8 @@ public static partial class Js
 
     static string NumberKeyString(double value)
     {
-        if (!double.IsFinite(value) || value == 0) return Text(value);
+        if (value == 0) return "0";
+        if (!double.IsFinite(value)) return double.IsNaN(value) ? "NaN" : value < 0 ? "-Infinity" : "Infinity";
         if (value >= int.MinValue && value <= int.MaxValue && value == (int)value)
             return ((int)value).ToString(CultureInfo.InvariantCulture);
         string raw = value.ToString("R", CultureInfo.InvariantCulture);

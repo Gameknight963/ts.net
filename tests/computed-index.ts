@@ -34,3 +34,24 @@ function arithmetic(count: number) {
     return total;
 }
 console.log(arithmetic(4.5), arithmetic(2147483648));
+
+{
+function read(value: any, key?: number): any {return value[key!];}
+const object: any = {'0':'zero','NaN':'nan','Infinity':'positive','-Infinity':'negative','1e-7':'small','4294967295':'large',undefined:'missing'};
+for (const key of [-0,NaN,Infinity,-Infinity,1e-7,4294967295]) console.log('numeric key', String(key), read(object,key));
+console.log('missing numeric key', read(object));
+const array: any = [1,2]; let reads = 0;
+Object.defineProperty(array,'0',{get(){reads++;return 7;},configurable:true});
+const prototype = Object.create(Array.prototype);
+Object.defineProperty(prototype,'1',{get(){reads++;return 9;},configurable:true});
+delete array[1]; Object.setPrototypeOf(array,prototype);
+console.log('numeric accessors',read(array,-0),read(array,1),reads);
+const text: any = 'A\uD800B';
+for (const key of [0,1,2,-1,0.5,NaN,Infinity]) {
+ const item = read(text,key); console.log('numeric string key',String(key),item===undefined?'missing':item.charCodeAt(0));
+}
+const bytes: any = new Uint8Array([11,12]);
+for (const key of [-0,0,1,-1,NaN,Infinity,4294967295]) console.log('numeric typed key',String(key),read(bytes,key));
+let effects=0;function key():number{effects++;return 0;}
+try {const value:any=null;console.log(value[key()]);}catch(error){console.log('numeric null order',effects,(error as Error).name);}
+}

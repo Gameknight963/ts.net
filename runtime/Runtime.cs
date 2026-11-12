@@ -234,7 +234,17 @@ public static partial class Js
             if (receiver is NumberArray numbers) return numbers.GetNumber(index.GetValueOrDefault());
             if (receiver is TypedArrayValue typed) return typed.ReadNumberIndex(index.GetValueOrDefault());
         }
-        return Cast<double?>(IndexGet(receiver, BoxNumber(index)), "checked conversion failed");
+        return Cast<double?>(IndexGetNumberKey(receiver, index), "checked conversion failed");
+    }
+    public static object IndexGetNumberKey(object receiver, double? index)
+    {
+        if (IsNullish(receiver)) throw new InvalidOperationException("Cannot read property of null or undefined");
+        if (receiver is TypedArrayValue typed && index.HasValue) return typed.ReadIndex(index.Value);
+        string text = index.HasValue ? NumberKeyString(index.Value) : "undefined";
+        if (receiver is JsArray array) return array.Get(text);
+        if (receiver is string value && JsArray.Index(text, out uint position) && position < value.Length)
+            return Iteration.CodeUnit(value[(int)position]);
+        return Get(receiver, text);
     }
     public static object IndexGet(object receiver, object key)
     {
