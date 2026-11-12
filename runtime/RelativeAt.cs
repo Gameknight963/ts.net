@@ -115,6 +115,8 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double? CallMethodNumber1(object target, object receiver, double? first)
     {
+        if (target is JsReceiverFunction function)
+            return function.InvokeMethodNumber1(SuperReceiver(receiver), first);
         if (target is CharacterFunction character)
             return CharacterNumericResult(character, receiver, first.GetValueOrDefault());
         if (target is RelativeAtFunction method) {
