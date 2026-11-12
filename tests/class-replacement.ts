@@ -55,3 +55,15 @@ class Derived extends Base {payload = 'text';}
 const result = new Derived();
 console.log('returned typed field', result.payload, (original as any).payload, JSON.stringify(result));
 }
+
+{
+const original = {functionPayload: 4};
+function BaseFunction() {return original;}
+const alias: any = BaseFunction;
+class Derived extends alias {functionPayload = 'text';}
+const result = new Derived();
+console.log('function base field', result.functionPayload, (original as any).functionPayload, JSON.stringify(result));
+const expression = function() {return {expressionPayload: 2};};
+class ExpressionDerived extends (expression as any) {expressionPayload = 8;}
+console.log('function expression base field', new ExpressionDerived().expressionPayload);
+}

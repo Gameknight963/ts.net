@@ -46,3 +46,37 @@ func (b *irBuilder) prepareConstructorReturnType(t *checker.Type) {
 		}
 	}
 }
+
+func (b *irBuilder) prepareFunctionBaseReturns(n *ast.Node, seen map[*ast.Node]bool) {
+	if n == nil || seen[n] {
+		return
+	}
+	seen[n] = true
+	switch n.Kind {
+	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+		b.prepareFunctionBaseReturns(n.Expression(), seen)
+	case ast.KindFunctionDeclaration, ast.KindFunctionExpression:
+		b.prepareConstructorReturns(n)
+	case ast.KindVariableDeclaration, ast.KindPropertyAssignment, ast.KindPropertyDeclaration:
+		b.prepareFunctionBaseReturns(n.Initializer(), seen)
+	case ast.KindIdentifier, ast.KindPropertyAccessExpression, ast.KindElementAccessExpression:
+		symbol := b.c.GetSymbolAtLocation(n)
+		if symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
+			symbol = b.c.GetAliasedSymbol(symbol)
+		}
+		if symbol != nil {
+			b.prepareFunctionBaseReturns(symbol.ValueDeclaration, seen)
+		}
+	}
+}
+
+func (b *irBuilder) prepareClassBaseReturns(n *ast.Node) {
+	if n.ClassLikeData().HeritageClauses == nil {
+		return
+	}
+	for _, clause := range n.ClassLikeData().HeritageClauses.Nodes {
+		if clause.AsHeritageClause().Token == ast.KindExtendsKeyword {
+			b.prepareFunctionBaseReturns(clause.AsHeritageClause().Types.Nodes[0].Expression(), map[*ast.Node]bool{})
+		}
+	}
+}
