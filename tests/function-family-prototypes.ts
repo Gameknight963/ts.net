@@ -37,3 +37,35 @@ for (const value of [asyncFunction, generator, asyncGenerator]) {
     console.log('restored prototype', Object.getPrototypeOf(value) === original);
     try {Reflect.apply(original, null, []);} catch (error) {console.log('prototype not callable', (error as Error).name);}
 }
+
+{
+const families: any[] = [Object.getPrototypeOf(async function(){}).constructor, Object.getPrototypeOf(function*(){}).constructor, Object.getPrototypeOf(async function*(){}).constructor];
+for (const Constructor of families) {
+    const fn = new Constructor();
+    console.log('empty family', Constructor.name, fn.name, fn.length, fn instanceof Constructor, Object.getPrototypeOf(fn) === Constructor.prototype);
+    console.log('empty source', JSON.stringify(fn.toString()));
+    console.log('empty keys', Object.getOwnPropertyNames(fn).join(','));
+    const called = Constructor();
+    console.log('family call', called.name, called !== fn);
+    try {new fn();} catch(error) {console.log('not constructible', (error as Error).name);}
+    class Derived extends Constructor {marker = 7;}
+    const derived: any = new Derived();
+    console.log('derived family', typeof derived, derived.marker, derived instanceof Derived, derived instanceof Constructor);
+    function Alternate() {}
+    const alternate: any = Reflect.construct(Constructor, [], Alternate);
+    console.log('family new target', typeof alternate, Object.getPrototypeOf(alternate) === Alternate.prototype, alternate.name);
+    const fallbackTarget: any = function() {};
+    fallbackTarget.prototype = 1;
+    const fallback = Reflect.construct(Constructor, [], fallbackTarget);
+    console.log('family prototype fallback', Object.getPrototypeOf(fallback) === Constructor.prototype);
+
+    if(Constructor.name === 'GeneratorFunction') {
+        const iterator = fn(); console.log('empty next', JSON.stringify(iterator.next()), JSON.stringify(iterator.next()));
+        console.log('empty iterator prototype', Object.getPrototypeOf(iterator) === fn.prototype);
+    } else if(Constructor.name === 'AsyncFunction') {
+        fn().then((value: unknown) => console.log('empty async result', value));
+    } else {
+        fn().next().then((value: unknown) => console.log('empty async next', JSON.stringify(value)));
+    }
+}
+}
