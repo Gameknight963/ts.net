@@ -70,6 +70,7 @@ Runtime performance:
 | Numeric `any[]`, 1M iterations | 0.954 ms | 1.66 ms | 1.74x |
 | Typed-object loop, 500K iterations | 0.381 ms | 0.650 ms | 1.70x |
 | `any` property loop, 350K iterations | 0.266 ms | 0.435 ms | 1.64x |
+| WritableStream, queue and complete 1K numeric writes | 0.394 ms | 0.618 ms | 1.57x |
 | reduce and reduceRight, 10 pairs over 10K integers from 0-255 | 0.775 ms | 1.21 ms | 1.56x |
 | Typed-object loop, 500K iterations | 0.5 ms | 0.4 ms | 1.49x |
 | UTF-8 roundtrip, 1K chunks of 80 UTF-16 code units | 11.23 ms | 16.11 ms | 1.43x |
@@ -94,13 +95,14 @@ Runtime performance:
 | String substring and first-character read, 1M calls | 14.27 ms | 10.75 ms | 0.75x |
 | String `charCodeAt(index)`, 1M calls | 2.27 ms | 1.66 ms | 0.73x |
 | TransformStream pipeline, double 1K numbers | 5.17 ms | 3.57 ms | 0.69x |
+| ReadableStream, create and drain 1K numbers | 0.281 ms | 0.189 ms | 0.67x |
 | String `codePointAt(index)`, 1M calls | 3.00 ms | 1.90 ms | 0.63x |
 | Intl.Segmenter, 100 word-segmentation calls and full traversal | 4.14 ms | 2.59 ms | 0.63x |
 | String slice and first-character read, 1M calls | 14.55 ms | 8.98 ms | 0.62x |
+| Sum 1K values in a loop, awaiting each value | 0.0722 ms | 0.0449 ms | 0.62x |
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | 0.60x |
 | Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | 0.59x |
 | forEach sum, every and findIndex, 10 passes over 10K integers from 0-255 | 1.57 ms | 0.876 ms | 0.56x |
-| Sum 1K values in a loop, awaiting each value | 0.0798 ms | 0.0420 ms | 0.53x |
 | Split 10K comma-separated strings, keep three parts, and sum lengths | 4 ms | 2 ms | 0.50x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | 0.50x |
 | Object valueOf, 1M numeric conversions | 48.94 ms | 23.64 ms | 0.48x |
@@ -110,6 +112,7 @@ Runtime performance:
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | 0.46x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
+| Create a Map, insert and read 10K entries, then delete half | 1.76 ms | 0.695 ms | 0.40x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 5.60 ms | 2.05 ms | 0.37x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | 0.37x |
@@ -122,15 +125,13 @@ Runtime performance:
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
 | Sum 1K values with an await in try and an increment in finally each iteration | 0.168 ms | 0.0468 ms | 0.28x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
+| Serialize 10K numbers divided by 7, 20 times | 26.70 ms | 6.70 ms | 0.25x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
-| Object spread, 100K copies stored in an array | 11.34 ms | 2.42 ms | 0.21x |
 | Create 10K resolved promises, collect with all, and sum results | 2.47 ms | 0.495 ms | 0.20x |
-| Create a Map, insert and read 10K entries, then delete half | 4.38 ms | 0.80 ms | 0.18x |
+| Object spread, 100K copies stored in an array | 9.51 ms | 1.65 ms | 0.17x |
 | Traverse 1K array values with for-await-of and sum them | 0.737 ms | 0.126 ms | 0.17x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 2.55 ms | 0.442 ms | 0.17x |
-| WritableStream, queue and complete 1K numeric writes | 5.11 ms | 0.658 ms | 0.13x |
-| ReadableStream, create and drain 1K numbers | 1.80 ms | 0.220 ms | 0.12x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.98 ms | 0.235 ms | 0.12x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
 | Object.assign, create 1K objects with 3 fields | 1 ms | 0 ms | 0.10x |
