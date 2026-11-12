@@ -48,13 +48,19 @@ public static partial class Js
         }
     }
     sealed class PromiseCombinationReaction(PromiseCapability capability, PromiseCombinationState state, int index)
-        : PromiseReaction(capability, null, null, discardResult: true)
+        : PromiseReactionBase
     {
         internal override void Run(object value, bool rejected)
         {
             try { state.Accept(index, value, rejected); }
-            catch (Exception error) { RejectContinuation(error); return; }
-            CompleteContinuation();
+            catch (Exception error)
+            {
+                // A discarded intrinsic result must still report rejection.
+                if (capability == null) new JsPromise().Settle(CaughtValue(error), true);
+                else capability.Complete(CaughtValue(error), true);
+                return;
+            }
+            capability?.Complete(Undefined, false);
         }
     }
     sealed class PromiseCombinationState(PromiseCombination mode, PromiseCapability capability)
