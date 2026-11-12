@@ -58,6 +58,13 @@ public sealed class JsKeyedCollection : JsDescriptorObject
         index.Add(lookup, Entries.Count);
         Entries.Add(new CollectionEntry(key, IsSet ? key : value));
     }
+    internal void WriteNumber(double key, object value)
+    {
+        if (index.GetAlternateLookup<double>().TryGetValue(key, out int slot)) { if (!IsSet) Entries[slot].Value = value; return; }
+        object boxed = key == 0 ? 0d : key;
+        index.Add(boxed, Entries.Count);
+        Entries.Add(new CollectionEntry(boxed, IsSet ? boxed : value));
+    }
     internal bool Remove(object key)
     {
         if (!index.Remove(Key(key), out int slot)) return false;
@@ -177,6 +184,27 @@ public static partial class Js
                 : remove ? collection.Remove(Undefined) : collection.Contains(Undefined));
         }
     }
+    public static object CallCollectionNumberPair(object target, object receiver, double? first, double? second) =>
+        target is MapSetFunction method ? method.InvokeNumbers(SuperReceiver(receiver), first, second)
+        : InvokeReceiver(target, receiver, new[] { BoxNumber(first), BoxNumber(second) });
+    sealed class MapSetFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Map.set requires a receiver")), null, "set", 2)
+    {
+        static object Set(object receiver, object key, object value)
+        {
+            var map = CollectionReceiver(receiver, false); map.Write(key, value); return map;
+        }
+        public override object InvokeWithReceiver(object receiver, object[] arguments) => Set(receiver, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1));
+        internal object InvokeNumbers(object receiver, double? first, double? second)
+        {
+            var map = CollectionReceiver(receiver, false);
+            if (first.HasValue) map.WriteNumber(first.Value, BoxNumber(second));
+            else map.Write(Undefined, BoxNumber(second));
+            return map;
+        }
+        public override double? InvokeMethodNumber0(object receiver) => Cast<double?>(Set(receiver, Undefined, Undefined), "Collection result violates number type");
+        public override double? InvokeMethodNumber1(object receiver, double? first) => Cast<double?>(Set(receiver, BoxNumber(first), Undefined), "Collection result violates number type");
+        public override double? InvokeMethodNumber2(object receiver, double? first, double? second) => Cast<double?>(InvokeNumbers(receiver, first, second), "Collection result violates number type");
+    }
     sealed class MapGetFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Map.get requires a receiver")), null, "get", 1), ICollectionNumberKeyMethod
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments) => CollectionReceiver(receiver, false).Read(FunctionArgument(arguments, 0));
@@ -220,7 +248,9 @@ public static partial class Js
             prototype.DefineMethod("has", new CollectionKeyFunction(set, false));
             prototype.DefineMethod("delete", new CollectionKeyFunction(set, true));
             prototype.DefineMethod("clear", Method("clear", 0, (collection, _) => { collection.ClearEntries(); return Undefined; }));
-            prototype.DefineMethod(set ? "add" : "set", Method(set ? "add" : "set", set ? 1 : 2, (collection, args) => { collection.Write(FunctionArgument(args, 0), FunctionArgument(args, 1)); return collection; }));
+            prototype.DefineMethod(set ? "add" : "set", set
+                ? Method("add", 1, (collection, args) => { collection.Write(FunctionArgument(args, 0), Undefined); return collection; })
+                : new MapSetFunction());
             if (!set) prototype.DefineMethod("get", new MapGetFunction());
             if (!set) foreach (bool computed in new[] {false,true}) {
                 string name = computed ? "getOrInsertComputed" : "getOrInsert";

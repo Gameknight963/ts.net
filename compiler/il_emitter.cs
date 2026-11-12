@@ -682,6 +682,7 @@ internal static partial class CompilerFunctions
         {
             if (il_number_predicate(entry, true, c, b)) { return; }
             if (il_string_search_call(entry,c)) {il_emit_string_search(entry,c,b);return;}
+            if (il_collection_set_call(entry,c)) {il_emit_collection_set_call(entry,c,b);return;}
             if (il_collection_key_call(entry,c)) {il_emit_collection_key_call(entry,c,b);return;}
             if (il_promise_then_call(entry,c)) {il_emit_promise_then_call(entry,c,b);return;}
             if (il_index_method_call(entry,c)) {il_emit_index_method(entry,c,b);return;}

@@ -114,3 +114,28 @@ Promise.all(new Set([Promise.resolve(1),Promise.resolve(2)])).then(values=>conso
     console.log('super map methods',map.read(1),map.contains(1),map.remove(1),map.contains(1));
     console.log('super set methods',set.contains(2),set.remove(2),set.contains(2));
 }
+
+{
+    const map = new Map<number, number>();
+    console.log('numeric set returns receiver', map.set(-0, 0.5) === map);
+    map.set(0, 1.5).set(NaN, 2.5).set(NaN, 3.5);
+    const missing: number = undefined as any;
+    map.set(missing, missing);
+    console.log('numeric set keys', map.size, Object.is([...map.keys()][0], 0), map.get(0), map.get(NaN), map.has(missing), map.get(missing));
+    const order: string[] = [];
+    const original = map.set;
+    Object.defineProperty(map, 'set', {configurable: true, get() {order.push('method'); return original;}});
+    function argument(label: string, value: number): number {order.push(label); return value;}
+    map.set(argument('key', 7), argument('value', 8));
+    console.log('numeric set evaluation order', order.join(','), map.get(7));
+    delete (map as any).set;
+    const replacement: any = {set(a: number, b: number): object {
+        console.log('numeric set override', this === replacement, arguments.length, a, b); return this;
+    }};
+    console.log('numeric set override result', replacement['set'](4, 5) === replacement);
+    class NumericSuperMap extends Map<number, number> {
+        write(key: number, value: number): this {return super.set(key, value);}
+    }
+    const derived = new NumericSuperMap();
+    console.log('numeric super set', derived.write(11, 12) === derived, derived.get(11));
+}
