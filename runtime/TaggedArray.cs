@@ -79,6 +79,14 @@ public sealed partial class TaggedArray : JsArray
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void SetNumberAt(int index, double? value)
     {
+        // An existing ordinary slot cannot grow the array or invoke an
+        // inherited setter. Keep descriptor and frozen-array writes below.
+        if ((uint)index < length && materialized == null && (uint)index < (uint)tags.Length && tags[index] != 0 &&
+            !HasIndexedAccessors && !ElementsFrozen && value.HasValue)
+        {
+            tags[index] = 1;numbers[index] = value.Value;references[index] = null;
+            return;
+        }
         if (NeedsPrototypeSet((uint)index) && SetThroughPrototype((uint)index, Js.BoxNumber(value))) return;
         if (TryWriteDefinedNumber((uint)index, value)) return;
         if (!value.HasValue) { Write((uint)index, Js.Undefined);return; }
