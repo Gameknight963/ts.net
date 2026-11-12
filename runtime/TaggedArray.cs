@@ -44,7 +44,7 @@ public sealed partial class TaggedArray : JsArray
         result.ReserveCapacity(tags.Length);
         result.SetLength(length);
         uint end = Math.Min(length, (uint)tags.Length);
-        for (uint i = 0; i < end; i++) if (tags[i] != 0) result.SetAt((int)i, BoxAt(i));
+        for (uint i = 0; i < end; i++) if (tags[i] != 0) result.SetOwnElement(i, BoxAt(i));
         materialized = result;
         tags = Array.Empty<byte>(); numbers = Array.Empty<double>(); references = Array.Empty<object>();
         return result;
