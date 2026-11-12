@@ -144,7 +144,7 @@ Runtime performance:
 | Sum 1K values from a generator | 0.122 ms | 0.0115 ms | 0.09x |
 | Object literal method through a helper, 100K calls | 0.711 ms | 0.0616 ms | 0.09x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
-| Class method through a helper, 100K calls | 2.26 ms | 0.0619 ms | 0.03x |
+| Class method through a helper, 100K calls | 1.38 ms | 0.0615 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
 
 </details>
