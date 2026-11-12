@@ -236,6 +236,12 @@ public static partial class Js
         }
         return Cast<double?>(IndexGetNumberKey(receiver, index), "checked conversion failed");
     }
+    public static object ArgumentsIndexGetNumberKey(object receiver, double? index)
+    {
+        var arguments = (JsArguments)receiver;
+        if (index.HasValue && arguments.TryReadIndex(index.Value, out object value)) return value;
+        return IndexGetNumberKey(receiver, index);
+    }
     public static object IndexGetNumberKey(object receiver, double? index)
     {
         if (IsNullish(receiver)) throw new InvalidOperationException("Cannot read property of null or undefined");

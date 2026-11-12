@@ -59,3 +59,22 @@ function changingLength(first: number, second: number) {
     console.log('live length', [...args].join(','), reads);
 }
 changingLength(3, 4);
+
+function numericReads(first: number, second: number) {
+    const args: any = arguments;
+    const read = (key: number): any => arguments[key];
+    console.log('numeric snapshot', read(-0), read(1));
+    args[0] = 11;
+    args.length = 0;
+    console.log('numeric stored values', read(0), read(1), first, second);
+    args[-1] = 'negative';
+    args[0.5] = 'fraction';
+    args[NaN] = 'nan';
+    console.log('numeric extra keys', read(-1), read(0.5), read(NaN), read(Infinity));
+    Object.defineProperty(args, '1', {get() {return 17;}, configurable: true});
+    console.log('numeric descriptor', read(1));
+    Object.setPrototypeOf(args, {'0': 19});
+    delete args[0];
+    console.log('numeric deleted index', read(0), Object.hasOwn(args, '0'));
+}
+numericReads(3, 4);

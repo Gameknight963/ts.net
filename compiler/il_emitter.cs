@@ -585,6 +585,7 @@ internal static partial class CompilerFunctions
             }
             if (il_direct_array_index(entry, c, b)) { il_integer(n.right, c, b); b.call(RuntimeMember.NumberIndexGetAt); b.convert(get_type(get_node(n.left, c).type, c).element, n.type, c); }
             else if (il_number_index(entry, c)) { il_number(n.right, c, b); b.call(RuntimeMember.NumberIndexGet); b.convert(get_type(get_node(n.left, c).type, c).element, n.type, c); }
+            else if (get_node(n.left, c).kind == NodeKind.Arguments && get_type(get_node(n.right, c).type, c).kind == TypeKind.Number) { il_expression(n.right, c, b); b.call(RuntimeMember.ArgumentsIndexGetNumberKey); b.from_object(n.type, c); }
             else if (get_type(n.type, c).kind == TypeKind.Number && get_type(get_node(n.right, c).type, c).kind == TypeKind.Number) { il_expression(n.right, c, b); b.call(RuntimeMember.IndexGetNumber); }
             else { if (il_direct_index(entry, c, b)) { il_integer(n.right, c, b); b.call(RuntimeMember.ArrayIndexGetAt); } else if (get_type(get_node(n.right, c).type, c).kind == TypeKind.Number) { il_expression(n.right, c, b); b.call(RuntimeMember.IndexGetNumberKey); } else { il_boxed(n.right, c, b); b.call(RuntimeMember.IndexGet); } b.from_object(n.type, c); }
         }

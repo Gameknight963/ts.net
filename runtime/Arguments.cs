@@ -49,6 +49,15 @@ internal sealed class JsArguments : JsDynamicObject
     static Exception CalleeError() => new InvalidOperationException("Strict arguments.callee cannot be accessed");
     internal override bool IsReadOnlyOwnProperty(string key) => key == "callee" || base.IsReadOnlyOwnProperty(key);
     public override bool HasOwn(string key) => expanded ? base.HasOwn(key) : key is "length" or "callee" || JsArray.Index(key, out uint index) && index < values.Length || base.HasOwn(key);
+    internal bool TryReadIndex(double index, out object value)
+    {
+        if (!expanded && index >= 0 && index < values.Length && index == (int)index) {
+            value = values[(int)index];
+            return true;
+        }
+        value = null;
+        return false;
+    }
     public override object Get(string key)
     {
         if (expanded) return base.Get(key);
