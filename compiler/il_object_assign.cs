@@ -24,13 +24,32 @@ internal static partial class CompilerFunctions
         if (owner.kind == NodeKind.Assert) return il_assignment_property(owner.left, name, c, b, visited);
         if (owner.kind == NodeKind.Name && owner.symbol != 0 && b.assignment_initializers.count() > owner.symbol)
             return il_assignment_property(b.assignment_initializers.at(owner.symbol), name, c, b, visited);
-        if (owner.kind != NodeKind.Object || il_object_needs_entries(entry, c)) return 0;
+        if (owner.kind != NodeKind.Object) return 0;
         int result = 0;
+        bool getter = false;
         for (int property = owner.children; property != 0; property = get_node(property, c).next) {
             Node value = get_node(property, c);
-            if (value.kind == NodeKind.Property && same(value.name, name, c)) result = value.left;
+            if (value.kind != NodeKind.Property || value.right != 0 ||
+                value.fourth != 0 && get_node(value.fourth, c).kind == NodeKind.Undefined) return 0;
+            if (!same(value.name, name, c)) continue;
+            if (value.third == 0) { result = value.left; getter = false; }
+            else if (get_node(value.third, c).constant) { result = il_assignment_getter(value.left, c, b); getter = true; }
+            else if (!getter) result = 0;
         }
         return result;
+    }
+    internal static int il_assignment_getter(int entry, Compiler c, IlBackend b)
+    {
+        int function = il_assignment_function(entry, c, b);
+        if (function == 0) return 0;
+        Node body = get_node(get_node(function, c).left, c);
+        if (body.kind != NodeKind.Block) return 0;
+        for (int statement = body.children; statement != 0; statement = get_node(statement, c).next) {
+            Node value = get_node(statement, c);
+            if (value.kind == NodeKind.Return) return value.next == 0 ? value.left : 0;
+            if (value.kind is not (NodeKind.Expression or NodeKind.Variable)) return 0;
+        }
+        return 0;
     }
     internal static bool il_is_object_namespace(int entry,Compiler c,IlBackend b,System.Collections.Generic.HashSet<int> visited=null)
     {
