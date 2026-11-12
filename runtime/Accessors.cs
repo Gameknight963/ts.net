@@ -93,7 +93,7 @@ public abstract partial class TsObject
     protected object GetStoredWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver)
         : extra != null && extra.TryGetValue(key, out var value) ? value : InheritedValue(key, receiver);
     protected double? GetStoredNumberWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.ReadNumber(receiver)
-        : extra != null && extra.TryGetValue(key, out var value) ? Js.Cast<double?>(value, "checked conversion failed")
+        : extra != null && extra.TryGetNumber(key, out var value) ? value
         : PropertyPrototype is TsObject prototype ? prototype.GetNumberWithReceiver(key, receiver) : null;
     public virtual object SetWithReceiver(string key, object value, object receiver)
     {

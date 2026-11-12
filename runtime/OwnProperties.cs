@@ -7,9 +7,54 @@ using System.Runtime.InteropServices;
 // use a dictionary for the tail, preserving insertion order across both.
 sealed class OwnProperties
 {
+    // Low bits remember first writes; this bit remains set after a cell is created.
+    const int HasNumberCells = 16;
+    sealed class NumberCell(double value)
+    {
+        internal double Value = value;
+        internal object Boxed;
+        internal object Box() => Boxed ??= Value;
+    }
+    static object Read(object value) => value is NumberCell number ? number.Box() : value;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static void Store(ref object slot, object value)
+    {
+        if (slot is NumberCell cell && value is double number) {cell.Value = number; cell.Boxed = value;}
+        else slot = value;
+    }
+    void StoreNumber(ref object slot, double? value, int flag)
+    {
+        if (!value.HasValue) {slot = Js.Undefined; numericWrites &= ~flag; return;}
+        if (slot is NumberCell cell) {cell.Value = value.Value;cell.Boxed = null;}
+        // One-off writes keep an ordinary boxed value. Repeated writes reuse a cell.
+        else if ((numericWrites & flag) != 0) {slot = new NumberCell(value.Value);numericWrites |= HasNumberCells;}
+        else {numericWrites |= flag;slot = Js.BoxNumber(value);}
+    }
+    internal bool TrySetNumber(string key, double? value)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        if (key == key0) {StoreNumber(ref value0, value, 1);return true;}
+        if (key == key1) {StoreNumber(ref value1, value, 2);return true;}
+        if (key == key2) {StoreNumber(ref value2, value, 4);return true;}
+        if (key == key3) {StoreNumber(ref value3, value, 8);return true;}
+        return false;
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal bool TryGetNumber(string key, out double? value)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        object stored;
+        if (key == key0) stored = value0;
+        else if (key == key1) stored = value1;
+        else if (key == key2) stored = value2;
+        else if (key == key3) stored = value3;
+        else if (tail == null || !tail.TryGetValue(key, out stored)) {value = null;return false;}
+        value = stored is double primitive ? primitive : stored is NumberCell number ? number.Value : Js.Cast<double?>(stored, "checked conversion failed");
+        return true;
+    }
     string key0, key1, key2, key3;
     object value0, value1, value2, value3;
-    int inlineCount, version, symbolCount;
+    int inlineCount, version, symbolCount, numericWrites;
     Dictionary<string, object> tail;
     List<string> tailOrder;
     public OwnProperties() { }
@@ -22,7 +67,8 @@ sealed class OwnProperties
     public OwnProperties(OwnProperties source)
     {
         key0=source.key0;key1=source.key1;key2=source.key2;key3=source.key3;
-        value0=source.value0;value1=source.value1;value2=source.value2;value3=source.value3;
+        // Copies share immutable boxed values, never mutable numeric cells.
+        value0=Read(source.value0);value1=Read(source.value1);value2=Read(source.value2);value3=Read(source.value3);
         inlineCount=source.inlineCount;version=source.version;symbolCount=source.symbolCount;
         if (source.tail != null) tail = new Dictionary<string, object>(source.tail);
         if (source.tailOrder != null) tailOrder = new List<string>(source.tailOrder);
@@ -34,22 +80,26 @@ sealed class OwnProperties
     public bool TryGetValue(string key, out object value)
     {
         ArgumentNullException.ThrowIfNull(key);
-        if (key==key0) { value=value0;return true; }
-        if (key==key1) { value=value1;return true; }
-        if (key==key2) { value=value2;return true; }
-        if (key==key3) { value=value3;return true; }
+        if (key==key0) { value=(numericWrites & HasNumberCells)==0 ? value0 : Read(value0);return true; }
+        if (key==key1) { value=(numericWrites & HasNumberCells)==0 ? value1 : Read(value1);return true; }
+        if (key==key2) { value=(numericWrites & HasNumberCells)==0 ? value2 : Read(value2);return true; }
+        if (key==key3) { value=(numericWrites & HasNumberCells)==0 ? value3 : Read(value3);return true; }
         value=null;
         return tail != null && tail.TryGetValue(key, out value);
     }
-    public bool ContainsKey(string key) => TryGetValue(key, out _);
+    public bool ContainsKey(string key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return key == key0 || key == key1 || key == key2 || key == key3 || tail != null && tail.ContainsKey(key);
+    }
     public object this[string key]
     {
         set {
             ArgumentNullException.ThrowIfNull(key);
-            if (key==key0) { value0=value;return; }
-            if (key==key1) { value1=value;return; }
-            if (key==key2) { value2=value;return; }
-            if (key==key3) { value3=value;return; }
+            if (key==key0) { Store(ref value0, value);return; }
+            if (key==key1) { Store(ref value1, value);return; }
+            if (key==key2) { Store(ref value2, value);return; }
+            if (key==key3) { Store(ref value3, value);return; }
             if (inlineCount < 4) {
                 switch (inlineCount++) {
                     case 0: key0=key;value0=value;break;
@@ -69,6 +119,7 @@ sealed class OwnProperties
     }
     void InlineSet(int index, string key, object value)
     {
+        numericWrites &= ~(1 << index);
         switch (index) {
             case 0: key0=key;value0=value;break;
             case 1: key1=key;value1=value;break;

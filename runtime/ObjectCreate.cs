@@ -2,6 +2,7 @@ using System;
 
 internal sealed class JsCreatedObject : JsDynamicObject
 {
+    public override bool TrySetNumberProperty(string key, double? value) => TrySetStoredNumber(key, value);
     public override double? GetNumberProperty(string key) => GetStoredNumberWithReceiver(key, this);
     public override double? GetNumberWithReceiver(string key, object receiver) => GetStoredNumberWithReceiver(key, receiver);
 }

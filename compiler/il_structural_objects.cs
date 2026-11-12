@@ -54,8 +54,10 @@ internal static partial class CompilerFunctions
                 int writer = b.plan.method2(5, b.interface_type(check.Type), 0x16, -1, -5, storage, field_name(field.name, "Write_p_", c).view());
                 b.shape_writers[member] = writer; b.begin(writer); typed = b.label();
                 b.emit(0xfe09, 0); b.emit(0x75, b.interface_type(check.Type)); b.op(0x25); b.emit(0x3a, typed); b.op(0x26);
-                b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 1); b.box(field.type, c);
-                b.call(RuntimeMember.DynamicSet); b.op(0x26); b.op(0x2a);
+                b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 1);
+                if (get_type(field.type, c).kind == TypeKind.Number) b.call(RuntimeMember.DynamicSetNumber);
+                else { b.box(field.type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26); }
+                b.op(0x2a);
                 b.mark(typed); b.emit(0xfe09, 1); b.emit(0x6f, b.setter(member)); b.op(0x2a);
             }
         }

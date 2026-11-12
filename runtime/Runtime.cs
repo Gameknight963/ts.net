@@ -12,6 +12,10 @@ public abstract partial class TsObject
     private OwnProperties extra;
     internal int OwnPropertyVersion => extra?.Version ?? 0;
 
+    public virtual bool TrySetNumberProperty(string key, double? value) => false;
+    protected bool TrySetStoredNumber(string key, double? value) => !IsModuleNamespace && this is JsDescriptorObject descriptor && !descriptor.HasPropertyDescriptors &&
+        !TryOwnAccessor(key, out _) && extra != null && extra.TrySetNumber(key, value);
+
     public virtual bool HasOwn(string key) => extra != null && extra.ContainsKey(key);
     public virtual bool HasProperty(string key) => HasOwn(key) || PropertyPrototype is not null && PropertyPrototype.HasProperty(key);
 
@@ -180,6 +184,12 @@ public static partial class Js
         string or double or bool or JsSymbol or BigInteger => PrimitivePrototype(receiver).GetWithReceiver(key, receiver),
         _ => throw new InvalidOperationException("Cannot read property of undefined")
     };
+
+    public static void SetNumber(object receiver, string key, double? value)
+    {
+        if (receiver is TsObject obj && obj.TrySetNumberProperty(key, value)) return;
+        Set(receiver, key, BoxNumber(value));
+    }
 
     public static object Set(object receiver, string key, object value) =>
         receiver is TsObject obj ? obj.Set(key, value) :

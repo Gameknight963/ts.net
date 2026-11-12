@@ -6,6 +6,8 @@ internal static partial class CompilerFunctions
 {
     internal static void il_stored_numeric_properties(int klass, IlBackend b)
     {
+        b.begin(b.plan.method2(5, klass, 0xc6, -2, -4, -10, "TrySetNumberProperty"));
+        b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 2); b.call(RuntimeMember.TrySetStoredNumber); b.op(0x2a);
         b.begin(b.plan.method1(5, klass, 0xc6, -10, -4, "GetNumberProperty"));
         b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 0);
         b.call(RuntimeMember.GetStoredNumberWithReceiver); b.op(0x2a);

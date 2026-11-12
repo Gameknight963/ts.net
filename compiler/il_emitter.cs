@@ -325,7 +325,9 @@ internal static partial class CompilerFunctions
             }
             else if (get_type(owner, c).kind is TypeKind.Any or TypeKind.Array || get_type(owner, c).name != 0 || (get_type(owner, c).kind == TypeKind.Shape && field(owner, target.name, c) == 0 && get_type(owner, c).element != 0))
             {
-                il_text(target.name, c, b); b.emit(0xfe0c, value); b.box(value_type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26);
+                il_text(target.name, c, b); b.emit(0xfe0c, value);
+                if (get_type(value_type, c).kind == TypeKind.Number) b.call(RuntimeMember.DynamicSetNumber);
+                else { b.box(value_type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26); }
             }
             else
             {

@@ -47,7 +47,10 @@ internal static partial class CompilerFunctions
                 else { b.call(RuntimeMember.GetStoredWithReceiver); b.from_object(field.type, c); }
                 b.op(0x2a);
                 b.begin(b.plan.method1(5, klass, 0x1e6, -1, storage, set.view()));
-                b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 1); b.box(field.type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26); b.op(0x2a);
+                b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 1);
+                if (get_type(field.type, c).kind == TypeKind.Number) b.call(RuntimeMember.DynamicSetNumber);
+                else { b.box(field.type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26); }
+                b.op(0x2a);
             }
         }
     }

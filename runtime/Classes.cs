@@ -18,6 +18,7 @@ public class JsClassInstance : JsDescriptorObject
     public override object GetWithReceiver(string key, object receiver) => GetType() == typeof(JsClassInstance)
         ? GetStoredWithReceiver(key, receiver)
         : TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? base.Get(key) : InheritedPrototype is null ? Js.Undefined : InheritedPrototype.GetWithReceiver(key, receiver);
+    public override bool TrySetNumberProperty(string key, double? value) => GetType() == typeof(JsClassInstance) && TrySetStoredNumber(key, value);
     public override object Set(string key, object value) => SetWithReceiver(key, value, this);
     internal void DefineClassAccessor(string key, object function, int mode)
     {

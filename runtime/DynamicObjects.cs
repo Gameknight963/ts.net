@@ -2,6 +2,7 @@
 // directly; fixed-layout objects use the table only when their prototype changes.
 public partial class JsDynamicObject : JsDescriptorObject
 {
+    public override bool TrySetNumberProperty(string key, double? value) => GetType() == typeof(JsDynamicObject) && TrySetStoredNumber(key, value);
     public override double? GetNumberProperty(string key) => GetType() == typeof(JsDynamicObject)
         ? GetStoredNumberWithReceiver(key, this) : base.GetNumberProperty(key);
     public override double? GetNumberWithReceiver(string key, object receiver) => GetType() == typeof(JsDynamicObject)

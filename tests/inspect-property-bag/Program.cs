@@ -47,5 +47,43 @@ long Allocate(int count) {
 }
 for(int i=0;i<100;i++) Allocate(4);
 if(Allocate(1)>160 || Allocate(4)>160) throw new Exception("Small property bags allocated dictionary buffers");
+var numeric = new JsClassInstance(); numeric.DefineOwn("value", 0d); Js.SetNumber(numeric, "value", 1d); Js.SetNumber(numeric, "value", 2d);
+object oldNumber = numeric.Get("value"); var numericCopy = new JsDynamicObject(); numeric.CopySpreadExtras(numericCopy);
+Js.SetNumber(numeric, "value", 3d); numericCopy.Set("value", 4d);
+if ((double)oldNumber != 2 || Js.GetNumber(numeric,"value") != 3 || Js.GetNumber(numericCopy,"value") != 4)
+    throw new Exception("Numeric property cells shared state with an old value or copied store");
+var custom = new CustomSetter(); custom.DefineOwn("value", 1d); Js.SetNumber(custom,"value",5d);
+if (custom.Calls != 1 || Js.GetNumber(custom,"value") != 5) throw new Exception("Numeric writes bypassed a native setter override");
+var dynamicSetter = new CustomDynamicSetter(); dynamicSetter.DefineOwn("value",1d); Js.SetNumber(dynamicSetter,"value",6d);
+if (dynamicSetter.Calls!=1 || Js.GetNumber(dynamicSetter,"value")!=6) throw new Exception("Numeric writes bypassed a native dictionary setter");
+var namespaceValue = new JsClassInstance(); namespaceValue.DefineOwn("value",0d); Js.SetNumber(namespaceValue,"value",1d); Js.SetNumber(namespaceValue,"value",2d);
+Js.SealModuleNamespace(namespaceValue); bool rejected=false;
+try {Js.SetNumber(namespaceValue,"value",3d);} catch {rejected=true;}
+if (!rejected || Js.GetNumber(namespaceValue,"value")!=2) throw new Exception("Numeric cell writes bypassed namespace protection");
+for (int i=0;i<10000;i++) Js.SetNumber(numeric,"value",i);
+long numericBefore = GC.GetAllocatedBytesForCurrentThread();
+for (int i=0;i<10000;i++) Js.SetNumber(numeric,"value",i);
+if (GC.GetAllocatedBytesForCurrentThread()!=numericBefore || Js.GetNumber(numeric,"value")!=9999)
+    throw new Exception("Repeated numeric property writes allocated or lost their value");
+var mixedNumeric = new JsClassInstance(); var mixedExpected = new Dictionary<string,object>();
+for (int i=0;i<10000;i++) {
+    string key=names[random.Next(names.Length)];
+    object value=i%4==0 ? Js.Undefined : i%4==1 ? null : i%4==2 ? (object)(double)i : "text";
+    if (i%3==0 && key!="__proto__") {Js.SetNumber(mixedNumeric,key,i);value=(double)i;}
+    else mixedNumeric.DefineOwn(key,value);
+    mixedExpected[key]=value;
+    foreach (var entry in mixedExpected)
+        if (!Equals(mixedNumeric.Get(entry.Key),entry.Value)) throw new Exception("Numeric and generic writes disagreed");
+}
+var mixedCopy = new JsDynamicObject(); mixedNumeric.CopySpreadExtras(mixedCopy);
+foreach (var entry in mixedExpected) {
+    mixedCopy.Set(entry.Key,"changed");
+    if (!Equals(mixedNumeric.Get(entry.Key),entry.Value)) throw new Exception("Copied numeric inline cells shared state");
+}
+Console.WriteLine("PASS numeric property writes, copied stores, native setter overrides, and zero loop allocations");
 Console.WriteLine("PASS dynamic property order, overwrites, growth, independent clones, and small-bag allocation");
 sealed class Record : TsObject { }
+
+sealed class CustomSetter : JsClassInstance {public int Calls; public override object Set(string key, object value) {Calls++;return base.Set(key,value);}}
+
+sealed class CustomDynamicSetter : JsDynamicObject {public int Calls; public override object Set(string key, object value) {Calls++;return base.Set(key,value);}}
