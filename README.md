@@ -115,6 +115,7 @@ Runtime performance:
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | 0.45x |
+| Sum 100K values in a loop, awaiting only on the final iteration | 0.984 ms | 0.429 ms | 0.44x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
 | Create a Map, insert and read 10K entries, then delete half | 1.76 ms | 0.695 ms | 0.40x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
@@ -135,9 +136,9 @@ Runtime performance:
 | Object spread, 100K copies stored in an array | 9.51 ms | 1.65 ms | 0.17x |
 | Traverse 1K array values with for-await-of and sum them | 0.737 ms | 0.126 ms | 0.17x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
-| Sum 100K values in a loop, awaiting only on the final iteration | 2.55 ms | 0.442 ms | 0.17x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.94 ms | 0.271 ms | 0.14x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
+| 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.436 ms | 0.0350 ms | 0.08x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
 
