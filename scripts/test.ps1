@@ -177,10 +177,10 @@ try {
     & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/console" tests/console.ts
     if ($LASTEXITCODE) { throw 'Console reference failed to compile' }
     '{"type":"commonjs"}' | Set-Content "$testRoot/node/console/package.json"
-    function Get-ConsoleOutput($Executable, $Argument) {
+    function Get-ConsoleOutput($Executable, [string[]]$Argument) {
         $start = New-Object System.Diagnostics.ProcessStartInfo
         $start.FileName = $Executable
-        $start.Arguments = '"' + $Argument + '"'
+        $start.Arguments = ($Argument | ForEach-Object { '"' + $_ + '"' }) -join ' '
         $start.UseShellExecute = $false
         $start.CreateNoWindow = $true
         $start.RedirectStandardOutput = $true
@@ -190,9 +190,17 @@ try {
             $output = $process.StandardOutput.ReadToEndAsync()
             $errors = $process.StandardError.ReadToEndAsync()
             $process.WaitForExit()
-            if ($process.ExitCode) { throw "$Executable failed: $($errors.Result)" }
+            if ($process.ExitCode) { throw "$Executable failed ($($process.ExitCode)): $($errors.Result)`nStandard output:`n$($output.Result)" }
             [PSCustomObject]@{ Out = $output.Result.Replace("`r`n", "`n"); Error = $errors.Result.Replace("`r`n", "`n") }
         } finally { $process.Dispose() }
+    }
+    function Get-TestOutput($Executable, [string[]]$Argument) {
+        $captured = Get-ConsoleOutput $Executable $Argument
+        if ($captured.Error.Length) { throw "$Executable wrote standard error: $($captured.Error)" }
+        $reader = New-Object IO.StringReader($captured.Out)
+        try {
+            while ($null -ne ($line = $reader.ReadLine())) { $line }
+        } finally { $reader.Dispose() }
     }
     $expectedConsole = Get-ConsoleOutput node "$testRoot/node/console/console.js"
     $actualConsole = Get-ConsoleOutput dotnet "$testRoot/console/bin/Release/net10.0/App.dll"
@@ -247,8 +255,7 @@ try {
         $reference = "$testRoot/node/$name/$name.js"
         # Node accepts non-byte upload chunks and does not cancel a started upload on abort.
         # This fixture checks our byte validation and abort cleanup directly.
-        $expected = if ($name -eq 'fetch-stream-cleanup') { @('PASS upload cancellation and byte validation') } elseif ($name.StartsWith('stack-location')) { @(& node --enable-source-maps $reference) } elseif ($name -eq 'script-global-this') { @(& node tests/run-script.cjs $reference) } else { @(& node $reference) }
-        if ($LASTEXITCODE) { throw "Node failed: $name" }
+        $expected = if ($name -eq 'fetch-stream-cleanup') { @('PASS upload cancellation and byte validation') } elseif ($name.StartsWith('stack-location')) { @(Get-TestOutput node @('--enable-source-maps', $reference)) } elseif ($name -eq 'script-global-this') { @(Get-TestOutput node @('tests/run-script.cjs', $reference)) } else { @(Get-TestOutput node $reference) }
         $actual = @(& dotnet "$testRoot/$name/bin/Release/net10.0/App.dll")
         if ($LASTEXITCODE) { throw ".NET failed: $name" }
         if (($expected -join "`n") -cne ($actual -join "`n")) {
