@@ -53,6 +53,9 @@ func (b *irBuilder) prepareFunctionBaseReturns(n *ast.Node, seen map[*ast.Node]b
 	}
 	seen[n] = true
 	switch n.Kind {
+	case ast.KindConditionalExpression:
+		b.prepareFunctionBaseReturns(n.AsConditionalExpression().WhenTrue, seen)
+		b.prepareFunctionBaseReturns(n.AsConditionalExpression().WhenFalse, seen)
 	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
 		b.prepareFunctionBaseReturns(n.Expression(), seen)
 	case ast.KindFunctionDeclaration, ast.KindFunctionExpression:
