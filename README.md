@@ -103,6 +103,7 @@ Runtime performance:
 | Intl.Segmenter, 100 word-segmentation calls and full traversal | 4.14 ms | 2.59 ms | 0.63x |
 | String slice and first-character read, 1M calls | 14.55 ms | 8.98 ms | 0.62x |
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | 0.60x |
+| Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | 0.60x |
 | Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | 0.59x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 0.717 ms | 0.415 ms | 0.58x |
 | forEach sum, every and findIndex, 10 passes over 10K integers from 0-255 | 1.57 ms | 0.876 ms | 0.56x |
@@ -135,7 +136,6 @@ Runtime performance:
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.47 ms | 0.495 ms | 0.20x |
 | Object spread, 100K copies stored in an array | 9.51 ms | 1.65 ms | 0.17x |
-| Traverse 1K array values with for-await-of and sum them | 0.737 ms | 0.126 ms | 0.17x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.94 ms | 0.271 ms | 0.14x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.284 ms | 0.0358 ms | 0.13x |
