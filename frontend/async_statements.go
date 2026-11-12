@@ -129,7 +129,33 @@ func (a *asyncExpressionLowering) statement(id int, next func() int) int {
 		}
 		return a.expression(n.left, func(value int) int { n.left = value; return a.sequence(a.operation(n), next()) })
 	case 15: // if: one shared fallthrough continuation, with no extra Promise jobs
-		continuation := a.function(false, func(_ int) int { return next() })
+		tail := next()
+		rightAwaits := a.hasAwait(n.right)
+		if rightAwaits != a.hasAwait(n.third) {
+			if plain := a.copyBranchTail(tail); plain != 0 {
+				awaiting, ordinary := n.right, n.third
+				if !rightAwaits {
+					awaiting, ordinary = ordinary, awaiting
+				}
+				continuation := a.function(false, func(_ int) int { return tail })
+				bound := a.bind(continuation, func(symbol int) int {
+					return a.statement(awaiting, func() int {
+						call := a.node(6, "async statement join")
+						a.b.nodes[call-1].left = a.reference(symbol)
+						return a.returned(call)
+					})
+				})
+				// Captured join bindings belong only to the suspending branch.
+				a.b.nodes[bound-1].name = a.b.text("scope")
+				other := a.statement(ordinary, func() int { return plain })
+				yes, no := bound, other
+				if !rightAwaits {
+					yes, no = other, bound
+				}
+				return a.expression(n.left, func(condition int) int { return a.branch(condition, yes, no) })
+			}
+		}
+		continuation := a.function(false, func(_ int) int { return tail })
 		return a.bind(continuation, func(symbol int) int {
 			join := func() int {
 				call := a.node(6, "async statement join")
