@@ -252,7 +252,7 @@ void il_spread_clone(int type, int klass, int constructor, Compiler c, IlBackend
         while (member != 0)
         {
             Field f = get_field(member, c);
-            b.emit(0xfe0c, source); b.emit(0x74, b.interface_type(type)); b.emit(0x6f, b.getter(member));
+            b.emit(0xfe0c, source); il_shape_read(type, member, b);
             for (int i = 0; i < b.scalar_fields.count(); i++)
             {
                 ScalarField storage = b.scalar_fields.at(i);

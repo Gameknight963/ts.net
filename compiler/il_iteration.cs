@@ -75,7 +75,7 @@ internal static partial class CompilerFunctions
         else
         {
             int member = field(owner, target.name, c);
-            b.emit(0x74, b.interface_type(owner)); b.emit(0xfe0c, value); b.convert(type, get_field(member, c).type, c); b.emit(0x6f, b.setter(member));
+            b.emit(0xfe0c, value); b.convert(type, get_field(member, c).type, c); b.emit(0x28, b.shape_writers[member]);
         }
     }
     internal static void il_for_of(int entry, int result, Compiler c, IlBackend b)

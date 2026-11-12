@@ -13,7 +13,7 @@ internal static partial class CompilerFunctions
             if (get_type(owner, c).name != 0) return false;
             int member = field(owner, step.name, c);
             if (member == 0 || get_type(get_field(member, c).type, c).kind != TypeKind.Number) return false;
-            b.emit(0xfe0c, receiver); b.emit(0x74, b.interface_type(owner)); b.emit(0x6f, b.getter(member)); b.convert(get_field(member, c).type, step.type, c); return true;
+            b.emit(0xfe0c, receiver); il_shape_read(owner, member, b); b.convert(get_field(member, c).type, step.type, c); return true;
         }
         if (!is_text(step.name, text_length, c)) return false;
         if (kind == TypeKind.Array) { b.emit(0xfe0c, receiver); b.call(RuntimeMember.ArrayLength); b.call(RuntimeMember.WrapNumber); return true; }

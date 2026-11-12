@@ -230,7 +230,7 @@ internal static partial class CompilerFunctions
             b.emit(0xfe0c, source);
             if (member != 0 && b.getter(member) != 0 && get_type(pattern.type, c).name == 0)
             {
-                b.emit(0x74, b.interface_type(pattern.type)); b.emit(0x6f, b.getter(member)); b.convert(get_field(member, c).type, binding.type, c);
+                il_shape_read(pattern.type, member, b); b.convert(get_field(member, c).type, binding.type, c);
             }
             else
             {

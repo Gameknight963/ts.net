@@ -151,8 +151,7 @@ internal static partial class CompilerFunctions
                 int member = field(owner, n.name, c);
                 if (member == 0 && get_type(owner, c).kind is TypeKind.Shape or TypeKind.Array) { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); return; }
                 if (member == 0) { fail(n.token, "unresolved lowered field", c); }
-                b.emit(0x74, b.interface_type(owner));
-                b.emit(0x6f, b.getter(member));
+                il_shape_read(owner, member, b);
                 b.convert(get_field(member, c).type, n.type, c);
             }
         }
@@ -330,8 +329,8 @@ internal static partial class CompilerFunctions
             }
             else
             {
-                int member = field(owner, target.name, c); b.emit(0x74, b.interface_type(owner)); b.emit(0xfe0c, value);
-                b.convert(value_type, get_field(member, c).type, c); b.emit(0x6f, b.setter(member));
+                int member = field(owner, target.name, c); b.emit(0xfe0c, value);
+                b.convert(value_type, get_field(member, c).type, c); b.emit(0x28, b.shape_writers[member]);
             }
         }
         if (previous >= 0 && !n.constant) { b.emit(0xfe0c, previous); }
@@ -641,8 +640,7 @@ internal static partial class CompilerFunctions
                 int member = field(owner, n.name, c);
                 if (member == 0 && get_type(owner, c).kind is TypeKind.Shape or TypeKind.Array) { il_text(n.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(n.type, c); return; }
                 if (member == 0 || b.getter(member) == 0) { fail(n.token, "unresolved lowered getter", c); }
-                b.emit(0x74, b.interface_type(owner));
-                b.emit(0x6f, b.getter(member));
+                il_shape_read(owner, member, b);
                 b.convert(get_field(member, c).type, n.type, c);
             }
         }
