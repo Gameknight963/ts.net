@@ -120,6 +120,9 @@ public partial class JsFunction : JsDescriptorObject
     // Reduce supplies an index as its third argument, so source-array
     // callbacks advertise a separate calling convention.
     public virtual bool SupportsArrayNumberSource() => false;
+    public virtual bool SupportsArrayNumberResult() => false;
+    public virtual double? InvokeArrayNumberResult(object receiver, double first, double second, object source) =>
+        Js.Cast<double?>(InvokeArrayNumber(receiver, first, second, source), "Array callback result is not a number");
 }
 
 public static partial class Js

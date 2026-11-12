@@ -256,6 +256,25 @@ internal static partial class CompilerFunctions
             if (get_type(result, c).kind == TypeKind.Void) b.call(RuntimeMember.Undefined);
             else b.box(result, c);
             b.op(0x2a);
+            if (source_callback && get_type(result, c).kind == TypeKind.Number)
+            {
+                int numberSupported = b.plan.method0(5, type, 0xc6, -2, "SupportsArrayNumberResult");
+                b.begin(numberSupported); b.emit(0x20, 1); b.op(0x2a);
+                int numberMethod = b.plan.method(5, type, 0xc6, -10, args.view(), "InvokeArrayNumberResult");
+                b.begin(numberMethod);
+                if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+                parameter = get_node(get_symbol(symbol, c).function, c).children;
+                for (int i = 0; i < 3; i++)
+                {
+                    b.emit(0xfe09, i + 2);
+                    if (i < 2) { if (raw == 0) b.call(RuntimeMember.WrapNumber); }
+                    else b.from_object(get_node(parameter, c).type, c);
+                    parameter = get_node(parameter, c).next;
+                }
+                b.emit(0x28, raw != 0 ? raw : b.function(symbol));
+                if (raw != 0) b.call(RuntimeMember.WrapNumber);
+                b.op(0x2a);
+            }
         }
         if (callback >= 0)
         {

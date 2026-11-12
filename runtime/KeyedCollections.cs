@@ -275,11 +275,13 @@ public static partial class Js
                 if (FunctionArgument(args, 0) is not JsFunction callback) throw new InvalidOperationException("Collection callback is not callable");
                 bool numeric = callback.SupportsArrayNumber() || callback.SupportsArrayNumberSource();
                 bool numericResult = numeric && callback.SupportsNumberResult();
+                bool arrayNumberResult = numeric && callback.SupportsArrayNumberResult();
                 var cursor = new JsCollectionIterator(collection, 2);
                 try {
                     while (cursor.Take(out object key, out object value)) {
                         if (numeric && value is double first && key is double second) {
                             if (numericResult) callback.InvokeNumber2(first, second);
+                            else if (arrayNumberResult) callback.InvokeArrayNumberResult(receiver, first, second, collection);
                             else callback.InvokeArrayNumber(receiver, first, second, collection);
                         } else CallMethod(callback, receiver, new[] { value, key, collection });
                     }
