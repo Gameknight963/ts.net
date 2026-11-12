@@ -19,6 +19,11 @@ internal static partial class CompilerFunctions
         if(c.class_sources.TryGetValue(type,out int source)) il_function_source(factory,source,c,b);
         b.plan.instruction(factory, 0x73, constructor); b.plan.instruction(factory, 0x2a, 0);
 
+        // This sealed generated class uses the runtime's own-property store.
+        b.begin(b.plan.method2(5, klass, 0xc6, -5, -4, -5, "GetWithReceiver"));
+        b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 2);
+        b.call(RuntimeMember.GetStoredWithReceiver); b.op(0x2a);
+
         var family = new List<int>();
         for (int variant = c.types; variant != 0; variant = get_type(variant, c).next)
             if (get_type(variant, c).name == get_type(type, c).name) family.Add(variant);
@@ -35,7 +40,8 @@ internal static partial class CompilerFunctions
                 emitted.Add((field.name, storage));
                 Vector<byte> get = field_name(field.name, "get_p_", c), set = field_name(field.name, "set_p_", c);
                 b.begin(b.plan.method0(5, klass, 0x1e6, storage, get.view()));
-                b.emit(0xfe09, 0); il_text(field.name, c, b); b.call(RuntimeMember.DynamicGet); b.from_object(field.type, c); b.op(0x2a);
+                b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 0);
+                b.call(RuntimeMember.GetStoredWithReceiver); b.from_object(field.type, c); b.op(0x2a);
                 b.begin(b.plan.method1(5, klass, 0x1e6, -1, storage, set.view()));
                 b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 1); b.box(field.type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26); b.op(0x2a);
             }

@@ -10,7 +10,10 @@ public class JsClassInstance : JsDescriptorObject
     internal override bool HasInProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasInProperty(key);
     public override bool HasProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasProperty(key);
     public override object Get(string key) => GetWithReceiver(key, this);
-    public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? base.Get(key) : InheritedPrototype is null ? Js.Undefined : InheritedPrototype.GetWithReceiver(key, receiver);
+    // The exact-type check preserves HasOwn overrides in CLR subclasses.
+    public override object GetWithReceiver(string key, object receiver) => GetType() == typeof(JsClassInstance)
+        ? GetStoredWithReceiver(key, receiver)
+        : TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? base.Get(key) : InheritedPrototype is null ? Js.Undefined : InheritedPrototype.GetWithReceiver(key, receiver);
     public override object Set(string key, object value) => SetWithReceiver(key, value, this);
     internal void DefineClassAccessor(string key, object function, int mode)
     {
