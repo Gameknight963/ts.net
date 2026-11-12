@@ -16,10 +16,11 @@ internal class JsAccessors : Dictionary<string, JsAccessor>
 {
     internal int IndexedCount { get; private set; }
     internal bool HasExplicitPrototype;
+    internal TsObject ExplicitPrototype;
     internal JsAccessors() { }
     internal JsAccessors(Dictionary<string, JsAccessor> source)
     {
-        if (source is JsAccessors properties) HasExplicitPrototype = properties.HasExplicitPrototype;
+        if (source is JsAccessors properties) { HasExplicitPrototype = properties.HasExplicitPrototype; ExplicitPrototype = properties.ExplicitPrototype; }
         foreach (var entry in source) this[entry.Key] = entry.Value;
     }
     public new JsAccessor this[string key]

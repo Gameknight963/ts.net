@@ -3,14 +3,11 @@ using System.Runtime.CompilerServices;
 
 public abstract partial class TsObject
 {
-    private sealed class PrototypeState { internal TsObject Value; }
-    private static readonly ConditionalWeakTable<TsObject, PrototypeState> prototypes = new();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal bool TryExplicitPrototype(out TsObject value)
     {
         if (accessors is not {HasExplicitPrototype: true}) {value = null; return false;}
-        bool found = prototypes.TryGetValue(this, out var state);
-        value = found ? state.Value : null; return found;
+        value = accessors.ExplicitPrototype; return true;
     }
     internal virtual TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : IsModuleNamespace ? null : Js.DefaultClassObjectPrototype;
     internal virtual bool IsReadOnlyOwnProperty(string key) => false;
@@ -37,7 +34,7 @@ public abstract partial class TsObject
     {
         if (CanSetPrototype(value)) {
             (accessors ??= new JsAccessors()).HasExplicitPrototype = true;
-            prototypes.GetValue(this, static _ => new PrototypeState()).Value = value;
+            accessors.ExplicitPrototype = value;
         }
     }
     private object InheritedValue(string key, object receiver)

@@ -26,3 +26,11 @@ const prototype = {marker: 6};
 const source = Object.setPrototypeOf({own: 4}, prototype);
 const copy = {...source};
 console.log('spread', Object.getPrototypeOf(copy) === Object.prototype, copy.own, (copy as any).marker, Object.getPrototypeOf(source) === prototype);
+
+for (const integrity of ['preventExtensions', 'seal', 'freeze']) {
+    const array: any = [3, 4];
+    Object.setPrototypeOf(array, null);
+    (Object as any)[integrity](array);
+    console.log('null array prototype', integrity, Object.getPrototypeOf(array) === null, array[0], array.length);
+    console.log('null prototype unchanged', Reflect.setPrototypeOf(array, null), Reflect.setPrototypeOf(array, Array.prototype));
+}
