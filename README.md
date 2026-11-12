@@ -84,6 +84,7 @@ Runtime performance:
 | Numeric array `.at(-1)`, 1M calls | 3.84 ms | 3.82 ms | 0.99x |
 | Numeric loop, 20M iterations | 19 ms | 19 ms | 0.99x |
 | Object valueOf, 1M numeric conversions | 121 ms | 122 ms | 0.99x |
+| Serialize 10K numbers from 0-255, 20 times | 1.73 ms | 1.71 ms | 0.99x |
 | Captured numeric callback, 2M calls | 5.24 ms | 5.07 ms | 0.97x |
 | String ordering, 2M comparisons | 8.98 ms | 8.75 ms | 0.97x |
 | Float64Array traversal, 10K elements and 100 passes | 0.784 ms | 0.718 ms | 0.92x |
@@ -108,7 +109,6 @@ Runtime performance:
 | `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | 0.46x |
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | 0.46x |
-| Serialize 10K numbers from 0-255, 20 times | 3.91 ms | 1.62 ms | 0.41x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 5.60 ms | 2.05 ms | 0.37x |
