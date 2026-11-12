@@ -956,6 +956,7 @@ bool il_logical_assignment(int op, Compiler c)
                     Vector<byte> get = field_name(record.name, "get_p_", c);
                     Vector<byte> set = field_name(record.name, "set_p_", c);
                     b.begin(b.plan.method0(5, klass, 0x1e6, value_type, get.view()));
+                    il_missing_spread_property(type, record.name, record.type, c, b);
                     b.emit(0xfe09, 0); b.load_field(member, c); b.op(0x2a);
                     b.begin(b.plan.method1(5, klass, 0x1e6, -1, value_type, set.view()));
                     b.emit(0xfe09, 0); b.emit(0xfe09, 1);
@@ -985,6 +986,7 @@ bool il_logical_assignment(int op, Compiler c)
                 }
                 b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.call(RuntimeMember.HasOwnBase); b.op(0x2a);
                 b.begin(b.plan.method1(5, klass, 0xc6, -5, -4, "Get"));
+                il_missing_spread_property(type, 0, 0, c, b);
                 member = get_type(type, c).fields;
                 while (member != 0)
                 {
