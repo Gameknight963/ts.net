@@ -8,6 +8,8 @@ internal sealed class JsArgumentsReceiver(object receiver, object[] values)
     internal readonly object Receiver = receiver;
     JsArguments arguments;
     internal JsArguments Arguments => arguments ??= new JsArguments(values);
+    // Once exposed, length may be reassigned, deleted, or replaced by a getter.
+    internal double? Length => arguments == null ? values.Length - 1 : Js.Cast<double?>(arguments.Get("length"), "checked conversion failed");
 }
 
 internal sealed class JsArguments : JsDynamicObject
@@ -106,6 +108,7 @@ public static partial class Js
 {
     internal static string ArgumentsIteratorKey => PropertyKey(IteratorSymbol);
     public static object Arguments(object receiver) => ((JsArgumentsReceiver)receiver).Arguments;
+    public static double? ArgumentsLength(object receiver) => ((JsArgumentsReceiver)receiver).Length;
     public static object EnableArguments(object value) { ((JsReceiverFunction)value).EnableArguments(); return value; }
     internal static object ArgumentsReceiver(object receiver) => receiver is JsArgumentsReceiver arguments ? arguments.Receiver : receiver;
 }

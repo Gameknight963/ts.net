@@ -613,6 +613,10 @@ internal static partial class CompilerFunctions
             }
 
             Node receiver = get_node(n.left, c);
+            if (receiver.kind == NodeKind.Arguments && is_text(n.name, text_length, c) && get_type(n.type, c).kind == TypeKind.Number)
+            {
+                il_boxed(receiver.left, c, b); b.call(RuntimeMember.ArgumentsLength); return;
+            }
             if (is_text(n.name, text_length, c) && receiver.kind == NodeKind.Call &&
                 get_node(receiver.left, c).kind == NodeKind.ObjectKeysFunction && !il_call_has_spread(n.left, c))
             {
