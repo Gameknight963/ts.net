@@ -147,6 +147,7 @@ Runtime performance:
 | Class method through a helper, 100K calls | 1.10 ms | 0.0619 ms | 0.06x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
+| Update a class field and read its getter, 100K iterations | 2.55 ms | 0.0622 ms | 0.02x |
 | Class numeric getter, 100K reads | 2.38 ms | 0.0273 ms | 0.01x |
 
 </details>
