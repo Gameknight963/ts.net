@@ -147,7 +147,7 @@ public static partial class Js
     public static object CallMethodNumberArgument(object target, object receiver, double? value)
     {
         if (target is INumberArgumentFunction function) return function.InvokeNumberArgument(value);
-        if (target is JsReceiverFunction receiverFunction) return receiverFunction.InvokeNumberArgument(receiver, value);
+        if (target is JsReceiverFunction receiverFunction) return receiverFunction.InvokeNumberArgument(SuperReceiver(receiver), value);
         return CallMethod(target, receiver, new[] { BoxNumber(value) });
     }
     public static object CallFunctionArguments(object target, object arguments)
