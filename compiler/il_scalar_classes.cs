@@ -106,20 +106,30 @@ internal static partial class CompilerFunctions
             receiver.kind != NodeKind.Variable || receiver.symbol == 0 || receiver.name != 0 || receiver.constant) return false;
         var arguments = new List<(int Argument, int Type, int Symbol)>();
         int parameter = receiver.next, argument = construction.children;
-        while (parameter != 0 && argument != 0)
+        while (parameter != 0)
         {
-            Node p = get_node(parameter, c), value = get_node(argument, c);
-            if (p.type == 0 || value.type == 0) return false;
-            TypeKind kind = get_type(p.type, c).kind;
-            if (p.kind != NodeKind.Variable || p.symbol == 0 || p.constant || p.left != 0 || p.right != 0 ||
+            Node p = get_node(parameter, c);
+            bool supplied = argument != 0;
+            int source = supplied ? argument : p.left;
+            if (source == 0 || p.type == 0) return false;
+            Node value = get_node(source, c);
+            if (value.type == 0) return false;
+            int storageType = supplied ? p.type : value.type;
+            TypeKind kind = get_type(storageType, c).kind;
+            if (p.kind != NodeKind.Variable || p.symbol == 0 || (supplied && p.constant) || p.right != 0 ||
                 p.third != 0 || p.fourth != 0 || p.children != 0 ||
                 kind is not (TypeKind.Number or TypeKind.String or TypeKind.Boolean) ||
                 value.kind == NodeKind.Spread || get_type(value.type, c).kind != kind) return false;
+            // A supplied nullable value can still trigger its default. Keep that
+            // case on the ordinary path; omitted literal defaults have no effects.
+            if (supplied && p.left != 0) return false;
+            if (!supplied && value.kind is not (NodeKind.Number or NodeKind.String or NodeKind.Boolean)) return false;
             if (arguments.Count == 8) return false;
-            arguments.Add((argument, p.type, p.symbol));
-            parameter = p.next; argument = value.next;
+            arguments.Add((source, storageType, p.symbol));
+            parameter = p.next;
+            if (supplied) argument = value.next;
         }
-        if (parameter != 0 || argument != 0) return false;
+        if (argument != 0) return false;
         var assignments = new List<(int Name, int Symbol)>();
         for (int statement = body.children; statement != 0; statement = get_node(statement, c).next)
         {
