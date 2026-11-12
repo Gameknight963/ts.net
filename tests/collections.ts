@@ -162,3 +162,28 @@ Promise.all(new Set([Promise.resolve(1),Promise.resolve(2)])).then(values=>conso
     set.clear(); set.add(700);
     console.log('cleared set iterator', JSON.stringify(keys.next()), set.size);
 }
+
+{
+    const map = new Map([[1, 2], [3, 4]]);
+    let total = 0;
+    map.forEach((value, key) => {total += value + key;});
+    new Set([1, 3]).forEach((value, key) => {total += value + key;});
+    map.forEach((value: number, key: number, owner: any) => {total += value + owner.get(key);});
+    map.forEach((value, key, owner) => {total += value + owner.get(key)!;});
+    console.log('numeric collection callbacks', total);
+    const receiver = {marker: 7};
+    map.forEach(function(this: typeof receiver, value, key, owner) {
+        console.log('observed collection callback', this === receiver, arguments.length, arguments[2] === map, owner === map, value, key);
+    }, receiver);
+    const changing = new Map([[1, 2], [3, 4]]);
+    let order = '';
+    changing.forEach((value, key) => {
+        order += key + ':' + value + ',';
+        if (key === 1) {changing.delete(3); changing.set(5, 6);}
+    });
+    console.log('numeric callback mutation', order);
+    const optional = new Map<number, number | undefined>([[1, 2], [2, undefined]]);
+    let missing = '';
+    optional.forEach((value, key) => {missing += key + ':' + String(value) + ',';});
+    console.log('numeric callback undefined', missing);
+}

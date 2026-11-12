@@ -143,7 +143,7 @@ internal static partial class CompilerFunctions
         {
             if (parameter == 0) return false;
             Node p = get_node(parameter, c); TypeKind kind = get_type(p.type, c).kind;
-            if (p.third != 0 || (i < 2 ? kind != TypeKind.Number : kind is not (TypeKind.Array or TypeKind.Any or TypeKind.Unknown))) return false;
+            if (p.third != 0 || (i < 2 ? kind != TypeKind.Number : kind is not (TypeKind.Array or TypeKind.Shape or TypeKind.Any or TypeKind.Unknown))) return false;
             parameter = p.next;
         }
         return parameter == 0;

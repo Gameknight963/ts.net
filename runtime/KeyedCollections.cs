@@ -271,10 +271,19 @@ public static partial class Js
             prototype.DefineMethod(PropertyKey(IteratorSymbol), set ? values : entries);
             prototype.DefineMethod("forEach", Method("forEach", 1, (collection, args) =>
             {
-                object callback = FunctionArgument(args, 0), receiver = FunctionArgument(args, 1);
-                if (callback is not JsFunction) throw new InvalidOperationException("Collection callback is not callable");
+                object receiver = FunctionArgument(args, 1);
+                if (FunctionArgument(args, 0) is not JsFunction callback) throw new InvalidOperationException("Collection callback is not callable");
+                bool numeric = callback.SupportsArrayNumber() || callback.SupportsArrayNumberSource();
+                bool numericResult = numeric && callback.SupportsNumberResult();
                 var cursor = new JsCollectionIterator(collection, 2);
-                try { while (cursor.Take(out object key, out object value)) CallMethod(callback, receiver, new[] { value, key, collection }); }
+                try {
+                    while (cursor.Take(out object key, out object value)) {
+                        if (numeric && value is double first && key is double second) {
+                            if (numericResult) callback.InvokeNumber2(first, second);
+                            else callback.InvokeArrayNumber(receiver, first, second, collection);
+                        } else CallMethod(callback, receiver, new[] { value, key, collection });
+                    }
+                }
                 finally { cursor.Finish(); }
                 return Undefined;
             }));
