@@ -42,6 +42,12 @@ public abstract partial class TsObject
         var prototype = PropertyPrototype;
         return prototype is null ? Js.Undefined : prototype.GetWithReceiver(key, receiver);
     }
+    protected bool TrySetMissingProperty(string key, object value)
+    {
+        if (SetInheritedProperty(key, value)) return true;
+        if (!IsExtensible) throw new InvalidOperationException("Object is not extensible");
+        return false;
+    }
     private bool SetInheritedProperty(string key, object value)
     {
         if (HasOwn(key)) return false;

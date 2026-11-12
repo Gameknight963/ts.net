@@ -7,7 +7,7 @@ internal enum RuntimeMember
     IterationStart, CloseIteration, CloseIterationAt, SequenceIteratorHasReturn, CloseAsyncIteration, CloseDestructuring,
     ForAwaitNext, ForAwaitAccept, ForAwaitNeedsClose, ForAwaitClose, RequireIteratorResult, AsyncIteratorTry,
     BeginDestructuring, ReadDestructuring, SkipDestructuring, ForOfSkip, RestDestructuring, AsyncResume, BeginAsyncIteration, NextAsyncIteration, AsyncIterationValue, AsyncTry, AsyncTryEnd,
-    TryFloat64Buffer, Float64BufferLength, ReadFloat64Buffer, GetNumber, GetNumberProperty, GetStoredWithReceiver, IndexGetNumber, IndexGetNumberKey, ArrayIndexGetNumberKey, ArgumentsIndexGetNumberKey, NumericBinary, NumericBitNot, NumericValue, NumericStep, NumericNegate, SetOwnValueBase, DynamicObjectType, DynamicObjectConstructor, GeneratorFunction, AsyncGeneratorFunction, AsyncFunction, AsyncAwait, AsyncAwaitContinue, MarkFunctionPrototype, In, InNumber, SealModuleNamespace, InitializeEnum, BuiltinNamespace, CopyObjectRest, DebugStatement, DeleteSuperProperty, DeleteProperty, DeleteOwn, SetLiteralPrototype, MarkObjectHome, DefineAccessor, ResolveThis, NewTarget, EnableNewTarget, Arguments, ArgumentsLength, EnableArguments, SuperBase, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, DefineAutoAccessor, InitializeAutoAccessor, DefinePrivateMember, InitializePrivateMember, PrivateGet, PrivateSet, PrivateHas, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, TryCopyAssign, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
+    TryFloat64Buffer, Float64BufferLength, ReadFloat64Buffer, GetNumber, GetNumberProperty, GetStoredWithReceiver, TrySetMissingProperty, IndexGetNumber, IndexGetNumberKey, ArrayIndexGetNumberKey, ArgumentsIndexGetNumberKey, NumericBinary, NumericBitNot, NumericValue, NumericStep, NumericNegate, SetOwnValueBase, DynamicObjectType, DynamicObjectConstructor, GeneratorFunction, AsyncGeneratorFunction, AsyncFunction, AsyncAwait, AsyncAwaitContinue, MarkFunctionPrototype, In, InNumber, SealModuleNamespace, InitializeEnum, BuiltinNamespace, CopyObjectRest, DebugStatement, DeleteSuperProperty, DeleteProperty, DeleteOwn, SetLiteralPrototype, MarkObjectHome, DefineAccessor, ResolveThis, NewTarget, EnableNewTarget, Arguments, ArgumentsLength, EnableArguments, SuperBase, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, InitializeClass, DefineClassField, DefineAutoAccessor, InitializeAutoAccessor, DefinePrivateMember, InitializePrivateMember, PrivateGet, PrivateSet, PrivateHas, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, TryCopyAssign, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, NumberAtIsNullish, LooseEqual, LooseEqualNumber, Equal, Number, Boolean, Text, DynamicGet, DynamicSet,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
@@ -802,6 +802,7 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.GetNumber, b.plan.method2(6, js, 0, -10, -5, -4, "GetNumber"));
         b.ref_set(RuntimeMember.GetNumberProperty, b.plan.method1(6, obj, 1, -10, -4, "GetNumberProperty"));
         b.ref_set(RuntimeMember.GetStoredWithReceiver, b.plan.method2(6, obj, 1, -5, -4, -5, "GetStoredWithReceiver"));
+        b.ref_set(RuntimeMember.TrySetMissingProperty, b.plan.method2(6, obj, 1, -2, -4, -5, "TrySetMissingProperty"));
         b.ref_set(RuntimeMember.TryFloat64Buffer, b.plan.method1(6, js, 0, -13, -5, "TryFloat64Buffer"));
         b.ref_set(RuntimeMember.Float64BufferLength, b.plan.method1(6, js, 0, -6, -13, "Float64BufferLength"));
         b.ref_set(RuntimeMember.ReadFloat64Buffer, b.plan.method2(6, js, 0, -3, -13, -6, "ReadFloat64Buffer"));
@@ -861,6 +862,7 @@ bool il_logical_assignment(int op, Compiler c)
                             int original = get_field(actual, c).type;
                             b.emit(0xfe09, 0); b.load_field(actual, c); b.convert(original, record.type, c); b.op(0x2a);
                             b.begin(b.plan.method1(5, klass, 0x1e6, -1, value_type, set.view()));
+                            il_missing_spread_write(type, record.name, record.type, 1, false, c, b);
                             b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.convert(record.type, original, c); b.store_field(actual, c);
                             if (b.spread_types.at(type) != 0 && !il_dynamic_index_field(member,c)) { b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0x6f, b.RuntimeToken(RuntimeMember.MarkPresent)); }
                             b.op(0x2a);
@@ -963,6 +965,7 @@ bool il_logical_assignment(int op, Compiler c)
                     il_missing_spread_property(type, record.name, record.type, c, b);
                     b.emit(0xfe09, 0); b.load_field(member, c); b.op(0x2a);
                     b.begin(b.plan.method1(5, klass, 0x1e6, -1, value_type, set.view()));
+                    il_missing_spread_write(type, record.name, record.type, 1, false, c, b);
                     b.emit(0xfe09, 0); b.emit(0xfe09, 1);
                     TypeKind member_kind = get_type(record.type, c).kind;
                     if (member_kind == TypeKind.String || member_kind == TypeKind.Shape || member_kind == TypeKind.Array) { b.from_object(record.type, c); }
@@ -1009,6 +1012,7 @@ bool il_logical_assignment(int op, Compiler c)
                     {
                         Field record = get_field(member, c); int next = b.label();
                         b.emit(0xfe09, 1); il_text(record.name, c, b); b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
+                        if (!ownWrite) il_missing_spread_write(type, record.name, 0, 2, true, c, b);
                         b.emit(0xfe09, 0); b.emit(0xfe09, 2);
                         TypeKind value_kind = get_type(record.type, c).kind;
                         if (b.type(record.type, c) != -5 || value_kind == TypeKind.String || value_kind == TypeKind.Shape || value_kind == TypeKind.Array)
