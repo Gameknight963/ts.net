@@ -140,8 +140,8 @@ Runtime performance:
 | Serialize 10K numbers divided by 7, 20 times | 26.70 ms | 6.70 ms | 0.25x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | 0.23x |
+| Object spread, 100K copies stored in an array | 7.83 ms | 1.64 ms | 0.21x |
 | Create 10K resolved promises, collect with all, and sum results | 2.47 ms | 0.495 ms | 0.20x |
-| Object spread, 100K copies stored in an array | 9.51 ms | 1.65 ms | 0.17x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | Object literal method through a helper, 100K calls | 0.447 ms | 0.0616 ms | 0.14x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.284 ms | 0.0358 ms | 0.13x |
