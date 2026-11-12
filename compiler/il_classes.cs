@@ -24,6 +24,16 @@ internal static partial class CompilerFunctions
         b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 2);
         b.call(RuntimeMember.GetStoredWithReceiver); b.op(0x2a);
 
+        int number = 0;
+        for (int member = get_type(type, c).fields; member != 0; member = get_field(member, c).next)
+            if (get_type(get_field(member, c).type, c).kind == TypeKind.Number) number = get_field(member, c).type;
+        if (number != 0)
+        {
+            b.begin(b.plan.method1(5, klass, 0xc6, -10, -4, "GetNumberProperty"));
+            b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 0);
+            b.call(RuntimeMember.GetStoredWithReceiver); b.from_object(number, c); b.op(0x2a);
+        }
+
         var family = new List<int>();
         for (int variant = c.types; variant != 0; variant = get_type(variant, c).next)
             if (get_type(variant, c).name == get_type(type, c).name) family.Add(variant);
