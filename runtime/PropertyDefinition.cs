@@ -61,7 +61,7 @@ public static partial class Js
     }
     internal static void DefineDictionaryField(JsDescriptorObject target, string key, object value)
     {
-        if (!target.HasPropertyDescriptors && target is JsDynamicObject or JsClassInstance) {
+        if (!target.HasPropertyDescriptors && (target.GetType() == typeof(JsDynamicObject) || target is JsClassInstance)) {
             target.DefineOwn(key, value);
             return;
         }
