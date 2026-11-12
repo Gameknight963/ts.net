@@ -123,6 +123,27 @@ public static partial class Js
             }
         }
         void Indent(int depth) { for (int i = 0; i < depth; i++) output.Append(gap); }
+        bool WritePackedNumbers(NumberArray array)
+        {
+            if (replacer != null || array.HasIndexedAccessors)
+                return false;
+            double count = array.Length();
+            double[] numbers = array.TryPacked(count);
+            if (numbers == null) return false;
+            int length = (int)count;
+
+            output.Append('[');
+            for (int i = 0; i < length; i++)
+            {
+                if (i != 0) output.Append(',');
+                if (gap.Length != 0) { output.Append('\n'); Indent(frames.Count + 1); }
+                double number = numbers[i];
+                output.Append(double.IsFinite(number) ? NumberKeyString(number) : "null");
+            }
+            if (length != 0 && gap.Length != 0) { output.Append('\n'); Indent(frames.Count); }
+            output.Append(']');
+            return true;
+        }
         bool Enter(TsObject value)
         {
             if (active != null) return active.Add(value);
@@ -148,6 +169,7 @@ public static partial class Js
             else if (value is TsObject obj)
             {
                 if (!Enter(obj)) throw new InvalidOperationException("Cannot serialize a cyclic object");
+                if (obj is NumberArray numbers && WritePackedNumbers(numbers)) { active?.Remove(obj); return; }
                 var frame = new JsonWriteFrame(obj, propertyList, previousNames);
                 if (frame.Names != null) previousNames = frame.Names;
                 frames.Add(frame); output.Append(frame.Array ? '[' : '{');

@@ -107,3 +107,17 @@ for (const depth of [0, 1, 15, 16, 17, 40]) {
     console.log('array replacer order', calls);
 }
 show('numeric array values', [-0, 1, NaN, Infinity, 1e-7, 1e21]);
+{
+    const packed = [-0, 1, NaN, Infinity, 1e-7, 1e21];
+    show('nested numeric indentation', {values: packed, again: packed}, undefined, 2);
+    show('numeric property list', [packed, []], ['values'], '..');
+    show('numeric replacer', packed, (key: string, value: any) => key === '1' ? 9 : value);
+    const indexed = [1, 2, 3];
+    let reads = 0;
+    Object.defineProperty(indexed, '1', {get() {reads++; return 7;}, configurable: true});
+    show('numeric accessor', indexed);
+    console.log('numeric accessor reads', reads);
+    const missing = [1, 2, 3];
+    delete missing[1];
+    show('numeric holes', missing);
+}
