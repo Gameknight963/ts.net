@@ -1025,8 +1025,10 @@ internal static partial class CompilerFunctions
     }
     internal static void emit_assembly(TextBytes path, Compiler c)
     {
+        string assemblyName = System.IO.Path.GetFileNameWithoutExtension(path.Decode());
+        if (assemblyName.Length == 0) throw new CompilationException("Output filename must include an assembly name");
         int numeric_array = il_numeric_array_type(c);
-        IlBackend b = IlBackend.create(c); il_prove_locals(c, b); il_prove_scalars(c, b); il_prove_reversible_arrays(c, b); il_choose_tagged_arrays(c, b); il_runtime(b); il_prepare_enumeration(c, b); il_prepare_spreads(c, b); il_prepare_key_layouts(c, b); il_shapes(c, b); il_key_layouts(c, b); il_spread_shapes(c, b); il_prepare_spread_hints(c, b); il_spread_clones(c, b);
+        IlBackend b = IlBackend.create(c, assemblyName); il_prove_locals(c, b); il_prove_scalars(c, b); il_prove_reversible_arrays(c, b); il_choose_tagged_arrays(c, b); il_runtime(b); il_prepare_enumeration(c, b); il_prepare_spreads(c, b); il_prepare_key_layouts(c, b); il_shapes(c, b); il_key_layouts(c, b); il_spread_shapes(c, b); il_prepare_spread_hints(c, b); il_spread_clones(c, b);
         int object_type = b.RuntimeToken(RuntimeMember.ObjectType);
         int program = b.plan.type("Program", object_type, 0x181);
         // Keep the constructor allocator with this assembly so its instances

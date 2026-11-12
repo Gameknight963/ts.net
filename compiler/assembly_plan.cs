@@ -6,11 +6,11 @@ internal sealed class AssemblyPlan
 {
     public Vector<byte> bytes;
     public int next;
-    public static AssemblyPlan create()
+    public static AssemblyPlan create(string name = "App")
     {
         AssemblyPlan result = new AssemblyPlan { bytes = new Vector<byte>(), next = 1 };
         result.integer(0x314c4954);
-        result.text("App");
+        result.text(name);
         return identity(result);
     }
     public void integer(int value)

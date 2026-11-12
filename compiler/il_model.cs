@@ -99,14 +99,14 @@ internal sealed partial class IlBackend
     public int loop_versions;
     public bool numeric_globals;
     public bool raw_function_return;
-    public static IlBackend create(Compiler c)
+    public static IlBackend create(Compiler c, string assemblyName = "App")
     {
         int types = c.type_store.count() + 1;
         int fields = c.field_store.count() + 1;
         int symbols = c.symbol_store.count() + 1;
         return new IlBackend
         {
-            plan = AssemblyPlan.create(),
+            plan = AssemblyPlan.create(assemblyName),
             runtime = zero_ids((int)RuntimeMember.Count),
             interfaces = zero_ids(types),
             classes = zero_ids(types),
