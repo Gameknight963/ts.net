@@ -1,0 +1,22 @@
+const ignored: (value: number) => void = value => value + 1;
+console.log('void retains value', (ignored as any)(4), typeof (ignored as any)(4));
+let observed: any;
+function acceptsVoid(callback: (value: number) => void): void {observed = callback(6);}
+acceptsVoid(value => value * 2);
+console.log('void callback', observed, typeof observed);
+const unknownNumber: (value: number) => unknown = value => value + 3;
+const unknownBoolean: (value: number) => unknown = value => value > 1;
+console.log('unknown scalars', unknownNumber(4), typeof unknownNumber(4), unknownBoolean(4), typeof unknownBoolean(4));
+const missing: (value: number) => unknown = value => value === 0 ? undefined : value;
+console.log('missing', missing(0) === undefined, missing(7));
+const numbers = [0, 1, 2];
+console.log('numeric predicates', numbers.filter(value => value).join(','), numbers.some(value => value), numbers.every(value => value));
+console.log('boolean mapping', numbers.map(unknownBoolean).join(','), typeof numbers.map(unknownBoolean)[0]);
+const objectCallback: (value: number) => unknown = value => ({value});
+console.log('objects', JSON.stringify(numbers.map(objectCallback)));
+const mixed: (value: boolean) => number | string = value => value ? 11 : 'eleven';
+console.log('mixed', mixed(true), mixed(false));
+const dynamicSubtract: (left: any, right: any) => unknown = (left, right) => left - right;
+console.log('dynamic bigint', dynamicSubtract(7n, 2n), typeof dynamicSubtract(7n, 2n));
+const method: (this: {base: number}, value: number) => unknown = function(value) {return this.base + value;};
+console.log('receiver', method.call({base: 13}, 4));

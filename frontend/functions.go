@@ -44,7 +44,11 @@ func (b *irBuilder) functionValue(n *ast.Node) int {
 	if n.Type() == nil && !b.dynamicNumericReturn(n, map[*ast.Node]bool{}) && n.Kind != ast.KindFunctionDeclaration && n.Kind != ast.KindConstructor && ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAsync == 0 {
 		if context := b.c.GetContextualType(n, checker.ContextFlagsNone); context != nil {
 			if signatures := b.c.GetSignaturesOfType(context, checker.SignatureKindCall); len(signatures) == 1 {
-				typ = b.typ(b.c.GetReturnTypeOfSignature(signatures[0]))
+				// A contextual unknown or void result need not erase a known scalar.
+				// Function adapters still box it when callers need an object result.
+				if kind := b.types[typ-1].kind; kind != 0 && kind != 2 {
+					typ = b.typ(b.c.GetReturnTypeOfSignature(signatures[0]))
+				}
 			}
 		}
 	}
