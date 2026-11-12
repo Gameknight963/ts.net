@@ -123,8 +123,19 @@ long taggedStart = GC.GetAllocatedBytesForCurrentThread();
 for (int i = 0; i < 1000; i++) { tagged.SetNumberAt(4, i);tagged.SetReferenceAt(3, shared); }
 if (GC.GetAllocatedBytesForCurrentThread() != taggedStart || tags[4] != 1) throw new Exception("Tagged writes allocated");
 tagged.SetNumberAt(4, -0.0);
-if (BitConverter.DoubleToInt64Bits((double)tagged.ElementAt(4)) != long.MinValue || !double.IsNaN((double)tagged.ElementAt(5))) throw new Exception("Tagged materialization lost numeric payloads");
-if (tagged.ElementAt(2) != null || !ReferenceEquals(tagged.ElementAt(3), shared) || !ReferenceEquals(tagged.ElementAt(1), Js.Undefined)) throw new Exception("Tagged materialization lost references");
+if (BitConverter.DoubleToInt64Bits((double)tagged.ElementAt(4)) != long.MinValue || !double.IsNaN((double)tagged.ElementAt(5))) throw new Exception("Tagged reads lost numeric payloads");
+if (tagged.ElementAt(2) != null || !ReferenceEquals(tagged.ElementAt(3), shared) || !ReferenceEquals(tagged.ElementAt(1), Js.Undefined)) throw new Exception("Tagged reads lost references");
+if (!ReferenceEquals(tagged.TryTags(6), tags)) throw new Exception("Ordinary reads discarded compact storage");
+object cachedNumber = tagged.ElementAt(4);
+taggedStart = GC.GetAllocatedBytesForCurrentThread();
+for (int i = 0; i < 1000; i++)
+    if (!ReferenceEquals(tagged.ElementAt(4), cachedNumber)) throw new Exception("Unchanged numeric reads replaced their cached box");
+if (GC.GetAllocatedBytesForCurrentThread() != taggedStart) throw new Exception("Repeated numeric reads allocated");
+taggedStart = GC.GetAllocatedBytesForCurrentThread();
+for (int i = 0; i < 1000; i++) tagged.SetNumberAt(4, i);
+if (GC.GetAllocatedBytesForCurrentThread() != taggedStart) throw new Exception("Numeric writes after an ordinary read allocated");
+if (!Equals(tagged.ElementAt(4), 999.0)) throw new Exception("Numeric writes retained a stale cached box");
+tagged.Reverse();tagged.Reverse();
 if (tagged.TryTags(6) != null) throw new Exception("Materialized tags remained available");
 tagged.SetNumberAt(4, 42);tagged.SetReferenceAt(3, null!);
 if (!Equals(tagged.ElementAt(4), 42.0) || tagged.ElementAt(3) != null) throw new Exception("Materialized writes failed");
