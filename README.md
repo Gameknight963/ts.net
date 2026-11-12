@@ -93,6 +93,7 @@ Runtime performance:
 | Captured numeric callback, 2M calls | 5.24 ms | 5.07 ms | 0.97x |
 | String ordering, 2M comparisons | 8.98 ms | 8.75 ms | 0.97x |
 | Float64Array traversal, 10K elements and 100 passes | 0.784 ms | 0.718 ms | 0.92x |
+| Local class constructor parameters and field read, 100K instances | 0.0687 ms | 0.0633 ms | 0.92x |
 | Local class field update and read, 100K instances | 0.0694 ms | 0.0631 ms | 0.91x |
 | Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | 0.83x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | 0.77x |
