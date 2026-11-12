@@ -13,6 +13,12 @@ sealed class OwnProperties
     Dictionary<string, object> tail;
     List<string> tailOrder;
     public OwnProperties() { }
+    internal OwnProperties(object iteratorValue, object iteratorDone)
+    {
+        key0 = "value"; value0 = iteratorValue;
+        key1 = "done"; value1 = iteratorDone;
+        inlineCount = version = 2;
+    }
     public OwnProperties(OwnProperties source)
     {
         key0=source.key0;key1=source.key1;key2=source.key2;key3=source.key3;

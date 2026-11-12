@@ -4,6 +4,12 @@ using System.Globalization;
 
 public abstract partial class TsObject
 {
+    internal static object CreateIteratorResult(object value, object done)
+    {
+        // Both entries are ordinary own data properties on a fresh object.
+        // Initializing their store directly avoids general property-write checks.
+        return new JsDynamicObject { extra = new OwnProperties(value, done) };
+    }
     public void DefineOwn(string key, object value) {if (!IsExtensible && !HasOwn(key)) throw new InvalidOperationException("Object is not extensible");accessors?.Remove(key);(extra ??= new OwnProperties())[key] = value;}
     public virtual void MarkPresent(string key) { }
     public void CopySpreadExtras(object destination)

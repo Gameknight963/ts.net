@@ -4,10 +4,7 @@ public static partial class Js
 {
     internal static object IteratorResult(object value, bool done)
     {
-        var result = new JsDynamicObject();
-        result.DefineOwn("value", value);
-        result.DefineOwn("done", done ? BoxedTrue : BoxedFalse);
-        return result;
+        return TsObject.CreateIteratorResult(value, done ? BoxedTrue : BoxedFalse);
     }
     static void ObserveSyncIteratorValue(object value, PromiseReactionBase reaction)
     {
