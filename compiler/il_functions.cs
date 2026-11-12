@@ -103,6 +103,7 @@ internal static partial class CompilerFunctions
                 (n.kind != NodeKind.Name || b.function_caches.at(n.symbol) == 0))) continue;
             if (get_symbol(n.symbol, c).function == 0 || b.function_contexts.at(n.symbol) != 0 ||
                 b.function_body_caches.at(n.symbol) != 0) continue;
+            if (get_node(get_symbol(n.symbol, c).function, c).internal_continuation) continue;
             Vector<byte> name = numbered_name('d', get_symbol(n.symbol, c).id);
             b.function_body_caches.at_mut(n.symbol) = b.plan.field(program, 0x13, b.RuntimeToken(RuntimeMember.FunctionBodyType), name.view());
         }
@@ -200,7 +201,8 @@ internal static partial class CompilerFunctions
         int count = il_numeric_function(symbol, c);
         int callback = il_numeric_array_callback(symbol, c);
         bool source_callback = il_source_array_callback(symbol, c);
-        if (count < 0 && callback < 0 && !source_callback) return;
+        bool continuation = get_node(get_symbol(symbol, c).function, c).internal_continuation;
+        if (count < 0 && callback < 0 && !source_callback && !continuation) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
         int parent = b.RuntimeToken(RuntimeMember.FunctionType); int type = b.plan.type(name.view(), parent, 0x101);
         Vector<int> parameters = new Vector<int>(); parameters.push(-5); parameters.push(-5); parameters.push(-4); parameters.push(-6);
@@ -212,6 +214,17 @@ internal static partial class CompilerFunctions
         b.call(RuntimeMember.FunctionConstructor);
         if (context != 0) { b.emit(0xfe09, 0); b.emit(0xfe09, 5); b.emit(0x7d, environment_field); }
         b.op(0x2a);
+        // Call the same adapter as the stored delegate. Compiler-only
+        // continuations can omit that delegate entirely.
+        for (int receiver = 0; receiver < 2; receiver++)
+        {
+            int method = receiver == 0 ? b.plan.method1(5, type, 0xc6, -5, -7, "Invoke")
+                : b.plan.method2(5, type, 0xc6, -5, -5, -7, "InvokeWithReceiver");
+            b.begin(method);
+            if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+            b.emit(0xfe09, receiver + 1);
+            b.emit(0x28, b.function_adapters.at(symbol)); b.op(0x2a);
+        }
         if (count >= 0)
         {
             for (int arity = 0; arity <= 2; arity++)
@@ -307,7 +320,8 @@ internal static partial class CompilerFunctions
     {
         int context = b.function_contexts.at(symbol); int adapter = b.function_adapters.at(symbol);
         int bodyCache = b.function_body_caches.at(symbol);
-        if (bodyCache != 0)
+        if (get_node(get_symbol(symbol, c).function, c).internal_continuation) b.op(0x14);
+        else if (bodyCache != 0)
         {
             // Share only the hidden static delegate, never the JavaScript function.
             int ready = b.label();

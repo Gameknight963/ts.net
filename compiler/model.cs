@@ -111,6 +111,7 @@ internal struct Node
     public int next;
     public int symbol;
     public bool constant;
+    public bool internal_continuation;
 }
 
 internal struct Symbol

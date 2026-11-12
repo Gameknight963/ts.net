@@ -112,6 +112,9 @@ func (a *asyncExpressionLowering) functionParameters(count int, body func([]int)
 	symbol := a.symbol(a.any)
 	a.b.symbols[symbol-1].function = function
 	a.b.nodes[function-1].symbol = symbol
+	// Function flag 2 identifies compiler-only continuations; flag 1 is the
+	// existing named-function-expression flag.
+	a.b.nodes[function-1].constant = 2
 	debugName := "resume"
 	owner := enclosingAsyncFunction(a.source)
 	if ast.IsFunctionLike(a.source) {

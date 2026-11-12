@@ -81,7 +81,7 @@ public partial class JsFunction : JsDescriptorObject
         if (removed) { if (key == "name") nameSlotDeleted = true; else if (key == "length") lengthSlotDeleted = true; }
         return removed;
     }
-    public object Invoke(object[] arguments) => body(arguments);
+    public virtual object Invoke(object[] arguments) => body(arguments);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual double? InvokeNumber0()
     {

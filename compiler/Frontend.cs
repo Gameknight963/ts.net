@@ -65,7 +65,11 @@ internal static partial class CompilerFunctions
             int id = new_node(c);
             set_node_kind(id, (NodeKind)r.integer(), c); set_node_token(id, r.id(), c); set_node_name(id, r.id(), c); set_node_type(id, r.id(), c);
             set_node_left(id, r.id(), c); set_node_right(id, r.id(), c); set_node_third(id, r.id(), c); set_node_fourth(id, r.id(), c);
-            set_node_children(id, r.id(), c); set_node_next(id, r.id(), c); set_node_symbol(id, r.id(), c); set_node_constant(id, r.integer() != 0, c);
+            set_node_children(id, r.id(), c); set_node_next(id, r.id(), c); set_node_symbol(id, r.id(), c);
+            int flags = r.integer();
+            bool function = get_node(id, c).kind == NodeKind.Function;
+            set_node_constant(id, function ? (flags & 1) != 0 : flags != 0, c);
+            c.node_store.at_mut(id).internal_continuation = function && (flags & 2) != 0;
         }
         // Assertions annotate a storage location. Normalize mutation targets
         // before any analysis, so write tracking sees the actual binding too.
