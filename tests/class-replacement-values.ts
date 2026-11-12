@@ -20,3 +20,12 @@ console.log('returned arguments iteration',[...value].join(','));
 const descriptor=Object.getOwnPropertyDescriptor(value,'length')!;
 console.log('returned arguments descriptor',descriptor.value,descriptor.writable,descriptor.enumerable,descriptor.configurable);
 }
+
+{
+const original = {value: 4};
+const hidden: any = original;
+class Base {constructor() {return hidden;}}
+class Derived extends Base {value = 'text';}
+const result = new Derived();
+console.log('returned changed type', (result as any) === original, result.value, (original as any).value, JSON.stringify(result));
+}

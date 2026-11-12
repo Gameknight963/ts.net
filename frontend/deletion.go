@@ -139,6 +139,9 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 	b.deletedNames = map[string]bool{}
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
+		if n.Kind == ast.KindConstructor {
+			b.prepareConstructorReturns(n)
+		}
 		if n.Kind == ast.KindCallExpression {
 			b.prepareDefinition(n)
 			arguments := b.reflectionDeletionArguments(n)
