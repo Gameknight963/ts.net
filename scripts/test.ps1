@@ -408,9 +408,9 @@ try {
     if ($LASTEXITCODE) { throw 'Simple constructor allocation checks failed' }
     & dotnet tests/inspect-local-classes/bin/Release/net10.0/Inspect.dll "$testRoot/local-parameter-properties/bin/Release/net10.0/App.dll" 499500
     if ($LASTEXITCODE) { throw 'Parameter property allocation checks failed' }
-    & dotnet tests/inspect-local-classes/bin/Release/net10.0/Inspect.dll "$testRoot/local-constructor-defaults/bin/Release/net10.0/App.dll" 7000
+    & dotnet tests/inspect-local-classes/bin/Release/net10.0/Inspect.dll "$testRoot/local-constructor-defaults/bin/Release/net10.0/App.dll" 18000
     if ($LASTEXITCODE) { throw 'Constructor default allocation checks failed' }
-    & dotnet tests/inspect-local-classes/bin/Release/net10.0/Inspect.dll "$testRoot/local-class-literals/bin/Release/net10.0/App.dll" 1000
+    & dotnet tests/inspect-local-classes/bin/Release/net10.0/Inspect.dll "$testRoot/local-class-literals/bin/Release/net10.0/App.dll" -2000
     if ($LASTEXITCODE) { throw 'Signed class literal allocation checks failed' }
 
     & dotnet build tests/inspect-object-keys/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet

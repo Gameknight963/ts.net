@@ -1,9 +1,9 @@
 export {};
+class Mixed {constructor(public value: number, public label = 'default', public enabled = true) {}}
 class Holder {constructor(public value = 7) {}}
-function kernel(count: number): number {let total = 0;for (let i=0;i<count;i++) total += new Holder().value;return total;}
+function kernel(count: number): number {let total = 0;for (let i=0;i<count;i++) {const mixed = new Mixed(11);total += new Holder().value + (mixed.enabled && mixed.label === 'default' ? mixed.value : 0);}return total;}
 function escape(): Holder {return new Holder();}
 console.log('kernel', kernel(10), escape().value, escape() instanceof Holder);
-class Mixed {constructor(public value: number, public label = 'default', public enabled = true) {}}
 function mixed(): string {const value = new Mixed(11);return value.value + ':' + value.label + ':' + value.enabled;}
 console.log('mixed', mixed());
 function missing(): number {return undefined as unknown as number;}
