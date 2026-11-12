@@ -111,6 +111,7 @@ void il_spread_shapes(Compiler c, IlBackend b)
         int parent = b.RuntimeToken(RuntimeMember.DynamicObjectType); int klass = b.plan.type("DAny", parent, 0x101);
         int constructor = b.plan.method0(5, klass, 0x1886, -1, ".ctor"); b.spread_any_constructor = constructor;
         b.begin(constructor); b.emit(0xfe09, 0); b.call(RuntimeMember.DynamicObjectConstructor); b.op(0x2a); il_spread_count(klass, b);
+        il_stored_numeric_properties(klass, b);
         Vector<int> emitted = new Vector<int>(); int target = c.types;
         while (target != 0)
         {
@@ -130,8 +131,9 @@ void il_spread_shapes(Compiler c, IlBackend b)
                         emitted.push(member); int storage = b.type(record.type, c);
                         Vector<byte> get = field_name(record.name, "get_p_", c); Vector<byte> set = field_name(record.name, "set_p_", c);
                         b.begin(b.plan.method0(5, klass, 0x1e6, storage, get.view()));
-                        b.emit(0xfe09, 0); il_text(record.name, c, b); b.call(RuntimeMember.Get);
-                        if (storage != -5) { b.from_object(record.type, c); }
+                        b.emit(0xfe09, 0); il_text(record.name, c, b);
+                        if (get_type(record.type, c).kind == TypeKind.Number) { b.emit(0xfe09, 0); b.call(RuntimeMember.GetStoredNumberWithReceiver); }
+                        else { b.call(RuntimeMember.Get); if (storage != -5) b.from_object(record.type, c); }
                         b.op(0x2a);
                         b.begin(b.plan.method1(5, klass, 0x1e6, -1, storage, set.view()));
                         b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0xfe09, 1); b.box(record.type, c); b.call(RuntimeMember.Set); b.op(0x26); b.op(0x2a);

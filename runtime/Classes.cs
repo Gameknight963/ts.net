@@ -10,6 +10,10 @@ public class JsClassInstance : JsDescriptorObject
     internal override bool HasInProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasInProperty(key);
     public override bool HasProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasProperty(key);
     public override object Get(string key) => GetWithReceiver(key, this);
+    public override double? GetNumberProperty(string key) => GetType() == typeof(JsClassInstance)
+        ? GetStoredNumberWithReceiver(key, this) : base.GetNumberProperty(key);
+    public override double? GetNumberWithReceiver(string key, object receiver) => GetType() == typeof(JsClassInstance)
+        ? GetStoredNumberWithReceiver(key, receiver) : base.GetNumberWithReceiver(key, receiver);
     // The exact-type check preserves HasOwn overrides in CLR subclasses.
     public override object GetWithReceiver(string key, object receiver) => GetType() == typeof(JsClassInstance)
         ? GetStoredWithReceiver(key, receiver)
@@ -61,6 +65,10 @@ public sealed class JsClassFunction : JsFunction
     public override bool HasProperty(string key) => HasOwn(key) || (Parent is not null ? Parent.HasProperty(key):base.HasProperty(key));
     public override object Get(string key) => GetWithReceiver(key, this);
     public override object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : key == "prototype" ? Prototype : HasOwn(key) ? base.Get(key) : Parent is null ? base.Get(key) : Parent.GetWithReceiver(key, receiver);
+    public override double? GetNumberProperty(string key) => GetNumberWithReceiver(key, this);
+    public override double? GetNumberWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.ReadNumber(receiver)
+        : key == "prototype" ? Js.Cast<double?>(Prototype, "checked conversion failed")
+        : HasOwn(key) || Parent is null ? Js.Cast<double?>(base.Get(key), "checked conversion failed") : Parent.GetNumberWithReceiver(key, receiver);
     public override object Set(string key, object value) => SetWithReceiver(key, value, this);
     public override object SetOwnValue(string key, object value)
     {

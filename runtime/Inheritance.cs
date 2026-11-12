@@ -27,6 +27,7 @@ internal sealed class JsSuperReference(TsObject home, object receiver, bool isSt
     internal readonly object Receiver = Js.ResolveThis(receiver);
     TsObject Target => home is JsClassFunction klass ? isStatic ? klass.Parent : klass.Prototype.ParentPrototype : home.PropertyPrototype;
     public override object Get(string key) => Target is null ? throw new InvalidOperationException("Cannot read super property of null") : Target.GetWithReceiver(key,Receiver);
+    public override double? GetNumberProperty(string key) => Target is null ? throw new InvalidOperationException("Cannot read super property of null") : Target.GetNumberWithReceiver(key, Receiver);
     public override object Set(string key, object value) => Target is null ? throw new InvalidOperationException("Cannot set super property of null") : Target.SetWithReceiver(key,value,Receiver);
 }
 public static partial class Js

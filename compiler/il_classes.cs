@@ -24,15 +24,7 @@ internal static partial class CompilerFunctions
         b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 2);
         b.call(RuntimeMember.GetStoredWithReceiver); b.op(0x2a);
 
-        int number = 0;
-        for (int member = get_type(type, c).fields; member != 0; member = get_field(member, c).next)
-            if (get_type(get_field(member, c).type, c).kind == TypeKind.Number) number = get_field(member, c).type;
-        if (number != 0)
-        {
-            b.begin(b.plan.method1(5, klass, 0xc6, -10, -4, "GetNumberProperty"));
-            b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 0);
-            b.call(RuntimeMember.GetStoredWithReceiver); b.from_object(number, c); b.op(0x2a);
-        }
+        il_stored_numeric_properties(klass, b);
 
         var family = new List<int>();
         for (int variant = c.types; variant != 0; variant = get_type(variant, c).next)
@@ -51,7 +43,9 @@ internal static partial class CompilerFunctions
                 Vector<byte> get = field_name(field.name, "get_p_", c), set = field_name(field.name, "set_p_", c);
                 b.begin(b.plan.method0(5, klass, 0x1e6, storage, get.view()));
                 b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 0);
-                b.call(RuntimeMember.GetStoredWithReceiver); b.from_object(field.type, c); b.op(0x2a);
+                if (get_type(field.type, c).kind == TypeKind.Number) b.call(RuntimeMember.GetStoredNumberWithReceiver);
+                else { b.call(RuntimeMember.GetStoredWithReceiver); b.from_object(field.type, c); }
+                b.op(0x2a);
                 b.begin(b.plan.method1(5, klass, 0x1e6, -1, storage, set.view()));
                 b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 1); b.box(field.type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26); b.op(0x2a);
             }

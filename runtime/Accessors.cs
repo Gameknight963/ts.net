@@ -6,6 +6,10 @@ internal sealed class JsAccessor
     internal JsFunction Getter;
     internal JsFunction Setter;
     internal object Read(object receiver) => Getter is null ? Js.Undefined : Getter.InvokeWithReceiver(receiver, Array.Empty<object>());
+    internal double? ReadNumber(object receiver) => Getter is null ? null
+        : Getter is JsReceiverFunction function ? function.InvokeMethodNumber0(receiver)
+        : Getter.SupportsNumberResult() ? Getter.InvokeNumber0()
+        : Js.Cast<double?>(Getter.InvokeWithReceiver(receiver, Array.Empty<object>()), "checked conversion failed");
     internal object Write(object receiver, object value)
     {
         if (Setter is null) throw new InvalidOperationException("Property has no setter");
@@ -85,8 +89,12 @@ public abstract partial class TsObject
         if (mode == 1) accessor.Getter = callable; else accessor.Setter = callable;
     }
     public virtual object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? Get(key) : InheritedValue(key, receiver);
+    public virtual double? GetNumberWithReceiver(string key, object receiver) => Js.Cast<double?>(GetWithReceiver(key, receiver), "checked conversion failed");
     protected object GetStoredWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver)
         : extra != null && extra.TryGetValue(key, out var value) ? value : InheritedValue(key, receiver);
+    protected double? GetStoredNumberWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.ReadNumber(receiver)
+        : extra != null && extra.TryGetValue(key, out var value) ? Js.Cast<double?>(value, "checked conversion failed")
+        : PropertyPrototype is TsObject prototype ? prototype.GetNumberWithReceiver(key, receiver) : null;
     public virtual object SetWithReceiver(string key, object value, object receiver)
     {
         if (IsModuleNamespace) throw new InvalidOperationException("Module namespace is read-only");
