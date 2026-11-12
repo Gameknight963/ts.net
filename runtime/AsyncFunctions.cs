@@ -35,7 +35,7 @@ public static partial class Js
     public static object AsyncResumeRegion(object continuation, int region) => new AsyncResumeRecord((JsFunction)continuation, region);
     sealed class AsyncAwaitRecord(object awaited, JsFunction continuation = null)
     {
-        void Then(PromiseReaction reaction)
+        void Then(PromiseReactionBase reaction)
         {
             if (awaited is JsPromise promise) promise.Then(reaction);
             else reaction.Enqueue(awaited, false);
@@ -61,7 +61,7 @@ public static partial class Js
             Then(new AwaitContinuationReaction(continuation, target, pair, execution));
         }
     }
-    sealed class AwaitForwardReaction(PromiseResolvingFunctions pair) : PromiseReaction(null, null, null)
+    sealed class AwaitForwardReaction(PromiseResolvingFunctions pair) : PromiseReactionBase
     {
         internal override void Run(object value, bool rejected)
         {
@@ -70,7 +70,7 @@ public static partial class Js
         }
     }
     sealed class AwaitContinuationReaction(JsFunction continuation, JsPromise target,
-        PromiseResolvingFunctions pair, AsyncExecution execution) : PromiseReaction(null, null, null)
+        PromiseResolvingFunctions pair, AsyncExecution execution) : PromiseReactionBase
     {
         internal override void Run(object value, bool rejected)
         {
