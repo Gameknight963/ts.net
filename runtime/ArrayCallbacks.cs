@@ -68,6 +68,8 @@ public static partial class Js
             }
             bool numericCallback = callback.SupportsArrayNumber() || callback.SupportsArrayNumberSource();
             bool numericResult = numericCallback && callback.SupportsNumberResult();
+            bool sourceNumberResult = numericCallback && callback.SupportsArrayNumberResult();
+            bool unboxedResult = numericResult || sourceNumberResult;
             bool testResult = kind is not ArrayCallbackKind.Map and not ArrayCallbackKind.ForEach;
             long selected = 0;
             for (long i = backwards ? length - 1 : 0; i >= 0 && i < length; i += backwards ? -1 : 1)
@@ -80,9 +82,10 @@ public static partial class Js
                     double numberValue = packed[(int)i];
                     object numericMapped;
                     bool truth;
-                    if (numericResult)
+                    if (unboxedResult)
                     {
-                        double? mappedNumber = callback.InvokeNumber2(numberValue, i);
+                        double? mappedNumber = numericResult ? callback.InvokeNumber2(numberValue, i)
+                            : callback.InvokeArrayNumberResult(thisValue, numberValue, i, source);
                         numericMapped = kind == ArrayCallbackKind.Map ? BoxNumber(mappedNumber) : Undefined;
                         truth = testResult && NumberTruthy(mappedNumber);
                     }
@@ -108,7 +111,15 @@ public static partial class Js
                 object value;
                 if (find) value = IndexedValue(source, i);
                 else if (!TryIndexedValue(source, i, out value)) continue;
-                object mapped = numericCallback && value is double number
+                object mapped;
+                if (unboxedResult && value is double sourceNumber)
+                {
+                    double? mappedNumber = numericResult ? callback.InvokeNumber2(sourceNumber, i)
+                        : callback.InvokeArrayNumberResult(thisValue, sourceNumber, i, source);
+                    mapped = kind == ArrayCallbackKind.Map ? BoxNumber(mappedNumber)
+                        : testResult ? BoxBoolean(NumberTruthy(mappedNumber)) : Undefined;
+                }
+                else mapped = numericCallback && value is double number
                     ? callback.InvokeArrayNumber(thisValue, number, i, source)
                     : callback.InvokeWithReceiver(thisValue, new object[] { value, (double)i, source });
                 if (find && Truthy(mapped)) return kind is ArrayCallbackKind.FindIndex or ArrayCallbackKind.FindLastIndex ? (object)(double)i : value;
