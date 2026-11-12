@@ -51,3 +51,13 @@ const reference = new Reference(key);
 const registry = new Registry(() => {});
 registry.register(key, 'held', key);
 console.log('weak subclasses', reference.value, reference.read(), reference.deref() === key, registry.value, registry.read(), registry.unregister(key));
+
+class Callable extends Function {value = 7; #secret = 8; read() {return this.#secret;}}
+const callable = new Callable();
+console.log('callable fields', typeof callable, (callable as any)(), callable.value, callable.read(), callable instanceof Callable, callable instanceof Function);
+class NamedCallable extends Function {name = 'renamed'; length = 4;}
+const renamed = new NamedCallable();
+console.log('callable metadata fields', renamed.name, renamed.length, (renamed as any)(), Object.keys(renamed).join(','));
+class FunctionPrototypeField extends Function {prototype = {};}
+try {new FunctionPrototypeField(); console.log('function prototype field allowed');}
+catch (error) {console.log('function prototype field', (error as Error).name);}

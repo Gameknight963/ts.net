@@ -47,3 +47,26 @@ console.log(genericNumber.value+1,genericText.value.length);
 function Captures(this:any,value:number):void {this.value=value;this.read=()=>this.value;}
 const Capturing:any=Captures;const captured=new Capturing(31);const read=captured.read;
 console.log(read.call({value:99}),captured instanceof Capturing);
+
+{
+const first = Function();
+const second = new Function();
+console.log('empty functions', typeof first, first(), first === second, first.name, first.length);
+console.log('source', JSON.stringify(first.toString()));
+console.log('prototypes', Object.getPrototypeOf(first) === Function.prototype, first.prototype.constructor === first, Object.getPrototypeOf(first.prototype) === Object.prototype);
+console.log('own keys', Reflect.ownKeys(first).join(','));
+for (const key of ['caller', 'arguments']) {
+ const descriptor = Object.getOwnPropertyDescriptor(first, key)!;
+ console.log('legacy metadata', key, descriptor?.value, descriptor?.writable, descriptor?.enumerable, descriptor?.configurable);
+}
+const item = new (first as any)();
+console.log('constructible', item instanceof first, Object.getPrototypeOf(item) === first.prototype);
+class Callable extends Function {value = 7; #secret = 8; read() {return this.#secret;}}
+const callable = new Callable();
+console.log('function subclass', typeof callable, (callable as any)(), callable.value, callable.read(), callable instanceof Callable, callable instanceof Function);
+const Alternate: any = function Alternate() {};
+Alternate.prototype = {marker: 9};
+const reflected = Reflect.construct(Function, [], Alternate);
+console.log('reflected empty function', typeof reflected, reflected(), Object.getPrototypeOf(reflected) === Alternate.prototype, reflected instanceof Alternate);
+console.log('reflected own prototype', reflected.prototype.constructor === reflected, Object.getPrototypeOf(reflected.prototype) === Object.prototype);
+}
