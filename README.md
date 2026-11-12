@@ -97,13 +97,14 @@ Runtime performance:
 | String substring and first-character read, 1M calls | 14.27 ms | 10.75 ms | 0.75x |
 | String `charCodeAt(index)`, 1M calls | 2.27 ms | 1.66 ms | 0.73x |
 | TransformStream pipeline, double 1K numbers | 5.17 ms | 3.57 ms | 0.69x |
+| Sum 1K values in a loop, awaiting each value | 0.0633 ms | 0.0434 ms | 0.69x |
 | ReadableStream, create and drain 1K numbers | 0.281 ms | 0.189 ms | 0.67x |
 | String `codePointAt(index)`, 1M calls | 3.00 ms | 1.90 ms | 0.63x |
 | Intl.Segmenter, 100 word-segmentation calls and full traversal | 4.14 ms | 2.59 ms | 0.63x |
 | String slice and first-character read, 1M calls | 14.55 ms | 8.98 ms | 0.62x |
-| Sum 1K values in a loop, awaiting each value | 0.0722 ms | 0.0449 ms | 0.62x |
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | 0.60x |
 | Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | 0.59x |
+| Sum 100K values in a loop, awaiting only on the final iteration | 0.717 ms | 0.415 ms | 0.58x |
 | forEach sum, every and findIndex, 10 passes over 10K integers from 0-255 | 1.57 ms | 0.876 ms | 0.56x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | 0.54x |
 | Split 10K comma-separated strings, keep three parts, and sum lengths | 4 ms | 2 ms | 0.50x |
@@ -115,7 +116,6 @@ Runtime performance:
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | 0.45x |
-| Sum 100K values in a loop, awaiting only on the final iteration | 0.984 ms | 0.429 ms | 0.44x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
 | Create a Map, insert and read 10K entries, then delete half | 1.76 ms | 0.695 ms | 0.40x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
@@ -127,8 +127,8 @@ Runtime performance:
 | Currency names, 10K cached calls across German, French, Russian and British English | 28.24 ms | 9.55 ms | 0.34x |
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | 0.33x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
+| Sum 1K values with an await in try and an increment in finally each iteration | 0.146 ms | 0.0470 ms | 0.32x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
-| Sum 1K values with an await in try and an increment in finally each iteration | 0.168 ms | 0.0468 ms | 0.28x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
 | Serialize 10K numbers divided by 7, 20 times | 26.70 ms | 6.70 ms | 0.25x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
