@@ -162,7 +162,7 @@ public static partial class Js
         result.Member("defineProperties", new JsFunction((FunctionBody)(static args => ObjectDefineProperties(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "defineProperties", 2));
         result.Member("fromEntries", new JsFunction((FunctionBody)(static args => ObjectFromEntries(FunctionArgument(args, 0))), null, "fromEntries", 1));
         result.Member("groupBy", new JsFunction((FunctionBody)(static args => ObjectGroupBy(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "groupBy", 2));
-        result.Member("assign", new JsFunction((FunctionBody)ObjectAssign, null, "assign", 2));
+        result.Member("assign", new ObjectAssignFunction());
         result.Member("is", new JsFunction((FunctionBody)(static args => BoxBoolean(SameValue(FunctionArgument(args, 0), FunctionArgument(args, 1)))), null, "is", 2));
         result.Member("isExtensible", new JsFunction((FunctionBody)(static args => BoxBoolean(ObjectExtensible(FunctionArgument(args, 0)))), null, "isExtensible", 1));
         result.Member("preventExtensions", new JsFunction((FunctionBody)(static args => ObjectPreventExtensions(FunctionArgument(args, 0))), null, "preventExtensions", 1));
