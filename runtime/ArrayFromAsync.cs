@@ -52,7 +52,7 @@ public static partial class Js
                 try
                 {
                     object closed = ForAwaitClose(asyncCursor ?? new AsyncIterationState { Source = iterator, Position = (uint)position });
-                    ((JsPromise)PromiseResolve(RuntimeNamespaces.Promise, closed)).Then(new PromiseReaction(null, null, null, (_, _) => Reject()));
+                    ((JsPromise)PromiseResolve(RuntimeNamespaces.Promise, closed)).Then(new PromiseContinuationReaction((_, _) => Reject()));
                 }
                 catch { Reject(); }
             }
@@ -61,7 +61,7 @@ public static partial class Js
         void Await(object value, Action<object> continuation)
         {
             var promise = (JsPromise)PromiseResolve(RuntimeNamespaces.Promise, value);
-            promise.Then(new PromiseReaction(null, null, null, (resolved, rejected) =>
+            promise.Then(new PromiseContinuationReaction((resolved, rejected) =>
             {
                 if (rejected) { Fail(resolved); return; }
                 try { continuation(resolved); } catch (Exception error) { Fail(CaughtValue(error)); }

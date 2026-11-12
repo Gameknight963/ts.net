@@ -30,7 +30,7 @@ public static partial class Js
         {
             object selected=(object)reader ?? byobReader;
             var closed=reader!=null ? reader.ClosedPromise : byobReader.ClosedPromise;
-            closed.Then(new PromiseReaction(null,null,null,(reason,rejected)=>{
+            closed.Then(new PromiseContinuationReaction((reason,rejected)=>{
                 if(rejected && (ReferenceEquals(selected,reader) || ReferenceEquals(selected,byobReader)))Error(reason);
             }));
         }
@@ -52,7 +52,7 @@ public static partial class Js
                     pending=reader.Read();
                 }
             }catch(Exception exception){Error(CaughtValue(exception));return;}
-            pending.Then(new PromiseReaction(null,null,null,(result,rejected) => {
+            pending.Then(new PromiseContinuationReaction((result,rejected) => {
                 if (finished) return;
                 if (rejected) {reading = false;Error(result);return;}
                 try {
@@ -97,7 +97,7 @@ public static partial class Js
             cancelled[branch] = true;reasons[branch] = reason;
             if (cancelled[0] && cancelled[1]) {
                 var reasonList=new JsArray(new[] {reasons[0],reasons[1]});
-                (reader!=null ? reader.Cancel(reasonList) : byobReader.Owner.Cancel(reasonList)).Then(new PromiseReaction(null,null,null,(value,rejected) => cancellation.Settle(value,rejected)));
+                (reader!=null ? reader.Cancel(reasonList) : byobReader.Owner.Cancel(reasonList)).Then(new PromiseContinuationReaction((value,rejected) => cancellation.Settle(value,rejected)));
             }
             return cancellation;
         }

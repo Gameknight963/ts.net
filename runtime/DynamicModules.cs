@@ -52,7 +52,7 @@ public static partial class Js
             if(Group.State == 3) {Fail(Group.Failure); return;}
             try {
                 object result = initialize.InvokeWithReceiver(Undefined, Array.Empty<object>());
-                if(result is JsPromise promise) promise.Then(new PromiseReaction(null,null,null,(value,rejected) => {if(rejected) Fail(value); else Complete();}));
+                if(result is JsPromise promise) promise.Then(new PromiseContinuationReaction((value,rejected) => {if(rejected) Fail(value); else Complete();}));
                 else Complete();
             } catch(Exception error) {Fail(CaughtValue(error));}
         }
@@ -70,7 +70,7 @@ public static partial class Js
                 }
                 int remaining = waiting.Count;
                 if(remaining == 0) Start();
-                else foreach(var promise in waiting) promise.Then(new PromiseReaction(null,null,null,(value,rejected) => {
+                else foreach(var promise in waiting) promise.Then(new PromiseContinuationReaction((value,rejected) => {
                     if(rejected) Fail(value); else if(--remaining == 0) Start();
                 }));
             } catch(Exception error) {Fail(CaughtValue(error));}
@@ -85,7 +85,7 @@ public static partial class Js
             if(Group.State == 2) return Exports;
             if(evaluation == null) {
                 evaluation = new JsPromise {Handled = true};
-                Group.Completion.Then(new PromiseReaction(null,null,null,(value,rejected) => evaluation.Settle(rejected ? value : Exports,rejected)));
+                Group.Completion.Then(new PromiseContinuationReaction((value,rejected) => evaluation.Settle(rejected ? value : Exports,rejected)));
             }
             return evaluation;
         }
@@ -181,7 +181,7 @@ public static partial class Js
             if(result is JsPromise promise) {
                 (moduleRoots ??= new()).Add(module);
                 var observed = new JsPromise();
-                promise.Then(new PromiseReaction(null,null,null,(value,rejected) => observed.Settle(value,rejected)));
+                promise.Then(new PromiseContinuationReaction((value,rejected) => observed.Settle(value,rejected)));
                 return observed;
             }
             return result;

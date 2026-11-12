@@ -42,7 +42,7 @@ public static partial class Js
         }
         internal void AttachGenerator(Action<object> run)
         {
-            Then(new PromiseReaction(null, null, null, (value, rejected) =>
+            Then(new PromiseContinuationReaction((value, rejected) =>
             {
                 object result;
                 try { result = rejected ? new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)) : continuation == null ? value : continuation.InvokeWithReceiver(Undefined, new[] { value }); }

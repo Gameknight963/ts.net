@@ -17,7 +17,7 @@ public static partial class Js
         }
         void Read()
         {
-            reader.Read().Then(new PromiseReaction(null,null,null,(value,rejected) => {
+            reader.Read().Then(new PromiseContinuationReaction((value,rejected) => {
                 if (rejected) {Finish(value,true);return;}
                 try {
                     var item = (TsObject)value;

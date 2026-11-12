@@ -19,7 +19,7 @@ public static partial class Js
                 catch (Exception error) {result.Settle(CaughtValue(error),true);}
             }
             if (asynchronous) ObserveGeneratorAwait(step,Accept);
-            else ObserveSyncResult(step,true).Then(new PromiseReaction(null,null,null,Accept));
+            else ObserveSyncResult(step,true).Then(new PromiseContinuationReaction(Accept));
             return result;
         });
         JsPromise ObserveSyncResult(object step, bool closeOnRejection) => BodyPromiseOperation(() => {
@@ -53,7 +53,7 @@ public static partial class Js
                 catch (Exception error) {result.Settle(CaughtValue(error),true);}
             }
             if (asynchronous) ObserveGeneratorAwait(step,Complete);
-            else ObserveSyncResult(step,false).Then(new PromiseReaction(null,null,null,Complete));
+            else ObserveSyncResult(step,false).Then(new PromiseContinuationReaction(Complete));
             return result;
         });
     }

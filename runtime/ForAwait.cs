@@ -9,7 +9,7 @@ public static partial class Js
         result.DefineOwn("done", done ? BoxedTrue : BoxedFalse);
         return result;
     }
-    static void ObserveSyncIteratorValue(object value, PromiseReaction reaction)
+    static void ObserveSyncIteratorValue(object value, PromiseReactionBase reaction)
     {
         // Primitive resolution cannot run user code. Queue the same intrinsic
         // reaction without creating an otherwise unobservable fulfilled promise.
@@ -41,7 +41,7 @@ public static partial class Js
             cursor.NeedsClose = false;
             // Unwrap the sync iterator's value in an intrinsic reaction. The
             // loop then awaits the resulting iterator-result promise separately.
-            ObserveSyncIteratorValue(more ? cursor.Current : Undefined, new PromiseReaction(null, null, null, (resolved, rejected) =>
+            ObserveSyncIteratorValue(more ? cursor.Current : Undefined, new PromiseContinuationReaction((resolved, rejected) =>
             {
                 if (rejected) { if (more) CloseIterationAt(cursor.Source, unchecked((int)cursor.Position), true); pair.RejectValue(resolved); }
                 else pair.ResolveValue(IteratorResult(resolved, !more));
@@ -88,7 +88,7 @@ public static partial class Js
                 if (method is not JsFunction function) throw new InvalidOperationException("Iterator return is not callable");
                 object returned = RequireIteratorResult(function.InvokeWithReceiver(iterator, Array.Empty<object>()));
                 bool done = Truthy(Get(returned, "done"));
-                ObserveSyncIteratorValue(Get(returned, "value"), new PromiseReaction(null, null, null, (resolved, rejected) =>
+                ObserveSyncIteratorValue(Get(returned, "value"), new PromiseContinuationReaction((resolved, rejected) =>
                 {
                     if (rejected) pair.RejectValue(resolved);
                     else pair.ResolveValue(IteratorResult(resolved, done));

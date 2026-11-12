@@ -99,7 +99,7 @@ public static partial class Js
                 }
                 catch (Exception exception) {object reason = CaughtValue(exception);Error(reason);result.Settle(reason,true);}
             }
-            if (backpressure) pressureChange.Then(new PromiseReaction(null,null,null,(_,_) => Perform()));else Perform();
+            if (backpressure) pressureChange.Then(new PromiseContinuationReaction((_,_) => Perform()));else Perform();
             return result;
         }
         JsPromise Flush()

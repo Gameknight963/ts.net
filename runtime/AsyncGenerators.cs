@@ -7,7 +7,7 @@ public static partial class Js
     static void ObserveGeneratorAwait(object value, Action<object, bool> next)
     {
         var promise = (JsPromise)PromiseResolve(RuntimeNamespaces.Promise, value);
-        promise.Then(new PromiseReaction(null, null, null, next));
+        promise.Then(new PromiseContinuationReaction(next));
     }
     sealed partial class GeneratorValue
     {

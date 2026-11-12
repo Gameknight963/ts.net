@@ -52,7 +52,7 @@ public static partial class Js
                     var awaited = new JsPromise();
                     // A synchronous fallback ignores its return value.
                     awaited.ResolveValue(resource.AsyncMethod ? value : Undefined);
-                    awaited.Then(new PromiseReaction(null, null, null, (reason, rejected) => { if (rejected) Record(reason); Advance(); }));
+                    awaited.Then(new PromiseContinuationReaction((reason, rejected) => { if (rejected) Record(reason); Advance(); }));
                     return;
                 }
                 result.Settle(failed ? pending : Undefined, failed);

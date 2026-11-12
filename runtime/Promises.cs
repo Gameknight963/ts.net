@@ -81,24 +81,11 @@ public static partial class Js
         internal void Enqueue(object value, bool rejected) => EnqueuePromiseReaction(this, value, rejected);
         internal abstract void Run(object value, bool rejected);
     }
-    class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected,
-        Action<object, bool> continuation = null, bool discardResult = false)
+    sealed class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected)
         : PromiseReactionBase
     {
         internal override void Run(object value, bool isRejected)
         {
-            if (continuation != null)
-            {
-                if (capability == null && !discardResult) { continuation(value, isRejected); return; }
-                try { continuation(value, isRejected); }
-                catch (Exception error)
-                {
-                    RejectContinuation(error);
-                    return;
-                }
-                CompleteContinuation();
-                return;
-            }
             var handler = isRejected ? rejected : fulfilled;
             if (handler == null) { capability.Complete(value, isRejected); return; }
             object result;
@@ -106,14 +93,10 @@ public static partial class Js
             catch (Exception error) { capability.Complete(CaughtValue(error), true); return; }
             capability.Complete(result, false);
         }
-        internal void CompleteContinuation() => capability?.Complete(Undefined, false);
-        internal void RejectContinuation(Exception error)
-        {
-            // A discarded intrinsic result becomes observable only if the
-            // callback throws, through unhandled-rejection reporting.
-            if (capability == null) new JsPromise().Settle(CaughtValue(error), true);
-            else capability.Complete(CaughtValue(error), true);
-        }
+    }
+    sealed class PromiseContinuationReaction(Action<object, bool> continuation) : PromiseReactionBase
+    {
+        internal override void Run(object value, bool rejected) => continuation(value, rejected);
     }
     sealed class NativePromiseReaction(JsPromise target, JsFunction fulfilled, JsFunction rejected) : PromiseReactionBase
     {

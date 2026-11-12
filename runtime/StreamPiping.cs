@@ -30,11 +30,11 @@ public static partial class Js
         {
             if (signal?.Aborted == true) {Abort();return;}
             if (signal != null) unsubscribe = signal.Subscribe(Abort);
-            ReaderClosed.Then(new PromiseReaction(null,null,null,(reason,rejected) => {
+            ReaderClosed.Then(new PromiseContinuationReaction((reason,rejected) => {
                 if (rejected) SourceFailed(reason);
                 else {ended = true;if (!reading) SourceClosed();}
             }));
-            writer.Closed.Then(new PromiseReaction(null,null,null,(reason,rejected) => {
+            writer.Closed.Then(new PromiseContinuationReaction((reason,rejected) => {
                 if (rejected) DestinationFailed(reason);
                 else DestinationClosed();
             }));
@@ -47,18 +47,18 @@ public static partial class Js
         {
             if (stopping) return;
             if (ended) {SourceClosed();return;}
-            writer.Ready.Then(new PromiseReaction(null,null,null,(reason,rejected) => {
+            writer.Ready.Then(new PromiseContinuationReaction((reason,rejected) => {
                 if (stopping) return;
                 if (rejected) {DestinationFailed(reason);return;}
                 reading = true;
-                Read().Then(new PromiseReaction(null,null,null,(result,failed) => {
+                Read().Then(new PromiseContinuationReaction((result,failed) => {
                     reading = false;
                     if (failed) {SourceFailed(result);return;}
                     var item = (TsObject)result;
                     if (Truthy(item.Get("done"))) {ended = true;SourceClosed();return;}
                     if (stopping && (destination.PipeState != 0 || destination.PipeClosing)) return;
                     lastWrite = destination.Write(writer,item.Get("value"));
-                    lastWrite.Then(new PromiseReaction(null,null,null,(error,writeFailed) => {if (writeFailed) DestinationFailed(error);}));
+                    lastWrite.Then(new PromiseContinuationReaction((error,writeFailed) => {if (writeFailed) DestinationFailed(error);}));
                     if (!stopping) Step();
                 }));
             }));
@@ -76,7 +76,7 @@ public static partial class Js
                 if (!preventCancel && SourceReadable) actions.Add(Cancel(reason));
                 var result = new JsPromise();int remaining = actions.Count;
                 if (remaining == 0) result.Settle(Undefined,false);
-                foreach (var action in actions) action.Then(new PromiseReaction(null,null,null,(value,rejected) => {
+                foreach (var action in actions) action.Then(new PromiseContinuationReaction((value,rejected) => {
                     if (rejected) result.Settle(value,true);
                     else if (--remaining == 0) result.Settle(Undefined,false);
                 }));
@@ -89,13 +89,13 @@ public static partial class Js
             void Perform()
             {
                 if (action == null) {Finish(error,rejected);return;}
-                BodyPromiseOperation(action).Then(new PromiseReaction(null,null,null,(value,failed) => Finish(failed ? value : error,failed || rejected)));
+                BodyPromiseOperation(action).Then(new PromiseContinuationReaction((value,failed) => Finish(failed ? value : error,failed || rejected)));
             }
             void Drain()
             {
                 var pending = lastWrite;
                 if (destination.PipeState != 0 || destination.PipeClosing || pending == null) {Perform();return;}
-                pending.Then(new PromiseReaction(null,null,null,(_,_) => {
+                pending.Then(new PromiseContinuationReaction((_,_) => {
                     if (ReferenceEquals(pending,lastWrite)) Perform();else Drain();
                 }));
             }

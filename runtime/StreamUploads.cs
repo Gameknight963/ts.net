@@ -39,7 +39,7 @@ public static partial class Js
         {
             if (stopped) {next.TrySetCanceled();return;}
             pending = next;
-            reader.Read().Then(new PromiseReaction(null,null,null,(value,rejected) => {
+            reader.Read().Then(new PromiseContinuationReaction((value,rejected) => {
                 if (stopped) return;
                 pending = null;
                 if (rejected) {Fail(next);return;}
