@@ -14,7 +14,7 @@ internal sealed class JsArguments : JsDynamicObject
 {
     object[] values;
     bool expanded;
-    object assignedLength;
+    object lengthValue;
     bool lengthAssigned;
     bool iteratorHidden = true;
     internal JsArguments(object[] source)
@@ -23,7 +23,8 @@ internal sealed class JsArguments : JsDynamicObject
         // before running user code. Keep an independent snapshot of user values.
         values = new object[source.Length - 1];
         Array.Copy(source, 1, values, 0, values.Length);
-        DefineOwn("length", (double)values.Length);
+        lengthValue = (double)values.Length;
+        DefineOwn("length", lengthValue);
         DefineOwn("callee", Js.Undefined);
         DefineOwn(Js.ArgumentsIteratorKey, Js.ArrayMethodValue("values"));
     }
@@ -32,13 +33,13 @@ internal sealed class JsArguments : JsDynamicObject
         if (expanded) return;
         for (int index = 0; index < values.Length; index++)
             base.Define(new(index.ToString(CultureInfo.InvariantCulture), values[index], null, null, false, true, true, true));
-        base.Define(new("length", lengthAssigned ? assignedLength : (double)values.Length, null, null, false, true, false, true));
+        base.Define(new("length", lengthValue, null, null, false, true, false, true));
         base.Define(new("callee", Js.Undefined, CalleeThrower, CalleeThrower, true, false, false, false));
         if (base.HasOwn(Js.ArgumentsIteratorKey))
             base.Define(new(Js.ArgumentsIteratorKey, base.Get(Js.ArgumentsIteratorKey), null, null, false, true, !iteratorHidden, true));
         expanded = true;
         values = null;
-        assignedLength = null;
+        lengthValue = null;
     }
     internal override void Define(Descriptor descriptor) { ExpandProperties(); base.Define(descriptor); }
     static JsFunction CalleeThrower => Js.StrictFunctionThrower;
@@ -52,7 +53,7 @@ internal sealed class JsArguments : JsDynamicObject
     {
         if (expanded) return base.Get(key);
         if (key == "callee") throw CalleeError();
-        if (key == "length") return lengthAssigned ? assignedLength : (double)values.Length;
+        if (key == "length") return lengthValue;
         return JsArray.Index(key, out uint index) && index < values.Length ? values[index] : base.Get(key);
     }
     public override object SetOwnValue(string key, object value) => expanded ? base.SetOwnValue(key, value) : key is "length" or "callee" || JsArray.Index(key, out uint index) && index < values.Length ? Set(key, value) : base.SetOwnValue(key, value);
@@ -60,7 +61,7 @@ internal sealed class JsArguments : JsDynamicObject
     {
         if (expanded) return base.Set(key, value);
         if (key == "callee") throw CalleeError();
-        if (key == "length") { assignedLength = value; lengthAssigned = true; return value; }
+        if (key == "length") { lengthValue = value; lengthAssigned = true; return value; }
         if (JsArray.Index(key, out uint index) && index < values.Length) { values[index] = value; return value; }
         return base.Set(key, value);
     }
@@ -87,7 +88,7 @@ internal sealed class JsArguments : JsDynamicObject
     }
     internal double IterationLength()
     {
-        double length = expanded ? Js.Number(Get("length")) : lengthAssigned ? Js.Number(assignedLength) : values.Length;
+        double length = expanded ? Js.Number(Get("length")) : lengthAssigned ? Js.Number(lengthValue) : values.Length;
         return double.IsNaN(length) || length <= 0 ? 0 : Math.Min(9007199254740991d, Math.Floor(length));
     }
 }
