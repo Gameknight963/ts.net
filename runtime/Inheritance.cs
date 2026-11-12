@@ -25,7 +25,7 @@ internal sealed class JsObjectMethodReceiver(TsObject home, object receiver)
 internal sealed class JsSuperReference(TsObject home, object receiver, bool isStatic) : TsObject
 {
     internal readonly object Receiver = Js.ResolveThis(receiver);
-    TsObject Target => home is JsClassFunction klass ? isStatic ? klass.Parent : klass.Prototype.ParentPrototype : home.PropertyPrototype;
+    TsObject Target => Js.SuperTarget(home, isStatic);
     public override object Get(string key) => Target is null ? throw new InvalidOperationException("Cannot read super property of null") : Target.GetWithReceiver(key,Receiver);
     public override double? GetNumberProperty(string key) => Target is null ? throw new InvalidOperationException("Cannot read super property of null") : Target.GetNumberWithReceiver(key, Receiver);
     public override object Set(string key, object value) => Target is null ? throw new InvalidOperationException("Cannot set super property of null") : Target.SetWithReceiver(key,value,Receiver);
@@ -56,6 +56,17 @@ public static partial class Js
     {
         home = ArgumentsReceiver(home);
         return new JsSuperReference(home is JsObjectMethodReceiver method ? method.Home : (TsObject)home, receiver, isStatic);
+    }
+    internal static TsObject SuperTarget(TsObject home, bool isStatic) => home is JsClassFunction klass
+        ? isStatic ? klass.TryExplicitPrototype(out var prototype) ? prototype : klass.Parent : klass.Prototype.PropertyPrototype
+        : home.PropertyPrototype;
+    public static double? SuperGetNumber(object home, object receiver, bool isStatic, string key)
+    {
+        home = ArgumentsReceiver(home);
+        var owner = home is JsObjectMethodReceiver method ? method.Home : (TsObject)home;
+        receiver = ResolveThis(receiver);
+        TsObject target = SuperTarget(owner, isStatic);
+        return target is null ? throw new InvalidOperationException("Cannot read super property of null") : target.GetNumberWithReceiver(key, receiver);
     }
     public static object MarkObjectHome(object function, object home) { ((JsFunction)function).SetObjectHome((TsObject)home); return function; }
     public static void SuperInitializer(object receiver, object callback) => ((JsConstructorFrame)ArgumentsReceiver(receiver)).AfterSuper = (JsFunction)callback;

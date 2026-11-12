@@ -612,6 +612,12 @@ internal static partial class CompilerFunctions
             }
 
             Node receiver = get_node(n.left, c);
+            if (receiver.kind == NodeKind.SuperBase && get_type(n.type, c).kind == TypeKind.Number)
+            {
+                il_boxed(receiver.left, c, b); il_boxed(receiver.right, c, b);
+                b.emit(0x20, receiver.constant ? 1 : 0); il_text(n.name, c, b);
+                b.call(RuntimeMember.SuperGetNumber); return;
+            }
             if (receiver.kind == NodeKind.Arguments && is_text(n.name, text_length, c) && get_type(n.type, c).kind == TypeKind.Number)
             {
                 il_boxed(receiver.left, c, b); b.call(RuntimeMember.ArgumentsLength); return;
