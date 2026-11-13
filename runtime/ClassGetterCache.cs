@@ -12,6 +12,7 @@ internal sealed class AccessorVersion
 public abstract partial class TsObject
 {
     internal object WatchAccessorStructure() => accessors?.WatchStructure();
+    internal object OwnDataValue(string key) => !TryOwnAccessor(key, out _) && extra != null && extra.TryGetValue(key, out var value) ? value : null;
 }
 
 public sealed partial class JsClassFunction
@@ -67,6 +68,12 @@ public sealed partial class JsClassFunction
 
 public static partial class Js
 {
+    public static object GetClassMethodData(object receiver, string name)
+    {
+        if (receiver is not JsClassInstance value || value.Owner is not JsClassFunction owner || owner.Parent != null ||
+            owner.Prototype.GetType() != value.GetType() || !ReferenceEquals(value.InheritedPrototype, owner.Prototype) || value.HasOwn(name)) return null;
+        return owner.Prototype.OwnDataValue(name);
+    }
     // Only source getters whose body is identical for every function instance qualify.
     public static void DefineSimpleClassGetter(object target, string key, object method, int slot)
     {

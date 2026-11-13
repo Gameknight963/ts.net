@@ -1,6 +1,6 @@
 namespace Tsnet.Compiler;
 
-internal readonly record struct LoopGetterBody(int Expression, List<(int Name, int Slot)> Fields);
+internal readonly record struct LoopGetterBody(int Expression, List<(int Name, int Slot)> Fields, int Parameter = 0, int Counter = 0);
 
 internal sealed partial class IlBackend
 {
@@ -15,7 +15,7 @@ internal static partial class CompilerFunctions
     {
         if (b.loop_getter_values.TryGetValue(entry, out int saved)) { b.emit(0xfe0c, saved); return true; }
         if (!b.loop_getter_bodies.TryGetValue(entry, out var body)) return false;
-        il_simple_getter_number(body.Expression, c, b, fields: body.Fields); return true;
+        il_simple_getter_number(body.Expression, c, b, parameter: body.Parameter, fields: body.Fields, counter: body.Counter); return true;
     }
     internal static bool il_loop_field_write(int entry, Compiler c, IlBackend b)
     {
