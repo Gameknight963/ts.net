@@ -56,9 +56,10 @@ func loadWithOptions(path string, legacy bool) (*session, string, int) {
 	options := &core.CompilerOptions{
 		Strict: core.TSTrue, NoEmit: core.TSTrue,
 		Target: core.ScriptTargetESNext, Module: core.ModuleKindPreserve,
-		ModuleResolution:  core.ModuleResolutionKindBundler,
-		Types:             []string{},
-		ResolveJsonModule: core.TSTrue,
+		ModuleResolution:    core.ModuleResolutionKindBundler,
+		Types:               []string{},
+		ResolveJsonModule:   core.TSTrue,
+		SkipDefaultLibCheck: core.TSTrue,
 	}
 	if legacy {
 		options.ExperimentalDecorators = core.TSTrue
