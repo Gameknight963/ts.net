@@ -3,7 +3,17 @@ using System.Collections.Generic;
 
 internal sealed class JsAccessor
 {
-    internal JsFunction Getter;
+    JsFunction getter;
+    AccessorVersion getterVersion;
+    internal JsFunction Getter
+    {
+        get => getter;
+        set {
+            if (!ReferenceEquals(getter, value) && getterVersion != null) getterVersion.Token = new object();
+            getter = value;
+        }
+    }
+    internal AccessorVersion WatchGetter() => getterVersion ??= new AccessorVersion();
     internal JsFunction Setter;
     internal object Read(object receiver) => Getter is null ? Js.Undefined : Getter.InvokeWithReceiver(receiver, Array.Empty<object>());
     internal double? ReadNumber(object receiver) => Getter is null ? null
@@ -18,6 +28,9 @@ internal sealed class JsAccessor
 }
 internal class JsAccessors : Dictionary<string, JsAccessor>
 {
+    object version;
+    internal object WatchStructure() => version ??= new object();
+    void Changed() { if (version != null) version = new object(); }
     internal int IndexedCount { get; private set; }
     internal bool HasExplicitPrototype;
     internal TsObject ExplicitPrototype;
@@ -33,12 +46,14 @@ internal class JsAccessors : Dictionary<string, JsAccessor>
         set {
             if (!ContainsKey(key) && JsArray.Index(key, out _)) IndexedCount++;
             base[key] = value;
+            Changed();
         }
     }
     public new bool Remove(string key)
     {
         if (!base.Remove(key)) return false;
         if (JsArray.Index(key, out _)) IndexedCount--;
+        Changed();
         return true;
     }
 }

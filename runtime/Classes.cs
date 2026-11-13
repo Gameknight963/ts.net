@@ -29,7 +29,7 @@ public class JsClassInstance : JsDescriptorObject
     }
     internal void DefineField(string name, object value) => Js.DefineDictionaryField(this, name, value);
 }
-public sealed class JsClassFunction : JsFunction
+public sealed partial class JsClassFunction : JsFunction
 {
     readonly FunctionBody factory;
     internal override string SourceText => Js.SourceOf(factory);

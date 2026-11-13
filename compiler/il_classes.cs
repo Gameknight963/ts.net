@@ -25,6 +25,9 @@ internal static partial class CompilerFunctions
         b.call(RuntimeMember.GetStoredWithReceiver); b.op(0x2a);
 
         il_stored_numeric_properties(klass, b);
+        for (int member = get_type(type, c).fields; member != 0; member = get_field(member, c).next)
+            if (get_type(get_field(member, c).type, c).kind == TypeKind.Number && il_simple_class_getter(type, get_field(member, c).name, c, b, out _))
+                il_simple_class_getter_reader(type, member, c, b);
 
         var family = new List<int>();
         for (int variant = c.types; variant != 0; variant = get_type(variant, c).next)
@@ -41,7 +44,13 @@ internal static partial class CompilerFunctions
                 if (emitted.Any(previous => previous.Type == storage && same(previous.Name, field.name, c))) continue;
                 emitted.Add((field.name, storage));
                 Vector<byte> get = field_name(field.name, "get_p_", c), set = field_name(field.name, "set_p_", c);
+                bool simple = get_type(field.type, c).kind == TypeKind.Number && il_simple_class_getter(type, field.name, c, b, out _);
                 b.begin(b.plan.method0(5, klass, 0x1e6, storage, get.view()));
+                if (simple && il_simple_class_getter(type, field.name, c, b, out var getter)) {
+                    int fallback = b.label(); b.emit(0xfe09, 0); b.emit(0x20, getter.Slot);
+                    b.call(RuntimeMember.MatchesSimpleClassGetter); b.emit(0x39, fallback);
+                    il_simple_class_getter_body(getter, c, b); b.mark(fallback);
+                }
                 b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 0);
                 if (get_type(field.type, c).kind == TypeKind.Number) b.call(RuntimeMember.GetStoredNumberWithReceiver);
                 else { b.call(RuntimeMember.GetStoredWithReceiver); b.from_object(field.type, c); }
@@ -87,7 +96,9 @@ internal static partial class CompilerFunctions
             {
                 b.emit(0x20, method.constant ? 1 : 0); b.call(RuntimeMember.DefineAutoAccessor); b.initialize(method.symbol); continue;
             }
-            il_boxed(method.left, c, b); b.emit(0x20, method.constant ? 1 : 0);b.emit(0x20,method.third==0?0:get_node(method.third,c).constant?1:2); b.call(RuntimeMember.DefineClassMethod);
+            il_boxed(method.left, c, b);
+            if (b.simple_getter_slots.TryGetValue(member, out int simpleSlot)) {b.emit(0x20, simpleSlot); b.call(RuntimeMember.DefineSimpleClassGetter);}
+            else {b.emit(0x20, method.constant ? 1 : 0);b.emit(0x20,method.third==0?0:get_node(method.third,c).constant?1:2); b.call(RuntimeMember.DefineClassMethod);}
         }
         b.emit(0xfe0c, slot);
     }
