@@ -3,22 +3,22 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
-    readonly struct PromiseJob(Action callback, PromiseReactionBase reaction, object value, bool rejected)
+    readonly struct PromiseJob(object target, object value, bool rejected)
     {
         internal void Run()
         {
-            if (reaction != null) reaction.Run(value, rejected);
-            else if (callback != null) callback();
-            else ((JsFunction)value).InvokeWithReceiver(Undefined, Array.Empty<object>());
+            if (target is PromiseReactionBase reaction) reaction.Run(value, rejected);
+            else if (target is Action callback) callback();
+            else ((JsFunction)target).InvokeWithReceiver(Undefined, Array.Empty<object>());
         }
     }
     [ThreadStatic] static Queue<PromiseJob> promiseJobs;
     [ThreadStatic] static HashSet<JsPromise> unhandledPromises;
-    static void EnqueuePromiseJob(Action job) => (promiseJobs ??= new()).Enqueue(new(job, null, null, false));
+    static void EnqueuePromiseJob(Action job) => (promiseJobs ??= new()).Enqueue(new(job, null, false));
     static void EnqueueMicrotask(JsFunction callback) =>
-        (promiseJobs ??= new()).Enqueue(new(null, null, callback, false));
+        (promiseJobs ??= new()).Enqueue(new(callback, null, false));
     static void EnqueuePromiseReaction(PromiseReactionBase reaction, object value, bool rejected) =>
-        (promiseJobs ??= new()).Enqueue(new(null, reaction, value, rejected));
+        (promiseJobs ??= new()).Enqueue(new(reaction, value, rejected));
     static void DrainPromiseJobs()
     {
         ClearKeptWeakTargets();
