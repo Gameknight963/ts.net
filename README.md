@@ -163,6 +163,7 @@ Runtime performance:
 | Update a class field and read its getter, 100K iterations | 0.960 ms | 0.0618 ms | 0.06x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Class numeric getter, 100K reads | 0.761 ms | 0.0267 ms | 0.04x |
+| Class getter returning `this.base * 2 + 1`, 100K reads | 0.707 ms | 0.0265 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
 
 </details>
