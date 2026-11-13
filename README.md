@@ -102,11 +102,11 @@ Runtime performance:
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | 0.77x |
 | `== null` on nullable arrays, 1M comparisons | 1.51 ms | 1.15 ms | 0.76x |
 | String substring and first-character read, 1M calls | 14.27 ms | 10.75 ms | 0.75x |
+| Sum 1K values in a loop, awaiting each value | 0.0563 ms | 0.0423 ms | 0.75x |
 | String `charCodeAt(index)`, 1M calls | 2.27 ms | 1.66 ms | 0.73x |
 | Float64Array toSorted and traversal, 10 copies of 10K values | 11.56 ms | 8.06 ms | 0.70x |
 | Int32Array toSorted and traversal, 10 copies of 10K values | 5.74 ms | 4.03 ms | 0.70x |
 | TransformStream pipeline, double 1K numbers | 5.17 ms | 3.57 ms | 0.69x |
-| Sum 1K values in a loop, awaiting each value | 0.0633 ms | 0.0434 ms | 0.69x |
 | ReadableStream, create and drain 1K numbers | 0.281 ms | 0.189 ms | 0.67x |
 | Numeric getter on an Object.create object, 100K reads | 1.95 ms | 1.27 ms | 0.65x |
 | String `codePointAt(index)`, 1M calls | 3.00 ms | 1.90 ms | 0.63x |
@@ -148,11 +148,11 @@ Runtime performance:
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
 | Serialize 10K numbers divided by 7, 20 times | 26.70 ms | 6.70 ms | 0.25x |
+| Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | 0.25x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.47 ms | 0.495 ms | 0.20x |
 | map and sum a number/string array, 20 passes over 10K values | 2.85 ms | 0.521 ms | 0.18x |
-| Sum 1K values from a generator | 0.0647 ms | 0.0116 ms | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | 100K numeric writes to a four-element mapped array | 0.255 ms | 0.0416 ms | 0.16x |
 | Object literal method through a helper, 100K calls | 0.447 ms | 0.0616 ms | 0.14x |
