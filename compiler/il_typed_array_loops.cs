@@ -52,6 +52,18 @@ internal static partial class CompilerFunctions
             }
         }
         if (reads == 0) return false;
+        // The checks above exclude array writes and user callbacks, so a packed
+        // numeric buffer stays valid until this traversal finishes.
+        int packed = b.local(-12), packedBound = b.local(-3), ordinary = b.label(), packedDone = b.label();
+        b.load(array); b.call(RuntimeMember.ArrayTryPackedRead); b.emit(0xfe0e, packed);
+        b.emit(0xfe0c, packed); b.emit(0x39, ordinary);
+        b.load(array); b.call(RuntimeMember.ArrayLength); b.emit(0xfe0e, packedBound);
+        int savedCounter = b.raw_slot(counter), savedNonnegative = b.nonnegative_ints.at(counter), savedPacked = b.packed_arrays.at(array);
+        b.raw_slots.at_mut(counter) = -6; b.nonnegative_ints.at_mut(counter) = 1; b.packed_arrays.at_mut(array) = packed + 1;
+        il_loop_code(entry, result, counter, packedBound, c, b);
+        b.raw_slots.at_mut(counter) = savedCounter; b.nonnegative_ints.at_mut(counter) = savedNonnegative; b.packed_arrays.at_mut(array) = savedPacked;
+        b.emit(0x38, packedDone); b.mark(ordinary);
+
         int bytes = b.local(-13), bound = b.local(-3), fallback = b.label(), done = b.label();
         b.load(array); b.call(RuntimeMember.TryFloat64Buffer); b.emit(0xfe0e, bytes);
         b.emit(0xfe0c, bytes); b.emit(0x39, fallback);
@@ -63,7 +75,7 @@ internal static partial class CompilerFunctions
         b.typed_buffers.at_mut(array) = 0;
         b.raw_slots.at_mut(counter) = previous; b.nonnegative_ints.at_mut(counter) = nonnegative;
         b.emit(0x38, done);
-        b.mark(fallback); il_loop_body(entry, result, 0, -1, c, b); b.mark(done);
+        b.mark(fallback); il_loop_body(entry, result, 0, -1, c, b); b.mark(done); b.mark(packedDone);
         return true;
     }
 }

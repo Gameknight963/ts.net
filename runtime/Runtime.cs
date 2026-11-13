@@ -458,6 +458,13 @@ public static partial class Js
         ArrayPushOne(receiver, BoxNumber(value));
     public static double? ArrayPopNumber(object receiver) => receiver is NumberArray numbers ? numbers.PopNumber() :
         Cast<double?>(ArrayPop(receiver), "Array element is not a number");
+    // The caller proves that the loop cannot write or invoke user code.
+    public static double[] ArrayTryPackedRead(object receiver) => receiver switch
+    {
+        NumberArray numbers when numbers.CanUseElementStorage => numbers.TryPacked(numbers.Length()),
+        TaggedArray tagged => tagged.TryPackedNumbers(tagged.Length()),
+        _ => null
+    };
     public static double[] ArrayTryPacked(object receiver, double limit) => receiver is NumberArray numbers && !numbers.ElementsFrozen ? numbers.TryPacked(limit) : null;
     public static void ArrayReservePushes(object receiver, double additions)
     {
