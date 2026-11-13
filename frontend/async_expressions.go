@@ -375,6 +375,11 @@ func (a *asyncExpressionLowering) expression(id int, next asyncExpressionContinu
 				})
 			})
 		})
+	case 39, 40, 41, 42: // Number predicates keep their arguments in children.
+		return a.operands(a.list(n.children), false, func(values []int) int {
+			n.children = a.link(values)
+			return next(a.operation(n))
+		})
 	case 32: // array literal
 		return a.operands(a.list(n.children), true, func(values []int) int { n.children = a.link(values); return next(a.operation(n)) })
 	case 36: // destructuring assignment; preserve the original RHS value
