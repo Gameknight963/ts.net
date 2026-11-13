@@ -177,7 +177,7 @@ try {
 
     & "$PSScriptRoot/build.ps1" -InputFile tests/console.ts -OutputDirectory artifacts/tests/console -SkipCompilerBuild -SkipRuntimeBuild -LinkRuntime | Out-Host
     if ($LASTEXITCODE) { throw 'Console fixture failed to build' }
-    & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/console" tests/console.ts
+    & tsc.cmd --skipDefaultLibCheck --strict --target es2022 --module commonjs --outDir "$testRoot/node/console" tests/console.ts
     if ($LASTEXITCODE) { throw 'Console reference failed to compile' }
     '{"type":"commonjs"}' | Set-Content "$testRoot/node/console/package.json"
     function Get-ConsoleOutput($Executable, [string[]]$Argument) {
@@ -251,7 +251,7 @@ try {
         if ($legacyDecorators) { $referenceOptions += '--experimentalDecorators' }
         if ($name -eq 'export-assignment-interop') { $referenceOptions += '--esModuleInterop' }
         $referenceTarget = if ($name -eq 'number-arabic-options' -or $name -in @('number-compact-precision', 'number-unit-locales', 'number-unit-precision', 'intl-duration-format', 'intl-duration-errors', 'intl-duration-numbers') -or $name -eq 'regex-modifiers' -or $name -eq 'regex-unicode-case-modifiers' -or $name -eq 'regex-unicode-sets') { 'esnext' } elseif ($name -eq 'readable-byte-stream-lifecycle' -or $name.StartsWith('resizable-buffer') -or $name.StartsWith('buffer-transfer') -or $name.StartsWith('shared-buffer') -or $name.StartsWith('growable-shared-') -or $name.StartsWith('atomic-') -or $name -eq 'hmac-keys' -or $name -eq 'numeric-read-paths' -or $name -eq 'typed-array-loop-guards') { 'es2024' } else { 'es2022' }
-        & tsc.cmd @referenceOptions --strict --target $referenceTarget --module $moduleKind --outDir "$testRoot/node/$name" $fixture
+        & tsc.cmd --skipDefaultLibCheck @referenceOptions --strict --target $referenceTarget --module $moduleKind --outDir "$testRoot/node/$name" $fixture
         if ($moduleKind -eq 'es2022') { '{"type":"module"}' | Set-Content "$testRoot/node/$name/package.json" }
         else { '{"type":"commonjs"}' | Set-Content "$testRoot/node/$name/package.json" }
         if ($LASTEXITCODE) { throw "Reference TypeScript compilation failed: $name" }
@@ -317,9 +317,9 @@ try {
     foreach ($name in @('object-integrity-modules', 'global-this-modules', 'timers-modules', 'json-modules', 'decorators-modules', 'async-generators-modules', 'generators-modules', 'await-class-definitions', 'await-class-context', 'top-level-await', 'top-level-await-cycle', 'top-level-await-siblings', 'top-level-await-errors', 'top-level-await-var', 'dynamic-import', 'dynamic-import-bindings', 'disposable-stack-modules', 'await-using-modules', 'namespace-merge-modules', 'namespace-modules', 'using-modules', 'import-meta', 'module-this', 'tagged-templates-modules', 'reflect-delete-modules', 'delete-constant-keys-modules', 'computed-reflect-deletion-modules', 'computed-object-definition-modules', 'property-descriptors-modules', 'for-in-modules', 'for-in-cycle', 'module-namespace-order', 'module-namespace-definition', 'in-operator-modules', 'function-constructor-modules')) {
         & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild -SkipRuntimeBuild -LinkRuntime | Out-Host
         if ($name -eq 'json-modules') {
-            & tsc.cmd --strict --target es2022 --module esnext --moduleResolution bundler --resolveJsonModule --esModuleInterop --outDir "$testRoot/node/$name" "tests/$name.ts"
+            & tsc.cmd --skipDefaultLibCheck --strict --target es2022 --module esnext --moduleResolution bundler --resolveJsonModule --esModuleInterop --outDir "$testRoot/node/$name" "tests/$name.ts"
         } else {
-            & tsc.cmd --strict --target es2022 --module es2022 --outDir "$testRoot/node/$name" "tests/$name.ts"
+            & tsc.cmd --skipDefaultLibCheck --strict --target es2022 --module es2022 --outDir "$testRoot/node/$name" "tests/$name.ts"
         }
         if ($LASTEXITCODE) { throw "ES module reference compilation failed: $name" }
         '{"type":"module"}' | Set-Content "$testRoot/node/$name/package.json" -Encoding utf8
