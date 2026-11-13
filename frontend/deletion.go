@@ -184,7 +184,7 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 				if key.Text() == "deleteProperty" {
 					return 2
 				}
-				return 0
+				return b.reflectionPropertyValueLimit(n, seen, b.reflectionDeletionValue, 3)
 			}
 			return 3
 		}
