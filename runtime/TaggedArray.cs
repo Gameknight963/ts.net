@@ -30,7 +30,7 @@ public sealed partial class TaggedArray : JsArray
     internal double[] TryPackedNumbers(double limit)
     {
         if (TryTags(limit) == null) return null;
-        for (int i = 0; i < (int)limit; i++) if (tags[i] != 1) return null;
+        if (tags.AsSpan(0, (int)limit).IndexOfAnyExcept((byte)1) >= 0) return null;
         return numbers;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
