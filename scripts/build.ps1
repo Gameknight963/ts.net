@@ -4,7 +4,8 @@ param(
     [switch]$Run,
     [switch]$ExperimentalDecorators,
     [switch]$SkipCompilerBuild,
-    [switch]$SkipRuntimeBuild
+    [switch]$SkipRuntimeBuild,
+    [switch]$LinkRuntime
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -36,7 +37,15 @@ try {
         & dotnet build "$root/runtime/Tsnet.Runtime.csproj" -c Release --configfile "$outputPath/NuGet.Config" --nologo -v quiet
         if ($LASTEXITCODE) { throw '.NET runtime build failed' }
     }
-    Copy-Item "$root/runtime/bin/Release/net10.0/Tsnet.Runtime.dll" $applicationPath
+    $runtimeSource = [IO.Path]::GetFullPath("$root/runtime/bin/Release/net10.0/Tsnet.Runtime.dll")
+    $runtimeTarget = Join-Path $applicationPath 'Tsnet.Runtime.dll'
+    if (![StringComparer]::OrdinalIgnoreCase.Equals($runtimeSource, $runtimeTarget)) {
+        if (Test-Path -LiteralPath $runtimeTarget) { Remove-Item -LiteralPath $runtimeTarget }
+        if ($LinkRuntime) {
+            try { New-Item -ItemType HardLink -Path $runtimeTarget -Target $runtimeSource -ErrorAction Stop | Out-Null }
+            catch { Copy-Item -LiteralPath $runtimeSource -Destination $runtimeTarget }
+        } else { Copy-Item -LiteralPath $runtimeSource -Destination $runtimeTarget }
+    }
     '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' |
         Set-Content "$applicationPath/App.runtimeconfig.json" -Encoding utf8
     if ($Run) {
