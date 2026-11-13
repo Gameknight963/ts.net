@@ -23,3 +23,13 @@ Promise.resolve(3).then(function(value) { return arguments.length + ':' + argume
 Promise.resolve(4).then((...values) => values.length + ':' + values[0]).then(value => console.log('promise-rest', value));
 Promise.resolve(5).then(String).then(value => console.log('promise-native', value));
 
+
+function mappedCapture(values: (number | string | undefined)[]): string {
+    let visits = 0;
+    const callback = (value: number | string | undefined): string => ++visits + ':' + String(value);
+    return values['map'](callback).join(',') + ':' + visits;
+}
+console.log('mapped-capture', mappedCapture(callbackValues));
+let reassignedCallback = (value: number | string | undefined): string => 'first:' + String(value);
+reassignedCallback = value => 'second:' + String(value);
+console.log('reassigned', callbackValues.map(reassignedCallback).join(','));
