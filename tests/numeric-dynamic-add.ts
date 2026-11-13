@@ -29,3 +29,11 @@ const union: (number | string)[] = [1, 'text', 3];
 let unionTotal = 0;
 for (const value of union) {if (typeof value === 'number') unionTotal += value;}
 console.log('union', unionTotal);
+
+for (const primitive of [null, true, false, undefined, NaN, -0, Infinity]) {
+    let hintSeen = '';
+    const object = {[Symbol.toPrimitive](hint: string): any {hintSeen = hint; return primitive;}};
+    const result = sum(object, -0);
+    console.log('primitive hook', hintSeen, result, Object.is(result, -0));
+}
+try {sum({[Symbol.toPrimitive]() {return {};}}, 1);} catch {console.log('invalid primitive hook');}

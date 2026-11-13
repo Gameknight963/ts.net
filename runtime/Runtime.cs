@@ -485,6 +485,14 @@ public static partial class Js
     public static double? AddToNumber(double? left, object right)
     {
         if (right is double number) return NumberValue(left) + number;
+        if (right is TsObject obj)
+        {
+            right = ToPrimitive(obj, "default");
+            if (right is double converted) return NumberValue(left) + converted;
+        }
+        if (right == null) return NumberValue(left) + 0.0;
+        if (right is bool boolean) return NumberValue(left) + (boolean ? 1.0 : 0.0);
+        if (ReferenceEquals(right, Undefined)) return NumberValue(left) + double.NaN;
         return Cast<double?>(Add(BoxNumber(left), right), "checked conversion failed");
     }
 
