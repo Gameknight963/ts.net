@@ -156,7 +156,7 @@ internal static partial class CompilerFunctions
             }
         }
     }
-    internal static void il_mutation(int entry, Compiler c, IlBackend b)
+    internal static void il_mutation(int entry, Compiler c, IlBackend b, bool discardBox = false)
     {
         Node n = get_node(entry, c); Node target = get_node(n.left, c);
         ScalarField scalar = il_scalar_field(n.left, c, b);
@@ -343,7 +343,13 @@ internal static partial class CompilerFunctions
             }
         }
         if (previous >= 0 && !n.constant) { b.emit(0xfe0c, previous); }
-        else { b.emit(0xfe0c, value); if (!logical) { b.convert(value_type, n.type, c); } }
+        else {
+            b.emit(0xfe0c, value);
+            // An expression statement discards this value immediately. Keep a
+            // numeric result unboxed instead of allocating an unused object.
+            bool unusedBox = discardBox && get_type(value_type, c).kind == TypeKind.Number && get_type(n.type, c).kind == TypeKind.Any;
+            if (!logical && !unusedBox) { b.convert(value_type, n.type, c); }
+        }
         if (logical) { b.mark(logical_done); b.convert(value_type, n.type, c); }
     }
     internal static bool il_number_type_test(int entry, bool wrap, Compiler c, IlBackend b)
@@ -1022,7 +1028,10 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.Expression)
         {
             if (il_tagged_store(n.left, c, b)) { return; }
-            il_expression(n.left, c, b); if (get_type(get_node(n.left, c).type, c).kind != TypeKind.Void) { b.op(0x26); }
+            Node expression = get_node(n.left, c);
+            if (expression.kind is NodeKind.Assign or NodeKind.Update) { il_mutation(n.left, c, b, discardBox: true); }
+            else { il_expression(n.left, c, b); }
+            if (get_type(expression.type, c).kind != TypeKind.Void) { b.op(0x26); }
         }
         else if (n.kind == NodeKind.If)
         {
