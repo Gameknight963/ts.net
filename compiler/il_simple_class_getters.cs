@@ -95,21 +95,27 @@ internal static partial class CompilerFunctions
             il_simple_getter_expression(value.right, receiver, data, ref remaining, c, parameter);
     }
 
-    internal static void il_simple_getter_number(int entry, Compiler c, IlBackend b, int receiver = -1, int parameter = 0)
+    internal static void il_simple_getter_number(int entry, Compiler c, IlBackend b, int receiver = -1, int parameter = 0, List<(int Name, int Slot)> fields = null)
     {
         Node value = get_node(entry, c);
         if (scalar_class_literal(entry, TypeKind.Number, c)) { il_number(entry, c, b); return; }
         // Method helpers reserve arguments zero and one for function and receiver.
         if (parameter != 0 && value.kind == NodeKind.Name && value.symbol == parameter) { b.emit(0xfe09, 2); b.call(RuntimeMember.NumberValue); return; }
         if (value.kind == NodeKind.Property) {
+            if (fields != null)
+            {
+                foreach (var field in fields)
+                    if (same(field.Name, value.name, c)) { b.emit(0xfe0c, field.Slot); return; }
+                fail(value.token, "class getter loop field missing", c); return;
+            }
             b.emit(receiver < 0 ? 0xfe09 : 0xfe0c, receiver < 0 ? 0 : receiver); il_text(value.name, c, b);
             b.emit(receiver < 0 ? 0xfe09 : 0xfe0c, receiver < 0 ? 0 : receiver);
             b.call(RuntimeMember.GetStoredNumberWithReceiver); b.call(RuntimeMember.NumberValue); return;
         }
-        il_simple_getter_number(value.left, c, b, receiver, parameter);
+        il_simple_getter_number(value.left, c, b, receiver, parameter, fields);
         int op = get_token(value.token, c).text;
         if (value.kind == NodeKind.Unary) { if (is_text(op, text_minus, c)) b.op(0x65); return; }
-        il_simple_getter_number(value.right, c, b, receiver, parameter);
+        il_simple_getter_number(value.right, c, b, receiver, parameter, fields);
         b.op(is_text(op, text_plus, c) ? 0x58 : is_text(op, text_minus, c) ? 0x59 : is_text(op, text_star, c) ? 0x5a : 0x5b);
     }
 

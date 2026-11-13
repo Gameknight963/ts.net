@@ -26,7 +26,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_number(int entry, Compiler c, IlBackend b)
     {
-        if (b.loop_getter_values.TryGetValue(entry, out int savedGetter)) { b.emit(0xfe0c, savedGetter); return; }
+        if (il_loop_getter_read(entry, c, b)) return;
         if (il_typed_buffer_read(entry, c, b)) return;
         Node n = get_node(entry, c);
         if (n.kind == NodeKind.Name && b.numeric_methods.at(n.symbol) == b.method)
@@ -159,6 +159,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_mutation(int entry, Compiler c, IlBackend b, bool discardBox = false)
     {
+        if (il_loop_field_write(entry, c, b)) return;
         Node n = get_node(entry, c); Node target = get_node(n.left, c);
         ScalarField scalar = il_scalar_field(n.left, c, b);
         int receiver = -1;
@@ -436,7 +437,8 @@ internal static partial class CompilerFunctions
     }
     internal static void il_expression(int entry, Compiler c, IlBackend b)
     {
-        if (b.loop_getter_values.TryGetValue(entry, out int savedGetter)) { b.emit(0xfe0c, savedGetter); b.call(RuntimeMember.WrapNumber); return; }
+        if (il_loop_getter_read(entry, c, b)) { b.call(RuntimeMember.WrapNumber); return; }
+        if (il_loop_field_write(entry, c, b)) return;
         if (il_typed_buffer_read(entry, c, b)) { b.call(RuntimeMember.WrapNumber); return; }
         Node n = get_node(entry, c);
         if (n.kind == NodeKind.Undefined)

@@ -131,5 +131,6 @@ public abstract partial class TsObject
 public static partial class Js
 {
     public static bool HasOwnNumberData(object target, string key) => target is TsObject value && value.HasOwnNumberData(key);
+    public static bool CanWriteOwnNumberData(object target, string key) => target is TsObject value && !value.IsModuleNamespace && value.HasOwnNumberData(key) && !value.IsReadOnlyOwnProperty(key);
     public static void DefineAccessor(object target, string key, object function, int mode) => ((TsObject)target).DefineAccessor(key, function, mode);
 }
