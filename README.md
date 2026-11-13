@@ -160,10 +160,10 @@ Runtime performance:
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
 | Sum 1K values from a generator | 0.122 ms | 0.0115 ms | 0.09x |
 | Class method through a helper, 100K calls | 1.10 ms | 0.0619 ms | 0.06x |
+| Update a class field and read its getter, 100K iterations | 0.960 ms | 0.0618 ms | 0.06x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
+| Class numeric getter, 100K reads | 0.761 ms | 0.0267 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
-| Update a class field and read its getter, 100K iterations | 2.55 ms | 0.0622 ms | 0.02x |
-| Class numeric getter, 100K reads | 2.38 ms | 0.0273 ms | 0.01x |
 
 </details>
 
