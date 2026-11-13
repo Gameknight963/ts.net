@@ -170,12 +170,12 @@ try {
     & dotnet tests/inspect-weak-collections/bin/Release/net10.0/Inspect.dll
     if ($LASTEXITCODE) { throw 'Weak collection garbage-collection checks failed' }
 
-    & "$PSScriptRoot/build.ps1" -InputFile tests/global-bindings.ts -OutputDirectory artifacts/tests/global-bindings -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
+    & "$PSScriptRoot/build.ps1" -InputFile tests/global-bindings.ts -OutputDirectory artifacts/tests/global-bindings -SkipCompilerBuild -SkipRuntimeBuild -LinkRuntime | Out-Host
     if ($LASTEXITCODE) { throw 'Native global binding fixture failed to build' }
     & dotnet "$testRoot/global-bindings/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Native global binding checks failed' }
 
-    & "$PSScriptRoot/build.ps1" -InputFile tests/console.ts -OutputDirectory artifacts/tests/console -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
+    & "$PSScriptRoot/build.ps1" -InputFile tests/console.ts -OutputDirectory artifacts/tests/console -SkipCompilerBuild -SkipRuntimeBuild -LinkRuntime | Out-Host
     if ($LASTEXITCODE) { throw 'Console fixture failed to build' }
     & tsc.cmd --strict --target es2022 --module commonjs --outDir "$testRoot/node/console" tests/console.ts
     if ($LASTEXITCODE) { throw 'Console reference failed to compile' }
@@ -210,7 +210,7 @@ try {
     if ($expectedConsole.Out -cne $actualConsole.Out -or $expectedConsole.Error -cne $actualConsole.Error) { throw 'Console stdout or stderr differs from Node' }
     Write-Host 'PASS console standard output, error output, assertions, and detached calls'
 
-    & "$PSScriptRoot/build.ps1" -InputFile tests/console-timer-calls.ts -OutputDirectory artifacts/tests/console-timer-calls -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
+    & "$PSScriptRoot/build.ps1" -InputFile tests/console-timer-calls.ts -OutputDirectory artifacts/tests/console-timer-calls -SkipCompilerBuild -SkipRuntimeBuild -LinkRuntime | Out-Host
     if ($LASTEXITCODE) { throw 'Console timer fixture failed to build' }
     & dotnet build tests/inspect-console-timers/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Console timer inspector failed to build' }
@@ -218,7 +218,7 @@ try {
     if ($LASTEXITCODE) { throw 'Console timer checks failed' }
 
     # Node retains old event flags and targets; check the DOM reset rules directly.
-    & "$PSScriptRoot/build.ps1" -InputFile tests/event-initialization-reset.ts -OutputDirectory artifacts/tests/event-initialization-reset -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
+    & "$PSScriptRoot/build.ps1" -InputFile tests/event-initialization-reset.ts -OutputDirectory artifacts/tests/event-initialization-reset -SkipCompilerBuild -SkipRuntimeBuild -LinkRuntime | Out-Host
     if ($LASTEXITCODE) { throw 'Event initialization checks failed to build' }
     & dotnet "$testRoot/event-initialization-reset/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Event initialization reset checks failed' }
@@ -315,7 +315,7 @@ try {
 
     # Namespace semantics need native ES modules as the reference.
     foreach ($name in @('object-integrity-modules', 'global-this-modules', 'timers-modules', 'json-modules', 'decorators-modules', 'async-generators-modules', 'generators-modules', 'await-class-definitions', 'await-class-context', 'top-level-await', 'top-level-await-cycle', 'top-level-await-siblings', 'top-level-await-errors', 'top-level-await-var', 'dynamic-import', 'dynamic-import-bindings', 'disposable-stack-modules', 'await-using-modules', 'namespace-merge-modules', 'namespace-modules', 'using-modules', 'import-meta', 'module-this', 'tagged-templates-modules', 'reflect-delete-modules', 'computed-reflect-deletion-modules', 'computed-object-definition-modules', 'property-descriptors-modules', 'for-in-modules', 'for-in-cycle', 'module-namespace-order', 'module-namespace-definition', 'in-operator-modules', 'function-constructor-modules')) {
-        & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
+        & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild -SkipRuntimeBuild -LinkRuntime | Out-Host
         if ($name -eq 'json-modules') {
             & tsc.cmd --strict --target es2022 --module esnext --moduleResolution bundler --resolveJsonModule --esModuleInterop --outDir "$testRoot/node/$name" "tests/$name.ts"
         } else {
@@ -349,20 +349,20 @@ try {
     # ClassDefinitionEvaluation validates heritage before computing member keys.
     # Node 25.9.0 currently computes keys first for an invalid base.
     # https://tc39.es/ecma262/multipage/ecmascript-language-functions-and-classes.html#sec-runtime-semantics-classdefinitionevaluation
-    & "$PSScriptRoot/build.ps1" -InputFile tests/computed-class-invalid-base.ts -OutputDirectory artifacts/tests/computed-class-invalid-base -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
+    & "$PSScriptRoot/build.ps1" -InputFile tests/computed-class-invalid-base.ts -OutputDirectory artifacts/tests/computed-class-invalid-base -SkipCompilerBuild -SkipRuntimeBuild -LinkRuntime | Out-Host
     $actual = @(& dotnet "$testRoot/computed-class-invalid-base/bin/Release/net10.0/App.dll")
     if ($LASTEXITCODE -or ($actual -join "`n") -cne 'true 0') { throw 'Computed keys ran before invalid heritage was rejected' }
     Write-Host 'PASS invalid class heritage is rejected before computed keys'
 
     # The spec sorts all namespace export names lexically; V8 currently orders
     # integer-looking names numerically, so this case uses explicit expectations.
-    & "$PSScriptRoot/build.ps1" -InputFile tests/module-namespace-numeric.ts -OutputDirectory artifacts/tests/module-namespace-numeric -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
+    & "$PSScriptRoot/build.ps1" -InputFile tests/module-namespace-numeric.ts -OutputDirectory artifacts/tests/module-namespace-numeric -SkipCompilerBuild -SkipRuntimeBuild -LinkRuntime | Out-Host
     & dotnet "$testRoot/module-namespace-numeric/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Numeric namespace key ordering failed' }
 
     # Namespace [[Set]] returns false regardless of receiver. V8 currently
     # permits inherited writes, so this check uses the specified result.
-    & "$PSScriptRoot/build.ps1" -InputFile tests/namespace-prototype-write.ts -OutputDirectory artifacts/tests/namespace-prototype-write -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
+    & "$PSScriptRoot/build.ps1" -InputFile tests/namespace-prototype-write.ts -OutputDirectory artifacts/tests/namespace-prototype-write -SkipCompilerBuild -SkipRuntimeBuild -LinkRuntime | Out-Host
     & dotnet "$testRoot/namespace-prototype-write/bin/Release/net10.0/App.dll"
     if ($LASTEXITCODE) { throw 'Namespace prototype writes must be rejected' }
 
@@ -586,7 +586,7 @@ try {
         @{ Name = 'primitive-class-bad-cast'; Message = 'checked conversion failed' }
     )) {
         $name = $case.Name
-        & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild -SkipRuntimeBuild | Out-Host
+        & "$PSScriptRoot/build.ps1" -InputFile "tests/$name.ts" -OutputDirectory "artifacts/tests/$name" -SkipCompilerBuild -SkipRuntimeBuild -LinkRuntime | Out-Host
         # Process captures expected stderr failures without PowerShell's native
         # stderr-to-error conversion. Argument list contains only a quoted path.
         $start = New-Object System.Diagnostics.ProcessStartInfo
