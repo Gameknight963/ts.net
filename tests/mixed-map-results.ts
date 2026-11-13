@@ -26,3 +26,16 @@ const customMixed: (number | string)[] = [1, 'text', 3];
 Object.defineProperty(customMixed, 'constructor', {value: {[Symbol.species]: MixedSpecies}});
 try { customMixed.map(value => { Object.freeze(escapedMixed); return String(value); }); }
 catch (error) { console.log('custom', (error as Error).name, Object.isFrozen(escapedMixed), Object.keys(escapedMixed).length); }
+
+const numericMixedInput: (number | string | undefined)[] = [1, 'abc', undefined, -0, NaN];
+const numericMixedOutput = numericMixedInput.map(value => typeof value === 'string' ? value.length : value);
+console.log('nullable-numeric', numericMixedOutput.join(','), Object.hasOwn(numericMixedOutput, 2), numericMixedOutput[2] === undefined, Object.is(numericMixedOutput[3], -0), Number.isNaN(numericMixedOutput[4]));
+console.log('numeric-predicates', numericMixedInput.filter(value => typeof value === 'number' ? value : undefined).join(','), numericMixedInput.every(() => 1), numericMixedInput.some(() => undefined), numericMixedInput.findIndex(value => typeof value === 'string' ? value.length : 0));
+let numericMixedVisits = 0;
+const mutableNumericMixed: (number | string)[] = [1, 'abc', 3];
+const mutableNumericOutput = mutableNumericMixed.map(value => { if (++numericMixedVisits === 1) { delete mutableNumericMixed[1]; mutableNumericMixed[2] = 'changed'; } return typeof value === 'number' ? value : value.length; });
+console.log('numeric-mutation', mutableNumericOutput.join(','), Object.keys(mutableNumericOutput).join(','), numericMixedVisits);
+const customNumericMixed: (number | string)[] = [1, 'abc'];
+Object.defineProperty(customNumericMixed, 'constructor', {value: {[Symbol.species]: MixedSpecies}});
+const customNumericOutput = customNumericMixed.map(value => typeof value === 'number' ? value : value.length);
+console.log('numeric-species', customNumericOutput === escapedMixed, customNumericOutput.join(','));
