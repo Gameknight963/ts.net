@@ -71,6 +71,16 @@ internal static partial class CompilerFunctions
     {
         if (il_numeric_coercion_calls(n.left, c))
         {
+            // A literal has no observable evaluation or conversion. Keep it
+            // unboxed while preserving the left operand's numeric coercion.
+            if (get_node(n.right, c).kind == NodeKind.Number)
+            {
+                il_boxed(n.left, c, b); b.call(RuntimeMember.Number);
+                if (integer) b.call(RuntimeMember.ToInt32);
+                il_number(n.right, c, b);
+                if (integer) b.call(RuntimeMember.ToInt32);
+                return;
+            }
             // Both expressions finish before valueOf/toString may call user code.
             il_boxed(n.left, c, b); int left = b.local(-5); b.emit(0xfe0e, left);
             il_boxed(n.right, c, b); int right = b.local(-5); b.emit(0xfe0e, right);
