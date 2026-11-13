@@ -1070,6 +1070,7 @@ internal static partial class CompilerFunctions
             b.begin(b.function_allocator);b.emit(0x73,b.spread_any_constructor);b.op(0x2a);
         }
         il_prepare_closures(c, b); il_prepare_function_values(program, c, b);
+        il_prepare_yield_continuations(program, c, b);
         il_globals(program, c, b); il_infer_scalar_values(c, b); il_infer_array_values(numeric_array, c, b);
         int function = c.functions;
         while (function != 0)

@@ -70,6 +70,7 @@ internal sealed partial class IlBackend
     public Vector<int> raw_functions;
     public Vector<int> function_caches;
     public Vector<int> function_body_caches;
+    public Vector<int> yield_continuation_caches;
     public Vector<int> function_constructors;
     public Vector<int> capture_fields;
     public Vector<int> capture_flags;
@@ -149,6 +150,7 @@ internal sealed partial class IlBackend
             raw_functions = zero_ids(symbols),
             function_caches = zero_ids(symbols),
             function_body_caches = zero_ids(symbols),
+            yield_continuation_caches = zero_ids(symbols),
             function_constructors = zero_ids(symbols),
             capture_fields = zero_ids(symbols),
             capture_flags = zero_ids(symbols),

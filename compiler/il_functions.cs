@@ -327,6 +327,24 @@ internal static partial class CompilerFunctions
     }
     internal static void il_function_object(int symbol, Compiler c, IlBackend b)
     {
+        int field = b.yield_continuation_caches.at(symbol);
+        if (field == 0) { il_create_function_object(symbol, c, b); return; }
+        int context = b.function_contexts.at(symbol), ready = b.label();
+        if (context != 0) b.load_context(context);
+        b.emit(context == 0 ? 0x7e : 0x7b, field);
+        b.op(0x25); b.emit(0x3a, ready); b.op(0x26);
+        if (context != 0) b.load_context(context);
+        il_create_function_object(symbol, c, b);
+        if (context == 0) { b.op(0x25); b.emit(0x80, field); }
+        else
+        {
+            int value = b.local(b.RuntimeToken(RuntimeMember.FunctionType));
+            b.op(0x25); b.emit(0xfe0e, value); b.emit(0x7d, field); b.emit(0xfe0c, value);
+        }
+        b.mark(ready);
+    }
+    internal static void il_create_function_object(int symbol, Compiler c, IlBackend b)
+    {
         int context = b.function_contexts.at(symbol); int adapter = b.function_adapters.at(symbol);
         int bodyCache = b.function_body_caches.at(symbol);
         if (get_node(get_symbol(symbol, c).function, c).internal_continuation) b.op(0x14);
