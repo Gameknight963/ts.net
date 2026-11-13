@@ -47,3 +47,27 @@ class Constant {get value(): number {return 7;}}
 const constant = new Constant(); console.log('constant', constant.value);
 Object.defineProperty(Constant.prototype, 'value', {get() {return 13;}, configurable: true});
 console.log('constant replacement', constant.value);
+
+class Writable {
+    base = 5;
+    get value(): number {return this.base;}
+    set value(value: number) {this.base = value;}
+}
+const writable = new Writable();
+writable.value = 11; console.log('setter', writable.value);
+Object.defineProperty(Writable.prototype, 'value', {set(value: number) {this.base = value + 1;}});
+writable.value = 17; console.log('changed setter', writable.value);
+Object.freeze(writable); console.log('frozen instance', writable.value);
+Object.freeze(Writable.prototype); console.log('frozen prototype', writable.value);
+function makeHolder(base: number) {
+    return class {
+        base = base;
+        get value(): number {return this.base;}
+    };
+}
+const First = makeHolder(29), Second = makeHolder(37);
+const first = new First(), second = new Second();
+console.log('recreated class', first.value, second.value);
+const recreatedGetter = Object.getOwnPropertyDescriptor(Second.prototype, 'value')!.get!;
+Object.defineProperty(First.prototype, 'value', {get: recreatedGetter, configurable: true});
+console.log('same source getter', first.value, second.value);
