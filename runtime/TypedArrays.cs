@@ -317,17 +317,26 @@ public static partial class Js
         for (int i = 0; i < values.Length; i++) result.Write(i, values[i]);
         return result;
     }
+    static double CompareTypedArrayNumbers(double a, double b)
+    {
+        if (double.IsNaN(a)) return double.IsNaN(b) ? 0d : 1d;
+        if (double.IsNaN(b)) return -1d;
+        if (a == 0 && b == 0) return double.IsNegative(b).CompareTo(double.IsNegative(a));
+        return a.CompareTo(b);
+    }
+    sealed class TypedArrayComparisonFunction() : JsFunction((FunctionBody)(static args =>
+        args[0] is BigInteger left ? (double)left.CompareTo((BigInteger)args[1])
+            : CompareTypedArrayNumbers((double)args[0], (double)args[1])), null, "", 2)
+    {
+        // This internal comparator cannot observe its receiver or argument object.
+        public override bool SupportsArrayNumber() => true;
+        public override bool SupportsNumberResult() => true;
+        public override double? InvokeNumber2(double? first, double? second) =>
+            CompareTypedArrayNumbers(NumberValue(first), NumberValue(second));
+    }
     static class TypedArrayComparison
     {
-        internal static readonly JsFunction Value = new((FunctionBody)(static args =>
-        {
-            if (args[0] is BigInteger left) return (double)left.CompareTo((BigInteger)args[1]);
-            double a = (double)args[0], b = (double)args[1];
-            if (double.IsNaN(a)) return double.IsNaN(b) ? 0d : 1d;
-            if (double.IsNaN(b)) return -1d;
-            if (a == 0 && b == 0) return (double)(double.IsNegative(b).CompareTo(double.IsNegative(a)));
-            return (double)a.CompareTo(b);
-        }), null, "", 2);
+        internal static readonly JsFunction Value = new TypedArrayComparisonFunction();
     }
     static object TypedArrayMethod(TypedArrayValue array, string method, object[] args)
     {
@@ -397,6 +406,7 @@ public static partial class Js
         {
             object comparator = FunctionArgument(args, 0);
             if (!IsUndefined(comparator) && comparator is not JsFunction) throw new InvalidOperationException("Typed array comparator must be callable");
+            if (IsUndefined(comparator) && TrySortIntegerTypedArray(array, method == "toSorted", out var sorted)) return sorted;
             var values = new object[array.Count];
             for (int i = 0; i < values.Length; i++) values[i] = array.Read(i);
             StableSort(values, new object[values.Length], 0, values.Length, comparator as JsFunction ?? TypedArrayComparison.Value);
