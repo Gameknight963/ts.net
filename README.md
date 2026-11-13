@@ -179,4 +179,4 @@ Compilation times:
 | Small numeric benchmark | 301.75 ms | 109.80 ms |
 | 5,000 variables | 572.11 ms | 142.98 ms |
 
-Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
+Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10, TypeScript 7.0.2
