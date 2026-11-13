@@ -141,6 +141,7 @@ Runtime performance:
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
 | Sum 1K values with an await in try and an increment in finally each iteration | 0.146 ms | 0.0470 ms | 0.32x |
 | Object spread, 100K copies stored in an array | 5.51 ms | 1.66 ms | 0.30x |
+| Add an `any` value to a number, 200K additions | 0.185 ms | 0.0548 ms | 0.30x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
 | Serialize 10K numbers divided by 7, 20 times | 26.70 ms | 6.70 ms | 0.25x |
@@ -148,6 +149,7 @@ Runtime performance:
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.47 ms | 0.495 ms | 0.20x |
+| map and sum a number/string array, 20 passes over 10K values | 2.85 ms | 0.521 ms | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | Object literal method through a helper, 100K calls | 0.447 ms | 0.0616 ms | 0.14x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.284 ms | 0.0358 ms | 0.13x |
