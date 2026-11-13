@@ -144,6 +144,7 @@ Runtime performance:
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
 | Serialize 10K numbers divided by 7, 20 times | 26.70 ms | 6.70 ms | 0.25x |
+| map and sum, 20 passes over 10K integers from 0-9999 | 1.66 ms | 0.404 ms | 0.24x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.47 ms | 0.495 ms | 0.20x |
