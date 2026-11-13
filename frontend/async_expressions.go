@@ -340,7 +340,7 @@ func (a *asyncExpressionLowering) expression(id int, next asyncExpressionContinu
 				return a.branch(condition, a.expression(n.right, join), a.expression(n.third, join))
 			})
 		})
-	case 7:
+	case 7, 67: // binary operators and property membership
 		op := a.b.texts[a.b.tokens[n.token-1].text-1]
 		if op == "&&" || op == "||" {
 			return a.joined(next, func(join func(int) int) int {
