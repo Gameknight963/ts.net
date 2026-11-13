@@ -71,3 +71,33 @@ console.log('recreated class', first.value, second.value);
 const recreatedGetter = Object.getOwnPropertyDescriptor(Second.prototype, 'value')!.get!;
 Object.defineProperty(First.prototype, 'value', {get: recreatedGetter, configurable: true});
 console.log('same source getter', first.value, second.value);
+
+class Unread {
+    base = 43;
+    get value(): number {return this.base;}
+}
+const unread = new Unread();
+const unreadGetter = Object.getOwnPropertyDescriptor(Unread.prototype, 'value')!.get!;
+Object.defineProperty(Unread.prototype, 'value', {get() {return 53;}, configurable: true});
+console.log('replaced before first read', unread.value);
+Object.defineProperty(Unread.prototype, 'value', {get: unreadGetter, configurable: true});
+console.log('restored after first read', unread.value);
+class Shadowed {
+    base = 59;
+    get value(): number {return this.base;}
+}
+const shadowed = new Shadowed();
+Object.defineProperty(shadowed, 'value', {value: 61, configurable: true});
+console.log('shadow before first read', shadowed.value);
+delete (shadowed as any).value;
+console.log('remove first shadow', shadowed.value);
+class Deleted {
+    base = 67;
+    get value(): number {return this.base;}
+}
+const deleted = new Deleted();
+const deletedGetter = Object.getOwnPropertyDescriptor(Deleted.prototype, 'value')!.get!;
+delete (Deleted.prototype as any).value;
+console.log('deleted before first read', deleted.value);
+Object.defineProperty(Deleted.prototype, 'value', {get: deletedGetter, configurable: true});
+console.log('restore first deletion', deleted.value);

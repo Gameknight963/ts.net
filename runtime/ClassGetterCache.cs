@@ -2,7 +2,12 @@ using System;
 using System.Runtime.CompilerServices;
 
 // Tokens carry no getter reference, so deleting a getter can release its closure.
-internal sealed class AccessorVersion { internal object Token = new object(); }
+internal sealed class AccessorVersion
+{
+    internal object Token;
+    // This cell owns no getter, so its initial token can safely reference itself.
+    internal AccessorVersion() {Token = this;}
+}
 
 public abstract partial class TsObject
 {
