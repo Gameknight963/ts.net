@@ -95,6 +95,7 @@ Runtime performance:
 | Float64Array traversal, 10K elements and 100 passes | 0.784 ms | 0.718 ms | 0.92x |
 | Local class constructor parameters and field read, 100K instances | 0.0687 ms | 0.0633 ms | 0.92x |
 | Local class field update and read, 100K instances | 0.0694 ms | 0.0631 ms | 0.91x |
+| Serialize a 1 MiB ASCII string 10 times | 6.94 ms | 6.19 ms | 0.89x |
 | Local constructor parameter property and field read, 100K instances | 0.0698 ms | 0.0617 ms | 0.88x |
 | Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | 0.83x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | 0.77x |
