@@ -418,6 +418,8 @@ public static partial class Js
     public static double? ArrayGetNumber(object receiver, double index)
     {
         if (receiver is NumberArray numbers) return numbers.GetNumber(index);
+        if (receiver is TaggedArray tagged && index >= 0 && index <= int.MaxValue && index == (int)index)
+            return tagged.GetNumberAt((int)index);
         if (receiver is JsArray array && array.GetType() == typeof(JsArray) &&
             index >= 0 && index < uint.MaxValue && index == Math.Truncate(index))
             return Cast<double?>(array.ElementAt((uint)index), "Array element is not a number");
