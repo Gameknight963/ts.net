@@ -132,6 +132,8 @@ Runtime performance:
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | 0.41x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
 | Create a Map, insert and read 10K entries, then delete half | 1.76 ms | 0.695 ms | 0.40x |
+| Class getter returning `this.base * 2 + 1`, 100K reads | 0.0682 ms | 0.0274 ms | 0.40x |
+| Class numeric getter, 100K reads | 0.0702 ms | 0.0274 ms | 0.39x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 5.60 ms | 2.05 ms | 0.37x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | 0.37x |
@@ -163,8 +165,6 @@ Runtime performance:
 | Class method through a helper, 100K calls | 0.973 ms | 0.0615 ms | 0.06x |
 | Update a class field and read its getter, 100K iterations | 0.960 ms | 0.0618 ms | 0.06x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
-| Class numeric getter, 100K reads | 0.761 ms | 0.0267 ms | 0.04x |
-| Class getter returning `this.base * 2 + 1`, 100K reads | 0.707 ms | 0.0265 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
 
 </details>
