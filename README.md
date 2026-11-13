@@ -103,12 +103,15 @@ Runtime performance:
 | `== null` on nullable arrays, 1M comparisons | 1.51 ms | 1.15 ms | 0.76x |
 | String substring and first-character read, 1M calls | 14.27 ms | 10.75 ms | 0.75x |
 | String `charCodeAt(index)`, 1M calls | 2.27 ms | 1.66 ms | 0.73x |
+| Float64Array toSorted and traversal, 10 copies of 10K values | 11.56 ms | 8.06 ms | 0.70x |
+| Int32Array toSorted and traversal, 10 copies of 10K values | 5.74 ms | 4.03 ms | 0.70x |
 | TransformStream pipeline, double 1K numbers | 5.17 ms | 3.57 ms | 0.69x |
 | Sum 1K values in a loop, awaiting each value | 0.0633 ms | 0.0434 ms | 0.69x |
 | ReadableStream, create and drain 1K numbers | 0.281 ms | 0.189 ms | 0.67x |
 | Numeric getter on an Object.create object, 100K reads | 1.95 ms | 1.27 ms | 0.65x |
 | String `codePointAt(index)`, 1M calls | 3.00 ms | 1.90 ms | 0.63x |
 | Intl.Segmenter, 100 word-segmentation calls and full traversal | 4.14 ms | 2.59 ms | 0.63x |
+| BigInt64Array toSorted and Number conversion, 10 copies of 10K values | 7.99 ms | 5.00 ms | 0.63x |
 | String slice and first-character read, 1M calls | 14.55 ms | 8.98 ms | 0.62x |
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | 0.60x |
 | Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | 0.60x |
