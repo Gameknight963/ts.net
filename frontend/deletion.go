@@ -1,6 +1,10 @@
 package main
 
-import "github.com/microsoft/typescript-go/internal/ast"
+import (
+	"maps"
+
+	"github.com/microsoft/typescript-go/internal/ast"
+)
 
 func deletionAccess(n *ast.Node) (*ast.Node, string) {
 	if n.Kind == ast.KindPropertyAccessExpression {
@@ -16,11 +20,11 @@ func deletionAccess(n *ast.Node) (*ast.Node, string) {
 }
 func (b *irBuilder) reflectionDeletionArguments(n *ast.Node) []*ast.Node {
 	callee, arguments := n.Expression(), n.AsCallExpression().Arguments.Nodes
-	if b.reflectionDeletionValue(callee, map[*ast.Node]bool{}) == 2 {
+	if b.reflectionDeletionValue(callee, map[*ast.Node]bool{}) >= 2 {
 		return arguments
 	}
 	owner, method := deletionAccess(callee)
-	if owner == nil || method != "call" && method != "apply" || b.reflectionDeletionValue(owner, map[*ast.Node]bool{}) != 2 {
+	if owner == nil || method != "call" && method != "apply" || b.reflectionDeletionValue(owner, map[*ast.Node]bool{}) < 2 {
 		return nil
 	}
 	if method == "call" && len(arguments) >= 1 {
@@ -38,6 +42,29 @@ func (b *irBuilder) reflectionDeletionArguments(n *ast.Node) []*ast.Node {
 	return nil
 }
 
+// A computed member can select deleteProperty or apply. Keep that ambiguity
+// through aliases so a hidden target also receives dynamic storage.
+func (b *irBuilder) reflectionDeletionCallKind(n *ast.Node) int {
+	callee := n.Expression()
+	if kind := b.reflectionDeletionValue(callee, map[*ast.Node]bool{}); kind >= 2 {
+		return kind
+	}
+	owner, method := deletionAccess(callee)
+	if owner == nil {
+		return 0
+	}
+	kind := b.reflectionDeletionValue(owner, map[*ast.Node]bool{})
+	arguments := n.AsCallExpression().Arguments.Nodes
+	if kind >= 2 && (method == "call" || method == "apply" || method == "bind" && len(arguments) >= 2) {
+		return kind
+	}
+	if kind == 1 && method == "apply" && len(arguments) >= 1 && b.reflectionDeletionValue(arguments[0], map[*ast.Node]bool{}) >= 2 {
+		return 3
+	}
+	return 0
+}
+
+// Values are 1 for Reflect, 2 for deleteProperty, and 3 for an unknown Reflect method.
 // Recognize namespace and method aliases only at call sites. Merely retaining
 // a reference to Reflect must not change unrelated object layouts.
 func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool) int {
@@ -85,8 +112,10 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 		}
 	case ast.KindCallExpression:
 		owner, method := deletionAccess(n.Expression())
-		if method == "bind" && len(n.AsCallExpression().Arguments.Nodes) <= 1 && b.reflectionDeletionValue(owner, seen) == 2 {
-			return 2
+		if method == "bind" && len(n.AsCallExpression().Arguments.Nodes) <= 1 {
+			if kind := b.reflectionDeletionValue(owner, seen); kind >= 2 {
+				return kind
+			}
 		}
 		return b.reflectionReturnedValue(n, seen, b.reflectionDeletionValue)
 	case ast.KindBinaryExpression:
@@ -108,23 +137,27 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 		expression := n.AsConditionalExpression()
 		left := b.reflectionDeletionValue(expression.WhenTrue, seen)
 		right := b.reflectionDeletionValue(expression.WhenFalse, seen)
-		if left == 2 || right == 2 {
-			return 2
+		if right > left {
+			return right
 		}
-		if left == 1 || right == 1 {
-			return 1
-		}
+		return left
 	case ast.KindPropertyAccessExpression:
-		if n.Name().Text() == "deleteProperty" && b.reflectionDeletionValue(n.Expression(), seen) == 1 {
+		if n.Name().Text() == "deleteProperty" && b.reflectionDeletionValue(n.Expression(), maps.Clone(seen)) == 1 {
 			return 2
 		}
-		return b.reflectionPropertyValue(n, seen, b.reflectionDeletionValue)
+		return b.reflectionPropertyValueLimit(n, seen, b.reflectionDeletionValue, 3)
 	case ast.KindElementAccessExpression:
 		key := n.AsElementAccessExpression().ArgumentExpression
-		if key.Kind == ast.KindStringLiteral && key.Text() == "deleteProperty" && b.reflectionDeletionValue(n.Expression(), seen) == 1 {
-			return 2
+		if b.reflectionDeletionValue(n.Expression(), maps.Clone(seen)) == 1 {
+			if key.Kind == ast.KindStringLiteral {
+				if key.Text() == "deleteProperty" {
+					return 2
+				}
+				return 0
+			}
+			return 3
 		}
-		return b.reflectionPropertyValue(n, seen, b.reflectionDeletionValue)
+		return b.reflectionPropertyValueLimit(n, seen, b.reflectionDeletionValue, 3)
 	}
 	return 0
 }
@@ -147,13 +180,23 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 		}
 		if n.Kind == ast.KindCallExpression {
 			b.prepareDefinition(n)
+			kind := b.reflectionDeletionCallKind(n)
 			arguments := b.reflectionDeletionArguments(n)
+			if kind >= 3 {
+				b.deleteAnyName = true
+			}
+			if kind >= 2 && len(arguments) == 0 {
+				_, method := deletionAccess(n.Expression())
+				if method == "apply" {
+					b.deleteAnyName = true
+				}
+			}
 			// Binding a target hides it from the eventual invocation. Prepare
 			// its layout here, even when the property key is supplied later.
 			if len(arguments) == 0 {
 				owner, method := deletionAccess(n.Expression())
 				bound := n.AsCallExpression().Arguments.Nodes
-				if method == "bind" && len(bound) >= 2 && b.reflectionDeletionValue(owner, map[*ast.Node]bool{}) == 2 {
+				if method == "bind" && len(bound) >= 2 && b.reflectionDeletionValue(owner, map[*ast.Node]bool{}) >= 2 {
 					arguments = bound[1:]
 				}
 			}

@@ -158,6 +158,10 @@ func (b *irBuilder) reflectionBindingValue(parameter *ast.Node, seen map[*ast.No
 // A method's storage location does not change whether it can mutate layouts.
 // Track declarations and later assignments rather than relying on the member name.
 func (b *irBuilder) reflectionPropertyValue(n *ast.Node, seen map[*ast.Node]bool, classify func(*ast.Node, map[*ast.Node]bool) int) int {
+	return b.reflectionPropertyValueLimit(n, seen, classify, 2)
+}
+
+func (b *irBuilder) reflectionPropertyValueLimit(n *ast.Node, seen map[*ast.Node]bool, classify func(*ast.Node, map[*ast.Node]bool) int, maximum int) int {
 	var names []string
 	unknown := false
 	if n.Kind == ast.KindPropertyAccessExpression {
@@ -180,7 +184,7 @@ func (b *irBuilder) reflectionPropertyValue(n *ast.Node, seen map[*ast.Node]bool
 			result = value
 		}
 	}
-	if result < 2 {
+	if result < maximum {
 		selected := names
 		if unknown {
 			selected = nil
