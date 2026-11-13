@@ -174,9 +174,9 @@ Runtime performance:
 
 Compilation times:
 
-| Source | tsnetc | tsc |
+| Source | tsnetc | tsc (`--skipDefaultLibCheck`) |
 |---|---|---|
-| Small numeric benchmark | 503.72 ms | 354.32 ms |
-| 5,000 variables | 754.27 ms | 391.27 ms |
+| Small numeric benchmark | 301.75 ms | 109.80 ms |
+| 5,000 variables | 572.11 ms | 142.98 ms |
 
 Measured on Ryzen 9 3900X, Windows x64, Node 25.9.0, .NET 10.0.11, TypeScript 7.0.2
