@@ -4,6 +4,11 @@ using System.Collections.Generic;
 // Generators share control-flow records with async functions.
 public static partial class Js
 {
+    struct GeneratorStep
+    {
+        internal object Value;
+        internal bool Done, Direct;
+    }
     sealed record GeneratorYield(object Value, JsFunction Continuation);
     sealed class GeneratorDelegate(TsObject iterator, JsFunction continuation, bool asyncIterator = false, object next = null)
     {
@@ -23,14 +28,16 @@ public static partial class Js
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : FunctionPrototype ?? (Asynchronous ? AsyncGeneratorPrototype : GeneratorPrototype);
         static object Invoke(JsFunction function) => function.InvokeWithReceiver(Undefined, Array.Empty<object>());
 
-        internal object Resume(CompletionKind kind, object value)
+        internal object Resume(CompletionKind kind, object value) => Resume(kind, value, false, out _);
+        internal object Resume(CompletionKind kind, object value, bool direct, out GeneratorStep step)
         {
+            step = default;
             if (running) throw new InvalidOperationException("Generator is already running");
             if (completed || !started && kind != CompletionKind.Normal)
             {
                 completed = true; continuation = null;
                 if (kind == CompletionKind.Throw) throw MakeThrown(value);
-                return IteratorResult(kind == CompletionKind.Return ? value : Undefined, true);
+                return StepResult(kind == CompletionKind.Return ? value : Undefined, true, direct, out step);
             }
             running = true;
             try
@@ -45,7 +52,7 @@ public static partial class Js
                     else result = continuation.InvokeWithReceiver(Undefined, new[] { value });
                 }
                 catch (Exception error) { delegated = null; result = new AsyncCompletion(CompletionKind.Throw, error); }
-                return Run(result);
+                return Run(result, direct, out step);
             }
             finally { running = false; }
         }
@@ -69,8 +76,15 @@ public static partial class Js
             return kind == CompletionKind.Return ? new AsyncCompletion(kind, value) : current.Continuation.InvokeWithReceiver(Undefined, new[] { value });
         }
         sealed record DelegatedYield(TsObject Result);
-        object Run(object result)
+        static object StepResult(object value, bool done, bool direct, out GeneratorStep step)
         {
+            step = new GeneratorStep { Value = value, Done = done, Direct = direct };
+            return direct ? null : IteratorResult(value, done);
+        }
+        object Run(object result) => Run(result, false, out _);
+        object Run(object result, bool direct, out GeneratorStep step)
+        {
+            step = default;
             while (true)
             {
                 try
@@ -94,7 +108,7 @@ public static partial class Js
                             });
                             return AsyncGeneratorPending;
                         }
-                        return IteratorResult(yielded.Value, false);
+                        return StepResult(yielded.Value, false, direct, out step);
                     }
                     if (result is GeneratorDelegate delegation)
                     {
@@ -131,7 +145,7 @@ public static partial class Js
                         { result = Invoke(((AsyncResumeRecord)completion.Value).Continuation); continue; }
                         completed = true; continuation = null; delegated = null;
                         if (completion.Kind == CompletionKind.Throw) throw (Exception)completion.Value;
-                        return IteratorResult(completion.Value, true);
+                        return StepResult(completion.Value, true, direct, out step);
                     }
                     var frame = frames.Peek();
                     if (completion.Kind == CompletionKind.Transfer && frame.Region.Region == ((AsyncResumeRecord)completion.Value).Region)
@@ -163,16 +177,33 @@ public static partial class Js
     }
     static class GeneratorMethods
     {
+        internal static JsFunction Next;
         internal static readonly TsObject Prototype = Create(false), AsyncPrototype = Create(true);
         static TsObject Create(bool asynchronous)
         {
             var prototype = new JsClassInstance { ParentPrototype = asynchronous ? NativeAsyncIteratorPrototype : NativeIteratorPrototype };
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), asynchronous ? "AsyncGenerator" : "Generator", false);
             foreach (var item in new[] { ("next", CompletionKind.Normal), ("throw", CompletionKind.Throw), ("return", CompletionKind.Return) })
-                prototype.DefineMethod(item.Item1, new CollectionMethod(item.Item1, 1, (receiver, args) => receiver is GeneratorValue generator && generator.Asynchronous == asynchronous
-                    ? (asynchronous ? generator.QueueResume(item.Item2, FunctionArgument(args, 0)) : generator.Resume(item.Item2, FunctionArgument(args, 0))) : throw new InvalidOperationException("Generator receiver required")));
+            {
+                var method = new CollectionMethod(item.Item1, 1, (receiver, args) => receiver is GeneratorValue generator && generator.Asynchronous == asynchronous
+                    ? (asynchronous ? generator.QueueResume(item.Item2, FunctionArgument(args, 0)) : generator.Resume(item.Item2, FunctionArgument(args, 0))) : throw new InvalidOperationException("Generator receiver required"));
+                prototype.DefineMethod(item.Item1, method);
+                if (!asynchronous && item.Item2 == CompletionKind.Normal) Next = method;
+            }
             return prototype;
         }
+    }
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    internal static bool TryReadGenerator(TsObject source, object next, out object result, out object value, out bool done)
+    {
+        if (source is GeneratorValue { Asynchronous: false } generator && ReferenceEquals(next, GeneratorMethods.Next))
+        {
+            result = generator.Resume(CompletionKind.Normal, Undefined, true, out var step);
+            value = step.Value; done = step.Done;
+            return step.Direct;
+        }
+        result = null; value = null; done = false;
+        return false;
     }
     static TsObject GeneratorPrototype => GeneratorMethods.Prototype;
     static TsObject AsyncGeneratorPrototype => GeneratorMethods.AsyncPrototype;
@@ -206,11 +237,12 @@ public static partial class Js
     }
     public static object AsyncGeneratorFunction(object function) => new GeneratorFunctionObject((JsFunction)function, true);
     public static object GeneratorFunction(object function) => new GeneratorFunctionObject((JsFunction)function);
+    public static object YieldGenerator(object value, object continuation) => new GeneratorYield(value, (JsFunction)continuation);
     static TsObject GeneratorIterator(object source) => TryGetIterableObject(source, out var iterator) ? iterator : (TsObject)IteratorFrom(source);
     static class GeneratorFunctions
     {
         internal static readonly JsFunction Create = new((FunctionBody)(static args => new GeneratorValue((JsFunction)FunctionArgument(args, 0))), null, "", 1);
-        internal static readonly JsFunction Yield = new((FunctionBody)(static args => new GeneratorYield(FunctionArgument(args, 0), (JsFunction)FunctionArgument(args, 1))), null, "", 2);
+        internal static readonly JsFunction Yield = new((FunctionBody)(static args => YieldGenerator(FunctionArgument(args, 0), FunctionArgument(args, 1))), null, "", 2);
         internal static readonly JsFunction Delegate = new((FunctionBody)(static args => new GeneratorDelegate(GeneratorIterator(FunctionArgument(args, 0)), (JsFunction)FunctionArgument(args, 1))), null, "", 2);
     }
 }

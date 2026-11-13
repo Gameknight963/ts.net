@@ -23,7 +23,12 @@ internal sealed class JsProtocolIterator(TsObject source, object next)
             }
             direct = false;
             if (next is not JsFunction function) throw new InvalidOperationException("Iterator next is not callable");
-            result = Js.RequireIteratorResult(function.InvokeWithReceiver(Source, Array.Empty<object>()));
+            if (Js.TryReadGenerator(Source, next, out var generatorResult, out value, out done)) {
+                direct = true; Done = done; result = done ? null : value; cached = !done; return !done;
+            }
+            // A delegated yield forwards its original result object. Preserve its
+            // lazy value getter, including when destructuring skips that value.
+            result = Js.RequireIteratorResult(generatorResult ?? function.InvokeWithReceiver(Source, Array.Empty<object>()));
             if (Js.Truthy(Js.Get(result, "done"))) { Done = true; result = null; return false; }
             cached = true; return true;
         }

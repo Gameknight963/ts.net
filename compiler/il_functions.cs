@@ -414,6 +414,17 @@ internal static partial class CompilerFunctions
     {
         Node n = get_node(entry, c); int count = 0; bool numeric = get_type(n.type, c).kind == TypeKind.Number; int argument = n.children;
         while (argument != 0) { Node value = get_node(argument, c); count++; if (get_type(value.type, c).kind != TypeKind.Number && value.kind != NodeKind.Undefined) { numeric = false; } argument = value.next; }
+        // The frontend inserts this intrinsic for yield; it is not a user
+        // function lookup. Call it directly without constructing an argument array.
+        Node target = get_node(n.left, c);
+        if (count == 2 && target.kind == NodeKind.BuiltinNamespace && is_text(get_token(target.token, c).text, "__generatorYield", c))
+        {
+            il_boxed(n.children, c, b);
+            il_boxed(get_node(n.children, c).next, c, b);
+            b.call(RuntimeMember.YieldGenerator);
+            il_function_result(n.type, c, b);
+            return;
+        }
         int receiver=il_method_target(n.left,c,b);
         if (receiver>=0) {b.emit(0xfe0c,receiver);}
         if (numeric && count <= 2)
