@@ -429,6 +429,8 @@ public static partial class Js
     public static void ArraySetNumber(object receiver, double index, double? value)
     {
         if (receiver is NumberArray numbers) numbers.SetNumber(index, value);
+        else if (index >= 0 && index <= int.MaxValue && Math.Truncate(index) == index && receiver is TaggedArray tagged)
+            tagged.SetNumberAt((int)index, value);
         else IndexSet(receiver, index, BoxNumber(value));
     }
     public static double ArrayLength(object receiver) =>
@@ -451,6 +453,7 @@ public static partial class Js
     public static void ArraySetNumberAt(object receiver, int index, double? value)
     {
         if (receiver is NumberArray numbers) numbers.SetNumberAt(index, value);
+        else if (index >= 0 && receiver is TaggedArray tagged) tagged.SetNumberAt(index, value);
         else ArraySetNumber(receiver, index, value);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
