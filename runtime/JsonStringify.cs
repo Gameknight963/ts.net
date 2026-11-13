@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
@@ -7,12 +8,23 @@ using System.Text;
 
 public static partial class Js
 {
+    static class JsonAsciiCharacters
+    {
+        internal static readonly SearchValues<char> Unescaped = SearchValues.Create(" !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~");
+    }
     static void QuoteJson(StringBuilder output, string text)
     {
         const string hex = "0123456789abcdef";
+        int first = 0;
+        if (text.Length >= 32)
+        {
+            first = text.AsSpan().IndexOfAnyExcept(JsonAsciiCharacters.Unescaped);
+            if (first < 0) {output.Append('"').Append(text).Append('"'); return;}
+        }
         output.Append('"');
         int start = 0;
-        for (int i = 0; i < text.Length; i++)
+        // The scan can return a nonzero start; keep indexing bounds checks out of the loop.
+        for (int i = first; (uint)i < (uint)text.Length; i++)
         {
             char ch = text[i];
             if (char.IsHighSurrogate(ch) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1])) { i++; continue; }
