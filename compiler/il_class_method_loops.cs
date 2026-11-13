@@ -2,20 +2,16 @@ namespace Tsnet.Compiler;
 
 internal static partial class CompilerFunctions
 {
-    internal static bool il_class_method_loop(int entry, int result, int counter, int bound, Compiler c, IlBackend b)
+    internal static bool il_loop_method_target(Node call, int counter, Compiler c, IlBackend b, out int receiverEntry, out int methodName)
     {
-        if (counter == 0 || bound < 0 || b.loop_getter_values.Count != 0 || b.loop_getter_bodies.Count != 0 ||
-            b.global_fields.at(counter) != 0 || b.capture_fields.at(counter) != 0) return false;
-        Node loop = get_node(entry, c), block = get_node(loop.fourth, c);
-        int statement = block.kind == NodeKind.Block ? block.children : loop.fourth;
-        if (statement == 0) return false;
-        Node expression = get_node(statement, c);
-        if (expression.kind != NodeKind.Expression || expression.next != 0) return false;
-        Node assignment = get_node(expression.left, c);
-        if (assignment.kind != NodeKind.Assign || !is_text(get_token(assignment.token, c).text, "+=", c)) return false;
-        Node total = get_node(assignment.left, c), call = get_node(assignment.right, c);
-        if (total.kind != NodeKind.Name || total.symbol == counter || get_type(total.type, c).kind != TypeKind.Number ||
-            b.global_fields.at(total.symbol) != 0 || b.capture_fields.at(total.symbol) != 0 || call.kind != NodeKind.Call || get_type(call.type, c).kind != TypeKind.Number) return false;
+        receiverEntry = methodName = 0;
+        Node direct = get_node(call.left, c);
+        if (direct.kind == NodeKind.Property && direct.fourth == 0 && direct.name != 0 && call.children != 0)
+        {
+            Node directArgument = get_node(call.children, c);
+            if (directArgument.kind != NodeKind.Name || directArgument.symbol != counter || directArgument.next != 0) return false;
+            receiverEntry = direct.left; methodName = direct.name; return true;
+        }
         Node callee = get_node(call.left, c);
         if (callee.kind != NodeKind.Name || callee.symbol == 0 || get_symbol(callee.symbol, c).function == 0 || il_direct_function(call.left, c, b) == 0) return false;
         Node helper = get_node(get_symbol(callee.symbol, c).function, c);
@@ -36,13 +32,32 @@ internal static partial class CompilerFunctions
         Node target = get_node(member.left, c);
         if (target.kind != NodeKind.Name || target.symbol != first.symbol || call.children == 0) return false;
         Node receiver = get_node(call.children, c);
-        if (receiver.kind != NodeKind.Name || receiver.symbol == 0 || receiver.next == 0 || receiver.symbol == total.symbol || b.global_vars.at(receiver.symbol) != 0) return false;
+        if (receiver.next == 0) return false;
         Node argument = get_node(receiver.next, c);
         if (argument.kind != NodeKind.Name || argument.symbol != counter || argument.next != 0) return false;
+        receiverEntry = call.children; methodName = member.name; return true;
+    }
+    internal static bool il_class_method_loop(int entry, int result, int counter, int bound, Compiler c, IlBackend b)
+    {
+        if (counter == 0 || bound < 0 || b.loop_getter_values.Count != 0 || b.loop_getter_bodies.Count != 0 ||
+            b.global_fields.at(counter) != 0 || b.capture_fields.at(counter) != 0) return false;
+        Node loop = get_node(entry, c), block = get_node(loop.fourth, c);
+        int statement = block.kind == NodeKind.Block ? block.children : loop.fourth;
+        if (statement == 0) return false;
+        Node expression = get_node(statement, c);
+        if (expression.kind != NodeKind.Expression || expression.next != 0) return false;
+        Node assignment = get_node(expression.left, c);
+        if (assignment.kind != NodeKind.Assign || !is_text(get_token(assignment.token, c).text, "+=", c)) return false;
+        Node total = get_node(assignment.left, c), call = get_node(assignment.right, c);
+        if (total.kind != NodeKind.Name || total.symbol == counter || get_type(total.type, c).kind != TypeKind.Number ||
+            b.global_fields.at(total.symbol) != 0 || b.capture_fields.at(total.symbol) != 0 || call.kind != NodeKind.Call || get_type(call.type, c).kind != TypeKind.Number) return false;
+        if (!il_loop_method_target(call, counter, c, b, out int receiverEntry, out int methodName)) return false;
+        Node receiver = get_node(receiverEntry, c);
+        if (receiver.kind != NodeKind.Name || receiver.symbol == 0 || receiver.symbol == total.symbol || b.global_vars.at(receiver.symbol) != 0) return false;
         int type = receiver.type;
         if (get_type(type, c).kind != TypeKind.Shape || get_type(type, c).name == 0 || !b.simple_class_methods.TryGetValue(type, out var methods)) return false;
         SimpleClassMethod method = default;
-        foreach (var candidate in methods) if (same(candidate.Name, member.name, c)) { method = candidate; break; }
+        foreach (var candidate in methods) if (same(candidate.Name, methodName, c)) { method = candidate; break; }
         if (method.Function == 0 || !b.function_class_types.TryGetValue(method.Function, out int functionType)) return false;
         int binding = il_loop_binding(entry, c);
         double initial = number(get_token(get_node(get_node(binding, c).left, c).token, c).text, c);
@@ -67,10 +82,10 @@ internal static partial class CompilerFunctions
             b.plan.source_point(b.method, file.view(), location.line, Math.Clamp(location.column, 1, 65534));
         }
         b.load(total.symbol); b.op(0x26);
-        il_boxed(call.children, c, b); b.emit(0x75, b.classes.at(type)); b.emit(0xfe0e, instance);
+        il_boxed(receiverEntry, c, b); b.emit(0x75, b.classes.at(type)); b.emit(0xfe0e, instance);
         b.emit(0xfe0c, instance); b.emit(0x39, ordinaryLoop);
         // Read only ordinary prototype data: an accessor must run on every call.
-        b.emit(0xfe0c, instance); il_text(member.name, c, b); b.call(RuntimeMember.GetClassMethodData);
+        b.emit(0xfe0c, instance); il_text(methodName, c, b); b.call(RuntimeMember.GetClassMethodData);
         b.emit(0x75, functionType); b.emit(0x39, ordinaryLoop);
         foreach (int name in names)
         {
@@ -82,8 +97,8 @@ internal static partial class CompilerFunctions
             int slot = b.local(-3); fields.Add((name, slot));
             b.emit(0xfe0c, instance); il_text(name, c, b); b.call(RuntimeMember.GetNumber); b.call(RuntimeMember.NumberValue); b.emit(0xfe0e, slot);
         }
-        // The helper forwards its arguments, and the guarded method is numeric
-        // arithmetic only. No user callback can change the method or these fields.
+        // A direct call or forwarding helper reaches the same guarded numeric
+        // method. No user callback can change it or these data fields.
         b.loop_getter_bodies[assignment.right] = new(method.Expression, fields, method.Parameter, counter);
         il_loop_code(entry, result, counter, bound, c, b);
         b.loop_getter_bodies.Remove(assignment.right);
