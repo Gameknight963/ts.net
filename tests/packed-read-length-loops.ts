@@ -32,3 +32,13 @@ function typedSum(values: Float64Array): number {
 const typed = new Float64Array([1, 2, 3, 4]); console.log('typed', typedSum(typed));
 let lengths = 0; Object.defineProperty(typed, 'length', {get() {lengths++; return 2;}});
 console.log('custom length', typedSum(typed), lengths);
+
+for (const length of [15, 16, 17, 31, 32, 33, 63, 64, 65]) {
+    const input: number[] = []; for (let i = 0; i < length; i++) input.push(1);
+    const values = input.map(value => value + 1);
+    console.log('range', length, sum(values));
+    values[length - 1] = undefined as any;
+    console.log('last undefined', length, sum(values));
+    values.length = length - 1;
+    console.log('shortened', length, sum(values));
+}
