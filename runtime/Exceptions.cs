@@ -10,17 +10,21 @@ public class JsCaughtError : JsDescriptorObject
 {
     readonly TsObject prototype;
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : prototype;
-    readonly string stack = Environment.StackTrace;
+    readonly string stack;
     bool hasStack = true, stackMaterialized;
     internal override object OwnPropertyNames() => hasStack ? Js.MergeOwnNames(this, base.ForInOwnKeys(), "stack") : base.ForInOwnKeys();
     internal override object ForInOwnKeys() => hasStack ? Js.ForInNames(base.ForInOwnKeys(), "stack") : base.ForInOwnKeys();
     public JsCaughtError(string name, string message, bool hasMessage = true, object cause = null, bool hasCause = false)
+        : this(name, message, hasMessage, cause, hasCause, null) { }
+    JsCaughtError(string name, string message, bool hasMessage, object cause, bool hasCause, string originalStack)
     {
+        stack = originalStack ?? Environment.StackTrace;
         prototype = (TsObject)((JsFunction)Js.GetErrorConstructor(name)).Get("prototype");
         base.Define(new("stack", Js.Undefined, null, null, false, true, false, true));
         if (hasMessage) DefineHidden("message", message);
         if (hasCause) DefineHidden("cause", cause);
     }
+    internal static JsCaughtError FromException(string name, Exception error) => new(name, error.Message, true, null, false, error.StackTrace);
     internal override void Define(Descriptor descriptor)
     {
         base.Define(descriptor);
@@ -147,6 +151,6 @@ public static partial class Js
         string kind = error.Message.StartsWith("Cannot access binding before initialization", StringComparison.Ordinal) ? "ReferenceError" :
             error is ArgumentOutOfRangeException or OverflowException || error.Message == "Invalid array length" ? "RangeError" :
             error is InvalidCastException or InvalidOperationException or NullReferenceException ? "TypeError" : "Error";
-        return new JsCaughtError(kind, error.Message);
+        return JsCaughtError.FromException(kind, error);
     }
 }
