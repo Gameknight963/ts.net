@@ -159,7 +159,8 @@ Runtime performance:
 | Read and sum 100K numbers from a mixed array through a helper | 0.541 ms | 0.0625 ms | 0.12x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
 | Sum 1K values from a generator | 0.122 ms | 0.0115 ms | 0.09x |
-| Class method through a helper, 100K calls | 1.10 ms | 0.0619 ms | 0.06x |
+| Alternate between two class methods through a helper, 100K calls | 1.55 ms | 0.139 ms | 0.09x |
+| Class method through a helper, 100K calls | 0.973 ms | 0.0615 ms | 0.06x |
 | Update a class field and read its getter, 100K iterations | 0.960 ms | 0.0618 ms | 0.06x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Class numeric getter, 100K reads | 0.761 ms | 0.0267 ms | 0.04x |
