@@ -7,6 +7,7 @@
     <UseAppHost>false</UseAppHost>
     <!-- This CLI exits before profile-guided recompilation usually pays off. -->
     <TieredPGO>false</TieredPGO>
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Release' and '$(RuntimeIdentifier)' != ''">true</PublishReadyToRun>
     <AssemblyName>tsnetc</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
