@@ -81,3 +81,13 @@ function unknownMutation(value: unknown, extra: any) {
     }
 }
 unknownMutation(2, "x");
+function literalOperands(value: any) {
+    console.log('literal-operands', value * 2, value / 4, value - 3, value % 5, value << 2, value >>> 1);
+}
+literalOperands(7);
+literalOperands('7');
+literalOperands(undefined);
+literalOperands(null);
+let literalCoercions = 0;
+literalOperands({valueOf() { literalCoercions++; return 7; }});
+console.log('literal-coercions', literalCoercions);
