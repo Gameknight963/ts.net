@@ -112,6 +112,7 @@ Runtime performance:
 | String `codePointAt(index)`, 1M calls | 3.00 ms | 1.90 ms | 0.63x |
 | Intl.Segmenter, 100 word-segmentation calls and full traversal | 4.14 ms | 2.59 ms | 0.63x |
 | BigInt64Array toSorted and Number conversion, 10 copies of 10K values | 7.99 ms | 5.00 ms | 0.63x |
+| Sum 10K numbers, 20 traversals | 0.139 ms | 0.0869 ms | 0.63x |
 | String slice and first-character read, 1M calls | 14.55 ms | 8.98 ms | 0.62x |
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | 0.60x |
 | Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | 0.60x |
@@ -129,10 +130,12 @@ Runtime performance:
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | 0.45x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
 | Create a Map, insert and read 10K entries, then delete half | 1.76 ms | 0.695 ms | 0.40x |
+| Sum 10K mapped numbers, 20 traversals | 0.217 ms | 0.0854 ms | 0.39x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 5.60 ms | 2.05 ms | 0.37x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | 0.37x |
 | Construct and run a chain of 10K handlers | 0.798 ms | 0.296 ms | 0.37x |
+| map and sum, 20 passes over 10K integers from 0-9999 | 1.10 ms | 0.410 ms | 0.37x |
 | Mixed array, 100K elements and 5 traversals | 3.19 ms | 1.15 ms | 0.36x |
 | Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | 0.35x |
 | Numeric callback reading `arguments.length`, 100K calls | 1.26 ms | 0.435 ms | 0.35x |
@@ -145,12 +148,12 @@ Runtime performance:
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
 | Serialize 10K numbers divided by 7, 20 times | 26.70 ms | 6.70 ms | 0.25x |
-| map and sum, 20 passes over 10K integers from 0-9999 | 1.66 ms | 0.404 ms | 0.24x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.47 ms | 0.495 ms | 0.20x |
 | map and sum a number/string array, 20 passes over 10K values | 2.85 ms | 0.521 ms | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
+| 100K numeric writes to a four-element mapped array | 0.255 ms | 0.0416 ms | 0.16x |
 | Object literal method through a helper, 100K calls | 0.447 ms | 0.0616 ms | 0.14x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.284 ms | 0.0358 ms | 0.13x |
 | Read and sum 100K numbers from a mixed array through a helper | 0.541 ms | 0.0625 ms | 0.12x |
