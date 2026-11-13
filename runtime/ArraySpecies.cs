@@ -42,6 +42,13 @@ public static partial class Js
         return ReferenceEquals(function, RuntimeNamespaces.Array) ? null : function;
     }
 
+    static bool ArrayMapStorageBound(TsObject source, long length) => source switch
+    {
+        NumberArray numbers => !numbers.HasIndexedAccessors && numbers.TryPacked(length) != null,
+        TaggedArray tagged => tagged.TryTags(length) != null,
+        JsArray array when array.GetType() == typeof(JsArray) => array.DenseRange(length) != null,
+        _ => false
+    };
     static TsObject ArraySpeciesCreate(TsObject source, long length, bool reserveDense = false)
         => ArraySpeciesCreate(source, length, reserveDense, out _);
     static TsObject ArraySpeciesCreate(TsObject source, long length, bool reserveDense, out bool privateResult, bool numericStorage = false)
@@ -55,9 +62,10 @@ public static partial class Js
             var tagged = new TaggedArray((int)length); tagged.ReserveCapacity((int)length); result = tagged;
         }
         else result = ArraySpeciesCreate(constructor, length);
-        // A packed range also bounds the reservation by a CLR buffer length.
-        if (reserveDense && native && length > 0 && source is NumberArray numbers && !numbers.HasIndexedAccessors &&
-            numbers.TryPacked(length) != null && result.GetType() == typeof(JsArray))
+        // Existing dense source storage bounds the result allocation. Reserving
+        // its exact length also avoids growing a medium result onto the LOH.
+        if (reserveDense && native && length > 0 && length <= Array.MaxLength && result.GetType() == typeof(JsArray) &&
+            ArrayMapStorageBound(source, length))
             ((JsArray)result).ReserveCapacity((int)length);
         return result;
     }
