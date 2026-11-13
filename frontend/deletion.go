@@ -6,6 +6,37 @@ import (
 	"github.com/microsoft/typescript-go/internal/ast"
 )
 
+// Resolve values, not asserted types. Mutable bindings and expressions that
+// can execute code retain the conservative unknown-key path.
+func (b *irBuilder) constantDeletionKey(n *ast.Node) (string, bool) {
+	seen := map[*ast.Node]bool{}
+	for n != nil && !seen[n] {
+		seen[n] = true
+		switch n.Kind {
+		case ast.KindStringLiteral:
+			return n.Text(), true
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+			n = n.Expression()
+		case ast.KindIdentifier:
+			symbol := b.c.GetSymbolAtLocation(n)
+			if symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
+				symbol = b.c.GetAliasedSymbol(symbol)
+			}
+			if symbol == nil || symbol.ValueDeclaration == nil {
+				return "", false
+			}
+			declaration := symbol.ValueDeclaration
+			if declaration.Kind != ast.KindVariableDeclaration || ast.GetCombinedNodeFlags(declaration)&ast.NodeFlagsConst == 0 {
+				return "", false
+			}
+			n = declaration.Initializer()
+		default:
+			return "", false
+		}
+	}
+	return "", false
+}
+
 func deletionAccess(n *ast.Node) (*ast.Node, string) {
 	if n.Kind == ast.KindPropertyAccessExpression {
 		return n.Expression(), n.Name().Text()
@@ -223,8 +254,8 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 				b.deletedNames[operand.Name().Text()] = true
 			} else if operand.Kind == ast.KindElementAccessExpression {
 				key := operand.AsElementAccessExpression().ArgumentExpression
-				if key.Kind == ast.KindStringLiteral {
-					b.deletedNames[key.Text()] = true
+				if name, known := b.constantDeletionKey(key); known {
+					b.deletedNames[name] = true
 				} else {
 					b.deleteAnyName = true
 				}
