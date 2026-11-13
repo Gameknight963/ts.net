@@ -205,7 +205,10 @@ internal static partial class CompilerFunctions
         int receiver_count = il_numeric_receiver_function(symbol, c);
         if (count < 0 && callback < 0 && !source_callback && !continuation && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
-        int parent = b.RuntimeToken(receiver_count >= 0 ? RuntimeMember.ReceiverFunctionType : RuntimeMember.FunctionType); int type = b.plan.type(name.view(), parent, 0x101);
+        int parent = b.RuntimeToken(receiver_count >= 0 ? RuntimeMember.ReceiverFunctionType : RuntimeMember.FunctionType);
+        if (!b.function_class_types.TryGetValue(symbol, out int type)) {
+            type = b.plan.type(name.view(), parent, 0x101); b.function_class_types[symbol] = type;
+        }
         Vector<int> parameters = new Vector<int>(); parameters.push(-5); parameters.push(-5); parameters.push(-4); parameters.push(-6);
         int context = b.function_contexts.at(symbol); int environment_field = 0;
         if (context != 0) { int environment_type = b.context_types.at((int)context); parameters.push(environment_type); environment_field = b.plan.field(type, 0x26, environment_type, "environment"); }
@@ -418,6 +421,10 @@ internal static partial class CompilerFunctions
             int number = n.type;
             argument = n.children;
             while (argument != 0) { il_as(argument, number, c, b); argument = get_node(argument, c).next; }
+            // il_method_target captured the function before argument evaluation.
+            // Arguments may replace the property; dispatch uses that saved function.
+            int directMethod = receiver >= 0 && count == 1 ? il_simple_class_method_call(n.left, c, b) : 0;
+            if (directMethod != 0) { b.emit(0x28, directMethod); return; }
             b.call(receiver>=0 ? (count==0 ? RuntimeMember.CallMethodNumber0 : count==1 ? RuntimeMember.CallMethodNumber1 : RuntimeMember.CallMethodNumber2) :
                 (count == 0 ? RuntimeMember.CallFunctionNumber0 : count == 1 ? RuntimeMember.CallFunctionNumber1 : RuntimeMember.CallFunctionNumber2)); return;
         }

@@ -953,6 +953,7 @@ bool il_logical_assignment(int op, Compiler c)
             type = get_type(type, c).next;
         }
         il_prepare_simple_class_getters(c, b);
+        il_prepare_simple_class_methods(c, b);
         il_structural_objects(c, b);
         type = c.types;
         while (type != 0)

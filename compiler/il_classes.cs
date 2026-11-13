@@ -25,6 +25,7 @@ internal static partial class CompilerFunctions
         b.call(RuntimeMember.GetStoredWithReceiver); b.op(0x2a);
 
         il_stored_numeric_properties(klass, b);
+        il_simple_class_method_callers(type, c, b);
         for (int member = get_type(type, c).fields; member != 0; member = get_field(member, c).next)
             if (get_type(get_field(member, c).type, c).kind == TypeKind.Number && il_simple_class_getter(type, get_field(member, c).name, c, b, out _))
                 il_simple_class_getter_reader(type, member, c, b);
