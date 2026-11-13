@@ -66,11 +66,11 @@ public sealed partial class TaggedArray : JsArray
     JsArray Materialize()
     {
         if (materialized != null) return materialized;
-        var result = new JsArray(0);
-        result.ReserveCapacity(tags.Length);
+        int end = (int)Math.Min(length, (uint)tags.Length);
+        var items = new object[tags.Length];
+        for (int i = 0; i < end; i++) items[i] = tags[i] == 0 ? HoleValue() : BoxAt((uint)i);
+        var result = new JsArray(items);
         result.SetLength(length);
-        uint end = Math.Min(length, (uint)tags.Length);
-        for (uint i = 0; i < end; i++) if (tags[i] != 0) result.SetOwnElement(i, BoxAt(i));
         materialized = result;
         tags = Array.Empty<byte>(); numbers = Array.Empty<double>(); references = Array.Empty<object>();
         return result;
