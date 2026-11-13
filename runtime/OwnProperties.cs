@@ -52,6 +52,16 @@ sealed class OwnProperties
         value = stored is double primitive ? primitive : stored is NumberCell number ? number.Value : Js.Cast<double?>(stored, "checked conversion failed");
         return true;
     }
+    internal bool HasNumberValue(string key)
+    {
+        object stored;
+        if (key == key0) stored = value0;
+        else if (key == key1) stored = value1;
+        else if (key == key2) stored = value2;
+        else if (key == key3) stored = value3;
+        else if (tail == null || !tail.TryGetValue(key, out stored)) return false;
+        return stored is double or NumberCell || ReferenceEquals(stored, Js.Undefined);
+    }
     string key0, key1, key2, key3;
     object value0, value1, value2, value3;
     int inlineCount, version, symbolCount, numericWrites;
