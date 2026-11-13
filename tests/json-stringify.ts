@@ -130,3 +130,8 @@ show('numeric array values', [-0, 1, NaN, Infinity, 1e-7, 1e21]);
     console.log('scalar setup order', JSON.stringify(3, list, spacing), order.join(','));
     console.log('scalar replacer', JSON.stringify(3, (key, value) => key === '' ? value + 1 : value));
 }
+const tailRecords: any[] = JSON.parse('[{"a":1,"b":2,"c":3,"d":4,"e":5,"f":6},{"a":1,"b":2,"c":3,"d":4,"e":5,"f":6},{"a":1,"b":2,"c":3,"d":4,"e":5,"f":6}]');
+delete tailRecords[1].e;
+tailRecords[1].e = 7;
+tailRecords[2][Symbol('hidden-tail')] = 8;
+show('tail key order and hidden symbols', tailRecords);
