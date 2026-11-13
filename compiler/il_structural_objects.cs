@@ -6,6 +6,7 @@ internal sealed partial class IlBackend
 {
     internal readonly Dictionary<int, int> shape_readers = [];
     internal readonly Dictionary<int, int> shape_writers = [];
+    internal readonly Dictionary<int, int> class_shape_checks = [];
 }
 
 internal static partial class CompilerFunctions
@@ -16,16 +17,18 @@ internal static partial class CompilerFunctions
         for (int type = c.types; type != 0; type = get_type(type, c).next)
         {
             Type shape = get_type(type, c);
-            if (shape.kind != TypeKind.Shape || shape.name != 0 || shape.fields == 0) continue;
+            if (shape.kind != TypeKind.Shape || shape.fields == 0) continue;
             int method = b.plan.method2(5, b.interface_type(type), 0x16, -5, -5, -4, "Check");
             checks.Add((type, method, b.cast(type)));
             b.casts.at_mut(type) = method;
+            if (shape.name != 0) b.class_shape_checks[type] = method;
         }
         foreach (var check in checks)
         {
             b.begin(check.Method);
             int good = b.label(), bad = b.label();
-            b.emit(0xfe09, 0); b.emit(0x75, b.interface_type(check.Type)); b.emit(0x3a, good);
+            int fastType = get_type(check.Type, c).name != 0 ? b.RuntimeToken(RuntimeMember.TsObjectType) : b.interface_type(check.Type);
+            b.emit(0xfe09, 0); b.emit(0x75, fastType); b.emit(0x3a, good);
             for (int member = get_type(check.Type, c).fields; member != 0; member = get_field(member, c).next)
             {
                 Field field = get_field(member, c);
@@ -38,6 +41,7 @@ internal static partial class CompilerFunctions
         }
         foreach (var check in checks)
         {
+            if (get_type(check.Type, c).name != 0) continue;
             for (int member = get_type(check.Type, c).fields; member != 0; member = get_field(member, c).next)
             {
                 Field field = get_field(member, c); int storage = b.type(field.type, c);

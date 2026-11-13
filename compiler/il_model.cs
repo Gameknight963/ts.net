@@ -312,12 +312,18 @@ internal sealed partial class IlBackend
         if (get_type(type, c).kind == TypeKind.Number) { this.call(RuntimeMember.BoxNumber); }
         else if (get_type(type, c).kind == TypeKind.Boolean) { this.call(RuntimeMember.BoxBoolean); }
     }
-    public void from_object(int target, Compiler c)
+    public void from_object(int target, Compiler c, string message = "checked conversion failed")
     {
         TypeKind kind = get_type(target, c).kind;
+        if (this.class_shape_checks.TryGetValue(target, out int classCheck)) {
+            // Keep ordinary class references on the short path. Primitive views
+            // use the same property-presence checks as structural interfaces.
+            int done = this.label(); this.op(0x25); this.emit(0x75, this.RuntimeToken(RuntimeMember.TsObjectType)); this.emit(0x3a, done);
+            this.plan.StringLiteral(this.method, message); this.emit(0x28, classCheck); this.mark(done); return;
+        }
         if (this.type(target, c) != -5 || kind == TypeKind.String || kind == TypeKind.Shape || kind == TypeKind.Array)
         {
-            this.plan.StringLiteral(this.method, "checked conversion failed"); this.emit(0x28, this.cast(target));
+            this.plan.StringLiteral(this.method, message); this.emit(0x28, this.cast(target));
         }
     }
     public void convert(int source, int target, Compiler c)
@@ -1034,7 +1040,7 @@ bool il_logical_assignment(int op, Compiler c)
                         TypeKind value_kind = get_type(record.type, c).kind;
                         if (b.type(record.type, c) != -5 || value_kind == TypeKind.String || value_kind == TypeKind.Shape || value_kind == TypeKind.Array)
                         {
-                            b.plan.StringLiteral(b.method, "property write violates static field type"); b.emit(0x28, (int)b.cast(record.type));
+                            b.from_object(record.type, c, "property write violates static field type");
                         }
                         b.store_field(member, c);
                         if (b.spread_types.at(type) != 0 && !il_dynamic_index_field(member,c)) { b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0x6f, b.RuntimeToken(RuntimeMember.MarkPresent)); }
