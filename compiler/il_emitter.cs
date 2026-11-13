@@ -230,6 +230,13 @@ internal static partial class CompilerFunctions
             if (il_numeric_coercion_calls(n.right, c)) { il_boxed(n.right, c, b); b.call(RuntimeMember.Add); b.from_object(value_type, c); }
             else { b.call(RuntimeMember.Text); il_boxed(n.right, c, b); b.call(RuntimeMember.Text); b.call(RuntimeMember.Concat); }
         }
+        else if (n.kind == NodeKind.Assign && is_text(op, text_add_assign, c) &&
+            get_type(target.type, c).kind == TypeKind.Number && get_type(value_type, c).kind == TypeKind.Number &&
+            get_type(get_node(n.right, c).type, c).kind == TypeKind.Any)
+        {
+            il_load_target(n.left, receiver, index, c, b);
+            il_boxed(n.right, c, b); b.call(RuntimeMember.AddToNumber);
+        }
         else if (n.kind == NodeKind.Assign && is_text(op, text_add_assign, c) && (get_type(target.type, c).kind == TypeKind.Any || get_type(get_node(n.right, c).type, c).kind == TypeKind.Any))
         {
             il_load_target(n.left, receiver, index, c, b); b.box(target.type, c);

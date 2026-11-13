@@ -475,6 +475,12 @@ public static partial class Js
     public static int ForOfStep(object value, int position) => Iteration.Step(value, position);
     public static object ForOfSkip(object value, int position) => Iteration.Skip(value,position);
 
+    public static double? AddToNumber(double? left, object right)
+    {
+        if (right is double number) return NumberValue(left) + number;
+        return Cast<double?>(Add(BoxNumber(left), right), "checked conversion failed");
+    }
+
     public static object Add(object left, object right)
     {
         if (left is TsObject first) left = ToPrimitive(first, "default");
