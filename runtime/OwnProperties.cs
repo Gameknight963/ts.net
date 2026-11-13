@@ -90,7 +90,7 @@ sealed class OwnProperties
     public bool ContainsKey(string key)
     {
         ArgumentNullException.ThrowIfNull(key);
-        return key == key0 || key == key1 || key == key2 || key == key3 || tail != null && tail.ContainsKey(key);
+        return key == key0 || inlineCount > 1 && (key == key1 || key == key2 || key == key3 || tail != null && tail.ContainsKey(key));
     }
     public object this[string key]
     {
