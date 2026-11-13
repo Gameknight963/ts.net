@@ -4,6 +4,11 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 
 
+internal sealed partial class IlBackend
+{
+    internal readonly HashSet<int> array_value_callbacks = [];
+}
+
 internal static partial class CompilerFunctions
 {
     internal static bool il_uses_arguments(int symbol, Compiler c)
@@ -149,6 +154,53 @@ internal static partial class CompilerFunctions
         }
         return parameter == 0;
     }
+    internal static void il_prepare_array_value_callbacks(Compiler c, IlBackend b)
+    {
+        var initializers = new Dictionary<int, int>();
+        int function(int entry)
+        {
+            Node value = get_node(entry, c);
+            while (value.kind == NodeKind.Assert) value = get_node(value.left, c);
+            if (value.kind == NodeKind.FunctionValue) return value.symbol;
+            if (value.kind != NodeKind.Name || value.symbol == 0) return 0;
+            if (get_symbol(value.symbol, c).function != 0) return value.symbol;
+            return initializers.TryGetValue(value.symbol, out int target) ? target : b.function_targets.at(value.symbol);
+        }
+        // This only chooses which function classes expose an optional entry;
+        // it never assumes an alias still holds its initializer at runtime.
+        for (int i = 1; i <= c.node_store.count(); i++)
+        {
+            Node binding = get_node(i, c);
+            if (binding.kind != NodeKind.Variable || binding.symbol == 0 || binding.left == 0) continue;
+            Node value = get_node(binding.left, c);
+            while (value.kind == NodeKind.Assert) value = get_node(value.left, c);
+            if (value.kind == NodeKind.FunctionValue) initializers[binding.symbol] = value.symbol;
+        }
+        for (int i = 1; i <= c.node_store.count(); i++)
+        {
+            Node call = get_node(i, c);
+            if (call.kind != NodeKind.Call || call.children == 0) continue;
+            Node target = get_node(call.left, c);
+            while (target.kind == NodeKind.Assert) target = get_node(target.left, c);
+            int name = target.kind == NodeKind.Property && target.fourth == 0 ? target.name
+                : target.kind == NodeKind.Index && get_node(target.right, c).kind == NodeKind.String ? get_token(get_node(target.right, c).token, c).text : 0;
+            if (name == 0 || !(is_text(name, "map", c) || is_text(name, "filter", c) || is_text(name, "forEach", c) ||
+                is_text(name, "every", c) || is_text(name, "some", c) || is_text(name, "find", c) ||
+                is_text(name, "findIndex", c) || is_text(name, "findLast", c) || is_text(name, "findLastIndex", c))) continue;
+            int symbol = function(call.children);
+            if (symbol != 0) b.array_value_callbacks.Add(symbol);
+        }
+    }
+    internal static bool il_value_callback(int symbol, Compiler c, IlBackend b)
+    {
+        if (!b.array_value_callbacks.Contains(symbol)) return false;
+        Node function = get_node(get_symbol(symbol, c).function, c);
+        if (function.fourth != 0 || function.right != 0) return false;
+        if (function.children == 0) return true;
+        Node parameter = get_node(function.children, c);
+        return parameter.symbol != 0 && parameter.next == 0 && !parameter.constant && parameter.left == 0 && parameter.right == 0 &&
+            parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
+    }
     internal static bool il_function_returns(int entry, Compiler c)
     {
         Node n = get_node(entry, c);
@@ -202,8 +254,9 @@ internal static partial class CompilerFunctions
         int callback = il_numeric_array_callback(symbol, c);
         bool source_callback = il_source_array_callback(symbol, c);
         bool continuation = get_node(get_symbol(symbol, c).function, c).internal_continuation;
+        bool value_callback = il_value_callback(symbol, c, b);
         int receiver_count = il_numeric_receiver_function(symbol, c);
-        if (count < 0 && callback < 0 && !source_callback && !continuation && receiver_count < 0) return;
+        if (count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
         int parent = b.RuntimeToken(receiver_count >= 0 ? RuntimeMember.ReceiverFunctionType : RuntimeMember.FunctionType);
         if (!b.function_class_types.TryGetValue(symbol, out int type)) {
@@ -235,20 +288,25 @@ internal static partial class CompilerFunctions
             b.emit(0x28, b.function_adapters.at(symbol)); b.op(0x2a);
         }
         Node definition = get_node(get_symbol(symbol, c).function, c);
-        if (continuation && definition.fourth == 0 && definition.children != 0)
+        if (value_callback || continuation && definition.fourth == 0 && definition.children != 0 &&
+            get_node(definition.children, c).next == 0 && get_node(definition.children, c).left == 0 && get_node(definition.children, c).third == 0)
         {
-            Node parameter = get_node(definition.children, c);
-            if (parameter.next == 0 && parameter.left == 0 && parameter.third == 0)
+            int method = b.plan.method1(5, type, 0xc6, -5, -5, "InvokeContinuation");
+            b.begin(method);
+            if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+            if (definition.children != 0)
             {
-                int method = b.plan.method1(5, type, 0xc6, -5, -5, "InvokeContinuation");
-                b.begin(method);
-                if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
-                b.emit(0xfe09, 1); b.from_object(parameter.type, c);
-                b.emit(0x28, b.function(symbol));
-                if (get_type(definition.type, c).kind == TypeKind.Void) b.call(RuntimeMember.Undefined);
-                else b.box(definition.type, c);
-                b.op(0x2a);
+                b.emit(0xfe09, 1); b.from_object(get_node(definition.children, c).type, c);
             }
+            b.emit(0x28, b.function(symbol));
+            if (get_type(definition.type, c).kind == TypeKind.Void) b.call(RuntimeMember.Undefined);
+            else b.box(definition.type, c);
+            b.op(0x2a);
+        }
+        if (value_callback)
+        {
+            b.begin(b.plan.method0(5, type, 0xc6, -2, "SupportsArrayValue"));
+            b.emit(0x20, 1); b.op(0x2a);
         }
         if (count >= 0)
         {

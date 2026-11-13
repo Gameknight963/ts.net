@@ -46,10 +46,20 @@ public static partial class Js
     readonly struct FindIndexCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.FindIndex; }
     readonly struct FindLastCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.FindLast; }
     readonly struct FindLastIndexCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.FindLastIndex; }
+    interface IArrayValueMode { static abstract bool Direct { get; } }
+    readonly struct OrdinaryArrayValueMode : IArrayValueMode { public static bool Direct => false; }
+    readonly struct SingleArrayValueMode : IArrayValueMode { public static bool Direct => true; }
     sealed class ArrayCallbackFunction<TKind>(string name) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Array method requires a receiver")), null, name, 1)
         where TKind : struct, IArrayCallbackKind
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments)
+        {
+            var callback = FunctionArgument(arguments, 0) as JsFunction;
+            if (callback != null && callback.SupportsArrayValue() && !callback.SupportsArrayNumber() && !callback.SupportsArrayNumberSource())
+                return Invoke<SingleArrayValueMode>(receiver, arguments);
+            return Invoke<OrdinaryArrayValueMode>(receiver, arguments);
+        }
+        static object Invoke<TValueMode>(object receiver, object[] arguments) where TValueMode : struct, IArrayValueMode
         {
             ArrayCallbackKind kind = TKind.Value;
             var source = ToObject(receiver);
@@ -125,6 +135,7 @@ public static partial class Js
                 }
                 else mapped = numericCallback && value is double number
                     ? callback.InvokeArrayNumber(thisValue, number, i, source)
+                    : TValueMode.Direct ? callback.InvokeContinuation(value)
                     : callback.InvokeWithReceiver(thisValue, new object[] { value, (double)i, source });
                 if (find && Truthy(mapped)) return kind is ArrayCallbackKind.FindIndex or ArrayCallbackKind.FindLastIndex ? (object)(double)i : value;
                 if (kind == ArrayCallbackKind.Map) { if (numericMap != null) numericMap.SetOwnElement((uint)i, mapped); else if (!mapSlots.IsEmpty) mapSlots[(int)i] = mapped; else ArraySpeciesSet(result, i, mapped); }
