@@ -56,8 +56,7 @@ public static partial class Js
         var constructor = ArraySpeciesConstructor(source, out bool native);
         privateResult = constructor == null;
         TsObject result;
-        if (constructor == null && numericStorage && length <= Array.MaxLength && source is NumberArray numericSource &&
-            !numericSource.HasIndexedAccessors && numericSource.TryPacked(length) != null)
+        if (constructor == null && numericStorage && length <= Array.MaxLength && ArrayMapStorageBound(source, length))
         {
             var tagged = new TaggedArray((int)length); tagged.ReserveCapacity((int)length); result = tagged;
         }

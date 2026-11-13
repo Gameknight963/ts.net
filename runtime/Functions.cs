@@ -51,6 +51,9 @@ public partial class JsFunction : JsDescriptorObject
     // Generated callbacks override this only when the extra arguments and
     // receiver are unobservable. Other functions still receive all three.
     public virtual bool SupportsArrayValue() => false;
+    public virtual bool SupportsArrayValueNumber() => false;
+    public virtual double? InvokeArrayValueNumber(object value) =>
+        Js.Cast<double?>(InvokeContinuation(value), "Array callback result is not a number");
     public virtual bool SupportsArrayNumber() => false;
     public virtual object InvokeArrayNumber(object receiver, double first, double second, object source) =>
         InvokeWithReceiver(receiver, new[] { Js.BoxNumber(first), Js.BoxNumber(second), source });

@@ -46,9 +46,10 @@ public static partial class Js
     readonly struct FindIndexCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.FindIndex; }
     readonly struct FindLastCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.FindLast; }
     readonly struct FindLastIndexCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.FindLastIndex; }
-    interface IArrayValueMode { static abstract bool Direct { get; } }
-    readonly struct OrdinaryArrayValueMode : IArrayValueMode { public static bool Direct => false; }
-    readonly struct SingleArrayValueMode : IArrayValueMode { public static bool Direct => true; }
+    interface IArrayValueMode { static abstract bool Direct { get; } static abstract bool Number { get; } }
+    readonly struct OrdinaryArrayValueMode : IArrayValueMode { public static bool Direct => false; public static bool Number => false; }
+    readonly struct SingleArrayValueMode : IArrayValueMode { public static bool Direct => true; public static bool Number => false; }
+    readonly struct NumberArrayValueMode : IArrayValueMode { public static bool Direct => true; public static bool Number => true; }
     sealed class ArrayCallbackFunction<TKind>(string name) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Array method requires a receiver")), null, name, 1)
         where TKind : struct, IArrayCallbackKind
     {
@@ -56,7 +57,8 @@ public static partial class Js
         {
             var callback = FunctionArgument(arguments, 0) as JsFunction;
             if (callback != null && callback.SupportsArrayValue() && !callback.SupportsArrayNumber() && !callback.SupportsArrayNumberSource())
-                return Invoke<SingleArrayValueMode>(receiver, arguments);
+                return callback.SupportsArrayValueNumber() ? Invoke<NumberArrayValueMode>(receiver, arguments)
+                    : Invoke<SingleArrayValueMode>(receiver, arguments);
             return Invoke<OrdinaryArrayValueMode>(receiver, arguments);
         }
         static object Invoke<TValueMode>(object receiver, object[] arguments) where TValueMode : struct, IArrayValueMode
@@ -76,7 +78,7 @@ public static partial class Js
             Span<object> mapSlots = default;
             bool privateResult = false;
             if (kind is ArrayCallbackKind.Map or ArrayCallbackKind.Filter) {
-                result = ArraySpeciesCreate(source, kind == ArrayCallbackKind.Map ? length : 0, kind == ArrayCallbackKind.Map, out privateResult, kind == ArrayCallbackKind.Map && unboxedResult);
+                result = ArraySpeciesCreate(source, kind == ArrayCallbackKind.Map ? length : 0, kind == ArrayCallbackKind.Map, out privateResult, kind == ArrayCallbackKind.Map && (unboxedResult || TValueMode.Number));
                 // The intrinsic result cannot escape to callbacks. Its length,
                 // storage and property attributes stay unchanged until return.
                 if (kind == ArrayCallbackKind.Map && privateResult && result.GetType() == typeof(JsArray) && ((JsArray)result).DenseRange(length) is object[] slots) mapSlots = slots;
@@ -125,7 +127,14 @@ public static partial class Js
                 if (find) value = IndexedValue(source, i);
                 else if (!TryIndexedValue(source, i, out value)) continue;
                 object mapped;
-                if (unboxedResult && value is double sourceNumber)
+                if (TValueMode.Number)
+                {
+                    double? mappedNumber = callback.InvokeArrayValueNumber(value);
+                    if (numericMap != null) { numericMap.StoreMappedNumber((int)i, mappedNumber); continue; }
+                    mapped = kind == ArrayCallbackKind.Map ? BoxNumber(mappedNumber)
+                        : testResult ? BoxBoolean(NumberTruthy(mappedNumber)) : Undefined;
+                }
+                else if (unboxedResult && value is double sourceNumber)
                 {
                     double? mappedNumber = numericResult ? callback.InvokeNumber2(sourceNumber, i)
                         : callback.InvokeArrayNumberResult(thisValue, sourceNumber, i, source);

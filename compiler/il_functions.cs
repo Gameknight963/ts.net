@@ -307,6 +307,15 @@ internal static partial class CompilerFunctions
         {
             b.begin(b.plan.method0(5, type, 0xc6, -2, "SupportsArrayValue"));
             b.emit(0x20, 1); b.op(0x2a);
+            if (get_type(definition.type, c).kind == TypeKind.Number)
+            {
+                b.begin(b.plan.method0(5, type, 0xc6, -2, "SupportsArrayValueNumber"));
+                b.emit(0x20, 1); b.op(0x2a);
+                b.begin(b.plan.method1(5, type, 0xc6, -10, -5, "InvokeArrayValueNumber"));
+                if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+                if (definition.children != 0) { b.emit(0xfe09, 1); b.from_object(get_node(definition.children, c).type, c); }
+                b.emit(0x28, b.function(symbol)); b.op(0x2a);
+            }
         }
         if (count >= 0)
         {
