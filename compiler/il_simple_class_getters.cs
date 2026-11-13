@@ -52,7 +52,11 @@ internal static partial class CompilerFunctions
                 if (returned.kind != NodeKind.Return || returned.left == 0 || returned.next != 0) continue;
                 Node value = get_node(returned.left, c);
                 int fieldName = 0;
-                if (!scalar_class_literal(returned.left, TypeKind.Number, c)) {
+                if (!scalar_class_literal(returned.left, TypeKind.Number, c) && value.kind is (NodeKind.Binary or NodeKind.Unary)) {
+                    int remaining = 15;
+                    if (!il_simple_getter_expression(returned.left, receiver.symbol, data, ref remaining, c)) continue;
+                }
+                else if (!scalar_class_literal(returned.left, TypeKind.Number, c)) {
                     if (value.kind != NodeKind.Property || value.fourth != 0 || value.left == 0 ||
                         get_type(value.type, c).kind != TypeKind.Number || same(value.name, method.name, c) ||
                         !data.Any(name => same(name, value.name, c))) continue;
@@ -66,6 +70,43 @@ internal static partial class CompilerFunctions
             }
             if (getters.Count != 0) b.simple_class_getters[pair.Key] = getters;
         }
+    }
+
+    // No captured values or calls: each function instance computes the same body.
+    internal static bool il_simple_getter_expression(int entry, int receiver, List<int> data, ref int remaining, Compiler c)
+    {
+        if (--remaining < 0) return false;
+        Node value = get_node(entry, c);
+        if (get_type(value.type, c).kind != TypeKind.Number) return false;
+        if (scalar_class_literal(entry, TypeKind.Number, c)) return true;
+        if (value.kind == NodeKind.Property && value.fourth == 0 && value.left != 0 && data.Any(name => same(name, value.name, c))) {
+            Node owner = get_node(value.left, c);
+            if (owner.kind == NodeKind.ResolveThis && !owner.constant) owner = get_node(owner.left, c);
+            return receiver != 0 && owner.kind == NodeKind.Name && owner.symbol == receiver;
+        }
+        if (value.kind is not (NodeKind.Binary or NodeKind.Unary) || value.third != 0 || value.fourth != 0 || value.children != 0) return false;
+        int op = get_token(value.token, c).text;
+        bool sign = is_text(op, text_plus, c) || is_text(op, text_minus, c);
+        if (value.kind == NodeKind.Unary)
+            return sign && value.left != 0 && value.right == 0 && il_simple_getter_expression(value.left, receiver, data, ref remaining, c);
+        if (!sign && !is_text(op, text_star, c) && !is_text(op, text_slash, c)) return false;
+        return value.left != 0 && value.right != 0 && il_simple_getter_expression(value.left, receiver, data, ref remaining, c) &&
+            il_simple_getter_expression(value.right, receiver, data, ref remaining, c);
+    }
+
+    internal static void il_simple_getter_number(int entry, Compiler c, IlBackend b)
+    {
+        Node value = get_node(entry, c);
+        if (scalar_class_literal(entry, TypeKind.Number, c)) { il_number(entry, c, b); return; }
+        if (value.kind == NodeKind.Property) {
+            b.emit(0xfe09, 0); il_text(value.name, c, b); b.emit(0xfe09, 0);
+            b.call(RuntimeMember.GetStoredNumberWithReceiver); b.call(RuntimeMember.NumberValue); return;
+        }
+        il_simple_getter_number(value.left, c, b);
+        int op = get_token(value.token, c).text;
+        if (value.kind == NodeKind.Unary) { if (is_text(op, text_minus, c)) b.op(0x65); return; }
+        il_simple_getter_number(value.right, c, b);
+        b.op(is_text(op, text_plus, c) ? 0x58 : is_text(op, text_minus, c) ? 0x59 : is_text(op, text_star, c) ? 0x5a : 0x5b);
     }
 
     internal static bool il_simple_class_getter(int type, int name, Compiler c, IlBackend b, out SimpleClassGetter getter)
@@ -89,7 +130,7 @@ internal static partial class CompilerFunctions
 
     internal static void il_simple_class_getter_body(SimpleClassGetter getter, Compiler c, IlBackend b)
     {
-        if (getter.FieldName == 0) { il_number(getter.Expression, c, b); b.call(RuntimeMember.WrapNumber); }
+        if (getter.FieldName == 0) { il_simple_getter_number(getter.Expression, c, b); b.call(RuntimeMember.WrapNumber); }
         else {
             b.emit(0xfe09, 0); il_text(getter.FieldName, c, b); b.emit(0xfe09, 0);
             b.call(RuntimeMember.GetStoredNumberWithReceiver);
