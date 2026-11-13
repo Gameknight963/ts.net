@@ -152,13 +152,13 @@ Runtime performance:
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.47 ms | 0.495 ms | 0.20x |
 | map and sum a number/string array, 20 passes over 10K values | 2.85 ms | 0.521 ms | 0.18x |
+| Sum 1K values from a generator | 0.0647 ms | 0.0116 ms | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | 100K numeric writes to a four-element mapped array | 0.255 ms | 0.0416 ms | 0.16x |
 | Object literal method through a helper, 100K calls | 0.447 ms | 0.0616 ms | 0.14x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.284 ms | 0.0358 ms | 0.13x |
 | Read and sum 100K numbers from a mixed array through a helper | 0.541 ms | 0.0625 ms | 0.12x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
-| Sum 1K values from a generator | 0.122 ms | 0.0115 ms | 0.09x |
 | Alternate between two class methods through a helper, 100K calls | 1.55 ms | 0.139 ms | 0.09x |
 | Class method through a helper, 100K calls | 0.973 ms | 0.0615 ms | 0.06x |
 | Update a class field and read its getter, 100K iterations | 0.960 ms | 0.0618 ms | 0.06x |
