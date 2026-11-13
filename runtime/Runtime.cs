@@ -232,11 +232,13 @@ public static partial class Js
         return false;
     }
 
-    public static double? GetNumber(object receiver, string key)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double? GetNumber(object receiver, string key) => key == "length" && receiver is string text
+        ? text.Length : GetNumberCore(receiver, key);
+    static double? GetNumberCore(object receiver, string key)
     {
         if (receiver is TypedArrayValue typed) return typed.ReadNumberProperty(key);
         if (key == "length") {
-            if (receiver is string text) return text.Length;
             if (receiver is JsArray array) return array.Length();
         }
         return receiver is TsObject obj ? obj.GetNumberProperty(key) : Cast<double?>(Get(receiver, key), "checked conversion failed");
