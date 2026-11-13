@@ -265,9 +265,9 @@ public static partial class Js
     sealed class PromiseStaticFunction(bool reject) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Promise method requires a constructor")), null, reject ? "reject" : "resolve", 1)
     {
         internal bool IsResolve => !reject;
-        public override object InvokeWithReceiver(object receiver, object[] arguments)
+        public override object InvokeWithReceiver(object receiver, object[] arguments) => InvokeValue(receiver, FunctionArgument(arguments, 0));
+        internal object InvokeValue(object receiver, object value)
         {
-            object value = FunctionArgument(arguments, 0);
             if (!reject) return PromiseResolve(receiver, value);
             if (ReferenceEquals(receiver, RuntimeNamespaces.Promise))
             {
@@ -276,6 +276,8 @@ public static partial class Js
             var capability = NewPromiseCapability(receiver); capability.Complete(value, true); return capability.Promise;
         }
     }
+    public static object CallPromiseStaticNumber(object target, object receiver, double? value) => target is PromiseStaticFunction method
+        ? method.InvokeValue(receiver, BoxNumber(value)) : CallMethodNumberArgument(target, receiver, value);
     static JsPromise CreatePromise(object[] arguments, TsObject prototype = null)
     {
         if (FunctionArgument(arguments, 0) is not JsFunction executor) throw new InvalidOperationException("Promise executor is not callable");
