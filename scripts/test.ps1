@@ -603,7 +603,11 @@ try {
         Write-Host "PASS runtime check: $name"
     }
 
+    [IO.File]::WriteAllText("$testRoot/bad-declarations.d.ts", 'declare let value: MissingDeclaredType; export {};', $utf8)
+    [IO.File]::WriteAllText("$testRoot/bad-augmentation.d.ts", 'interface Array<T> {length: string;}', $utf8)
     $rejects = @(
+        @{ Source = 'import type {} from "./bad-declarations"; console.log(1);'; Error = '"code":2304' },
+        @{ Source = 'import "./bad-augmentation"; console.log([1].length);'; Error = '"code":2717' },
         @{ Source = 'const n: number = "wrong";'; Error = '"code":2322' },
         @{ Source = 'const n = 1; n = 2;'; Error = '"code":2588' },
         @{ Source = 'const n: unknown = 1; console.log(n + 1);'; Error = '"code":18046' },
