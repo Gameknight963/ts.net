@@ -1,14 +1,18 @@
 package main
 
-import "github.com/microsoft/typescript-go/internal/ast"
+import (
+	"maps"
+
+	"github.com/microsoft/typescript-go/internal/ast"
+)
 
 func (b *irBuilder) reflectionDefinitionArguments(n *ast.Node) []*ast.Node {
 	callee, arguments := n.Expression(), n.AsCallExpression().Arguments.Nodes
-	if b.reflectionDefinitionValue(callee, map[*ast.Node]bool{}) == 2 {
+	if b.reflectionDefinitionValue(callee, map[*ast.Node]bool{}) >= 2 {
 		return arguments
 	}
 	owner, method := deletionAccess(callee)
-	if owner == nil || method != "call" && method != "apply" || b.reflectionDefinitionValue(owner, map[*ast.Node]bool{}) != 2 {
+	if owner == nil || method != "call" && method != "apply" || b.reflectionDefinitionValue(owner, map[*ast.Node]bool{}) < 2 {
 		return nil
 	}
 	if method == "call" && len(arguments) >= 1 {
@@ -26,7 +30,28 @@ func (b *irBuilder) reflectionDefinitionArguments(n *ast.Node) []*ast.Node {
 	return nil
 }
 
-// Follow Object.defineProperty aliases without changing layouts for read-only Object use.
+func (b *irBuilder) reflectionDefinitionCallKind(n *ast.Node) int {
+	callee := n.Expression()
+	if kind := b.reflectionDefinitionValue(callee, map[*ast.Node]bool{}); kind >= 2 {
+		return kind
+	}
+	owner, method := deletionAccess(callee)
+	if owner == nil {
+		return 0
+	}
+	kind := b.reflectionDefinitionValue(owner, map[*ast.Node]bool{})
+	arguments := n.AsCallExpression().Arguments.Nodes
+	if kind >= 2 && (method == "call" || method == "apply" || method == "bind" && len(arguments) >= 2) {
+		return kind
+	}
+	if kind == 1 && method == "apply" && len(arguments) >= 1 && b.reflectionDefinitionValue(arguments[0], map[*ast.Node]bool{}) >= 2 {
+		return 3
+	}
+	return 0
+}
+
+// Values are 1 for Object/Reflect, 2 for a defining method, and 3 for an unknown method.
+// Merely retaining namespace or method references must not change object layouts.
 func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bool) int {
 	if n == nil || seen[n] {
 		return 0
@@ -72,8 +97,10 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 		}
 	case ast.KindCallExpression:
 		owner, method := deletionAccess(n.Expression())
-		if method == "bind" && len(n.AsCallExpression().Arguments.Nodes) <= 1 && b.reflectionDefinitionValue(owner, seen) == 2 {
-			return 2
+		if method == "bind" && len(n.AsCallExpression().Arguments.Nodes) <= 1 {
+			if kind := b.reflectionDefinitionValue(owner, seen); kind >= 2 {
+				return kind
+			}
 		}
 		return b.reflectionReturnedValue(n, seen, b.reflectionDefinitionValue)
 	case ast.KindBinaryExpression:
@@ -95,33 +122,52 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 		expression := n.AsConditionalExpression()
 		left := b.reflectionDefinitionValue(expression.WhenTrue, seen)
 		right := b.reflectionDefinitionValue(expression.WhenFalse, seen)
-		if left == 2 || right == 2 {
-			return 2
+		if right > left {
+			return right
 		}
-		if left == 1 || right == 1 {
-			return 1
-		}
+		return left
 	case ast.KindPropertyAccessExpression:
-		if (n.Name().Text() == "defineProperty" || n.Name().Text() == "defineProperties" || n.Name().Text() == "preventExtensions" || n.Name().Text() == "seal" || n.Name().Text() == "freeze") && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
+		if (n.Name().Text() == "defineProperty" || n.Name().Text() == "defineProperties" || n.Name().Text() == "preventExtensions" || n.Name().Text() == "seal" || n.Name().Text() == "freeze") && b.reflectionDefinitionValue(n.Expression(), maps.Clone(seen)) == 1 {
 			return 2
 		}
-		return b.reflectionPropertyValue(n, seen, b.reflectionDefinitionValue)
+		return b.reflectionPropertyValueLimit(n, seen, b.reflectionDefinitionValue, 3)
 	case ast.KindElementAccessExpression:
 		key := n.AsElementAccessExpression().ArgumentExpression
-		if key.Kind == ast.KindStringLiteral && (key.Text() == "defineProperty" || key.Text() == "defineProperties" || key.Text() == "preventExtensions" || key.Text() == "seal" || key.Text() == "freeze") && b.reflectionDefinitionValue(n.Expression(), seen) == 1 {
-			return 2
+		if b.reflectionDefinitionValue(n.Expression(), maps.Clone(seen)) == 1 {
+			if key.Kind == ast.KindStringLiteral {
+				switch key.Text() {
+				case "defineProperty", "defineProperties", "preventExtensions", "seal", "freeze":
+					return 2
+				}
+				return 0
+			}
+			return 3
 		}
-		return b.reflectionPropertyValue(n, seen, b.reflectionDefinitionValue)
+		return b.reflectionPropertyValueLimit(n, seen, b.reflectionDefinitionValue, 3)
 	}
 	return 0
 }
 
 func (b *irBuilder) prepareDefinition(n *ast.Node) {
+	kind := b.reflectionDefinitionCallKind(n)
+	if kind < 2 {
+		return
+	}
+	if kind >= 3 {
+		b.deleteAnyName = true
+		return
+	}
 	arguments := b.reflectionDefinitionArguments(n)
+	if kind >= 2 && len(arguments) == 0 {
+		_, method := deletionAccess(n.Expression())
+		if method == "apply" {
+			b.deleteAnyName = true
+		}
+	}
 	if len(arguments) < 1 {
 		owner, method := deletionAccess(n.Expression())
 		bound := n.AsCallExpression().Arguments.Nodes
-		if method != "bind" || len(bound) < 2 || b.reflectionDefinitionValue(owner, map[*ast.Node]bool{}) != 2 {
+		if method != "bind" || len(bound) < 2 || b.reflectionDefinitionValue(owner, map[*ast.Node]bool{}) < 2 {
 			return
 		}
 		arguments = bound[1:]

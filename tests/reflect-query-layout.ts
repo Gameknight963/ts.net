@@ -1,3 +1,7 @@
+const objectQuery:string='keys';
+const objectRetained=(Object as any)[objectQuery];
+const objectBound=objectRetained.bind(Object);
+console.log(typeof objectRetained,typeof objectBound);
 const reflection=Reflect;
 const method:string='deleteProperty';
 const retained=(reflection as any)[method];
