@@ -39,7 +39,7 @@ internal static partial class CompilerFunctions
     }
     internal static bool il_class_method_loop(int entry, int result, int counter, int bound, Compiler c, IlBackend b)
     {
-        if (counter == 0 || bound < 0 || b.loop_getter_values.Count != 0 || b.loop_getter_bodies.Count != 0 ||
+        if (counter == 0 || bound < 0 || b.loop_getter_values.Count != 0 || b.loop_getter_bodies.Count != 0 || b.loop_getter_choices.Count != 0 ||
             b.global_fields.at(counter) != 0 || b.capture_fields.at(counter) != 0) return false;
         Node loop = get_node(entry, c), block = get_node(loop.fourth, c);
         int statement = block.kind == NodeKind.Block ? block.children : loop.fourth;
@@ -52,27 +52,39 @@ internal static partial class CompilerFunctions
         if (total.kind != NodeKind.Name || total.symbol == counter || get_type(total.type, c).kind != TypeKind.Number ||
             b.global_fields.at(total.symbol) != 0 || b.capture_fields.at(total.symbol) != 0 || call.kind != NodeKind.Call || get_type(call.type, c).kind != TypeKind.Number) return false;
         if (!il_loop_method_target(call, counter, c, b, out int receiverEntry, out int methodName)) return false;
-        Node receiver = get_node(receiverEntry, c);
-        if (receiver.kind != NodeKind.Name || receiver.symbol == 0 || receiver.symbol == total.symbol || b.global_vars.at(receiver.symbol) != 0) return false;
-        int type = receiver.type;
-        if (get_type(type, c).kind != TypeKind.Shape || get_type(type, c).name == 0 || !b.simple_class_methods.TryGetValue(type, out var methods)) return false;
-        SimpleClassMethod method = default;
-        foreach (var candidate in methods) if (same(candidate.Name, methodName, c)) { method = candidate; break; }
-        if (method.Function == 0 || !b.function_class_types.TryGetValue(method.Function, out int functionType)) return false;
+        Node selected = get_node(receiverEntry, c);
+        int condition = 0;
+        int[] receivers = [receiverEntry];
+        if (selected.kind == NodeKind.Conditional)
+        {
+            Node test = get_node(selected.left, c);
+            if (test.kind != NodeKind.Binary || !is_text(get_token(test.token, c).text, "&", c)) return false;
+            Node index = get_node(test.left, c), mask = get_node(test.right, c);
+            if (index.kind != NodeKind.Name || index.symbol != counter || mask.kind != NodeKind.Number) return false;
+            double bits = number(get_token(mask.token, c).text, c);
+            if (!double.IsFinite(bits) || bits < 0 || bits > int.MaxValue || bits != Math.Truncate(bits)) return false;
+            condition = selected.left; receivers = [selected.right, selected.third];
+        }
+        var targets = new List<(int Entry, int Type, SimpleClassMethod Method)>();
+        foreach (int candidateEntry in receivers)
+        {
+            Node receiver = get_node(candidateEntry, c);
+            if (receiver.kind != NodeKind.Name || receiver.symbol == 0 || receiver.symbol == total.symbol || b.global_vars.at(receiver.symbol) != 0) return false;
+            // Both speculative loads must be nonthrowing. Global lexical flags
+            // allow a failed proof to use the original branch evaluation order.
+            if (condition != 0 && (b.global_fields.at(receiver.symbol) == 0 || b.capture_fields.at(receiver.symbol) != 0)) return false;
+            int type = receiver.type;
+            if (get_type(type, c).kind != TypeKind.Shape || get_type(type, c).name == 0 || !b.simple_class_methods.TryGetValue(type, out var methods)) return false;
+            SimpleClassMethod method = default;
+            foreach (var candidate in methods) if (same(candidate.Name, methodName, c)) { method = candidate; break; }
+            if (method.Function == 0 || !b.function_class_types.ContainsKey(method.Function)) return false;
+            targets.Add((candidateEntry, type, method));
+        }
         int binding = il_loop_binding(entry, c);
         double initial = number(get_token(get_node(get_node(binding, c).left, c).token, c).text, c);
         Node limit = get_node(get_node(loop.right, c).right, c);
         if (limit.kind == NodeKind.Number && number(get_token(limit.token, c).text, c) <= initial + 31) return false;
-        var names = new List<int>();
-        void collect(int node)
-        {
-            Node value = get_node(node, c);
-            if (value.kind == NodeKind.Property) { if (!names.Any(name => same(name, value.name, c))) names.Add(value.name); return; }
-            if (value.left != 0) collect(value.left);
-            if (value.right != 0) collect(value.right);
-        }
-        collect(method.Expression);
-        int ordinaryLoop = b.label(), done = b.label(), instance = b.local(b.classes.at(type));
+        int ordinaryLoop = b.label(), done = b.label();
         b.emit(0xfe0c, bound); b.plan.number(b.method, initial + 31); b.op(0xfe02); b.emit(0x39, ordinaryLoop);
         Token location = get_token(expression.token, c);
         if (location.file != 0 && location.line > 0)
@@ -82,26 +94,47 @@ internal static partial class CompilerFunctions
             b.plan.source_point(b.method, file.view(), location.line, Math.Clamp(location.column, 1, 65534));
         }
         b.load(total.symbol); b.op(0x26);
-        il_boxed(receiverEntry, c, b); b.emit(0x75, b.classes.at(type)); b.emit(0xfe0e, instance);
-        b.emit(0xfe0c, instance); b.emit(0x39, ordinaryLoop);
-        // Read only ordinary prototype data: an accessor must run on every call.
-        b.emit(0xfe0c, instance); il_text(methodName, c, b); b.call(RuntimeMember.GetClassMethodData);
-        b.emit(0x75, functionType); b.emit(0x39, ordinaryLoop);
-        foreach (int name in names)
+        if (condition != 0)
+            foreach (var target in targets)
+            {
+                int symbol = get_node(target.Entry, c).symbol;
+                b.emit(0x7e, b.global_flags.at(symbol)); b.emit(0x39, ordinaryLoop);
+            }
+        var bodies = new List<LoopGetterBody>();
+        foreach (var target in targets)
         {
-            b.emit(0xfe0c, instance); il_text(name, c, b); b.call(RuntimeMember.HasOwnNumberData); b.emit(0x39, ordinaryLoop);
+            var method = target.Method;
+            var names = new List<int>();
+            void collect(int node)
+            {
+                Node value = get_node(node, c);
+                if (value.kind == NodeKind.Property) { if (!names.Any(name => same(name, value.name, c))) names.Add(value.name); return; }
+                if (value.left != 0) collect(value.left);
+                if (value.right != 0) collect(value.right);
+            }
+            collect(method.Expression);
+            int instance = b.local(b.classes.at(target.Type));
+            il_boxed(target.Entry, c, b); b.emit(0x75, b.classes.at(target.Type)); b.emit(0xfe0e, instance);
+            b.emit(0xfe0c, instance); b.emit(0x39, ordinaryLoop);
+            // Accessors and shadowed methods retain ordinary per-call behavior.
+            b.emit(0xfe0c, instance); il_text(methodName, c, b); b.call(RuntimeMember.GetClassMethodData);
+            b.emit(0x75, b.function_class_types[method.Function]); b.emit(0x39, ordinaryLoop);
+            foreach (int name in names)
+            {
+                b.emit(0xfe0c, instance); il_text(name, c, b); b.call(RuntimeMember.HasOwnNumberData); b.emit(0x39, ordinaryLoop);
+            }
+            var fields = new List<(int Name, int Slot)>();
+            foreach (int name in names)
+            {
+                int slot = b.local(-3); fields.Add((name, slot));
+                b.emit(0xfe0c, instance); il_text(name, c, b); b.call(RuntimeMember.GetNumber); b.call(RuntimeMember.NumberValue); b.emit(0xfe0e, slot);
+            }
+            bodies.Add(new(method.Expression, fields, method.Parameter, counter));
         }
-        var fields = new List<(int Name, int Slot)>();
-        foreach (int name in names)
-        {
-            int slot = b.local(-3); fields.Add((name, slot));
-            b.emit(0xfe0c, instance); il_text(name, c, b); b.call(RuntimeMember.GetNumber); b.call(RuntimeMember.NumberValue); b.emit(0xfe0e, slot);
-        }
-        // A direct call or forwarding helper reaches the same guarded numeric
-        // method. No user callback can change it or these data fields.
-        b.loop_getter_bodies[assignment.right] = new(method.Expression, fields, method.Parameter, counter);
+        if (condition == 0) b.loop_getter_bodies[assignment.right] = bodies[0];
+        else b.loop_getter_choices[assignment.right] = new(condition, bodies[0], bodies[1]);
         il_loop_code(entry, result, counter, bound, c, b);
-        b.loop_getter_bodies.Remove(assignment.right);
+        b.loop_getter_bodies.Remove(assignment.right); b.loop_getter_choices.Remove(assignment.right);
         b.emit(0x38, done); b.mark(ordinaryLoop);
         il_loop_code(entry, result, counter, bound, c, b); b.mark(done);
         return true;

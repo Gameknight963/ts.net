@@ -2,8 +2,11 @@ namespace Tsnet.Compiler;
 
 internal readonly record struct LoopGetterBody(int Expression, List<(int Name, int Slot)> Fields, int Parameter = 0, int Counter = 0);
 
+internal readonly record struct LoopGetterChoice(int Condition, LoopGetterBody WhenTrue, LoopGetterBody WhenFalse);
+
 internal sealed partial class IlBackend
 {
+    internal readonly Dictionary<int, LoopGetterChoice> loop_getter_choices = [];
     internal readonly Dictionary<int, int> loop_getter_values = [];
     internal readonly Dictionary<int, LoopGetterBody> loop_getter_bodies = [];
     internal readonly Dictionary<int, int> loop_field_writes = [];
@@ -13,6 +16,17 @@ internal static partial class CompilerFunctions
 {
     internal static bool il_loop_getter_read(int entry, Compiler c, IlBackend b)
     {
+        if (b.loop_getter_choices.TryGetValue(entry, out var choice))
+        {
+            int alternate = b.label(), done = b.label();
+            il_integer(choice.Condition, c, b); b.emit(0x39, alternate);
+            var first = choice.WhenTrue;
+            il_simple_getter_number(first.Expression, c, b, parameter: first.Parameter, fields: first.Fields, counter: first.Counter);
+            b.emit(0x38, done); b.mark(alternate);
+            var second = choice.WhenFalse;
+            il_simple_getter_number(second.Expression, c, b, parameter: second.Parameter, fields: second.Fields, counter: second.Counter);
+            b.mark(done); return true;
+        }
         if (b.loop_getter_values.TryGetValue(entry, out int saved)) { b.emit(0xfe0c, saved); return true; }
         if (!b.loop_getter_bodies.TryGetValue(entry, out var body)) return false;
         il_simple_getter_number(body.Expression, c, b, parameter: body.Parameter, fields: body.Fields, counter: body.Counter); return true;
