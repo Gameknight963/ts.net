@@ -81,7 +81,7 @@ public static partial class Js
                     if (completion.Kind == CompletionKind.Throw && frame.Phase == 0 && frame.Region.Catch != null)
                     {
                         frame.Phase = 1;
-                        result = frame.Region.Catch.InvokeWithReceiver(Undefined, new[] { CaughtValue((Exception)completion.Value) });
+                        result = frame.Region.Catch.InvokeContinuation(CaughtValue((Exception)completion.Value));
                         continue;
                     }
                     if (frame.Phase != 2 && frame.Region.Finally != null)

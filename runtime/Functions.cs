@@ -45,6 +45,8 @@ public partial class JsFunction : JsDescriptorObject
     }
     internal virtual void SetObjectHome(TsObject home) { }
     public virtual object InvokeWithReceiver(object receiver,object[] arguments)=>Invoke(arguments);
+    // Compiler-generated continuations override this without an argument array.
+    public virtual object InvokeContinuation(object value) => InvokeWithReceiver(Js.Undefined, new[] { value });
     // Generated callbacks override this only when the extra arguments and
     // receiver are unobservable. Other functions still receive all three.
     public virtual bool SupportsArrayNumber() => false;

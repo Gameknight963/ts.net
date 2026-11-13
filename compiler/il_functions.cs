@@ -234,6 +234,22 @@ internal static partial class CompilerFunctions
             b.emit(0xfe09, receiver + 1);
             b.emit(0x28, b.function_adapters.at(symbol)); b.op(0x2a);
         }
+        Node definition = get_node(get_symbol(symbol, c).function, c);
+        if (continuation && definition.fourth == 0 && definition.children != 0)
+        {
+            Node parameter = get_node(definition.children, c);
+            if (parameter.next == 0 && parameter.left == 0 && parameter.third == 0)
+            {
+                int method = b.plan.method1(5, type, 0xc6, -5, -5, "InvokeContinuation");
+                b.begin(method);
+                if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+                b.emit(0xfe09, 1); b.from_object(parameter.type, c);
+                b.emit(0x28, b.function(symbol));
+                if (get_type(definition.type, c).kind == TypeKind.Void) b.call(RuntimeMember.Undefined);
+                else b.box(definition.type, c);
+                b.op(0x2a);
+            }
+        }
         if (count >= 0)
         {
             for (int arity = 0; arity <= 2; arity++)

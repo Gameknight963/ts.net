@@ -138,7 +138,7 @@ public static partial class Js
                 else
                 {
                     object next;
-                    try { next = current.Continuation.InvokeWithReceiver(Undefined, new[] { item }); }
+                    try { next = current.Continuation.InvokeContinuation(item); }
                     catch (Exception error) { next = new AsyncCompletion(CompletionKind.Throw, error); }
                     ContinueAsyncRun(next);
                 }

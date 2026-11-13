@@ -49,7 +49,7 @@ public static partial class Js
                     else if (kind == CompletionKind.Throw) result = new AsyncCompletion(kind, MakeThrown(value));
                     else if (kind == CompletionKind.Return) result = new AsyncCompletion(kind, value);
                     else if (!started) { started = true; result = Invoke(continuation); }
-                    else result = continuation.InvokeWithReceiver(Undefined, new[] { value });
+                    else result = continuation.InvokeContinuation(value);
                 }
                 catch (Exception error) { delegated = null; result = new AsyncCompletion(CompletionKind.Throw, error); }
                 return Run(result, direct, out step);
@@ -73,7 +73,7 @@ public static partial class Js
                 throw new InvalidOperationException("Iterator result must be an object");
             if (!Truthy(result.Get("done"))) return new DelegatedYield(result);
             value = result.Get("value"); delegated = null;
-            return kind == CompletionKind.Return ? new AsyncCompletion(kind, value) : current.Continuation.InvokeWithReceiver(Undefined, new[] { value });
+            return kind == CompletionKind.Return ? new AsyncCompletion(kind, value) : current.Continuation.InvokeContinuation(value);
         }
         sealed record DelegatedYield(TsObject Result);
         static object StepResult(object value, bool done, bool direct, out GeneratorStep step)
@@ -153,7 +153,7 @@ public static partial class Js
                     if (completion.Kind == CompletionKind.Throw && frame.Phase == 0 && frame.Region.Catch != null)
                     {
                         frame.Phase = 1;
-                        result = frame.Region.Catch.InvokeWithReceiver(Undefined, new[] { CaughtValue((Exception)completion.Value) });
+                        result = frame.Region.Catch.InvokeContinuation(CaughtValue((Exception)completion.Value));
                         continue;
                     }
                     if (frame.Phase != 2 && frame.Region.Finally != null)

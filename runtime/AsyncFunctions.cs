@@ -45,7 +45,7 @@ public static partial class Js
             Then(new PromiseContinuationReaction((value, rejected) =>
             {
                 object result;
-                try { result = rejected ? new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)) : continuation == null ? value : continuation.InvokeWithReceiver(Undefined, new[] { value }); }
+                try { result = rejected ? new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)) : continuation == null ? value : continuation.InvokeContinuation(value); }
                 catch (Exception error) { result = new AsyncCompletion(CompletionKind.Throw, error); }
                 run(result);
             }));
@@ -81,7 +81,7 @@ public static partial class Js
                 return;
             }
             object result;
-            try { result = continuation == null ? value : continuation.InvokeWithReceiver(Undefined, new[] { value }); }
+            try { result = continuation == null ? value : continuation.InvokeContinuation(value); }
             catch (Exception error)
             {
                 if (execution != null) execution.Run(new AsyncCompletion(CompletionKind.Throw, error));
