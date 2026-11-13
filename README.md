@@ -100,6 +100,7 @@ Runtime performance:
 | Update a sealed class field and read its getter, 100K iterations | 0.0698 ms | 0.0629 ms | 0.90x |
 | Serialize a 1 MiB ASCII string 10 times | 6.94 ms | 6.19 ms | 0.89x |
 | Local constructor parameter property and field read, 100K instances | 0.0698 ms | 0.0617 ms | 0.88x |
+| Class method through a helper, 100K calls | 0.0703 ms | 0.0619 ms | 0.88x |
 | Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | 0.83x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | 0.77x |
 | `== null` on nullable arrays, 1M comparisons | 1.51 ms | 1.15 ms | 0.76x |
@@ -164,7 +165,6 @@ Runtime performance:
 | Read and sum 100K numbers from a mixed array through a helper | 0.541 ms | 0.0625 ms | 0.12x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
 | Alternate between two class methods through a helper, 100K calls | 1.55 ms | 0.139 ms | 0.09x |
-| Class method through a helper, 100K calls | 0.973 ms | 0.0615 ms | 0.06x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
 
