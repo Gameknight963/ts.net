@@ -11,7 +11,7 @@ internal enum RuntimeMember
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, NumberAtIsNullish, LooseEqual, LooseEqualNumber, Equal, Number, Boolean, Text, DynamicGet, DynamicSet, DynamicSetNumber, TrySetStoredNumber,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
-    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
+    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, GuardPrivateArrayPush, ArrayPushGuarded, IsPlainDataRecord, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayReservePushes, CanonicalNumber,
     ForInStart, ForInNext, ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, IsArrayBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionType, FunctionConstructor, ReceiverFunctionType, ReceiverFunctionConstructor, PrepareReceiver, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction0, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, BuiltinNamespaceById, CallCollectionNumberKey, CallCollectionNumberPair, NumberArgumentFunctionType, CallFunctionNumberArgument, CallMethodNumberArgument, CallPromiseThen, FunctionBodyType, Count
 }
 
@@ -803,6 +803,9 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.DynamicGet, b.plan.method2(6, js, 0, -5, -5, -4, "Get"));
         b.ref_set(RuntimeMember.GetNumber, b.plan.method2(6, js, 0, -10, -5, -4, "GetNumber"));
         b.ref_set(RuntimeMember.GetNumberProperty, b.plan.method1(6, obj, 1, -10, -4, "GetNumberProperty"));
+        b.ref_set(RuntimeMember.GuardPrivateArrayPush, b.plan.method2(6, js, 0, -2, -5, -3, "GuardPrivateArrayPush"));
+        b.ref_set(RuntimeMember.ArrayPushGuarded, b.plan.method2(6, js, 0, -3, -5, -5, "ArrayPushGuarded"));
+        b.ref_set(RuntimeMember.IsPlainDataRecord, b.plan.method1(6, obj, 2, -2, -5, "IsPlainDataRecord"));
         b.ref_set(RuntimeMember.GetStoredWithReceiver, b.plan.method2(6, obj, 1, -5, -4, -5, "GetStoredWithReceiver"));
         b.ref_set(RuntimeMember.GetStoredNumberWithReceiver, b.plan.method2(6, obj, 1, -10, -4, -5, "GetStoredNumberWithReceiver"));
         b.ref_set(RuntimeMember.HasStructuralProperty, b.plan.method2(6, js, 0, -2, -5, -4, "HasStructuralProperty"));

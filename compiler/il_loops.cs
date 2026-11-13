@@ -99,6 +99,7 @@ internal static partial class CompilerFunctions
     internal static void il_loop_body_inner(int entry, int result, int counter, int bound, Compiler c, IlBackend b)
     {
         if (il_integer_call_loop(entry, result, counter, bound, c, b)) { return; }
+        if (il_guarded_push_loop(entry, result, counter, bound, c, b)) return;
         if (counter != 0)
         {
             int pushes = il_push_loop(entry, c, b);

@@ -137,6 +137,13 @@ bool il_push_capacity_hint(int entry, Compiler c, IlBackend b)
     internal static void il_emit_array_call(int entry, Compiler c, IlBackend b)
     {
         Node call = get_node(entry, c), callee = get_node(call.left, c);
+        if (b.guarded_push_call == entry)
+        {
+            il_boxed(callee.left, c, b); il_boxed(call.children, c, b);
+            b.call(RuntimeMember.ArrayPushGuarded); b.call(RuntimeMember.WrapNumber);
+            if (get_type(call.type, c).kind != TypeKind.Number) b.call(RuntimeMember.BoxNumber);
+            return;
+        }
         il_expression(callee.left, c, b); int receiver = b.local(-5); b.emit(0xfe0e, receiver);
         b.emit(0xfe0c, receiver); il_text(callee.name, c, b); b.call(RuntimeMember.DynamicGet);
         int target = b.local(-5); b.emit(0xfe0e, target);
