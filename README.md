@@ -158,13 +158,14 @@ Runtime performance:
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.17 ms | 0.479 ms | 0.22x |
-| map and sum a number/string array, 20 passes over 10K values | 2.85 ms | 0.521 ms | 0.18x |
+| Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | 100K numeric writes to a four-element mapped array | 0.255 ms | 0.0416 ms | 0.16x |
 | Object literal method through a helper, 100K calls | 0.447 ms | 0.0616 ms | 0.14x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.284 ms | 0.0358 ms | 0.13x |
 | Read and sum 100K numbers from a mixed array through a helper | 0.541 ms | 0.0625 ms | 0.12x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
+| Map 10K number/string values to numbers and sum, 20 passes | 7.42 ms | 0.482 ms | 0.06x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
 
