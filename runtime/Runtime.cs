@@ -154,9 +154,10 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool NumberTruthy(double? value) => value.HasValue && value.Value != 0 && !double.IsNaN(value.Value);
 
-    public static double Number(object value) => value switch
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double Number(object value) => value is double number ? number : CoerceNumber(value);
+    static double CoerceNumber(object value) => value switch
     {
-        double n => n,
         JsSymbol => throw new InvalidOperationException("Cannot convert a symbol to a number"),
         BigInteger => throw new InvalidOperationException("Cannot implicitly convert a bigint to a number"),
         null => 0,
