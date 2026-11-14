@@ -100,6 +100,7 @@ Runtime performance:
 | Update a class field and read its getter, 100K iterations | 0.0675 ms | 0.0624 ms | 0.92x |
 | Local class field update and read, 100K instances | 0.0694 ms | 0.0631 ms | 0.91x |
 | Update a sealed class field and read its getter, 100K iterations | 0.0698 ms | 0.0629 ms | 0.90x |
+| Assign numbers or undefined and check the type, 1M iterations | 1.02 ms | 0.919 ms | 0.90x |
 | Serialize a 1 MiB ASCII string 10 times | 6.94 ms | 6.19 ms | 0.89x |
 | Local constructor parameter property and field read, 100K instances | 0.0698 ms | 0.0617 ms | 0.88x |
 | Class method through a helper, 100K calls | 0.0703 ms | 0.0619 ms | 0.88x |
