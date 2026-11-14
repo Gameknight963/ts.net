@@ -47,6 +47,20 @@ public sealed partial class TaggedArray : JsArray
             return numbers[index];
         return Js.Cast<double?>(Js.IndexGet(this, (double)index), "Array element is not a number");
     }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal object GetStoredAt(uint index)
+    {
+        if (!HasIndexedAccessors && materialized == null && index < length && index < (uint)tags.Length)
+        {
+            if (tags[index] == 2) return references[index];
+            if (tags[index] == 1)
+            {
+                object[] boxes = references;
+                return index < (uint)boxes.Length ? boxes[index] ??= numbers[index] : CacheNumber(index);
+            }
+        }
+        return Read(index);
+    }
     protected override uint Count => materialized != null ? (uint)materialized.Length() : length;
     public override bool HasElement(uint index) => HasDefinedElement(index) || (materialized != null ? materialized.HasElement(index) : index < length && index < (uint)tags.Length && tags[index] != 0);
     protected override object Read(uint index)

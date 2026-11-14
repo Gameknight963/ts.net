@@ -272,7 +272,7 @@ public static partial class Js
         if (receiver is TaggedArray compact && index.HasValue) {
             double number = index.Value;
             if (number >= 0 && number < uint.MaxValue && number == (uint)number)
-                return compact.ElementAt((uint)number);
+                return compact.GetStoredAt((uint)number);
         }
         if (receiver is JsArray array && index.HasValue) {
             double number = index.Value;
