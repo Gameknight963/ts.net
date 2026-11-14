@@ -323,7 +323,11 @@ public sealed partial class NumberArray : JsArray
     internal static NumberArray FromSingleNumber(double? value) =>
         new(new ArrayStorage<double>(new[] { Encode(value) }, Missing), value.HasValue ? 1u : 0u);
     // Compiler-only writes to a fresh array literal; inherited setters do not run.
-    public void InitializeLiteralNumber(int index, double? value) => Store((uint)index, value);
+    public void InitializeLiteralNumber(int index, double? value)
+    {
+        numbers.Dense[index] = Encode(value);
+        if (value.HasValue && (uint)index == packedPrefix) packedPrefix++;
+    }
     public void AppendLiteralNumber(double? value)
     {
         uint index = numbers.Length;
