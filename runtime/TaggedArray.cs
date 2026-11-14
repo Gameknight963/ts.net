@@ -148,6 +148,13 @@ public sealed partial class TaggedArray : JsArray
     }
     internal object[] MaterializedDenseRange(double limit) => materialized != null ? materialized.DenseRange(limit) : limit >= 0 && limit <= length && limit <= tags.Length ? Materialize().DenseRange(limit) : null;
     public byte[] TryTags(double limit) => CanUseElementStorage && materialized == null && limit >= 0 && limit <= length && limit <= tags.Length ? tags : null;
+    public bool IsStringAt(int index)
+    {
+        if (TryReadDefinedElement((uint)index, out var defined)) return defined is string;
+        if (materialized != null) return (materialized.HasElement((uint)index) ? materialized.ElementAt((uint)index) : InheritedElement((uint)index)) is string;
+        if ((uint)index >= length || (uint)index >= (uint)tags.Length || tags[index] == 0) return InheritedElement((uint)index) is string;
+        return tags[index] == 2 && references[index] is string;
+    }
     public bool IsNumberAt(int index)
     {
         if (TryReadDefinedElement((uint)index, out var defined)) return Js.IsNumber(defined);
@@ -177,6 +184,9 @@ public sealed partial class TaggedArray : JsArray
 
 public static partial class Js
 {
+    public static bool IsString(object value) => value is string;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool ArrayIsStringAt(object receiver, int index) => receiver is TaggedArray array ? array.IsStringAt(index) : IsString(ArrayGetAt(receiver, index));
     public static byte[] ArrayTryTags(object receiver, double limit) => receiver is TaggedArray array ? array.TryTags(limit) : null;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool ArrayIsNumberAt(object receiver, int index) => receiver is TaggedArray array ? array.IsNumberAt(index) : IsNumber(ArrayGetAt(receiver, index));

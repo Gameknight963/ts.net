@@ -41,7 +41,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_condition(int entry, Compiler c, IlBackend b)
     {
-        if (il_number_predicate(entry, false, c, b) || il_number_type_test(entry, false, c, b)) { return; }
+        if (il_number_predicate(entry, false, c, b) || il_type_test(entry, false, c, b)) { return; }
         il_expression(entry, c, b); b.truth(get_node(entry, c).type, c);
     }
     internal static void il_invert(IlBackend b) { b.emit(0x20, 0); b.op(0xfe01); }
@@ -364,18 +364,26 @@ internal static partial class CompilerFunctions
         }
         if (logical) { b.mark(logical_done); b.convert(value_type, n.type, c); }
     }
-    internal static bool il_number_type_test(int entry, bool wrap, Compiler c, IlBackend b)
+    internal static bool il_type_test(int entry, bool wrap, Compiler c, IlBackend b)
     {
         Node n = get_node(entry, c);
         if (n.kind != NodeKind.Binary) { return false; }
         int op = get_token(n.token, c).text;
         if (!is_text(op, text_strict_equal, c) && !is_text(op, text_strict_not_equal, c) &&
             !is_text(op, text_loose_equal, c) && !is_text(op, text_loose_not_equal, c)) { return false; }
-        Node left = get_node(n.left, c); Node right = get_node(n.right, c); int value = 0;
-        if (left.kind == NodeKind.TypeOf && right.kind == NodeKind.String && is_text(get_token(right.token, c).text, text_number, c)) { value = left.left; }
-        if (right.kind == NodeKind.TypeOf && left.kind == NodeKind.String && is_text(get_token(left.token, c).text, text_number, c)) { value = right.left; }
-        if (value == 0) { return false; }
-        if (get_type(get_node(value, c).type, c).kind == TypeKind.Number) { il_expression(value, c, b); b.call(RuntimeMember.NumberMissing); il_invert(b); }
+        Node left = get_node(n.left, c), right = get_node(n.right, c); int value = 0, name = 0;
+        if (left.kind == NodeKind.TypeOf && right.kind == NodeKind.String) { value = left.left; name = get_token(right.token, c).text; }
+        if (right.kind == NodeKind.TypeOf && left.kind == NodeKind.String) { value = right.left; name = get_token(left.token, c).text; }
+        if (value == 0) return false;
+        bool stringTest = is_text(name, "string", c);
+        if (!stringTest && !is_text(name, text_number, c)) return false;
+        if (stringTest) {
+            if (il_direct_index(value, c, b)) {
+                Node index = get_node(value, c); il_expression(index.left, c, b); il_integer(index.right, c, b);
+                b.call(RuntimeMember.ArrayIsStringAt);
+            } else { il_boxed(value, c, b); b.call(RuntimeMember.IsString); }
+        }
+        else if (get_type(get_node(value, c).type, c).kind == TypeKind.Number) { il_expression(value, c, b); b.call(RuntimeMember.NumberMissing); il_invert(b); }
         else if (il_direct_index(value, c, b))
         {
             Node index = get_node(value, c); int tags = get_node(index.left, c).kind == NodeKind.Name ? b.tag_arrays.at(get_node(index.left, c).symbol) - 1 : -1;
@@ -806,7 +814,7 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Binary)
         {
-            if (il_number_type_test(entry, true, c, b) || il_loose_equality(n, c, b)) { return; }
+            if (il_type_test(entry, true, c, b) || il_loose_equality(n, c, b)) { return; }
             int op = get_token(n.token, c).text;
             if(is_text(op,"instanceof",c)){il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.InstanceOf);b.call(RuntimeMember.WrapBoolean);return;}
 
