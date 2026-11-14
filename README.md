@@ -81,6 +81,7 @@ Runtime performance:
 | UTF-8 roundtrip, 1K chunks of 80 UTF-16 code units | 11.23 ms | 16.11 ms | 1.43x |
 | `==` on mixed values, 1M comparisons | 5.15 ms | 7.26 ms | 1.41x |
 | join, 20 joins of 10K integers from 0-99 | 1.64 ms | 2.23 ms | 1.36x |
+| Sum 100K local arrays of two numbers using index & 1 | 0.0702 ms | 0.0877 ms | 1.25x |
 | String `.at(index)`, 1M calls | 4.26 ms | 5.28 ms | 1.24x |
 | toSorted with numeric comparator and traversal, 10 copies of 10K integers | 10.31 ms | 12.78 ms | 1.24x |
 | Map.forEach numeric sum, 10 passes over 10K entries | 0.579 ms | 0.626 ms | 1.08x |
