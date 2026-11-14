@@ -48,6 +48,10 @@ public partial class JsFunction : JsDescriptorObject
     // Generated continuations and ordinary zero/one-argument functions can
     // override this without an argument array.
     public virtual object InvokeContinuation(object value) => InvokeWithReceiver(Js.Undefined, new[] { value });
+    // Generated two-parameter functions can return numbers without boxing.
+    // The default preserves receivers and observable arguments for other functions.
+    public virtual double? InvokeValuePairNumber(object receiver, object first, object second) =>
+        Js.Cast<double?>(InvokeWithReceiver(receiver, new[] { first, second }), "checked conversion failed");
     // Generated callbacks override this only when the extra arguments and
     // receiver are unobservable. Other functions still receive all three.
     public virtual bool SupportsArrayValue() => false;

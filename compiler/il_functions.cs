@@ -229,6 +229,16 @@ internal static partial class CompilerFunctions
         return ordinary(first) && ordinary(second);
         static bool ordinary(Node parameter) => parameter.symbol != 0 && !parameter.constant && parameter.left == 0 && parameter.right == 0 && parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
     }
+    internal static bool il_value_pair_number(int symbol, Compiler c)
+    {
+        Node function = get_node(get_symbol(symbol, c).function, c);
+        if (function.fourth != 0 || function.right != 0 || get_type(function.type, c).kind != TypeKind.Number || function.children == 0) return false;
+        Node first = get_node(function.children, c);
+        if (first.next == 0) return false;
+        Node second = get_node(first.next, c);
+        return second.next == 0 && ordinary(first) && ordinary(second);
+        static bool ordinary(Node parameter) => parameter.symbol != 0 && !parameter.constant && parameter.left == 0 && parameter.right == 0 && parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
+    }
     internal static bool il_function_returns(int entry, Compiler c)
     {
         Node n = get_node(entry, c);
@@ -284,8 +294,9 @@ internal static partial class CompilerFunctions
         bool continuation = get_node(get_symbol(symbol, c).function, c).internal_continuation;
         bool value_callback = il_value_callback(symbol, c, b);
         bool reduce_callback = il_reduce_value_callback(symbol, c, b);
+        bool value_pair = il_value_pair_number(symbol, c);
         int receiver_count = il_numeric_receiver_function(symbol, c);
-        if (count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !reduce_callback && receiver_count < 0) return;
+        if (count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !reduce_callback && !value_pair && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
         int parent = b.RuntimeToken(receiver_count >= 0 ? RuntimeMember.ReceiverFunctionType : RuntimeMember.FunctionType);
         if (!b.function_class_types.TryGetValue(symbol, out int type)) {
@@ -317,6 +328,16 @@ internal static partial class CompilerFunctions
             b.emit(0x28, b.function_adapters.at(symbol)); b.op(0x2a);
         }
         Node definition = get_node(get_symbol(symbol, c).function, c);
+        if (value_pair)
+        {
+            Vector<int> pair = new Vector<int>(); pair.push(-5); pair.push(-5); pair.push(-5);
+            b.begin(b.plan.method(5, type, 0xc6, -10, pair.view(), "InvokeValuePairNumber"));
+            if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+            Node first = get_node(definition.children, c), second = get_node(first.next, c);
+            b.emit(0xfe09, 2); b.from_object(first.type, c);
+            b.emit(0xfe09, 3); b.from_object(second.type, c);
+            b.emit(0x28, b.function(symbol)); b.op(0x2a);
+        }
         if (value_callback || continuation && definition.fourth == 0 && definition.children != 0 &&
             get_node(definition.children, c).next == 0 && get_node(definition.children, c).left == 0 && get_node(definition.children, c).third == 0)
         {
