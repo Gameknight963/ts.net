@@ -28,3 +28,17 @@ console.log("coercion mutation",indexedAny(changed,changingKey),calls);
 
 const unusual:any={undefined:17,null:18,NaN:19,Infinity:20,"-0":21,"0":22};
 for(const key of [undefined,null,NaN,Infinity,-0,"-0"])console.log("unusual key",String(key),indexedAny(unusual,key));
+
+function checked(target:any,key:string):number{return target[key];}
+console.log("checked object",checked(object,"field0"),checked(object,"field39"),checked(object,"missing"));
+console.log("checked array",checked(array,"0"),checked(array,"length"),checked(array,"missing"));
+console.log("checked typed array",checked(typed,"1"),checked(typed,"length"));
+console.log("checked string",checked("abc","length"));
+console.log("checked prototype",checked(inherited,"value"));
+let checkedReads=0;
+const accessor={get value(){checkedReads++;return 29;}};
+console.log("checked getter",checked(accessor,"value"),checkedReads);
+const order:string[]=[];
+function nullTarget():any{order.push("receiver");return null;}
+function propertyName():string{order.push("key");return "field0";}
+try{checked(nullTarget(),propertyName());}catch{console.log("checked order",order.join(","));}
