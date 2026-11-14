@@ -125,6 +125,14 @@ public static partial class Js
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double CheckedNumberValue(object value)
+    {
+        if (value is double number) return number;
+        if (ReferenceEquals(value, Undefined)) return double.NaN;
+        throw new InvalidCastException("checked conversion failed");
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object Check<T>(object value, string message) where T : class =>
         value == null || ReferenceEquals(value, Undefined) || value is T ? value : throw new InvalidCastException(message);
     public static int StringLength(object value) =>

@@ -50,6 +50,11 @@ internal static partial class CompilerFunctions
         if (il_loop_getter_read(entry, c, b)) return;
         if (il_typed_buffer_read(entry, c, b)) return;
         Node n = get_node(entry, c);
+        if (n.kind == NodeKind.Assert && get_type(n.type, c).kind == TypeKind.Number &&
+            get_type(get_node(n.left, c).type, c).kind is TypeKind.Any or TypeKind.Unknown)
+        {
+            il_boxed(n.left, c, b); b.call(RuntimeMember.CheckedNumberValue); return;
+        }
         if (n.kind == NodeKind.Name && b.numeric_methods.at(n.symbol) == b.method)
         {
             int slot = b.numeric_slots.at(n.symbol); b.emit(0xfe0c, slot); return;
