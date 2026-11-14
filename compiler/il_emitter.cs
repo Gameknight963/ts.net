@@ -679,6 +679,7 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.Property)
         {
             if (il_scalar_class_property(entry, c, b)) return;
+            if (n.fourth == 0 && il_object_receiver_number_read(entry, c, b)) return;
             if (n.fourth != 0) { il_boxed(n.left, c, b); il_boxed(n.fourth, c, b); b.call(RuntimeMember.PrivateGet); b.from_object(n.type, c); return; }
             TypeKind atOwner=get_type(get_node(n.left,c).type,c).kind;
             if ((atOwner==TypeKind.Array || atOwner==TypeKind.String) && is_text(n.name,text_at_method,c)) {
@@ -1134,6 +1135,7 @@ internal static partial class CompilerFunctions
             b.begin(b.function_allocator);b.emit(0x73,b.spread_any_constructor);b.op(0x2a);
         }
         il_prepare_closures(c, b); il_prepare_function_values(program, c, b);
+        il_prepare_object_receivers(c, b);
         il_prepare_array_value_callbacks(c, b);
         il_prepare_yield_continuations(program, c, b);
         il_globals(program, c, b); il_infer_scalar_values(c, b); il_infer_array_values(numeric_array, c, b);
