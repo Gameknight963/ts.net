@@ -89,7 +89,7 @@ public static partial class Js
             var handler = isRejected ? rejected : fulfilled;
             if (handler == null) { capability.Complete(value, isRejected); return; }
             object result;
-            try { result = handler.InvokeWithReceiver(Undefined, new[] { value }); }
+            try { result = handler.InvokeContinuation(value); }
             catch (Exception error) { capability.Complete(CaughtValue(error), true); return; }
             capability.Complete(result, false);
         }
@@ -105,7 +105,7 @@ public static partial class Js
             var handler = isRejected ? rejected : fulfilled;
             if (handler == null) { Complete(value, isRejected); return; }
             object result;
-            try { result = handler.InvokeWithReceiver(Undefined, new[] { value }); }
+            try { result = handler.InvokeContinuation(value); }
             catch (Exception error) { Complete(CaughtValue(error), true); return; }
             Complete(result, false);
         }

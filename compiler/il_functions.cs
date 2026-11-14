@@ -190,6 +190,16 @@ internal static partial class CompilerFunctions
                 if (reducer != 0) b.array_reduce_value_callbacks.Add(reducer);
                 continue;
             }
+            if (name != 0 && (is_text(name, "then", c) || is_text(name, "catch", c))) {
+                int fulfilled = function(call.children);
+                if (fulfilled != 0) b.array_value_callbacks.Add(fulfilled);
+                int second = get_node(call.children, c).next;
+                if (second != 0 && is_text(name, "then", c)) {
+                    int rejected = function(second);
+                    if (rejected != 0) b.array_value_callbacks.Add(rejected);
+                }
+                continue;
+            }
             if (name == 0 || !(is_text(name, "map", c) || is_text(name, "filter", c) || is_text(name, "forEach", c) ||
                 is_text(name, "every", c) || is_text(name, "some", c) || is_text(name, "find", c) ||
                 is_text(name, "findIndex", c) || is_text(name, "findLast", c) || is_text(name, "findLastIndex", c))) continue;
