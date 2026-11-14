@@ -72,3 +72,16 @@ Object.defineProperty(Promise, 'resolve', {configurable: true, get() {
 }});
 Promise.all([3, 4]).then(values => console.log('captured native resolve', resolveReads, values.join(',')));
 Object.defineProperty(Promise, 'resolve', {configurable: true, writable: true, value: savedResolve});
+
+Promise.all([Promise.resolve(11),undefined,23]).then(values=>{
+ for(let i=0;i<values.length;i++){
+  const d=Object.getOwnPropertyDescriptor(values,String(i))!;
+  console.log("all own element",i,d.value,d.writable,d.enumerable,d.configurable);
+ }
+});
+Promise.allSettled([Promise.resolve(31),Promise.reject("reason")]).then(values=>{
+ for(let i=0;i<values.length;i++){
+  const d=Object.getOwnPropertyDescriptor(values,String(i))!;
+  console.log("settled own element",i,d.value.status,d.writable,d.enumerable,d.configurable);
+ }
+});
