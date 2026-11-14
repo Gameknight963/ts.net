@@ -8,7 +8,7 @@ public static partial class Js
         internal static readonly FunctionPrototypeValue Prototype = new();
         internal static readonly JsFunction Constructor = new FunctionConstructor(Prototype);
         internal static readonly TsObject Value = Initialize();
-        internal static readonly object CallAccessorStructure = Prototype.WatchAccessorStructure();
+        internal static readonly object AccessorStructure = Prototype.WatchAccessorStructure();
         static TsObject Initialize()
         {
             Prototype.DefineMethod("constructor", Constructor);
@@ -26,10 +26,25 @@ public static partial class Js
         if (!function.HasPropertyOverrides) {
             var prototype = FunctionPrototypeState.Prototype;
             if (ReferenceEquals(function.PropertyPrototype, prototype) &&
-                ReferenceEquals(prototype.WatchAccessorStructure(), FunctionPrototypeState.CallAccessorStructure) &&
+                ReferenceEquals(prototype.WatchAccessorStructure(), FunctionPrototypeState.AccessorStructure) &&
                 prototype.TryReadOwnDataSlot("call", out var target)) return target;
         }
         return function.Get("call");
+    }
+    public static object GetFunctionApplyProperty(object receiver) => receiver is JsFunction function
+        ? function.GetApplyProperty() : Get(receiver, "apply");
+    // Called only by generated function classes, which inherit ordinary property lookup.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object ReadFunctionApplyProperty(object receiver)
+    {
+        var function = (JsFunction)receiver;
+        if (!function.HasPropertyOverrides) {
+            var prototype = FunctionPrototypeState.Prototype;
+            if (ReferenceEquals(function.PropertyPrototype, prototype) &&
+                ReferenceEquals(prototype.WatchAccessorStructure(), FunctionPrototypeState.AccessorStructure) &&
+                prototype.TryReadOwnDataSlot("apply", out var target)) return target;
+        }
+        return function.Get("apply");
     }
     static class StrictFunctionAccess
     {

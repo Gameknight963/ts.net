@@ -319,6 +319,8 @@ internal static partial class CompilerFunctions
         {
             b.begin(b.plan.method0(5, type, 0xc6, -5, "GetCallProperty"));
             b.emit(0xfe09, 0); b.call(RuntimeMember.ReadFunctionCallProperty); b.op(0x2a);
+            b.begin(b.plan.method0(5, type, 0xc6, -5, "GetApplyProperty"));
+            b.emit(0xfe09, 0); b.call(RuntimeMember.ReadFunctionApplyProperty); b.op(0x2a);
         }
         if (receiver_count >= 0)
         {
