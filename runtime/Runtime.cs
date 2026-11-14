@@ -296,6 +296,7 @@ public static partial class Js
     }
     public static double? IndexGetNumberValue(object receiver, object key)
     {
+        if (receiver is TypedArrayValue typed && key is string text) return typed.ReadNumberProperty(text);
         if (receiver is TsObject obj && receiver is not TypedArrayValue)
             return obj.GetNumberProperty(PropertyKey(key));
         return Cast<double?>(IndexGet(receiver, key), "checked conversion failed");

@@ -58,6 +58,7 @@ public static partial class Js
                 if (!base.HasOwn(key) && TryTypedArrayGetter(PropertyPrototype, key, out var getter))
                     return getter.ReadNumber(this);
             }
+            if (JsArray.Index(key, out uint index)) return ReadNumberIndex(index);
             return Cast<double?>(Get(key), "checked conversion failed");
         }
         public override object Get(string key)
