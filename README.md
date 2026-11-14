@@ -159,6 +159,7 @@ Runtime performance:
 | Serialize 10K numbers divided by 7, 20 times | 21.81 ms | 6.30 ms | 0.29x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
+| Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | 0.25x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | 0.23x |
@@ -171,7 +172,6 @@ Runtime performance:
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.284 ms | 0.0358 ms | 0.13x |
 | Read and sum 100K numbers from a mixed array through a helper | 0.541 ms | 0.0625 ms | 0.12x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
-| Reduce 10K number/string values to a numeric sum, 20 passes | 1.75 ms | 0.175 ms | 0.10x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
 
