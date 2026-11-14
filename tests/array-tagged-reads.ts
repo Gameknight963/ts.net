@@ -43,3 +43,18 @@ Object.defineProperty(changingPrototype, '1', {get() {
 }});
 Object.setPrototypeOf(changing, changingPrototype);
 console.log('getter changes storage', changing[1], changing[0], changing[1000], changing.length);
+
+function readThroughHelper(items:any[], index:number):any { return items[index]; }
+const helperValues:any[]=[7,"helper",,undefined];
+console.log("helper initial",readThroughHelper(helperValues,0),readThroughHelper(helperValues,1),readThroughHelper(helperValues,2),readThroughHelper(helperValues,3));
+helperValues[0]=13;
+console.log("helper updated",readThroughHelper(helperValues,0));
+Object.defineProperty(helperValues,"0",{get(){return "getter";},configurable:true});
+console.log("helper getter",readThroughHelper(helperValues,0));
+delete helperValues[0];
+const helperPrototype=Object.create(Array.prototype);
+Object.defineProperty(helperPrototype,"0",{get(){return 29;}});
+Object.setPrototypeOf(helperValues,helperPrototype);
+console.log("helper inherited",readThroughHelper(helperValues,0));
+helperValues.length=1;
+console.log("helper truncated",readThroughHelper(helperValues,1));
