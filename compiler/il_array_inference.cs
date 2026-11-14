@@ -137,12 +137,33 @@ void il_choose_tagged_arrays(Compiler c, IlBackend b)
             {
                 set_node_type(i, get_node(n.left, c).type, c);
             }
-            if (n.kind == NodeKind.Conditional && get_type(get_node(n.right, c).type, c).kind == TypeKind.Number && get_type(get_node(n.third, c).type, c).kind == TypeKind.Number)
+            if (n.kind == NodeKind.Conditional)
             {
-                set_node_type(i, get_node(n.right, c).type, c);
+                int first = get_node(n.right, c).type, second = get_node(n.third, c).type;
+                bool firstNumber = get_type(first, c).kind == TypeKind.Number;
+                bool secondNumber = get_type(second, c).kind == TypeKind.Number;
+                if ((firstNumber || il_guarded_number_name(n.left, n.right, true, c)) &&
+                    (secondNumber || il_guarded_number_name(n.left, n.third, false, c)))
+                    set_node_type(i, firstNumber ? first : second, c);
             }
             if (n.kind == NodeKind.Sequence && get_type(get_node(n.right, c).type, c).kind == TypeKind.Number) { set_node_type(i, get_node(n.right, c).type, c); }
         }
+    }
+    // The direct typeof test and the selected name read have no user calls between them.
+    internal static bool il_guarded_number_name(int condition, int branch, bool whenTrue, Compiler c)
+    {
+        Node value = get_node(branch, c), test = get_node(condition, c);
+        if (value.kind != NodeKind.Name || value.symbol == 0 || test.kind != NodeKind.Binary) return false;
+        int op = get_token(test.token, c).text;
+        bool equal = is_text(op, text_strict_equal, c) || is_text(op, text_loose_equal, c);
+        bool unequal = is_text(op, text_strict_not_equal, c) || is_text(op, text_loose_not_equal, c);
+        if ((!equal && !unequal) || whenTrue != equal) return false;
+        Node left = get_node(test.left, c), right = get_node(test.right, c);
+        int operand = left.kind == NodeKind.TypeOf && right.kind == NodeKind.String && is_text(get_token(right.token, c).text, text_number, c) ? left.left
+            : right.kind == NodeKind.TypeOf && left.kind == NodeKind.String && is_text(get_token(left.token, c).text, text_number, c) ? right.left : 0;
+        if (operand == 0) return false;
+        Node checkedValue = get_node(operand, c);
+        return checkedValue.kind == NodeKind.Name && checkedValue.symbol == value.symbol;
     }
     internal static bool il_array_method_name(int name, Compiler c) => is_text(name, text_push, c) || is_text(name, text_pop, c) || is_text(name, text_reverse, c) || is_text(name, text_slice, c) || is_text(name, text_index_of, c) || is_text(name, text_includes, c);
     internal static bool il_array_methods_may_change(Compiler c)
