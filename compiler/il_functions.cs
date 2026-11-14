@@ -568,6 +568,15 @@ internal static partial class CompilerFunctions
         }
         int receiver=il_method_target(n.left,c,b);
         if (receiver>=0) {b.emit(0xfe0c,receiver);}
+        if (receiver >= 0 && count == 2 && get_type(n.type, c).kind == TypeKind.Number &&
+            target.kind == NodeKind.Property && target.fourth == 0 && is_text(target.name, "call", c))
+        {
+            Node first = get_node(n.children, c), second = get_node(first.next, c);
+            if (first.kind != NodeKind.Spread && second.kind != NodeKind.Spread && get_type(second.type, c).kind == TypeKind.Number) {
+                il_boxed(n.children, c, b); il_as(first.next, n.type, c, b);
+                b.call(RuntimeMember.CallFunctionCallNumber1); return;
+            }
+        }
         if (numeric && count <= 2)
         {
             int number = n.type;
