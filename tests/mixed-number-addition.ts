@@ -21,3 +21,12 @@ const changing: any = { valueOf() { conversions++; return conversions === 1 ? 3 
 console.log("changes", right(changing, 7), left(7, changing), conversions);
 const failure: any = { valueOf() { throw new Error("coercion"); } };
 try { right(failure, 7); } catch (error) { console.log((error as Error).message); }
+
+function checkedRight(value: any, number: number): number { return value + number; }
+function checkedLeft(number: number, value: any): number { return number + value; }
+for (const value of [3, null, undefined, true, false, -0, NaN, Infinity, { valueOf() { return 3; } }] as any[]) {
+    for (const number of [7, -0, undefined as unknown as number]) {
+        const a = checkedRight(value, number), b = checkedLeft(number, value);
+        console.log("checked", String(a), String(b), Object.is(a, -0), Object.is(b, -0));
+    }
+}
