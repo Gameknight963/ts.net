@@ -375,12 +375,16 @@ internal static partial class CompilerFunctions
         if (left.kind == NodeKind.TypeOf && right.kind == NodeKind.String) { value = left.left; name = get_token(right.token, c).text; }
         if (right.kind == NodeKind.TypeOf && left.kind == NodeKind.String) { value = right.left; name = get_token(left.token, c).text; }
         if (value == 0) return false;
-        bool stringTest = is_text(name, "string", c);
-        if (!stringTest && !is_text(name, text_number, c)) return false;
+        bool stringTest = is_text(name, "string", c), undefinedTest = is_text(name, "undefined", c);
+        if (!stringTest && !undefinedTest && !is_text(name, text_number, c)) return false;
         Node indexed = get_node(value, c);
         bool numericKey = indexed.kind == NodeKind.Index && get_type(get_node(indexed.left, c).type, c).kind == TypeKind.Array &&
             get_type(get_node(indexed.right, c).type, c).kind == TypeKind.Number;
-        if (stringTest) {
+        if (undefinedTest) {
+            if (get_type(get_node(value, c).type, c).kind == TypeKind.Number) { il_expression(value, c, b); b.call(RuntimeMember.NumberMissing); }
+            else { il_boxed(value, c, b); b.call(RuntimeMember.IsUndefined); }
+        }
+        else if (stringTest) {
             if (il_direct_index(value, c, b)) {
                 Node index = get_node(value, c); il_expression(index.left, c, b); il_integer(index.right, c, b);
                 b.call(RuntimeMember.ArrayIsStringAt);
