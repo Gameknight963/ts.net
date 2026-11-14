@@ -163,7 +163,7 @@ public static partial class Js
         null => 0,
         bool b => b ? 1 : 0,
         string s => StringNumber(s),
-        TsObject obj => Number(ToPrimitive(obj, "number")),
+        TsObject obj => ObjectNumber(obj),
         _ => double.NaN
     };
     public static bool Boolean(object value) => Cast<bool>(value, "Expected boolean");

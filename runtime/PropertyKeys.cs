@@ -31,10 +31,28 @@ public static partial class Js
         return OrdinaryPrimitive(obj, hint == "string");
     }
 
-    static object OrdinaryPrimitive(TsObject obj, bool stringHint)
+    static double ObjectNumber(TsObject obj, bool allowBigInt = false)
+    {
+        object method = obj.Get(PropertyKey(ToPrimitiveSymbol));
+        if (!IsNullish(method)) {
+            if (method is not JsFunction exotic) throw new InvalidOperationException("Symbol.toPrimitive is not callable");
+            object result = exotic.InvokeWithReceiver(obj, new object[] { "number" });
+            if (!KeyPrimitive(result)) throw new InvalidOperationException("Symbol.toPrimitive must return a primitive value");
+            return allowBigInt ? ExplicitNumber(result) : Number(result);
+        }
+        if (obj.HasProperty("valueOf") && obj.Get("valueOf") is JsFunction function) {
+            // The numeric method entry preserves the receiver when required.
+            if (function.SupportsNumberResult()) return NumberValue(function.InvokeMethodNumber0(obj));
+            object result = CallMethod0(function, obj);
+            if (KeyPrimitive(result)) return allowBigInt ? ExplicitNumber(result) : Number(result);
+        }
+        object fallback = OrdinaryPrimitive(obj, false, 1);
+        return allowBigInt ? ExplicitNumber(fallback) : Number(fallback);
+    }
+    static object OrdinaryPrimitive(TsObject obj, bool stringHint, int firstStep = 0)
     {
         object primitive = obj;
-        for (int step = 0; step < 2; step++) {
+        for (int step = firstStep; step < 2; step++) {
             string name = (step == 0) == stringHint ? "toString" : "valueOf";
             if (obj.HasProperty(name)) {
                 object method = obj.Get(name);

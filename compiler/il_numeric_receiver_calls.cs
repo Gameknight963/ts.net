@@ -21,6 +21,8 @@ internal static partial class CompilerFunctions
 
     internal static void il_numeric_receiver_methods(int symbol, int type, int context, int environment, int count, Compiler c, IlBackend b)
     {
+        b.begin(b.plan.method0(5, type, 0xc6, -2, "SupportsNumberResult"));
+        b.emit(0x20, 1); b.op(0x2a);
         for (int bound = 0; bound < 2; bound++)
         {
             for (int arity = 0; arity <= 2; arity++)

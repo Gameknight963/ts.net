@@ -5,9 +5,9 @@ using System.Text;
 
 public static partial class Js
 {
-    static double ExplicitNumber(object value)
+    public static double ExplicitNumber(object value)
     {
-        if (value is TsObject obj) value = ToPrimitive(obj, "number");
+        if (value is TsObject obj) return ObjectNumber(obj, true);
         return value is BigInteger integer ? BigIntNumber(integer) : Number(value);
     }
     static double BigIntNumber(BigInteger integer)

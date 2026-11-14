@@ -723,6 +723,7 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.Call)
         {
             if (il_number_predicate(entry, true, c, b)) { return; }
+            if (il_number_call(entry, c, b)) return;
             int assignSource = il_fresh_assign_source(entry, c);
             if (assignSource != 0) { int assignClass = il_fresh_assign_class(assignSource, c, b); if (assignClass != 0) { il_emit_fresh_assign(entry, assignSource, assignClass, c, b); return; } }
             if (il_string_search_call(entry,c)) {il_emit_string_search(entry,c,b);return;}
