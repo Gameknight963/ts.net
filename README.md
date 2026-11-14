@@ -74,6 +74,7 @@ Runtime performance:
 | `any` property loop, 350K iterations | 0.266 ms | 0.435 ms | 1.64x |
 | WritableStream, queue and complete 1K numeric writes | 0.394 ms | 0.618 ms | 1.57x |
 | reduce and reduceRight, 10 pairs over 10K integers from 0-255 | 0.775 ms | 1.21 ms | 1.56x |
+| Count numeric values in a mixed array, 500K type checks | 0.285 ms | 0.440 ms | 1.54x |
 | forEach sum, every and findIndex, 10 passes over 10K integers from 0-255 | 0.577 ms | 0.865 ms | 1.50x |
 | Typed-object loop, 500K iterations | 0.5 ms | 0.4 ms | 1.49x |
 | UTF-8 roundtrip, 1K chunks of 80 UTF-16 code units | 11.23 ms | 16.11 ms | 1.43x |
@@ -150,6 +151,7 @@ Runtime performance:
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | 0.33x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
 | Sum 1K values with an await in try and an increment in finally each iteration | 0.146 ms | 0.0470 ms | 0.32x |
+| Count string values in a mixed array, 500K type checks | 1.38 ms | 0.429 ms | 0.31x |
 | Object spread, 100K copies stored in an array | 5.51 ms | 1.66 ms | 0.30x |
 | Add an `any` value to a number, 200K additions | 0.185 ms | 0.0548 ms | 0.30x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
