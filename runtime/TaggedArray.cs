@@ -20,7 +20,7 @@ public sealed partial class TaggedArray : JsArray
         for (int i = 0; i < items.Length; i++)
             if (!ReferenceEquals(items[i], HoleValue())) Write((uint)i, items[i]);
     }
-    // Only for a fresh map result that cannot escape until mapping completes.
+    // Fresh intrinsic map results and literals cannot escape until filled.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void StoreMappedNumber(int index, double? value)
     {
@@ -28,6 +28,8 @@ public sealed partial class TaggedArray : JsArray
         tags[index] = value.HasValue ? (byte)1 : (byte)2;
         numbers[index] = value.GetValueOrDefault();
     }
+    public void InitializeLiteralNumber(int index, double? value) => StoreMappedNumber(index, value);
+    public void InitializeLiteralElement(int index, object value) => Write((uint)index, value);
     void EnsureReferences()
     {
         if (references.Length == 0) references = new object[tags.Length];

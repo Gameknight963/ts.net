@@ -11,7 +11,7 @@ internal enum RuntimeMember
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, AddToNumber, NumberAtIsNullish, LooseEqual, LooseEqualNumber, Equal, Number, ExplicitNumber, IsString, ArrayIsStringAt, ArrayIsStringKey, ArrayIsNumberKey, Boolean, Text, DynamicGet, DynamicSet, DynamicSetNumber, TrySetStoredNumber,
     Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     CheckedNumberValue, WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
-    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, GuardPrivateArrayPush, ArrayPushGuarded, IsPlainDataRecord, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayTryPackedRead, ArrayReservePushes, CanonicalNumber,
+    ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, InitializeLiteralNumber, AppendLiteralNumber, InitializeTaggedLiteralNumber, InitializeTaggedLiteralElement, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, GuardPrivateArrayPush, ArrayPushGuarded, IsPlainDataRecord, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayTryPackedRead, ArrayReservePushes, CanonicalNumber,
     ForInStart, ForInNext, ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, IsArrayBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionType, FunctionConstructor, ReceiverFunctionType, ReceiverFunctionConstructor, PrepareReceiver, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction0, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, BuiltinNamespaceById, CallCollectionNumberKey, CallCollectionNumberPair, NumberArgumentFunctionType, CallFunctionNumberArgument, CallMethodNumberArgument, CallPromiseStaticNumber, CallPromiseThen, FunctionBodyType, YieldGenerator, HasOwnNumberData, CanWriteOwnNumberData, GetClassMethodData, Count
 }
 
@@ -615,6 +615,8 @@ bool il_logical_assignment(int op, Compiler c)
 
         int tagged = b.plan.reference("Tsnet.Runtime", "", "TaggedArray");
         b.ref_set(RuntimeMember.TaggedConstructor, b.plan.method1(6, tagged, 1, -1, -6, ".ctor"));
+        b.ref_set(RuntimeMember.InitializeTaggedLiteralNumber, b.plan.method2(6, tagged, 1, -1, -6, -10, "InitializeLiteralNumber"));
+        b.ref_set(RuntimeMember.InitializeTaggedLiteralElement, b.plan.method2(6, tagged, 1, -1, -6, -5, "InitializeLiteralElement"));
         b.ref_set(RuntimeMember.TaggedBufferConstructor, b.plan.method1(6, tagged, 1, -1, -7, ".ctor"));
         b.ref_set(RuntimeMember.ArrayTryTags, b.plan.method2(6, js, 0, -13, -5, -3, "ArrayTryTags"));
         b.ref_set(RuntimeMember.ArrayIsNumberAt, b.plan.method2(6, js, 0, -2, -5, -6, "ArrayIsNumberAt"));
@@ -744,6 +746,8 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.ReversibleBufferConstructor, b.plan.method1(6, reversible, 1, -1, -7, ".ctor"));
         b.ref_set(RuntimeMember.ArrayHoleValue, b.plan.method0(6, array, 0, -5, "HoleValue"));
         b.ref_set(RuntimeMember.NumberArrayConstructor, b.plan.method1(6, numbers, 1, -1, -6, ".ctor"));
+        b.ref_set(RuntimeMember.InitializeLiteralNumber, b.plan.method2(6, numbers, 1, -1, -6, -10, "InitializeLiteralNumber"));
+        b.ref_set(RuntimeMember.AppendLiteralNumber, b.plan.method1(6, numbers, 1, -1, -10, "AppendLiteralNumber"));
         b.ref_set(RuntimeMember.IndexGet, b.plan.method2(6, js, 0, -5, -5, -5, "IndexGet"));
         b.ref_set(RuntimeMember.IndexGetNumber, b.plan.method2(6, js, 0, -10, -5, -10, "IndexGetNumber"));
         b.ref_set(RuntimeMember.IndexGetNumberKey, b.plan.method2(6, js, 0, -5, -5, -10, "IndexGetNumberKey"));

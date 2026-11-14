@@ -69,8 +69,8 @@ bool il_push_capacity_hint(int entry, Compiler c, IlBackend b)
                 if (!(item.kind == NodeKind.Undefined && item.constant))
                 {
                     b.op(0x25); b.emit(0x20, indexLocal);
-                    if (get_type(item.type, c).kind == TypeKind.Number) { il_expression(value, c, b); b.call(RuntimeMember.ArraySetTaggedNumberAt); }
-                    else { il_boxed(value, c, b); b.call(RuntimeMember.ArrayIndexSetAt); }
+                    if (get_type(item.type, c).kind == TypeKind.Number) { il_expression(value, c, b); b.call(RuntimeMember.InitializeTaggedLiteralNumber); }
+                    else { il_boxed(value, c, b); b.call(RuntimeMember.InitializeTaggedLiteralElement); }
                 }
                 indexLocal++; value = item.next;
             }
@@ -103,13 +103,13 @@ bool il_push_capacity_hint(int entry, Compiler c, IlBackend b)
                     b.emit(0x20, extra); b.call(RuntimeMember.ArraySpread);
                 }
                 else if (item.kind == NodeKind.Undefined && item.constant) { b.call(RuntimeMember.ArrayHole); }
-                else if (numeric) { il_as(value, get_type(type, c).element, c, b); b.call(RuntimeMember.NumberPush); b.op(0x26); }
+                else if (numeric) { il_as(value, get_type(type, c).element, c, b); b.call(RuntimeMember.AppendLiteralNumber); }
                 else { il_boxed(value, c, b); b.call(RuntimeMember.ArrayAppend); }
                 value = item.next; continue;
             }
             if (!(item.kind == NodeKind.Undefined && item.constant))
             {
-                b.op(0x25); b.emit(0x20, index); il_as(value, get_type(type, c).element, c, b); b.call(RuntimeMember.NumberIndexSetAt);
+                b.op(0x25); b.emit(0x20, index); il_as(value, get_type(type, c).element, c, b); b.call(RuntimeMember.InitializeLiteralNumber);
             }
             index++; value = item.next;
         }
