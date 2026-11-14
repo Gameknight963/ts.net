@@ -182,6 +182,13 @@ public static partial class Js
                     else accumulator = callback.InvokeArrayNumber(Undefined, (double)accumulator, packed[(int)i], source);
                     continue;
                 }
+                if (initialized && numericResult && (unboxed || accumulator is double) &&
+                    source is TaggedArray tagged && i <= int.MaxValue && tagged.TryReadNumberAt((int)i, out var numberValue))
+                {
+                    numberAccumulator = callback.InvokeNumber2(unboxed ? numberAccumulator : (double)accumulator, numberValue);
+                    unboxed = true;
+                    continue;
+                }
                 if (!TryIndexedValue(source, i, out object value)) continue;
                 if (!initialized) { accumulator = value; initialized = true; }
                 else if (numericResult && value is double number && (unboxed || accumulator is double))

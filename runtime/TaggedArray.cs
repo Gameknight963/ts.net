@@ -148,6 +148,14 @@ public sealed partial class TaggedArray : JsArray
     }
     internal object[] MaterializedDenseRange(double limit) => materialized != null ? materialized.DenseRange(limit) : limit >= 0 && limit <= length && limit <= tags.Length ? Materialize().DenseRange(limit) : null;
     public byte[] TryTags(double limit) => CanUseElementStorage && materialized == null && limit >= 0 && limit <= length && limit <= tags.Length ? tags : null;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal bool TryReadNumberAt(int index, out double? value)
+    {
+        value = null;
+        if (HasIndexedAccessors || materialized != null || (uint)index >= length || (uint)index >= (uint)tags.Length) return false;
+        if (tags[index] == 1) { value = numbers[index]; return true; }
+        return tags[index] == 2 && Js.IsUndefined(references[index]);
+    }
     public bool IsStringAt(int index)
     {
         if (TryReadDefinedElement((uint)index, out var defined)) return defined is string;
