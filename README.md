@@ -144,7 +144,6 @@ Runtime performance:
 | Construct and run a chain of 10K handlers | 0.759 ms | 0.306 ms | 0.40x |
 | Class numeric getter, 100K reads | 0.0702 ms | 0.0274 ms | 0.39x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
-| map, filter and sum, 10 passes over 10K integers from 0-255 | 5.60 ms | 2.05 ms | 0.37x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | 0.37x |
 | Mixed array, 100K elements and 5 traversals | 3.19 ms | 1.15 ms | 0.36x |
 | Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | 0.35x |
@@ -160,6 +159,7 @@ Runtime performance:
 | Serialize 10K numbers divided by 7, 20 times | 21.81 ms | 6.30 ms | 0.29x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
+| map, filter and sum, 10 passes over 10K integers from 0-255 | 1.84 ms | 0.463 ms | 0.25x |
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | 0.25x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
