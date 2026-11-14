@@ -165,6 +165,7 @@ public static partial class Js
             bool initialized = arguments.Length > 1;
             bool numericCallback = callback.SupportsArrayNumber();
             bool numericResult = numericCallback && callback.SupportsNumberResult();
+            bool valueNumberResult = callback.SupportsArrayReduceValueNumber();
             bool unboxed = false;
             double? numberAccumulator = null;
             object accumulator = FunctionArgument(arguments, 1);
@@ -194,6 +195,11 @@ public static partial class Js
                 else if (numericResult && value is double number && (unboxed || accumulator is double))
                 {
                     numberAccumulator = callback.InvokeNumber2(unboxed ? numberAccumulator : (double)accumulator, number);
+                    unboxed = true;
+                }
+                else if (valueNumberResult && (unboxed || accumulator is double))
+                {
+                    numberAccumulator = callback.InvokeArrayReduceValueNumber(unboxed ? numberAccumulator : (double)accumulator, value);
                     unboxed = true;
                 }
                 else

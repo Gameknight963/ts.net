@@ -7,6 +7,7 @@ using static Tsnet.Compiler.CompilerFunctions;
 internal sealed partial class IlBackend
 {
     internal readonly HashSet<int> array_value_callbacks = [];
+    internal readonly HashSet<int> array_reduce_value_callbacks = [];
 }
 
 internal static partial class CompilerFunctions
@@ -184,6 +185,11 @@ internal static partial class CompilerFunctions
             while (target.kind == NodeKind.Assert) target = get_node(target.left, c);
             int name = target.kind == NodeKind.Property && target.fourth == 0 ? target.name
                 : target.kind == NodeKind.Index && get_node(target.right, c).kind == NodeKind.String ? get_token(get_node(target.right, c).token, c).text : 0;
+            if (name != 0 && (is_text(name, "reduce", c) || is_text(name, "reduceRight", c))) {
+                int reducer = function(call.children);
+                if (reducer != 0) b.array_reduce_value_callbacks.Add(reducer);
+                continue;
+            }
             if (name == 0 || !(is_text(name, "map", c) || is_text(name, "filter", c) || is_text(name, "forEach", c) ||
                 is_text(name, "every", c) || is_text(name, "some", c) || is_text(name, "find", c) ||
                 is_text(name, "findIndex", c) || is_text(name, "findLast", c) || is_text(name, "findLastIndex", c))) continue;
@@ -200,6 +206,18 @@ internal static partial class CompilerFunctions
         Node parameter = get_node(function.children, c);
         return parameter.symbol != 0 && parameter.next == 0 && !parameter.constant && parameter.left == 0 && parameter.right == 0 &&
             parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
+    }
+    internal static bool il_reduce_value_callback(int symbol, Compiler c, IlBackend b)
+    {
+        if (!b.array_reduce_value_callbacks.Contains(symbol)) return false;
+        Node function = get_node(get_symbol(symbol, c).function, c);
+        if (function.fourth != 0 || function.right != 0 || get_type(function.type, c).kind != TypeKind.Number || function.children == 0) return false;
+        Node first = get_node(function.children, c);
+        if (first.next == 0 || get_type(first.type, c).kind != TypeKind.Number) return false;
+        Node second = get_node(first.next, c);
+        if (second.next != 0 || get_type(second.type, c).kind is TypeKind.Number or TypeKind.Void) return false;
+        return ordinary(first) && ordinary(second);
+        static bool ordinary(Node parameter) => parameter.symbol != 0 && !parameter.constant && parameter.left == 0 && parameter.right == 0 && parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
     }
     internal static bool il_function_returns(int entry, Compiler c)
     {
@@ -255,8 +273,9 @@ internal static partial class CompilerFunctions
         bool source_callback = il_source_array_callback(symbol, c);
         bool continuation = get_node(get_symbol(symbol, c).function, c).internal_continuation;
         bool value_callback = il_value_callback(symbol, c, b);
+        bool reduce_callback = il_reduce_value_callback(symbol, c, b);
         int receiver_count = il_numeric_receiver_function(symbol, c);
-        if (count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && receiver_count < 0) return;
+        if (count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !reduce_callback && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
         int parent = b.RuntimeToken(receiver_count >= 0 ? RuntimeMember.ReceiverFunctionType : RuntimeMember.FunctionType);
         if (!b.function_class_types.TryGetValue(symbol, out int type)) {
@@ -302,6 +321,17 @@ internal static partial class CompilerFunctions
             if (get_type(definition.type, c).kind == TypeKind.Void) b.call(RuntimeMember.Undefined);
             else b.box(definition.type, c);
             b.op(0x2a);
+        }
+        if (reduce_callback)
+        {
+            b.begin(b.plan.method0(5, type, 0xc6, -2, "SupportsArrayReduceValueNumber"));
+            b.emit(0x20, 1); b.op(0x2a);
+            b.begin(b.plan.method2(5, type, 0xc6, -10, -10, -5, "InvokeArrayReduceValueNumber"));
+            if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+            b.emit(0xfe09, 1); b.emit(0xfe09, 2);
+            Node second = get_node(get_node(definition.children, c).next, c);
+            b.from_object(second.type, c);
+            b.emit(0x28, b.function(symbol)); b.op(0x2a);
         }
         if (value_callback)
         {

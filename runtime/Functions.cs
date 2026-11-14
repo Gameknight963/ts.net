@@ -54,6 +54,9 @@ public partial class JsFunction : JsDescriptorObject
     public virtual bool SupportsArrayValueNumber() => false;
     public virtual double? InvokeArrayValueNumber(object value) =>
         Js.Cast<double?>(InvokeContinuation(value), "Array callback result is not a number");
+    public virtual bool SupportsArrayReduceValueNumber() => false;
+    public virtual double? InvokeArrayReduceValueNumber(double? accumulator, object value) =>
+        Js.Cast<double?>(InvokeWithReceiver(Js.Undefined, new[] { Js.BoxNumber(accumulator), value }), "Array callback result is not a number");
     public virtual bool SupportsArrayNumber() => false;
     public virtual object InvokeArrayNumber(object receiver, double first, double second, object source) =>
         InvokeWithReceiver(receiver, new[] { Js.BoxNumber(first), Js.BoxNumber(second), source });
