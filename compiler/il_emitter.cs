@@ -12,8 +12,8 @@ internal static partial class CompilerFunctions
         if (value.kind == NodeKind.Undefined && value.left == 0 && get_type(target, c).kind == TypeKind.Number) { b.empty(target, c); return; }
         if (value.kind == NodeKind.Conditional && get_type(target, c).kind == TypeKind.Number &&
             (get_type(value.type, c).kind == TypeKind.Any || get_type(value.type, c).kind == TypeKind.Unknown) &&
-            (get_type(get_node(value.right, c).type, c).kind == TypeKind.Number || get_node(value.right, c).kind == NodeKind.Undefined) &&
-            (get_type(get_node(value.third, c).type, c).kind == TypeKind.Number || get_node(value.third, c).kind == NodeKind.Undefined))
+            (get_type(get_node(value.right, c).type, c).kind is TypeKind.Number or TypeKind.Any or TypeKind.Unknown || get_node(value.right, c).kind == NodeKind.Undefined) &&
+            (get_type(get_node(value.third, c).type, c).kind is TypeKind.Number or TypeKind.Any or TypeKind.Unknown || get_node(value.third, c).kind == NodeKind.Undefined))
         {
             int alternate = b.label(), done = b.label(); il_condition(value.left, c, b); b.emit(0x39, alternate);
             il_as(value.right, target, c, b); b.emit(0x38, done); b.mark(alternate);
@@ -22,6 +22,17 @@ internal static partial class CompilerFunctions
         if (value.kind == NodeKind.Array && (get_type(target, c).kind == TypeKind.Array || get_type(target, c).kind == TypeKind.Any || get_type(target, c).kind == TypeKind.Unknown))
         {
             il_array_literal(entry, target, c, b); return;
+        }
+        // Keep numeric results unboxed; the fallback still checks the result type.
+        if (get_type(target, c).kind == TypeKind.Number && get_type(value.type, c).kind == TypeKind.Any &&
+            value.kind == NodeKind.Binary && is_text(get_token(value.token, c).text, text_plus, c))
+        {
+            if (get_type(get_node(value.right, c).type, c).kind == TypeKind.Number) {
+                il_boxed(value.left, c, b); il_expression(value.right, c, b); b.call(RuntimeMember.AddNumberRightChecked); return;
+            }
+            if (get_type(get_node(value.left, c).type, c).kind == TypeKind.Number) {
+                il_expression(value.left, c, b); il_boxed(value.right, c, b); b.call(RuntimeMember.AddNumberLeftChecked); return;
+            }
         }
         int source = value.type;
         il_expression(entry, c, b);
