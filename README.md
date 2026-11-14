@@ -144,16 +144,16 @@ Runtime performance:
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | 0.45x |
+| Serialize 1,000 three-field records 20 times, without a replacer | 2.28 ms | 0.985 ms | 0.43x |
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | 0.41x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
 | Create a Map, insert and read 10K entries, then delete half | 1.76 ms | 0.695 ms | 0.40x |
 | Class getter returning `this.base * 2 + 1`, 100K reads | 0.0682 ms | 0.0274 ms | 0.40x |
 | Construct and run a chain of 10K handlers | 0.759 ms | 0.306 ms | 0.40x |
-| Serialize 1,000 three-field records 20 times, without a replacer | 2.42 ms | 0.963 ms | 0.40x |
 | Class numeric getter, 100K reads | 0.0702 ms | 0.0274 ms | 0.39x |
+| Serialize 1,000 records with 16 numeric fields 20 times, without a replacer | 13.48 ms | 5.28 ms | 0.39x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | 0.37x |
-| Serialize 1,000 records with 16 numeric fields 20 times, without a replacer | 14.23 ms | 5.24 ms | 0.37x |
 | Mixed array, 100K elements and 5 traversals | 3.19 ms | 1.15 ms | 0.36x |
 | Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | 0.35x |
 | Numeric callback reading `arguments.length`, 100K calls | 1.26 ms | 0.435 ms | 0.35x |
