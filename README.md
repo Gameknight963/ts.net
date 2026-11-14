@@ -153,6 +153,7 @@ Runtime performance:
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | 0.37x |
 | Mixed array, 100K elements and 5 traversals | 3.19 ms | 1.15 ms | 0.36x |
+| Serialize 1,000 three-field records 20 times, without a replacer | 2.69 ms | 0.973 ms | 0.36x |
 | Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | 0.35x |
 | Numeric callback reading `arguments.length`, 100K calls | 1.26 ms | 0.435 ms | 0.35x |
 | Currency names, 10K cached calls across German, French, Russian and British English | 28.24 ms | 9.55 ms | 0.34x |
@@ -165,7 +166,6 @@ Runtime performance:
 | Add an `any` value to a number, 200K additions | 0.185 ms | 0.0548 ms | 0.30x |
 | Serialize 10K numbers divided by 7, 20 times | 21.81 ms | 6.30 ms | 0.29x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
-| Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 1.84 ms | 0.463 ms | 0.25x |
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | 0.25x |
