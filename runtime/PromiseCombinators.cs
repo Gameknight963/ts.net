@@ -90,7 +90,7 @@ public static partial class Js
                 record.DefineOwn(rejected ? "reason" : "value", value);
                 value = record;
             }
-            values.SetAt(index, value);
+            values.SetOwnElement((uint)index, value);
             Finish();
         }
         internal object[] Handlers(int index)
@@ -109,7 +109,7 @@ public static partial class Js
                     record.DefineOwn(rejected ? "reason" : "value", value);
                     value = record;
                 }
-                values.SetAt(index, value);
+                values.SetOwnElement((uint)index, value);
                 Finish();
                 return Undefined;
             }), null, "", 1);
