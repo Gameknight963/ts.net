@@ -10,6 +10,10 @@ function factory(offset: number): Function {
 }
 install(factory(11));
 console.log("closure", target.call({ base: 7 }, 3));
+install((receiver: any, value: any): number => receiver.base + value);
+console.log("any parameter", target.call({ base: 7 }, 3));
+install((receiver: any, value: unknown): number => receiver.base + (value as number));
+console.log("unknown parameter", target.call({ base: 7 }, 3));
 install((receiver: any, value: number): number => value);
 function missing(): number { return undefined as any; }
 console.log("missing", target.call(null, missing()));
