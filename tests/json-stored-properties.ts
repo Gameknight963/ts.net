@@ -30,3 +30,8 @@ const counter:any=JSON.parse('{"count":0,"name":"item"}');
 for(let i=0;i<10;i++)counter.count+=1;
 console.log("numeric updates",JSON.stringify(counter));
 for(const count of [4,5,16,17]){const value:any=JSON.parse('{}');for(let i=0;i<count;i++)value["field"+i]=i;console.log("size",count,JSON.stringify(value));}
+
+const schemas=JSON.parse('[{"a":1,"b":2},{"a":3,"b":4},{"b":5,"a":6},{"b":7,"a":8},{"nested":{"x":1,"y":2},"a":9},{"nested":{"x":3,"y":4},"a":10}]');
+console.log("schemas",JSON.stringify(schemas));
+const omissions:any=JSON.parse('[{"a":1,"b":2},{"a":3,"b":4},{"a":5,"b":6}]');omissions[0].a=undefined;omissions[2].b=undefined;
+console.log("positions",JSON.stringify(omissions));
