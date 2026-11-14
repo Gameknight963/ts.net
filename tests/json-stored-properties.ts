@@ -35,3 +35,12 @@ const schemas=JSON.parse('[{"a":1,"b":2},{"a":3,"b":4},{"b":5,"a":6},{"b":7,"a":
 console.log("schemas",JSON.stringify(schemas));
 const omissions:any=JSON.parse('[{"a":1,"b":2},{"a":3,"b":4},{"a":5,"b":6}]');omissions[0].a=undefined;omissions[2].b=undefined;
 console.log("positions",JSON.stringify(omissions));
+
+const reentrant:any=JSON.parse('{"a":1,"b":2}');reentrant.a={toJSON(){return JSON.stringify(JSON.parse('{"nested":"value"}'));}};
+console.log("reentrant",JSON.stringify(reentrant));
+try{JSON.stringify({a:1,b:{toJSON(){throw new Error("hook");}}});}catch{console.log("hook failure");}
+console.log("after failure",JSON.stringify(JSON.parse('{"ok":"now"}')));
+
+const largeOutput=JSON.stringify({text:"x".repeat(270000)});
+console.log("large output",largeOutput.length,JSON.parse(largeOutput).text.length);
+console.log("after large output",JSON.stringify({small:1}));
