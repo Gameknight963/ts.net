@@ -62,6 +62,7 @@ Runtime performance:
 | Mixed array, 100K elements and 100 reversals | 3.07 ms | 7.70 ms | 2.51x |
 | Cached list formatters, 10K three-element lists across four locales and all types/styles | 4.31 ms | 10.40 ms | 2.41x |
 | `Object.entries(value)`, 100K calls and reads | 8.09 ms | 16.71 ms | 2.07x |
+| Map 100K number/string/undefined values with a default parameter and sum | 0.801 ms | 1.65 ms | 2.06x |
 | Alternate between two class methods through a helper, 100K calls | 0.0696 ms | 0.1406 ms | 2.02x |
 | String lastIndexOf, 1M searches | 10.07 ms | 19.54 ms | 1.94x |
 | Gzip-compress 1 MiB of repeated ASCII A | 3.54 ms | 6.71 ms | 1.90x |
@@ -139,6 +140,7 @@ Runtime performance:
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | 0.45x |
+| Reduce 100K number/string/undefined values with a default parameter | 1.43 ms | 0.640 ms | 0.45x |
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | 0.41x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
 | Create a Map, insert and read 10K entries, then delete half | 1.76 ms | 0.695 ms | 0.40x |
