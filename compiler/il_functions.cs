@@ -230,18 +230,19 @@ internal static partial class CompilerFunctions
         return ordinary(first) && ordinary(second);
         static bool ordinary(Node parameter) => parameter.symbol != 0 && parameter.right == 0 && parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
     }
-    internal static bool il_value_pair_number(int symbol, Compiler c)
+    internal static int il_numeric_value_function(int symbol, Compiler c)
     {
         Node function = get_node(get_symbol(symbol, c).function, c);
-        if (function.fourth != 0 || function.right != 0 || get_type(function.type, c).kind != TypeKind.Number || function.children == 0) return false;
-        Node first = get_node(function.children, c);
-        if (first.next == 0) return false;
-        Node second = get_node(first.next, c);
-        if (get_type(first.type, c).kind == TypeKind.Void || get_type(second.type, c).kind == TypeKind.Void) return false;
-        return second.next == 0 && ordinary(first) && ordinary(second);
+        if (function.fourth != 0 || function.right != 0 || get_type(function.type, c).kind != TypeKind.Number) return -1;
+        int count = 0;
+        for (int parameter = function.children; parameter != 0; parameter = get_node(parameter, c).next)
+        {
+            Node p = get_node(parameter, c);
+            if (++count > 2 || get_type(p.type, c).kind == TypeKind.Void || p.symbol == 0 ||
+                p.right != 0 || p.third != 0 || p.fourth != 0 || p.children != 0) return -1;
+        }
         // Initializers run in the shared body, after the same argument conversions.
-        static bool ordinary(Node parameter) => parameter.symbol != 0 &&
-            parameter.right == 0 && parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
+        return count;
     }
     internal static bool il_function_returns(int entry, Compiler c)
     {
@@ -298,9 +299,10 @@ internal static partial class CompilerFunctions
         bool continuation = get_node(get_symbol(symbol, c).function, c).internal_continuation;
         bool value_callback = il_value_callback(symbol, c, b);
         bool reduce_callback = il_reduce_value_callback(symbol, c, b);
-        bool value_pair = b.function_values_needed.at(symbol) != 0 && il_value_pair_number(symbol, c);
+        int value_count = b.function_values_needed.at(symbol) != 0 ? il_numeric_value_function(symbol, c) : -1;
+        bool value_pair = value_count == 2;
         int receiver_count = il_numeric_receiver_function(symbol, c);
-        if (count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !reduce_callback && !value_pair && receiver_count < 0) return;
+        if (count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !reduce_callback && value_count < 0 && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
         int parent = b.RuntimeToken(receiver_count >= 0 ? RuntimeMember.ReceiverFunctionType : RuntimeMember.FunctionType);
         if (!b.function_class_types.TryGetValue(symbol, out int type)) {
@@ -410,9 +412,9 @@ internal static partial class CompilerFunctions
                 b.emit(0x28, b.function(symbol)); b.op(0x2a);
             }
         }
-        if (count >= 0 || value_pair)
+        if (count >= 0 || value_count >= 0)
         {
-            int numeric_count = count >= 0 ? count : 2;
+            int numeric_count = count >= 0 ? count : value_count;
             for (int arity = 0; arity <= 2; arity++)
             {
                 int method = arity == 0 ? b.plan.method0(5, type, 0xc6, -10, "InvokeNumber0")
