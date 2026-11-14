@@ -11,13 +11,13 @@ internal sealed class ScalarArrayValues(int declaration, int type, List<int> ele
 internal sealed partial class IlBackend
 {
     internal readonly Dictionary<int, ScalarArrayValues> scalar_arrays = [];
-    internal readonly Dictionary<int, (int Symbol, int Index)> scalar_array_reads = [];
+    internal readonly Dictionary<int, (int Symbol, int Index, int Key)> scalar_array_reads = [];
 }
 internal static partial class CompilerFunctions
 {
     internal static void il_prove_scalar_arrays(Compiler c, IlBackend b)
     {
-        // Only complete numeric literals used by fixed-index arithmetic qualify.
+        // Only complete numeric literals with proven in-range reads qualify.
         // Later statements in the same block preserve initialization ordering.
         var declarations = new Dictionary<int, int>();
         var statements = new Dictionary<int, (int Block, int Position)>();
@@ -58,7 +58,7 @@ internal static partial class CompilerFunctions
             blocks[node.symbol] = location;
         }
         var invalid = new HashSet<int>();
-        var reads = new Dictionary<int, List<(int Entry, int Index)>>();
+        var reads = new Dictionary<int, List<(int Entry, int Index, int Key)>>();
         for (int i = 1; i <= c.node_store.count(); i++) {
             Node name = get_node(i, c);
             if (name.kind != NodeKind.Name || !candidates.TryGetValue(name.symbol, out var array)) continue;
@@ -68,23 +68,33 @@ internal static partial class CompilerFunctions
             if (indexed.kind != NodeKind.Index || indexed.left != i || indexed.right == 0 || indexed.type == 0 || get_type(indexed.type, c).kind != TypeKind.Number) { invalid.Add(name.symbol); continue; }
             Node key = get_node(indexed.right, c);
             int use = b.node_parents.at(parent);
-            if (key.kind != NodeKind.Number || key.left != 0 || key.right != 0 || key.third != 0 || key.fourth != 0 || key.children != 0 ||
-                use == 0 || get_node(use, c).kind != NodeKind.Binary) { invalid.Add(name.symbol); continue; }
-            double index = number(get_token(key.token, c).text, c);
-            if (!double.IsFinite(index) || index < 0 || index >= array.Elements.Count || index != Math.Truncate(index)) { invalid.Add(name.symbol); continue; }
+            if (use == 0 || get_node(use, c).kind != NodeKind.Binary) { invalid.Add(name.symbol); continue; }
+            int index = -1, dynamicKey = 0;
+            if (scalar_array_index_literal(key)) {
+                double value = number(get_token(key.token, c).text, c);
+                if (double.IsFinite(value) && value >= 0 && value < array.Elements.Count && value == Math.Truncate(value)) index = (int)value;
+            } else if (array.Elements.Count == 2 && key.kind == NodeKind.Binary && key.left != 0 && key.right != 0 &&
+                key.third == 0 && key.fourth == 0 && key.children == 0 && is_text(get_token(key.token, c).text, text_bit_and, c) &&
+                get_node(key.left, c).type != 0 && get_type(get_node(key.left, c).type, c).kind == TypeKind.Number) {
+                Node mask = get_node(key.right, c);
+                if (scalar_array_index_literal(mask) && number(get_token(mask.token, c).text, c) == 1) dynamicKey = indexed.right;
+            }
+            if (index < 0 && dynamicKey == 0) { invalid.Add(name.symbol); continue; }
             var scope = blocks[name.symbol]; int current = i;
             while (current != 0 && b.node_parents.at(current) != scope.Block) current = b.node_parents.at(current);
             if (current == 0 || !statements.TryGetValue(current, out var location) ||
                 location.Block != scope.Block || location.Position <= scope.Position) { invalid.Add(name.symbol); continue; }
             if (!reads.TryGetValue(name.symbol, out var items)) reads[name.symbol] = items = [];
-            items.Add((parent, (int)index));
+            items.Add((parent, index, dynamicKey));
         }
         foreach (var pair in candidates) {
             if (invalid.Contains(pair.Key) || !reads.TryGetValue(pair.Key, out var items)) continue;
             b.scalar_arrays[pair.Key] = pair.Value;
-            foreach (var read in items) b.scalar_array_reads[read.Entry] = (pair.Key, read.Index);
+            foreach (var read in items) b.scalar_array_reads[read.Entry] = (pair.Key, read.Index, read.Key);
         }
     }
+    static bool scalar_array_index_literal(Node node) => node.kind == NodeKind.Number && node.left == 0 && node.right == 0 &&
+        node.third == 0 && node.fourth == 0 && node.children == 0;
     internal static bool il_scalar_array_initialize(int entry, Compiler c, IlBackend b)
     {
         Node node = get_node(entry, c);
@@ -101,6 +111,14 @@ internal static partial class CompilerFunctions
         if (!b.scalar_array_reads.TryGetValue(entry, out var read)) return false;
         ScalarArrayValues array = b.scalar_arrays[read.Symbol];
         if (array.Method != b.method || array.Slots.Length != array.Elements.Count) throw new CompilationException("Missing local array storage");
-        b.emit(0xfe0c, array.Slots[read.Index]); b.convert(array.Type, get_node(entry, c).type, c); return true;
+        if (read.Key == 0) b.emit(0xfe0c, array.Slots[read.Index]);
+        else {
+            // A numeric value masked with 1 selects exactly one of two slots.
+            int second = b.label(), done = b.label();
+            il_integer(read.Key, c, b); b.emit(0x3a, second);
+            b.emit(0xfe0c, array.Slots[0]); b.emit(0x38, done);
+            b.mark(second); b.emit(0xfe0c, array.Slots[1]); b.mark(done);
+        }
+        b.convert(array.Type, get_node(entry, c).type, c); return true;
     }
 }
