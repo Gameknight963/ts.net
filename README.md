@@ -132,6 +132,7 @@ Runtime performance:
 | Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | 0.59x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 0.717 ms | 0.415 ms | 0.58x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | 0.54x |
+| Read varying keys through a helper from a 64-field object, 100K reads | 2.76 ms | 1.48 ms | 0.53x |
 | Parse, filter, group, sort and serialize 1K records, 10 passes | 7.86 ms | 4.12 ms | 0.52x |
 | Split 10K comma-separated strings, keep three parts, and sum lengths | 4 ms | 2 ms | 0.50x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | 0.50x |
