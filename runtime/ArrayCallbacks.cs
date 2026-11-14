@@ -190,7 +190,9 @@ public static partial class Js
                     unboxed = true;
                     continue;
                 }
-                if (!TryIndexedValue(source, i, out object value)) continue;
+                object value = null;
+                if (!(valueNumberResult && i <= int.MaxValue && JsArray.TryReadOwnDenseValue(source, (int)i, out value)) &&
+                    !TryIndexedValue(source, i, out value)) continue;
                 if (!initialized) { accumulator = value; initialized = true; }
                 else if (numericResult && value is double number && (unboxed || accumulator is double))
                 {

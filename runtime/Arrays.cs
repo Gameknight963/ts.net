@@ -224,6 +224,18 @@ public partial class JsArray : TsObject
         return value;
     }
     public object GetIndex(object key) => Get(Js.PropertyKey(key));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool TryReadOwnDenseValue(TsObject source, int index, out object value)
+    {
+        value = null;
+        if (source.GetType() != typeof(JsArray)) return false;
+        var array = (JsArray)source;
+        if (array.HasIndexedAccessors) return false;
+        object[] slots = array.values.Dense;
+        if ((uint)index >= array.values.Length || (uint)index >= (uint)slots.Length) return false;
+        value = slots[index];
+        return !ReferenceEquals(value, Hole);
+    }
     public object ElementAt(uint index) => Read(index);
     internal virtual void ReserveCapacity(int capacity) => values.Reserve(capacity);
     internal object[] DenseRange(double limit) => limit >= 0 && limit <= values.Length && limit <= values.Dense.Length ? values.Dense : null;
