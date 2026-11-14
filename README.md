@@ -89,6 +89,7 @@ Runtime performance:
 | Create/read a two-field object in a 100K-iteration loop, with a read-only Reflect alias in the program | 0.0706 ms | 0.0717 ms | 1.02x |
 | Create/read a two-field object in a 100K-iteration loop, with a constant-key deletion elsewhere in the program | 0.0706 ms | 0.0720 ms | 1.02x |
 | Masked integer remainder, 1M iterations | 1.10 ms | 1.11 ms | 1.01x |
+| Sum 100K local two-number array literals by fixed index | 0.0679 ms | 0.0689 ms | 1.01x |
 | Literal squares, 2M iterations | 1.40 ms | 1.41 ms | 1.00x |
 | `any` property loop, 350K iterations | 0.3 ms | 0.3 ms | 1.00x |
 | Numeric array `.at(-1)`, 1M calls | 3.84 ms | 3.82 ms | 0.99x |
