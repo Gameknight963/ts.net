@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 
 // Dense storage handles ordinary arrays. Distant indices stay sparse so a write
 // near the JavaScript length limit does not request a multi-gigabyte buffer.
-partial struct ArrayStorage<T>
+partial struct ArrayStorage<T, TEmpty> where TEmpty : struct, IArrayMissing<T>
 {
     T[] dense;
     Dictionary<uint, T> sparse;
-    readonly T missing;
+    static T missing => TEmpty.Missing;
     public uint Length;
     public T[] Dense => dense;
     internal int SparseCount => sparse?.Count ?? 0;
@@ -37,24 +37,23 @@ partial struct ArrayStorage<T>
                 if (key < (uint)capacity) { dense[key] = sparse[key]; sparse.Remove(key); }
         }
     }
-    public ArrayStorage(int length, T missing)
+    public ArrayStorage(int length)
     {
-        this.missing = missing;
         Length = (uint)length;
         dense = length == 0 ? Array.Empty<T>() : new T[Math.Min(length, 4096)];
         Array.Fill(dense, missing);
     }
-    public ArrayStorage(T[] items, T missing)
+    public ArrayStorage(T[] items)
     {
-        this.missing = missing;dense = items;Length = (uint)items.Length;
+        dense = items;Length = (uint)items.Length;
     }
-    public ArrayStorage<T> Slice(uint start, uint count)
+    public ArrayStorage<T, TEmpty> Slice(uint start, uint count)
     {
         uint end = Math.Min(Length, (uint)dense.Length);
         int copied = start < end ? (int)Math.Min(count, end - start) : 0;
         T[] buffer = copied == 0 ? Array.Empty<T>() : GC.AllocateUninitializedArray<T>(copied);
         if (copied != 0) Array.Copy(dense, (int)start, buffer, 0, copied);
-        var result = new ArrayStorage<T>(buffer, missing) { Length = count };
+        var result = new ArrayStorage<T, TEmpty>(buffer) { Length = count };
         if (sparse != null)
             foreach (var item in sparse)
                 if (item.Key >= start && item.Key - start < count) result.Set(item.Key - start, item.Value);
@@ -136,11 +135,11 @@ public partial class JsArray : TsObject
 {
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.ArrayPrototype;
     static readonly object Hole = new object();
-    private protected ArrayStorage<object> values;
-    public JsArray(int length) { values = new ArrayStorage<object>(length, Hole); }
+    private protected ObjectArrayStorage values;
+    public JsArray(int length) { values = new ObjectArrayStorage(length); }
     // Generated code transfers its freshly initialized buffer to this array.
-    public JsArray(object[] items) { values = new ArrayStorage<object>(items, Hole); }
-    private protected JsArray(ArrayStorage<object> storage) { values = storage; }
+    public JsArray(object[] items) { values = new ObjectArrayStorage(items); }
+    private protected JsArray(ObjectArrayStorage storage) { values = storage; }
     public static object HoleValue() => Hole;
     protected JsArray() { }
     protected virtual uint Count => values.Length;
@@ -315,13 +314,14 @@ public sealed partial class NumberArray : JsArray
     // holes and explicit undefined. Public reads use the nullable scalar ABI.
     const long MissingBits = 0x7ff8000000000001;
     static readonly double Missing = BitConverter.Int64BitsToDouble(MissingBits);
+    internal static double MissingValue => Missing;
     static readonly double Undefined = BitConverter.Int64BitsToDouble(MissingBits + 1);
-    ArrayStorage<double> numbers;
+    NumberArrayStorage numbers;
     uint packedPrefix;
-    public NumberArray(int length) { numbers = new ArrayStorage<double>(length, Missing); }
-    NumberArray(ArrayStorage<double> storage, uint prefix) { numbers = storage;packedPrefix = prefix; }
+    public NumberArray(int length) { numbers = new NumberArrayStorage(length); }
+    NumberArray(NumberArrayStorage storage, uint prefix) { numbers = storage;packedPrefix = prefix; }
     internal static NumberArray FromSingleNumber(double? value) =>
-        new(new ArrayStorage<double>(new[] { Encode(value) }, Missing), value.HasValue ? 1u : 0u);
+        new(new NumberArrayStorage(new[] { Encode(value) }), value.HasValue ? 1u : 0u);
     // Compiler-only writes to a fresh array literal; inherited setters do not run.
     public void InitializeLiteralNumber(int index, double? value)
     {

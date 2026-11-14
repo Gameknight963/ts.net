@@ -50,7 +50,7 @@ public abstract partial class TsObject
     }
 }
 
-partial struct ArrayStorage<T>
+partial struct ArrayStorage<T, TEmpty>
 {
     internal double CountPresent(Func<T, bool> present)
     {

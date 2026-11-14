@@ -73,6 +73,6 @@ public sealed partial class NumberArray
             fields[i]=Encode(value);
             if (value.HasValue && prefix==(uint)i) prefix++;
         }
-        return new NumberArray(new ArrayStorage<double>(fields, Missing), prefix);
+        return new NumberArray(new NumberArrayStorage(fields), prefix);
     }
 }

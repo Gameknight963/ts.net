@@ -7,7 +7,7 @@ public sealed partial class ReversibleArray : JsArray
     bool reversed;
     public ReversibleArray(int length) : base(length) { }
     public ReversibleArray(object[] items) : base(items) { }
-    ReversibleArray(ArrayStorage<object> storage) : base(storage) { }
+    ReversibleArray(ObjectArrayStorage storage) : base(storage) { }
     uint PhysicalIndex(uint index) => reversed && index < Count ? Count - 1 - index : index;
     void NormalizeOrder()
     {

@@ -1,6 +1,6 @@
 using System;
 
-partial struct ArrayStorage<T>
+partial struct ArrayStorage<T, TEmpty>
 {
     public void Reverse<TMatch>(ref TMatch hole) where TMatch : struct, IArrayMatch<T>
     {
@@ -11,7 +11,7 @@ partial struct ArrayStorage<T>
         }
         // Mirror stored elements, not the logical range: sparse arrays can
         // have billions of holes. Rebuild before replacing the old storage.
-        var reversed = new ArrayStorage<T>(new T[dense.Length], missing) { Length = Length };
+        var reversed = new ArrayStorage<T, TEmpty>(new T[dense.Length]) { Length = Length };
         Array.Fill(reversed.dense, missing);
         for (uint i = 0; i < (uint)dense.Length; i++)
             if (!hole.Matches(dense[i])) reversed.Set(Length - 1 - i, dense[i]);

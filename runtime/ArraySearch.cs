@@ -7,7 +7,7 @@ interface IArrayMatch<T>
     bool Matches(T value);
 }
 
-partial struct ArrayStorage<T>
+partial struct ArrayStorage<T, TEmpty>
 {
     public double Find<TMatch>(uint start, uint length, ref TMatch match) where TMatch : struct, IArrayMatch<T>
     {
