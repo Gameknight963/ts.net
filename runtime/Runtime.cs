@@ -515,6 +515,14 @@ public static partial class Js
         return Cast<double?>(Add(BoxNumber(left), right), "checked conversion failed");
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object AddNumberRight(object left, double? right) => left is double number
+        ? number + NumberValue(right) : Add(left, BoxNumber(right));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object AddNumberLeft(double? left, object right) => right is double number
+        ? NumberValue(left) + number : Add(BoxNumber(left), right);
+
     public static object Add(object left, object right)
     {
         if (left is TsObject first) left = ToPrimitive(first, "default");

@@ -920,7 +920,13 @@ internal static partial class CompilerFunctions
             }
             else if (is_text(op, text_plus, c) && get_type(n.type, c).kind == TypeKind.Any)
             {
-                il_boxed(n.left, c, b); il_boxed(n.right, c, b); b.call(RuntimeMember.Add);
+                if (get_type(get_node(n.right, c).type, c).kind == TypeKind.Number) {
+                    il_boxed(n.left, c, b); il_expression(n.right, c, b); b.call(RuntimeMember.AddNumberRight);
+                }
+                else if (get_type(get_node(n.left, c).type, c).kind == TypeKind.Number) {
+                    il_expression(n.left, c, b); il_boxed(n.right, c, b); b.call(RuntimeMember.AddNumberLeft);
+                }
+                else { il_boxed(n.left, c, b); il_boxed(n.right, c, b); b.call(RuntimeMember.Add); }
             }
             else if (is_text(op, text_plus, c) && get_type(n.type, c).kind == TypeKind.String)
             {
