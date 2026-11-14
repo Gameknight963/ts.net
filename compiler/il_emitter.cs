@@ -23,6 +23,13 @@ internal static partial class CompilerFunctions
         {
             il_array_literal(entry, target, c, b); return;
         }
+        if (value.kind == NodeKind.Index && get_type(target, c).kind == TypeKind.Number &&
+            get_type(value.type, c).kind is TypeKind.Any or TypeKind.Unknown &&
+            get_type(get_node(value.left, c).type, c).kind is TypeKind.Any or TypeKind.Unknown or TypeKind.Shape &&
+            get_type(get_node(value.right, c).type, c).kind == TypeKind.String)
+        {
+            il_boxed(value.left, c, b); il_boxed(value.right, c, b); b.call(RuntimeMember.IndexGetNumberValue); return;
+        }
         // Keep numeric results unboxed; the fallback still checks the result type.
         if (get_type(target, c).kind == TypeKind.Number && get_type(value.type, c).kind == TypeKind.Any &&
             value.kind == NodeKind.Binary && is_text(get_token(value.token, c).text, text_plus, c))
