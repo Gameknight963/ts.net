@@ -51,3 +51,19 @@ for (let i=0;i<looseItems.length;i++) {
     console.log('loose array', typeof looseItems[i] == "number", "number" != typeof looseItems[i]);
 }
 console.log('loose getters', looseGets);
+
+async function looseAwait(): Promise<void> {
+    console.log('loose await start');
+    console.log('loose await number', typeof await Promise.resolve(3) == "number");
+    console.log('loose await text', "number" != typeof await Promise.resolve('text'));
+    console.log('loose await missing', typeof await Promise.resolve(undefined) == "number");
+}
+looseAwait();
+console.log('loose await scheduled');
+function* looseYield(): Generator<number, boolean, any> {
+    const first = typeof (yield 1) == "number";
+    const second = "number" != typeof (yield 2);
+    return first && second;
+}
+const looseIterator = looseYield();
+console.log('loose yield', JSON.stringify(looseIterator.next()), JSON.stringify(looseIterator.next(3)), JSON.stringify(looseIterator.next('text')));
