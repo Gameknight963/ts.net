@@ -176,6 +176,30 @@ public static partial class Js
             output.Append(']');
             return true;
         }
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        bool WriteScalarObject(TsObject value)
+        {
+            if (replacer != null || propertyList != null || gap.Length != 0 || !value.HasOnlyJsonScalars()) return false;
+            var names = value.JsonPropertyNames(previousNames);
+            if (names == null) return false;
+            bool repeated = ReferenceEquals(names, previousNames), written = false;
+            previousNames = names;
+            output.Append('{');
+            foreach (string key in names)
+            {
+                value.TryReadOwnDataSlot(key, out var item);
+                if (IsUndefined(item)) continue;
+                if (written) output.Append(','); written = true;
+                if (repeated) WritePropertyName(key);
+                else { QuoteJson(output, key); output.Append(':'); }
+                if (item == null) output.Append("null");
+                else if (item is string text) QuoteJson(output, text);
+                else if (item is double number) output.Append(double.IsFinite(number) ? NumberKeyString(number) : "null");
+                else output.Append((bool)item ? "true" : "false");
+            }
+            output.Append('}');
+            return true;
+        }
         bool Enter(TsObject value)
         {
             if (active != null) return active.Add(value);
@@ -202,6 +226,7 @@ public static partial class Js
             {
                 if (!Enter(obj)) throw new InvalidOperationException("Cannot serialize a cyclic object");
                 if (obj is NumberArray or TaggedArray && WritePackedNumbers((JsArray)obj)) { active?.Remove(obj); return; }
+                if (WriteScalarObject(obj)) { active?.Remove(obj); return; }
                 var frame = new JsonWriteFrame(obj, propertyList, previousNames);
                 if (frame.Names != null) previousNames = frame.Names;
                 frames.Add(frame); output.Append(frame.Array ? '[' : '{');
@@ -265,4 +290,11 @@ public static partial class Js
             return output.ToString();
         }
     }
+}
+
+public abstract partial class TsObject
+{
+    // No user code can run between this guard and writing scalar data properties.
+    internal bool HasOnlyJsonScalars() => (extra == null || extra.HasOnlyJsonScalars()) &&
+        GetType() == typeof(JsDynamicObject) && !((JsDynamicObject)this).HasPropertyDescriptors && !HasOwnAccessors;
 }

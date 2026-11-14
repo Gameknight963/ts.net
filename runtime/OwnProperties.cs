@@ -163,6 +163,16 @@ sealed class OwnProperties
             default: key3=key;value3=value;break;
         }
     }
+    internal bool HasOnlyJsonScalars()
+    {
+        if (Count > 16 || !IsJsonScalar(value0) || !IsJsonScalar(value1) || !IsJsonScalar(value2) || !IsJsonScalar(value3)) return false;
+        if (tail != null) {
+            foreach (object value in tail.Values) if (!IsJsonScalar(value)) return false;
+        }
+        else if (tailOrder is SingleProperty single && !IsJsonScalar(single.Value)) return false;
+        return true;
+    }
+    static bool IsJsonScalar(object value) => value == null || value is string or double or bool or NumberCell || Js.IsUndefined(value);
     object InlineValue(int index) => index switch {0=>value0,1=>value1,2=>value2,_=>value3};
     public bool Remove(string key)
     {
