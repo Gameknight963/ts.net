@@ -74,7 +74,6 @@ public static partial class Js
         HashSet<TsObject> active;
         object[] previousNames;
         KeyValuePair<string, string>[] quotedNames;
-        int quotedNameCount;
         internal JsonWriter(object replacement, object space)
         {
             replacer = replacement as JsFunction;
@@ -119,19 +118,18 @@ public static partial class Js
             return value;
         }
         static bool Omitted(object value) => IsUndefined(value) || value is JsFunction or JsSymbol;
-        void WritePropertyName(string key)
+        void WritePropertyName(string key, int position)
         {
-            // Repeated records share short names. Bound both cache size and text length.
-            bool cacheable = key.Length <= 128;
-            if (cacheable && quotedNames != null)
-                for (int i = 0; i < quotedNameCount; i++)
-                    if (ReferenceEquals(quotedNames[i].Key, key)) { output.Append(quotedNames[i].Value); return; }
+            // A slot is filled once, so changing schemas cannot grow this cache.
+            bool cacheable = key.Length <= 128 && (uint)position < 16;
+            if (cacheable && quotedNames != null && ReferenceEquals(quotedNames[position].Key, key))
+            { output.Append(quotedNames[position].Value); return; }
             int start = output.Length;
             QuoteJson(output, key); output.Append(gap.Length != 0 ? ": " : ":");
-            if (cacheable && quotedNameCount < 4)
+            if (cacheable)
             {
-                quotedNames ??= new KeyValuePair<string, string>[4];
-                quotedNames[quotedNameCount++] = new(key, output.ToString(start, output.Length - start));
+                quotedNames ??= new KeyValuePair<string, string>[16];
+                if (quotedNames[position].Key == null) quotedNames[position] = new(key, output.ToString(start, output.Length - start));
             }
         }
         void Indent(int depth) { for (int i = 0; i < depth; i++) output.Append(gap); }
@@ -185,12 +183,13 @@ public static partial class Js
             bool repeated = ReferenceEquals(names, previousNames), written = false;
             previousNames = names;
             output.Append('{');
-            foreach (string key in names)
+            for (int position = 0; position < names.Length; position++)
             {
+                string key = (string)names[position];
                 value.TryReadOwnDataSlot(key, out var item);
                 if (IsUndefined(item)) continue;
                 if (written) output.Append(','); written = true;
-                if (repeated) WritePropertyName(key);
+                if (repeated) WritePropertyName(key, position);
                 else { QuoteJson(output, key); output.Append(':'); }
                 if (item == null) output.Append("null");
                 else if (item is string text) QuoteJson(output, text);
@@ -282,7 +281,7 @@ public static partial class Js
                 if (gap.Length != 0) { output.Append('\n'); Indent(frames.Count); }
                 if (!frame.Array)
                 {
-                    if (frame.RepeatedNames) WritePropertyName(key);
+                    if (frame.RepeatedNames) WritePropertyName(key, (int)position);
                     else { QuoteJson(output, key); output.Append(gap.Length != 0 ? ": " : ":"); }
                 }
                 WriteValue(value);
