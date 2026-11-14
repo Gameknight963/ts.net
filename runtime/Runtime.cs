@@ -269,12 +269,17 @@ public static partial class Js
     }
     public static object ArrayIndexGetNumberKey(object receiver, double? index)
     {
+        if (receiver is TaggedArray compact && index.HasValue) {
+            double number = index.Value;
+            if (number >= 0 && number < uint.MaxValue && number == (uint)number)
+                return compact.ElementAt((uint)number);
+        }
         if (receiver is JsArray array && index.HasValue) {
             double number = index.Value;
             // These built-in representations use the ordinary numeric
             // property lookup. Unknown CLR subclasses keep virtual Get.
             if (number >= 0 && number < uint.MaxValue && number == (uint)number &&
-                (array is TaggedArray || array.GetType() == typeof(JsArray) || array is NumberArray or ReversibleArray or JsTemplateArray))
+                (array.GetType() == typeof(JsArray) || array is NumberArray or ReversibleArray or JsTemplateArray))
                 return array.ElementAt((uint)number);
         }
         return IndexGetNumberKey(receiver, index);
