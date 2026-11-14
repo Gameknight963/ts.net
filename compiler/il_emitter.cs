@@ -369,7 +369,8 @@ internal static partial class CompilerFunctions
         Node n = get_node(entry, c);
         if (n.kind != NodeKind.Binary) { return false; }
         int op = get_token(n.token, c).text;
-        if (!is_text(op, text_strict_equal, c) && !is_text(op, text_strict_not_equal, c)) { return false; }
+        if (!is_text(op, text_strict_equal, c) && !is_text(op, text_strict_not_equal, c) &&
+            !is_text(op, text_loose_equal, c) && !is_text(op, text_loose_not_equal, c)) { return false; }
         Node left = get_node(n.left, c); Node right = get_node(n.right, c); int value = 0;
         if (left.kind == NodeKind.TypeOf && right.kind == NodeKind.String && is_text(get_token(right.token, c).text, text_number, c)) { value = left.left; }
         if (right.kind == NodeKind.TypeOf && left.kind == NodeKind.String && is_text(get_token(left.token, c).text, text_number, c)) { value = right.left; }
