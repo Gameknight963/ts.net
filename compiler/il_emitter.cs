@@ -8,15 +8,26 @@ internal static partial class CompilerFunctions
 {
     internal static void il_as(int entry, int target, Compiler c, IlBackend b)
     {
-        if (get_node(entry, c).kind == NodeKind.Array && (get_type(target, c).kind == TypeKind.Array || get_type(target, c).kind == TypeKind.Any || get_type(target, c).kind == TypeKind.Unknown))
+        Node value = get_node(entry, c);
+        if (value.kind == NodeKind.Undefined && value.left == 0 && get_type(target, c).kind == TypeKind.Number) { b.empty(target, c); return; }
+        if (value.kind == NodeKind.Conditional && get_type(target, c).kind == TypeKind.Number &&
+            (get_type(value.type, c).kind == TypeKind.Any || get_type(value.type, c).kind == TypeKind.Unknown) &&
+            (get_type(get_node(value.right, c).type, c).kind == TypeKind.Number || get_node(value.right, c).kind == NodeKind.Undefined) &&
+            (get_type(get_node(value.third, c).type, c).kind == TypeKind.Number || get_node(value.third, c).kind == NodeKind.Undefined))
+        {
+            int alternate = b.label(), done = b.label(); il_condition(value.left, c, b); b.emit(0x39, alternate);
+            il_as(value.right, target, c, b); b.emit(0x38, done); b.mark(alternate);
+            il_as(value.third, target, c, b); b.mark(done); return;
+        }
+        if (value.kind == NodeKind.Array && (get_type(target, c).kind == TypeKind.Array || get_type(target, c).kind == TypeKind.Any || get_type(target, c).kind == TypeKind.Unknown))
         {
             il_array_literal(entry, target, c, b); return;
         }
-        int source = get_node(entry, c).type;
+        int source = value.type;
         il_expression(entry, c, b);
         if (get_type(source, c).kind == TypeKind.Void && get_type(target, c).kind != TypeKind.Void) { b.empty(target, c); return; }
         // The freshly allocated class implements every compatible shape interface.
-        if (get_node(entry, c).kind == NodeKind.Object && fits(source, target, c)) { return; }
+        if (value.kind == NodeKind.Object && fits(source, target, c)) { return; }
         b.convert(source, target, c);
     }
     internal static void il_boxed(int entry, Compiler c, IlBackend b)
