@@ -239,7 +239,9 @@ internal static partial class CompilerFunctions
         Node second = get_node(first.next, c);
         if (get_type(first.type, c).kind == TypeKind.Void || get_type(second.type, c).kind == TypeKind.Void) return false;
         return second.next == 0 && ordinary(first) && ordinary(second);
-        static bool ordinary(Node parameter) => parameter.symbol != 0 && !parameter.constant && parameter.left == 0 && parameter.right == 0 && parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
+        // Initializers run in the shared body, after the same argument conversions.
+        static bool ordinary(Node parameter) => parameter.symbol != 0 &&
+            parameter.right == 0 && parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
     }
     internal static bool il_function_returns(int entry, Compiler c)
     {
@@ -338,22 +340,32 @@ internal static partial class CompilerFunctions
         if (value_pair)
         {
             Vector<int> pair = new Vector<int>(); pair.push(-5); pair.push(-5); pair.push(-5);
-            b.begin(b.plan.method(5, type, 0xc6, -10, pair.view(), "InvokeValuePairNumber"));
+            int pair_method = b.plan.method(5, type, 0xc6, -10, pair.view(), "InvokeValuePairNumber");
+            b.begin(pair_method);
             if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
             Node first = get_node(definition.children, c), second = get_node(first.next, c);
             b.emit(0xfe09, 2); b.from_object(first.type, c);
             b.emit(0xfe09, 3); b.from_object(second.type, c);
             b.emit(0x28, b.function(symbol)); b.op(0x2a);
+            pair.push(-2);
+            b.begin(b.plan.method(5, type, 0xc6, -10, pair.view(), "InvokeValuePairNumber"));
+            for (int argument = 0; argument < 4; argument++) b.emit(0xfe09, argument);
+            b.emit(0x28, pair_method); b.op(0x2a);
             TypeKind second_kind = get_type(second.type, c).kind;
             if (second_kind is TypeKind.Number or TypeKind.Any or TypeKind.Unknown)
             {
                 Vector<int> mixed = new Vector<int>(); mixed.push(-5); mixed.push(-5); mixed.push(-10);
-                b.begin(b.plan.method(5, type, 0xc6, -10, mixed.view(), "InvokeValueNumber"));
+                int mixed_method = b.plan.method(5, type, 0xc6, -10, mixed.view(), "InvokeValueNumber");
+                b.begin(mixed_method);
                 if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
                 b.emit(0xfe09, 2); b.from_object(first.type, c);
                 b.emit(0xfe09, 3);
                 if (second_kind != TypeKind.Number) b.call(RuntimeMember.BoxNumber);
                 b.emit(0x28, b.function(symbol)); b.op(0x2a);
+                mixed.push(-2);
+                b.begin(b.plan.method(5, type, 0xc6, -10, mixed.view(), "InvokeValueNumber"));
+                for (int argument = 0; argument < 4; argument++) b.emit(0xfe09, argument);
+                b.emit(0x28, mixed_method); b.op(0x2a);
             }
         }
         if (value_callback || continuation && definition.fourth == 0 && definition.children != 0 &&
@@ -639,6 +651,18 @@ internal static partial class CompilerFunctions
             if (directMethod != 0) { b.emit(0x28, directMethod); return; }
             b.call(receiver>=0 ? (count==0 ? RuntimeMember.CallMethodNumber0 : count==1 ? RuntimeMember.CallMethodNumber1 : RuntimeMember.CallMethodNumber2) :
                 (count == 0 ? RuntimeMember.CallFunctionNumber0 : count == 1 ? RuntimeMember.CallFunctionNumber1 : RuntimeMember.CallFunctionNumber2)); return;
+        }
+        if (count == 2 && get_type(n.type, c).kind == TypeKind.Number)
+        {
+            Node first = get_node(n.children, c), second = get_node(first.next, c);
+            if (first.kind != NodeKind.Spread && second.kind != NodeKind.Spread) {
+                if (receiver < 0) b.call(RuntimeMember.Undefined);
+                il_boxed(n.children, c, b);
+                bool number = get_type(second.type, c).kind == TypeKind.Number;
+                if (number) il_expression(first.next, c, b); else il_boxed(first.next, c, b);
+                b.emit(0x20, receiver >= 0 ? 1 : 0);
+                b.call(number ? RuntimeMember.CallValueNumber : RuntimeMember.CallValuePairNumber); return;
+            }
         }
         if (count == 1 && get_type(get_node(n.children, c).type, c).kind == TypeKind.Number)
         {
