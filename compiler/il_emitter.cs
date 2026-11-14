@@ -649,6 +649,7 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.Array) { il_array_literal(entry, n.type, c, b); }
         else if (n.kind == NodeKind.Index)
         {
+            if (il_scalar_array_read(entry, c, b)) return;
             int dense = il_dense_slot(entry, c, b);
             if (dense >= 0) { b.emit(0xfe0c, dense); il_integer(n.right, c, b); b.op(0x9a); b.call(RuntimeMember.ArrayDecode); b.from_object(n.type, c); return; }
             int packed = il_packed_slot(entry, c, b);
@@ -1048,6 +1049,7 @@ internal static partial class CompilerFunctions
                 if (b.global_vars.at(n.symbol) != 0 && initial.kind == NodeKind.Undefined && initial.constant) { return; }
                 il_as(n.left, n.type, c, b); b.initialize(n.symbol); return;
             }
+            if (il_scalar_array_initialize(entry, c, b)) return;
             if (b.iteration_vars.at(n.symbol) != 0)
             {
                 Node initial = get_node(n.left, c);
@@ -1139,6 +1141,7 @@ internal static partial class CompilerFunctions
         il_prepare_array_value_callbacks(c, b);
         il_prepare_yield_continuations(program, c, b);
         il_globals(program, c, b); il_infer_scalar_values(c, b); il_infer_array_values(numeric_array, c, b);
+        il_prove_scalar_arrays(c, b);
         int function = c.functions;
         while (function != 0)
         {
