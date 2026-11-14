@@ -91,7 +91,6 @@ Runtime performance:
 | `any` property loop, 350K iterations | 0.3 ms | 0.3 ms | 1.00x |
 | Numeric array `.at(-1)`, 1M calls | 3.84 ms | 3.82 ms | 0.99x |
 | Numeric loop, 20M iterations | 19 ms | 19 ms | 0.99x |
-| Object valueOf, 1M numeric conversions | 121 ms | 122 ms | 0.99x |
 | Serialize 10K numbers from 0-255, 20 times | 1.73 ms | 1.71 ms | 0.99x |
 | Captured numeric callback, 2M calls | 5.24 ms | 5.07 ms | 0.97x |
 | String ordering, 2M comparisons | 8.98 ms | 8.75 ms | 0.97x |
@@ -104,6 +103,7 @@ Runtime performance:
 | Local constructor parameter property and field read, 100K instances | 0.0698 ms | 0.0617 ms | 0.88x |
 | Class method through a helper, 100K calls | 0.0703 ms | 0.0619 ms | 0.88x |
 | Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | 0.83x |
+| Object valueOf, 1M numeric conversions | 27.57 ms | 22.64 ms | 0.82x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | 0.77x |
 | `== null` on nullable arrays, 1M comparisons | 1.51 ms | 1.15 ms | 0.76x |
 | String substring and first-character read, 1M calls | 14.27 ms | 10.75 ms | 0.75x |
@@ -128,7 +128,6 @@ Runtime performance:
 | Parse, filter, group, sort and serialize 1K records, 10 passes | 7.86 ms | 4.12 ms | 0.52x |
 | Split 10K comma-separated strings, keep three parts, and sum lengths | 4 ms | 2 ms | 0.50x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | 0.50x |
-| Object valueOf, 1M numeric conversions | 48.94 ms | 23.64 ms | 0.48x |
 | Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | 0.48x |
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | 0.48x |
 | `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | 0.46x |
