@@ -25,14 +25,18 @@ internal static partial class CompilerFunctions
 
         b.begin(b.plan.method1(5, klass, 0xc6, -10, -4, "GetNumberProperty"));
         il_missing_spread_property(type, 0, number, c, b);
-        for (int member = get_type(type, c).fields; member != 0; member = get_field(member, c).next)
-        {
-            if (!eligible(member)) continue;
-            int next = b.label();
-            b.emit(0xfe09, 1); il_text(get_field(member, c).name, c, b);
-            b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
+        if (!il_field_lookup(type, c, b, member => {
             b.emit(0xfe09, 0); b.load_field(member, c); b.op(0x2a);
-            b.mark(next);
+        }, eligible)) {
+            for (int member = get_type(type, c).fields; member != 0; member = get_field(member, c).next)
+            {
+                if (!eligible(member)) continue;
+                int next = b.label();
+                b.emit(0xfe09, 1); il_text(get_field(member, c).name, c, b);
+                b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
+                b.emit(0xfe09, 0); b.load_field(member, c); b.op(0x2a);
+                b.mark(next);
+            }
         }
         b.emit(0xfe09, 0); b.emit(0xfe09, 1);
         b.call(RuntimeMember.GetNumberProperty); b.op(0x2a);

@@ -5,14 +5,16 @@ using static Tsnet.Compiler.CompilerFunctions;
 internal static partial class CompilerFunctions
 {
     // Larger shapes avoid a linear chain of string comparisons.
-    internal static bool il_field_lookup(int type, Compiler c, IlBackend b, Action<int> found)
+    internal static bool il_field_lookup(int type, Compiler c, IlBackend b, Action<int> found, Func<int, bool> include = null)
     {
         int count = 0;
-        for (int member = get_type(type, c).fields; member != 0 && count < 32; member = get_field(member, c).next) count++;
+        for (int member = get_type(type, c).fields; member != 0 && count < 32; member = get_field(member, c).next)
+            if (include == null || include(member)) count++;
         if (count < 32) return false;
         var fields = new List<(int Member, uint Hash)>();
         for (int member = get_type(type, c).fields; member != 0; member = get_field(member, c).next)
         {
+            if (include != null && !include(member)) continue;
             int name = get_field(member, c).name;
             var bytes = new byte[text_size(name, c)];
             for (int i = 0; i < bytes.Length; i++) bytes[i] = text_byte(name, i, c);

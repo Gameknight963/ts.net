@@ -294,6 +294,12 @@ public static partial class Js
             return Iteration.CodeUnit(value[(int)position]);
         return Get(receiver, text);
     }
+    public static double? IndexGetNumberValue(object receiver, object key)
+    {
+        if (receiver is TsObject obj && receiver is not TypedArrayValue)
+            return obj.GetNumberProperty(PropertyKey(key));
+        return Cast<double?>(IndexGet(receiver, key), "checked conversion failed");
+    }
     public static object IndexGet(object receiver, object key)
     {
         if (IsNullish(receiver)) throw new InvalidOperationException("Cannot read property of null or undefined");
