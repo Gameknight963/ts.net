@@ -377,10 +377,15 @@ internal static partial class CompilerFunctions
         if (value == 0) return false;
         bool stringTest = is_text(name, "string", c);
         if (!stringTest && !is_text(name, text_number, c)) return false;
+        Node indexed = get_node(value, c);
+        bool numericKey = indexed.kind == NodeKind.Index && get_type(get_node(indexed.left, c).type, c).kind == TypeKind.Array &&
+            get_type(get_node(indexed.right, c).type, c).kind == TypeKind.Number;
         if (stringTest) {
             if (il_direct_index(value, c, b)) {
                 Node index = get_node(value, c); il_expression(index.left, c, b); il_integer(index.right, c, b);
                 b.call(RuntimeMember.ArrayIsStringAt);
+            } else if (numericKey) {
+                il_expression(indexed.left, c, b); il_expression(indexed.right, c, b); b.call(RuntimeMember.ArrayIsStringKey);
             } else { il_boxed(value, c, b); b.call(RuntimeMember.IsString); }
         }
         else if (get_type(get_node(value, c).type, c).kind == TypeKind.Number) { il_expression(value, c, b); b.call(RuntimeMember.NumberMissing); il_invert(b); }
@@ -390,6 +395,9 @@ internal static partial class CompilerFunctions
             if (tags >= 0) { b.emit(0xfe0c, tags); il_integer(index.right, c, b); b.op(0x91); b.emit(0x20, 1); b.op(0xfe01); }
             else if (il_dense_slot(value, c, b) >= 0) { b.emit(0xfe0c, il_dense_slot(value, c, b)); il_integer(index.right, c, b); b.op(0x9a); b.call(RuntimeMember.IsNumber); }
             else { il_expression(index.left, c, b); il_integer(index.right, c, b); b.call(RuntimeMember.ArrayIsNumberAt); }
+        }
+        else if (numericKey) {
+            il_expression(indexed.left, c, b); il_expression(indexed.right, c, b); b.call(RuntimeMember.ArrayIsNumberKey);
         }
         else { il_boxed(value, c, b); b.call(RuntimeMember.IsNumber); }
         if (is_text(op, text_strict_not_equal, c) || is_text(op, text_loose_not_equal, c)) { il_invert(b); }

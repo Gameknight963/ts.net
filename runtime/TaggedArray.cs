@@ -184,6 +184,27 @@ public sealed partial class TaggedArray : JsArray
 
 public static partial class Js
 {
+    // Inlining these index checks enlarged callers and slowed mixed-array loops.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool ArrayIsNumberKey(object receiver, double? index)
+    {
+        if (index.HasValue && index.Value >= 0 && index.Value <= int.MaxValue && index.Value == (int)index.Value)
+        {
+            if (receiver is NumberArray numbers && !numbers.HasIndexedAccessors && numbers.TryPacked(index.Value + 1) != null) return true;
+            return ArrayIsNumberAt(receiver, (int)index.Value);
+        }
+        return IsNumber(ArrayIndexGetNumberKey(receiver, index));
+    }
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool ArrayIsStringKey(object receiver, double? index)
+    {
+        if (index.HasValue && index.Value >= 0 && index.Value <= int.MaxValue && index.Value == (int)index.Value)
+        {
+            if (receiver is NumberArray numbers && !numbers.HasIndexedAccessors && numbers.TryPacked(index.Value + 1) != null) return false;
+            return ArrayIsStringAt(receiver, (int)index.Value);
+        }
+        return IsString(ArrayIndexGetNumberKey(receiver, index));
+    }
     public static bool IsString(object value) => value is string;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool ArrayIsStringAt(object receiver, int index) => receiver is TaggedArray array ? array.IsStringAt(index) : IsString(ArrayGetAt(receiver, index));
