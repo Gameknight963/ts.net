@@ -184,7 +184,7 @@ Runtime performance:
 | Borrow an object method with apply and a one-number array, 100K calls | 0.824 ms | 0.0615 ms | 0.07x |
 | Call a custom call handler with an object and a number, 100K calls | 0.853 ms | 0.0632 ms | 0.07x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
-| Call a custom apply handler with an object and a one-number array, 100K calls | 1.77 ms | 0.0631 ms | 0.04x |
+| Call a custom apply handler with an object and a one-number array, 100K calls | 1.68 ms | 0.0614 ms | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
 
 </details>
