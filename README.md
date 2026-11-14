@@ -86,6 +86,7 @@ Runtime performance:
 | String `.at(index)`, 1M calls | 4.26 ms | 5.28 ms | 1.24x |
 | toSorted with numeric comparator and traversal, 10 copies of 10K integers | 10.31 ms | 12.78 ms | 1.24x |
 | Map.forEach numeric sum, 10 passes over 10K entries | 0.579 ms | 0.626 ms | 1.08x |
+| Reduce 100K number/string/undefined values with a default parameter | 0.596 ms | 0.640 ms | 1.08x |
 | Mixed numeric strings, 1M conversions | 28.60 ms | 30.37 ms | 1.06x |
 | Set.forEach numeric sum, 10 passes over 10K values | 0.580 ms | 0.608 ms | 1.05x |
 | Create/read a two-field object in a 100K-iteration loop, with a read-only Reflect alias in the program | 0.0706 ms | 0.0717 ms | 1.02x |
@@ -140,7 +141,6 @@ Runtime performance:
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | 0.45x |
-| Reduce 100K number/string/undefined values with a default parameter | 1.43 ms | 0.640 ms | 0.45x |
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | 0.41x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
 | Create a Map, insert and read 10K entries, then delete half | 1.76 ms | 0.695 ms | 0.40x |
