@@ -72,6 +72,7 @@ Runtime performance:
 | Numeric `any[]`, 1M iterations | 0.954 ms | 1.66 ms | 1.74x |
 | Typed-object loop, 500K iterations | 0.381 ms | 0.650 ms | 1.70x |
 | `any` property loop, 350K iterations | 0.266 ms | 0.435 ms | 1.64x |
+| Map 10K number/string values to numbers or undefined and reduce, 20 passes | 1.76 ms | 2.80 ms | 1.59x |
 | WritableStream, queue and complete 1K numeric writes | 0.394 ms | 0.618 ms | 1.57x |
 | reduce and reduceRight, 10 pairs over 10K integers from 0-255 | 0.775 ms | 1.21 ms | 1.56x |
 | Count numeric values in a mixed array, 500K type checks | 0.285 ms | 0.440 ms | 1.54x |
@@ -93,7 +94,6 @@ Runtime performance:
 | Numeric array `.at(-1)`, 1M calls | 3.84 ms | 3.82 ms | 0.99x |
 | Numeric loop, 20M iterations | 19 ms | 19 ms | 0.99x |
 | Serialize 10K numbers from 0-255, 20 times | 1.73 ms | 1.71 ms | 0.99x |
-| Map 10K number/string values to numbers or undefined and reduce, 20 passes | 2.82 ms | 2.80 ms | 0.99x |
 | Captured numeric callback, 2M calls | 5.24 ms | 5.07 ms | 0.97x |
 | String ordering, 2M comparisons | 8.98 ms | 8.75 ms | 0.97x |
 | Float64Array traversal, 10K elements and 100 passes | 0.784 ms | 0.718 ms | 0.92x |
@@ -153,6 +153,7 @@ Runtime performance:
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | 0.33x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | 0.32x |
 | Sum 1K values with an await in try and an increment in finally each iteration | 0.146 ms | 0.0470 ms | 0.32x |
+| Map 10K number/string values to numbers and sum, 20 passes | 1.69 ms | 0.540 ms | 0.32x |
 | Count string values in a mixed array, 500K type checks | 1.38 ms | 0.429 ms | 0.31x |
 | Object spread, 100K copies stored in an array | 5.51 ms | 1.66 ms | 0.30x |
 | Add an `any` value to a number, 200K additions | 0.185 ms | 0.0548 ms | 0.30x |
@@ -164,7 +165,6 @@ Runtime performance:
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.17 ms | 0.479 ms | 0.22x |
-| Map 10K number/string values to numbers and sum, 20 passes | 2.19 ms | 0.461 ms | 0.21x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | 0.17x |
 | 100K numeric writes to a four-element mapped array | 0.255 ms | 0.0416 ms | 0.16x |
