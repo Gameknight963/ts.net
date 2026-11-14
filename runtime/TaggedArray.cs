@@ -113,6 +113,10 @@ public sealed partial class TaggedArray : JsArray
             tags[index] = 1;numbers[index] = value.Value;references[index] = null;
             return;
         }
+        SetNumberAtSlow(index, value);
+    }
+    void SetNumberAtSlow(int index, double? value)
+    {
         if (NeedsPrototypeSet((uint)index) && SetThroughPrototype((uint)index, Js.BoxNumber(value))) return;
         if (TryWriteDefinedNumber((uint)index, value)) return;
         if (!value.HasValue) { Write((uint)index, Js.Undefined);return; }
