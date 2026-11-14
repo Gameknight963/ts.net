@@ -173,7 +173,7 @@ Runtime performance:
 | Object literal method through a helper, 100K calls | 0.379 ms | 0.0619 ms | 0.16x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.284 ms | 0.0358 ms | 0.13x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | 0.11x |
-| Read and sum 100K numbers from a mixed array through a helper | 0.299 ms | 0.0270 ms | 0.09x |
+| Read and sum 100K numbers from a mixed array through a helper | 0.249 ms | 0.0274 ms | 0.11x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Borrow an object method with call, 100K calls | 1.99 ms | 0.0628 ms | 0.03x |
 | Borrow an object method with apply and a one-number array, 100K calls | 2.34 ms | 0.0636 ms | 0.03x |
