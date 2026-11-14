@@ -320,6 +320,8 @@ public sealed partial class NumberArray : JsArray
     uint packedPrefix;
     public NumberArray(int length) { numbers = new ArrayStorage<double>(length, Missing); }
     NumberArray(ArrayStorage<double> storage, uint prefix) { numbers = storage;packedPrefix = prefix; }
+    internal static NumberArray FromSingleNumber(double? value) =>
+        new(new ArrayStorage<double>(new[] { Encode(value) }, Missing), value.HasValue ? 1u : 0u);
     protected override JsArray SliceRange(uint start, uint count) =>
         new NumberArray(numbers.Slice(start, count), start < packedPrefix ? Math.Min(count, packedPrefix - start) : 0);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

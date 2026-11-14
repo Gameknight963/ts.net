@@ -100,6 +100,17 @@ public static partial class Js
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
     static double? CallFunctionCallNumberFallback(object target, object receiver, object thisValue, double? value) =>
         Cast<double?>(CallMethod(target, receiver, new[] { thisValue, BoxNumber(value) }), "checked conversion failed");
+    public static double? CallFunctionApplyNumber1(object target, object receiver, object thisValue, double? value)
+    {
+        if (ReferenceEquals(target, FunctionMethods.Apply)) {
+            if (receiver is not JsFunction) throw new InvalidOperationException("Function method requires a callable receiver");
+            return CallMethodNumber1(receiver, thisValue, value);
+        }
+        return CallFunctionApplyNumberFallback(target, receiver, thisValue, value);
+    }
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    static double? CallFunctionApplyNumberFallback(object target, object receiver, object thisValue, double? value) =>
+        Cast<double?>(CallMethod(target, receiver, new object[] { thisValue, NumberArray.FromSingleNumber(value) }), "checked conversion failed");
     static class FunctionMethods
     {
         internal static readonly JsFunction Call = new JsFunctionMethod("call", 0);
