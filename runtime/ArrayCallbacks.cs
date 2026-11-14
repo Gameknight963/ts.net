@@ -123,9 +123,10 @@ public static partial class Js
                     i = sparse.NextPresentIndex((uint)i, (uint)length);
                     if (i == length) break;
                 }
-                object value;
+                object value = null;
                 if (find) value = IndexedValue(source, i);
-                else if (!TryIndexedValue(source, i, out value)) continue;
+                else if (!(TValueMode.Direct && i <= int.MaxValue && JsArray.TryReadOwnDenseValue(source, (int)i, out value)) &&
+                    !TryIndexedValue(source, i, out value)) continue;
                 object mapped;
                 if (TValueMode.Number)
                 {
