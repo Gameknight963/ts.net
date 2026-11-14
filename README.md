@@ -154,9 +154,9 @@ Runtime performance:
 | Count string values in a mixed array, 500K type checks | 1.38 ms | 0.429 ms | 0.31x |
 | Object spread, 100K copies stored in an array | 5.51 ms | 1.66 ms | 0.30x |
 | Add an `any` value to a number, 200K additions | 0.185 ms | 0.0548 ms | 0.30x |
+| Serialize 10K numbers divided by 7, 20 times | 21.81 ms | 6.30 ms | 0.29x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | 0.28x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 3.50 ms | 0.940 ms | 0.27x |
-| Serialize 10K numbers divided by 7, 20 times | 26.70 ms | 6.70 ms | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | 0.25x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | 0.23x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | 0.23x |
