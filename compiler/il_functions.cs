@@ -236,6 +236,7 @@ internal static partial class CompilerFunctions
         Node first = get_node(function.children, c);
         if (first.next == 0) return false;
         Node second = get_node(first.next, c);
+        if (get_type(first.type, c).kind == TypeKind.Void || get_type(second.type, c).kind == TypeKind.Void) return false;
         return second.next == 0 && ordinary(first) && ordinary(second);
         static bool ordinary(Node parameter) => parameter.symbol != 0 && !parameter.constant && parameter.left == 0 && parameter.right == 0 && parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
     }
