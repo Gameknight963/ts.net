@@ -9,7 +9,7 @@ internal enum RuntimeMember
     BeginDestructuring, ReadDestructuring, SkipDestructuring, ForOfSkip, RestDestructuring, AsyncResume, BeginAsyncIteration, NextAsyncIteration, AsyncIterationValue, AsyncTry, AsyncTryEnd,
     TryFloat64Buffer, Float64BufferLength, ReadFloat64Buffer, GetNumber, GetNumberProperty, GetStoredWithReceiver, GetStoredNumberWithReceiver, TrySetMissingProperty, HasStructuralProperty, IndexGetNumber, IndexGetNumberKey, ArrayIndexGetNumberKey, ArgumentsIndexGetNumberKey, NumericBinary, NumericBitNot, NumericValue, NumericStep, NumericNegate, SetOwnValueBase, DynamicObjectType, DynamicObjectConstructor, GeneratorFunction, AsyncGeneratorFunction, AsyncFunction, AsyncAwait, AsyncAwaitContinue, MarkFunctionPrototype, In, InNumber, SealModuleNamespace, InitializeEnum, BuiltinNamespace, CopyObjectRest, DebugStatement, DeleteSuperProperty, DeleteProperty, DeleteOwn, SetLiteralPrototype, MarkObjectHome, DefineAccessor, ResolveThis, NewTarget, EnableNewTarget, Arguments, ArgumentsLength, EnableArguments, SuperBase, SuperGetNumber, SuperCall, SuperInitializer, ClassInstanceType, ClassInstanceConstructor, CreateClass, DefineClassMethod, DefineSimpleClassGetter, MatchesSimpleClassGetter, InitializeClass, DefineClassField, DefineAutoAccessor, InitializeAutoAccessor, DefinePrivateMember, InitializePrivateMember, PrivateGet, PrivateSet, PrivateHas, GetErrorConstructor, Construct, ConstructArguments, InstanceOf, ExceptionType, MakeThrown, CaughtValue, CallStringSearch, CallStringSearchNumber, CallStringSearchBoolean, StringIndexAt, StringIndexNumber, RelativeAtTarget, CallMethodIndices, CallMethodIndex, CallMethod0, CallMethod, CallMethodArguments, CallMethodNumber0, CallMethodNumber1, CallMethodNumber2, CallFunctionCallNumber1, GetFunctionCallProperty, ReadFunctionCallProperty, GetFunctionApplyProperty, ReadFunctionApplyProperty, CallFunctionApplyNumber1, OwnValuesBase, OwnEntriesBase, OwnNumberValuesBase, NumberValuesFromFields, ObjectValues, ObjectNumberValues, ObjectEntries, ObjectValuesFunction, ObjectEntriesFunction, NamePropertyFunction, PropertyKey, EncodeNumberField, DecodeNumberField, IsExactSpread, CopySpreadExtras, ObjectSpread, DefineOwn, MarkPresent, TryCloneSpread, TryCopyAssign, OwnKeysBase, ObjectKeyCount, KeyCountWithFixed, ObjectKeys, ObjectKeysFunction, KeysFromTextFields, KeysFromFixed, GuardIntegerLoop, ObjectConstructor, ObjectType, DoubleType, BooleanType, StringType, JsType, TsObjectType,
     Constructor, Get, Set, HasOwn, HasOwnNumber, HasOwnIndex, HasOwnBase, Cast, Check, Add, AddToNumber, AddNumberLeft, AddNumberRight, AddNumberLeftChecked, AddNumberRightChecked, NumberAtIsNullish, LooseEqual, LooseEqualNumber, Equal, Number, ExplicitNumber, IsString, ArrayIsStringAt, ArrayIsStringKey, ArrayIsNumberKey, Boolean, Text, DynamicGet, DynamicSet, DynamicSetNumber, TrySetStoredNumber,
-    Log, Now, Length, StringEqual, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
+    Log, Now, Length, StringEqual, PropertyKeyHash, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     CheckedNumberValue, WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, InitializeLiteralNumber, AppendLiteralNumber, InitializeTaggedLiteralNumber, InitializeTaggedLiteralElement, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, GuardPrivateArrayPush, ArrayPushGuarded, IsPlainDataRecord, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayTryPackedRead, ArrayReservePushes, CanonicalNumber,
     ForInStart, ForInNext, ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, IsArrayBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionType, FunctionConstructor, ReceiverFunctionType, ReceiverFunctionConstructor, PrepareReceiver, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction0, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CallValuePairNumber, CallValueNumber, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, BuiltinNamespaceById, CallCollectionNumberKey, CallCollectionNumberPair, NumberArgumentFunctionType, CallFunctionNumberArgument, CallMethodNumberArgument, CallPromiseStaticNumber, CallPromiseThen, FunctionBodyType, YieldGenerator, HasOwnNumberData, CanWriteOwnNumberData, GetClassMethodData, Count
@@ -864,6 +864,7 @@ bool il_logical_assignment(int op, Compiler c)
         int string_type = b.RuntimeToken(RuntimeMember.StringType);
         b.ref_set(RuntimeMember.Length, b.plan.method1(6, js, 0, -6, -5, "StringLength"));
         b.ref_set(RuntimeMember.StringEqual, b.plan.method2(6, string_type, 0, -2, -4, -4, "op_Equality"));
+        b.ref_set(RuntimeMember.PropertyKeyHash, b.plan.method1(6, js, 0, -6, -4, "PropertyKeyHash"));
         b.ref_set(RuntimeMember.Concat, b.plan.method2(6, string_type, 0, -4, -4, -4, "Concat"));
         int action_type = b.plan.reference("System.Runtime", "System", "Action");
         b.ref_set(RuntimeMember.ActionType, action_type);
@@ -1046,24 +1047,33 @@ bool il_logical_assignment(int op, Compiler c)
                 b.begin(b.plan.method0(5, klass, 0xc6, -3, "OwnKeyCount"));
                 b.emit(0xfe09, 0); b.emit(0x20, key_count); b.call(RuntimeMember.KeyCountWithFixed); b.op(0x2a);
                 b.begin(b.plan.method1(5, klass, 0xc6, -2, -4, "HasOwn"));
-                member = get_type(type, c).fields;
-                while (member != 0)
-                {
-                    Field record = get_field(member, c); int next = b.label();
-                    b.emit(0xfe09, 1); il_text(record.name, c, b); b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
-                    if(il_dynamic_index_field(member,c)){b.emit(0xfe09,0);b.emit(0xfe09,1);b.call(RuntimeMember.HasOwnBase);}else b.emit(0x20,1);
-                    b.op(0x2a); b.mark(next); member = record.next;
+                if (!il_field_lookup(type, c, b, selected => {
+                    if(il_dynamic_index_field(selected,c)){b.emit(0xfe09,0);b.emit(0xfe09,1);b.call(RuntimeMember.HasOwnBase);}else b.emit(0x20,1);
+                    b.op(0x2a);
+                })) {
+                    member = get_type(type, c).fields;
+                    while (member != 0)
+                    {
+                        Field record = get_field(member, c); int next = b.label();
+                        b.emit(0xfe09, 1); il_text(record.name, c, b); b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
+                        if(il_dynamic_index_field(member,c)){b.emit(0xfe09,0);b.emit(0xfe09,1);b.call(RuntimeMember.HasOwnBase);}else b.emit(0x20,1);
+                        b.op(0x2a); b.mark(next); member = record.next;
+                    }
                 }
                 b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.call(RuntimeMember.HasOwnBase); b.op(0x2a);
                 b.begin(b.plan.method1(5, klass, 0xc6, -5, -4, "Get"));
                 il_missing_spread_property(type, 0, 0, c, b);
-                member = get_type(type, c).fields;
-                while (member != 0)
-                {
-                    Field record = get_field(member, c); int next = b.label();
-                    b.emit(0xfe09, 1); il_text(record.name, c, b); b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
-                    b.emit(0xfe09, 0); b.load_field(member, c); b.box(record.type, c); b.op(0x2a); b.mark(next);
-                    member = record.next;
+                if (!il_field_lookup(type, c, b, selected => {
+                    b.emit(0xfe09, 0); b.load_field(selected, c); b.box(get_field(selected, c).type, c); b.op(0x2a);
+                })) {
+                    member = get_type(type, c).fields;
+                    while (member != 0)
+                    {
+                        Field record = get_field(member, c); int next = b.label();
+                        b.emit(0xfe09, 1); il_text(record.name, c, b); b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
+                        b.emit(0xfe09, 0); b.load_field(member, c); b.box(record.type, c); b.op(0x2a); b.mark(next);
+                        member = record.next;
+                    }
                 }
                 b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.call(RuntimeMember.Get); b.op(0x2a);
                 il_numeric_property_reads(type, klass, c, b);
