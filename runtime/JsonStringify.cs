@@ -135,6 +135,26 @@ public static partial class Js
             }
         }
         void Indent(int depth) { for (int i = 0; i < depth; i++) output.Append(gap); }
+        // Outside this range the shared writer also normalizes exponent notation.
+        static bool JsonPlatformNumbers(ReadOnlySpan<double> numbers)
+        {
+            foreach (double number in numbers) {
+                double magnitude = Math.Abs(number);
+                if (number == 0) { if (double.IsNegative(number)) return false; }
+                else if (!(magnitude >= 1e-4 && magnitude < 1e15)) return false;
+            }
+            return true;
+        }
+        string TryPlatformPackedNumbers(JsArray array)
+        {
+            if (replacer != null || gap.Length != 0 || array.HasIndexedAccessors) return null;
+            double count = array.Length();
+            if (count < 256) return null;
+            double[] numbers = array is NumberArray numeric ? numeric.TryPacked(count) : ((TaggedArray)array).TryPackedNumbers(count);
+            // Keep integer arrays on the existing inexpensive writer.
+            if (numbers == null || numbers[1] == Math.Truncate(numbers[1]) || !JsonPlatformNumbers(numbers.AsSpan(0, (int)count))) return null;
+            return System.Text.Json.JsonSerializer.Serialize(numbers.AsMemory(0, (int)count));
+        }
         bool WritePackedNumbers(JsArray array)
         {
             if (replacer != null || array.HasIndexedAccessors)
@@ -207,6 +227,7 @@ public static partial class Js
         {
             var holder = new JsDynamicObject(); holder.DefineOwn("", input);
             object root = Prepare(holder, ""); if (Omitted(root)) return Undefined;
+            if (root is NumberArray or TaggedArray && TryPlatformPackedNumbers((JsArray)root) is string packed) return packed;
             WriteValue(root);
             while (frames.Count != 0)
             {
