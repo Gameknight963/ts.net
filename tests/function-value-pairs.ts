@@ -10,6 +10,13 @@ function objects(callback: (a: Item, b: Item) => number, a: Item, b: Item): numb
 console.log("objects", objects((a, b) => a.count + b.count, { count: 7 }, { count: 13 }));
 function strings(callback: (a: string, b: string) => number): number { return callback("ab", "cde"); }
 console.log("strings", strings((a, b) => a.length + b.length));
+function numericInputs(callback: (a: number, b: number) => number): number { return callback(7, 3); }
+console.log("any numeric input", numericInputs((a: any, b: number): number => (typeof a === "number" ? a : 0) + b));
+console.log("structural numeric input", numericInputs((a: { toString(): string }, b: number): number => a.toString().length + b));
+const loose = (a: any = 5, b = 7): number => (typeof a === "number" ? a : 0) + b;
+function noInputs(callback: () => number): number { return callback(); }
+function oneInput(callback: (value: number) => number): number { return callback(3); }
+console.log("numeric arities", noInputs(loose), oneInput(loose), numericInputs(loose), loose.length);
 function defaultStrings(callback: (a: string, b?: string) => number): number { return callback("abc", undefined); }
 console.log("string default", defaultStrings((a, b = "xy") => a.length + b.length));
 function missing(): number { return undefined as any; }
