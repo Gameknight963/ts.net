@@ -52,6 +52,8 @@ public partial class JsFunction : JsDescriptorObject
     // The default preserves receivers and observable arguments for other functions.
     public virtual double? InvokeValuePairNumber(object receiver, object first, object second) =>
         Js.Cast<double?>(InvokeWithReceiver(receiver, new[] { first, second }), "checked conversion failed");
+    public virtual double? InvokeValueNumber(object receiver, object first, double? second) =>
+        InvokeValuePairNumber(receiver, first, Js.BoxNumber(second));
     // Generated callbacks override this only when the extra arguments and
     // receiver are unobservable. Other functions still receive all three.
     public virtual bool SupportsArrayValue() => false;

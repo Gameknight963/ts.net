@@ -338,6 +338,17 @@ internal static partial class CompilerFunctions
             b.emit(0xfe09, 2); b.from_object(first.type, c);
             b.emit(0xfe09, 3); b.from_object(second.type, c);
             b.emit(0x28, b.function(symbol)); b.op(0x2a);
+            TypeKind second_kind = get_type(second.type, c).kind;
+            if (second_kind is TypeKind.Number or TypeKind.Any or TypeKind.Unknown)
+            {
+                Vector<int> mixed = new Vector<int>(); mixed.push(-5); mixed.push(-5); mixed.push(-10);
+                b.begin(b.plan.method(5, type, 0xc6, -10, mixed.view(), "InvokeValueNumber"));
+                if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+                b.emit(0xfe09, 2); b.from_object(first.type, c);
+                b.emit(0xfe09, 3);
+                if (second_kind != TypeKind.Number) b.call(RuntimeMember.BoxNumber);
+                b.emit(0x28, b.function(symbol)); b.op(0x2a);
+            }
         }
         if (value_callback || continuation && definition.fourth == 0 && definition.children != 0 &&
             get_node(definition.children, c).next == 0 && get_node(definition.children, c).left == 0 && get_node(definition.children, c).third == 0)
