@@ -975,12 +975,21 @@ bool il_logical_assignment(int op, Compiler c)
         il_prepare_simple_class_getters(c, b);
         il_prepare_simple_class_methods(c, b);
         il_structural_objects(c, b);
+        // Types used only in annotations still need interfaces, but no concrete storage.
+        HashSet<int> object_layouts = [];
+        for (int node = 1; node <= c.node_store.count(); node++)
+        {
+            Node value = get_node(node, c);
+            if (value.kind == NodeKind.Object) object_layouts.Add(value.type);
+        }
         type = c.types;
         while (type != 0)
         {
             if (get_type(type, c).kind == TypeKind.Shape)
             {
                 if (get_type(type,c).name != 0) { il_class_shape(type,c,b); type=get_type(type,c).next; continue; }
+                if (!object_layouts.Contains(type) && b.layout_needed.at(type) == 0 && b.spread_types.at(type) == 0)
+                { type = get_type(type, c).next; continue; }
                 Vector<byte> name = numbered_name('O', get_type(type, c).id);
                 int base_type = b.RuntimeToken(RuntimeMember.TsObjectType);
                 int klass = b.plan.type(name.view(), base_type, b.layout_needed.at(type) != 0 || b.spread_types.at(type) != 0 ? 1 : 0x101);
