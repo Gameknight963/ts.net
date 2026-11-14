@@ -29,6 +29,7 @@ public static partial class Js
                 ReferenceEquals(prototype.WatchAccessorStructure(), FunctionPrototypeState.AccessorStructure) &&
                 prototype.TryReadOwnDataSlot("call", out var target)) return target;
         }
+        if (!function.TryOwnAccessor("call", out _) && function.TryReadOwnDataSlot("call", out var own)) return own;
         return function.Get("call");
     }
     public static object GetFunctionApplyProperty(object receiver) => receiver is JsFunction function
@@ -44,6 +45,7 @@ public static partial class Js
                 ReferenceEquals(prototype.WatchAccessorStructure(), FunctionPrototypeState.AccessorStructure) &&
                 prototype.TryReadOwnDataSlot("apply", out var target)) return target;
         }
+        if (!function.TryOwnAccessor("apply", out _) && function.TryReadOwnDataSlot("apply", out var own)) return own;
         return function.Get("apply");
     }
     static class StrictFunctionAccess
