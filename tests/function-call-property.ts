@@ -45,3 +45,18 @@ delete (fn as any).call;
 const ordinary: any = { base: 7, call(value: number): number { return this.base + value; } };
 results.push(ordinary.call(3));
 console.log(results.join(","));
+
+const stored = (value: number): number => value + 1;
+Object.defineProperty(stored, "call", { configurable: true, writable: true, value: function(receiver: unknown, value: number): number { return value + 10; } });
+console.log("stored", stored.call(null, 3));
+(stored as any).call = function(receiver: unknown, value: number): number { return value + 20; };
+Object.setPrototypeOf(stored, { get call() { throw new Error("own method should win"); } });
+console.log("overwritten", stored.call(null, 3));
+Object.defineProperty(stored, "call", { configurable: true, get() { return original; } });
+console.log("accessor replacement", stored.call(null, 3));
+Object.defineProperty(stored, "call", { configurable: true, get: undefined });
+let missingArguments = 0;
+try { stored.call(null, ++missingArguments); } catch { console.log("missing getter", missingArguments); }
+const tagged = (value: number): number => value + 1;
+(tagged as any).metadata = 7;
+console.log("unrelated property", tagged.call(null, 3));
