@@ -191,7 +191,7 @@ public static partial class Js
         if (index.HasValue && index.Value >= 0 && index.Value <= int.MaxValue && index.Value == (int)index.Value)
         {
             if (receiver is NumberArray numbers && !numbers.HasIndexedAccessors && numbers.TryPacked(index.Value + 1) != null) return true;
-            return ArrayIsNumberAt(receiver, (int)index.Value);
+            if (receiver is TaggedArray tagged) return tagged.IsNumberAt((int)index.Value);
         }
         return IsNumber(ArrayIndexGetNumberKey(receiver, index));
     }
@@ -201,7 +201,7 @@ public static partial class Js
         if (index.HasValue && index.Value >= 0 && index.Value <= int.MaxValue && index.Value == (int)index.Value)
         {
             if (receiver is NumberArray numbers && !numbers.HasIndexedAccessors && numbers.TryPacked(index.Value + 1) != null) return false;
-            return ArrayIsStringAt(receiver, (int)index.Value);
+            if (receiver is TaggedArray tagged) return tagged.IsStringAt((int)index.Value);
         }
         return IsString(ArrayIndexGetNumberKey(receiver, index));
     }

@@ -183,6 +183,13 @@ if (ordinaryTotal != 350000 || ordinaryBytes != 0 || Js.ArrayGetNumber(new Numer
     Environment.ExitCode = 1;return;
 }
 Console.WriteLine("PASS allocation-free ordinary numeric reads and virtual subclass fallback");
+var typeReadOverride = new StringReadOverride();
+if (Js.ArrayIsNumberKey(typeReadOverride, 0) || !Js.ArrayIsStringKey(typeReadOverride, 0) || typeReadOverride.Reads != 2)
+{
+    Console.Error.WriteLine("Array type checks bypassed an overridden getter");
+    Environment.ExitCode = 1;return;
+}
+Console.WriteLine("PASS array type checks preserve overridden getters");
 var numericKeyArray = new JsArray(1002);
 numericKeyArray.SetAt(1000, 3d);numericKeyArray.SetAt(1001, 4d);
 for (int i = 0; i < 10; i++) ReadNumericKeys(numericKeyArray, 1000);
@@ -207,4 +214,11 @@ sealed class NumericReadOverride : JsArray
 {
     public NumericReadOverride() : base(1) { SetAt(0, 1d); }
     public override object Get(string key) => key == "0" ? 99d : base.Get(key);
+}
+
+sealed class StringReadOverride : JsArray
+{
+    public int Reads;
+    public StringReadOverride() : base(1) {SetAt(0, 1d);}
+    public override object Get(string key) {Reads++;return key == "0" ? "override" : base.Get(key);}
 }
