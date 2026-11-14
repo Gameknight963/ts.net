@@ -34,6 +34,18 @@ public static partial class Js
         }
         return source.Get(index.ToString(CultureInfo.InvariantCulture));
     }
+    // Recheck each slot: callbacks may replace storage or install getters.
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    static bool TryCallbackNumber(TsObject source, long index, out double value)
+    {
+        if (source is NumberArray numbers && !numbers.HasIndexedAccessors && numbers.TryPacked(index + 1) is { } packed) {
+            value = packed[(int)index]; return true;
+        }
+        if (source is TaggedArray tagged && index <= int.MaxValue && tagged.TryReadNumberAt((int)index, out var number) && number.HasValue) {
+            value = number.Value; return true;
+        }
+        value = 0; return false;
+    }
     enum ArrayCallbackKind { Map, Filter, ForEach, Every, Some, Find, FindIndex, FindLast, FindLastIndex }
     // Value-type kinds let the JIT specialize the shared loop for each method.
     interface IArrayCallbackKind { static abstract ArrayCallbackKind Value { get; } }
@@ -90,10 +102,8 @@ public static partial class Js
             {
                 // Callbacks can replace storage, remove elements, or install
                 // getters. Recheck the current element on every iteration.
-                if (numericCallback &&
-                    source is NumberArray numbers && !numbers.HasIndexedAccessors && numbers.TryPacked(i + 1) is { } packed)
+                if (numericCallback && TryCallbackNumber(source, i, out double numberValue))
                 {
-                    double numberValue = packed[(int)i];
                     object numericMapped;
                     bool truth;
                     if (unboxedResult)
