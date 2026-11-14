@@ -69,7 +69,8 @@ public static partial class Js
         readonly JsFunction replacer;
         readonly JsArray propertyList;
         readonly string gap;
-        readonly StringBuilder output = new();
+        [ThreadStatic] static StringBuilder cachedOutput;
+        StringBuilder output;
         readonly List<JsonWriteFrame> frames = new();
         HashSet<TsObject> active;
         object[] previousNames;
@@ -233,6 +234,20 @@ public static partial class Js
             else throw new InvalidOperationException("Unsupported JSON value");
         }
         internal object Write(object input)
+        {
+            output = cachedOutput;
+            cachedOutput = null;
+            if (output == null) output = new StringBuilder();
+            else output.Clear();
+            try { return WriteCore(input); }
+            finally
+            {
+                if (output.Capacity <= 262144 && (cachedOutput == null || output.Capacity > cachedOutput.Capacity))
+                    cachedOutput = output;
+                output = null;
+            }
+        }
+        object WriteCore(object input)
         {
             if (replacer == null)
             {
