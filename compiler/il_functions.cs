@@ -53,6 +53,7 @@ internal static partial class CompilerFunctions
         for (int i = 1; i <= c.node_store.count(); i++)
         {
             Node n = get_node(i, c);
+            if (n.kind == NodeKind.FunctionValue && n.symbol != 0) b.function_values_needed.at_mut(n.symbol) = 1;
             if (n.kind == NodeKind.Variable && n.left != 0 && n.fourth == 0 && b.written_symbols.at(n.symbol) == 0 && get_node((int)b.node_parents.at(i), c).kind != NodeKind.Function)
             {
                 Node value = get_node(n.left, c); int target = 0;
@@ -295,7 +296,7 @@ internal static partial class CompilerFunctions
         bool continuation = get_node(get_symbol(symbol, c).function, c).internal_continuation;
         bool value_callback = il_value_callback(symbol, c, b);
         bool reduce_callback = il_reduce_value_callback(symbol, c, b);
-        bool value_pair = il_value_pair_number(symbol, c);
+        bool value_pair = b.function_values_needed.at(symbol) != 0 && il_value_pair_number(symbol, c);
         int receiver_count = il_numeric_receiver_function(symbol, c);
         if (count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !reduce_callback && !value_pair && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
