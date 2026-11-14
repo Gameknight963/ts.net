@@ -23,6 +23,13 @@ async function main() {
     const result = Promise.resolve(7).then(value => { log.push("handler"); return value + state; });
     log.push("sync"); state = 10;
     console.log("order", await result, log.join(","));
+    let defaults = 0, fallback = 11;
+    const withDefault = (value = (++defaults, fallback)) => value + 1;
+    const defaultPending = Promise.resolve<number | undefined>(undefined).then(withDefault);
+    fallback = 19;
+    console.log("captured default", await defaultPending, defaults, withDefault.length);
+    console.log("default rejection", await Promise.reject(undefined).catch(withDefault), defaults);
+    console.log("optional handler", await Promise.resolve<number | undefined>(undefined).then((value?: number) => value ?? 23));
     const separate = (value: number, extra?: number) => value + (extra ?? 0);
     console.log("extra", await Promise.resolve(7).then(separate));
 }

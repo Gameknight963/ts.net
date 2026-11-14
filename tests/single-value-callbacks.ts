@@ -33,3 +33,14 @@ console.log('mapped-capture', mappedCapture(callbackValues));
 let reassignedCallback = (value: number | string | undefined): string => 'first:' + String(value);
 reassignedCallback = value => 'second:' + String(value);
 console.log('reassigned', callbackValues.map(reassignedCallback).join(','));
+
+let defaultCalls = 0;
+const defaultSource: (number | undefined)[] = [1, undefined, 3, undefined];
+console.log('default effects', defaultSource.map((value = ++defaultCalls) => value).join(','), defaultCalls);
+let capturedDefault = 7;
+const defaultClosure = (value = capturedDefault) => value + 1;
+console.log('captured default', defaultSource.map(defaultClosure).join(','));
+capturedDefault = 11;
+console.log('changed default', defaultSource.map(defaultClosure).join(','), defaultClosure.length);
+console.log('optional parameter', defaultSource.map((value?: number) => value === undefined ? -1 : value).join(','));
+try { defaultSource.map((value = (() => { throw new Error('default'); })()) => value); } catch (error) { console.log('default throws', (error as Error).message); }

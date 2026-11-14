@@ -25,3 +25,8 @@ for(const mutation of ['getter','delete','shrink','reverse']) {
  },0);
  console.log('mutation',mutation,result,calls,gets);
 }
+
+let initialDefaults = 0, valueDefaults = 0;
+console.log('both defaults', [undefined, 'a', undefined].reduce<number>((sum = (++initialDefaults, 5), value: any = (++valueDefaults, 'xx')): number => sum + value.length, undefined as any), initialDefaults, valueDefaults);
+console.log('default accumulator', ['a', 'bc'].reduce<number>((sum = 5, value: string): number => sum + value.length, undefined as any));
+console.log('optional reducer', [undefined, 'abc'].reduce<number>((sum: number, value?: string): number => sum + (value?.length ?? 7), 0));
