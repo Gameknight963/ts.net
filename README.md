@@ -141,11 +141,11 @@ Runtime performance:
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | 0.40x |
 | Create a Map, insert and read 10K entries, then delete half | 1.76 ms | 0.695 ms | 0.40x |
 | Class getter returning `this.base * 2 + 1`, 100K reads | 0.0682 ms | 0.0274 ms | 0.40x |
+| Construct and run a chain of 10K handlers | 0.759 ms | 0.306 ms | 0.40x |
 | Class numeric getter, 100K reads | 0.0702 ms | 0.0274 ms | 0.39x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | 0.38x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 5.60 ms | 2.05 ms | 0.37x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | 0.37x |
-| Construct and run a chain of 10K handlers | 0.798 ms | 0.296 ms | 0.37x |
 | Mixed array, 100K elements and 5 traversals | 3.19 ms | 1.15 ms | 0.36x |
 | Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | 0.35x |
 | Numeric callback reading `arguments.length`, 100K calls | 1.26 ms | 0.435 ms | 0.35x |
