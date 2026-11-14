@@ -30,6 +30,16 @@ internal static partial class CompilerFunctions
         if (value.kind == NodeKind.Object && fits(source, target, c)) { return; }
         b.convert(source, target, c);
     }
+    internal static void il_conditional_value(int entry, int target, int condition, bool whenTrue, Compiler c, IlBackend b)
+    {
+        TypeKind source = get_type(get_node(entry, c).type, c).kind;
+        if (get_type(target, c).kind == TypeKind.Number && (source is TypeKind.Any or TypeKind.Unknown) && il_guarded_number_name(condition, entry, whenTrue, c))
+        {
+            // The runtime typeof check proves a boxed double; retain checked unboxing.
+            il_boxed(entry, c, b); b.emit(0xa5, b.RuntimeToken(RuntimeMember.DoubleType)); b.call(RuntimeMember.WrapNumber); return;
+        }
+        il_as(entry, target, c, b);
+    }
     internal static void il_boxed(int entry, Compiler c, IlBackend b)
     {
         il_expression(entry, c, b);
@@ -515,7 +525,8 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.Conditional)
         {
             int alternate = b.label(); int done = b.label(); il_condition(n.left, c, b); b.emit(0x39, alternate);
-            il_as(n.right, n.type, c, b); b.emit(0x38, done); b.mark(alternate); il_as(n.third, n.type, c, b); b.mark(done);
+            il_conditional_value(n.right, n.type, n.left, true, c, b); b.emit(0x38, done); b.mark(alternate);
+            il_conditional_value(n.third, n.type, n.left, false, c, b); b.mark(done);
         }
         else if (n.kind == NodeKind.Number) { b.plan.number(b.method, number(get_token(n.token, c).text, c)); b.call(RuntimeMember.WrapNumber); }
         else if (n.kind == NodeKind.Boolean) { b.emit(0x20, is_text(get_token(n.token, c).text, text_true, c) ? 1 : 0); b.call(RuntimeMember.WrapBoolean); }
