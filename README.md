@@ -117,6 +117,7 @@ Runtime performance:
 | Sum 1K values in a loop, awaiting each value | 0.0563 ms | 0.0423 ms | 0.75x |
 | Read varying `keyof` keys through a typed helper from a 64-field object, 100K reads | 1.97 ms | 1.48 ms | 0.75x |
 | String `charCodeAt(index)`, 1M calls | 2.27 ms | 1.66 ms | 0.73x |
+| Read varying keys through an `any` helper from a 64-field object, 100K reads | 2.04 ms | 1.49 ms | 0.73x |
 | Float64Array toSorted and traversal, 10 copies of 10K values | 11.56 ms | 8.06 ms | 0.70x |
 | Int32Array toSorted and traversal, 10 copies of 10K values | 5.74 ms | 4.03 ms | 0.70x |
 | TransformStream pipeline, double 1K numbers | 5.17 ms | 3.57 ms | 0.69x |
@@ -132,8 +133,8 @@ Runtime performance:
 | Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | 0.60x |
 | Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | 0.59x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 0.717 ms | 0.415 ms | 0.58x |
+| Read varying string keys through an `any` helper from a Float64Array, 100K reads | 1.23 ms | 0.713 ms | 0.58x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | 0.54x |
-| Read varying keys through an `any` helper from a 64-field object, 100K reads | 2.76 ms | 1.48 ms | 0.53x |
 | Parse, filter, group, sort and serialize 1K records, 10 passes | 7.86 ms | 4.12 ms | 0.52x |
 | Split 10K comma-separated strings, keep three parts, and sum lengths | 4 ms | 2 ms | 0.50x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | 0.50x |
