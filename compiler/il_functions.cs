@@ -215,7 +215,7 @@ internal static partial class CompilerFunctions
         if (function.fourth != 0 || function.right != 0) return false;
         if (function.children == 0) return true;
         Node parameter = get_node(function.children, c);
-        return parameter.symbol != 0 && parameter.next == 0 && !parameter.constant && parameter.left == 0 && parameter.right == 0 &&
+        return parameter.symbol != 0 && parameter.next == 0 && parameter.right == 0 &&
             parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
     }
     internal static bool il_reduce_value_callback(int symbol, Compiler c, IlBackend b)
@@ -228,7 +228,7 @@ internal static partial class CompilerFunctions
         Node second = get_node(first.next, c);
         if (second.next != 0 || get_type(second.type, c).kind is TypeKind.Number or TypeKind.Void) return false;
         return ordinary(first) && ordinary(second);
-        static bool ordinary(Node parameter) => parameter.symbol != 0 && !parameter.constant && parameter.left == 0 && parameter.right == 0 && parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
+        static bool ordinary(Node parameter) => parameter.symbol != 0 && parameter.right == 0 && parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0;
     }
     internal static bool il_value_pair_number(int symbol, Compiler c)
     {
