@@ -408,8 +408,9 @@ internal static partial class CompilerFunctions
                 b.emit(0x28, b.function(symbol)); b.op(0x2a);
             }
         }
-        if (count >= 0)
+        if (count >= 0 || value_pair)
         {
+            int numeric_count = count >= 0 ? count : 2;
             for (int arity = 0; arity <= 2; arity++)
             {
                 int method = arity == 0 ? b.plan.method0(5, type, 0xc6, -10, "InvokeNumber0")
@@ -418,11 +419,15 @@ internal static partial class CompilerFunctions
                 b.begin(method);
                 int raw = b.raw_functions.at(symbol);
                 if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
-                for (int i = 0; i < count; i++)
+                int parameter = definition.children;
+                for (int i = 0; i < numeric_count; i++)
                 {
+                    Node p = get_node(parameter, c);
                     if (i < arity) b.emit(0xfe09, i + 1);
                     else b.call(RuntimeMember.EmptyNumber);
                     if (raw != 0) b.call(RuntimeMember.NumberValue);
+                    else if (get_type(p.type, c).kind != TypeKind.Number) { b.call(RuntimeMember.BoxNumber); b.from_object(p.type, c); }
+                    parameter = p.next;
                 }
                 b.emit(0x28, raw != 0 ? raw : b.function(symbol));
                 if (raw != 0) b.call(RuntimeMember.WrapNumber);
