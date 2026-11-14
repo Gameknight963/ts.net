@@ -48,7 +48,7 @@ sealed class OwnProperties
         else if (key == key1) stored = value1;
         else if (key == key2) stored = value2;
         else if (key == key3) stored = value3;
-        else if (tail == null || !tail.TryGetValue(key, out stored)) {value = null;return false;}
+        else if (!TryGetTail(key, out stored)) {value = null;return false;}
         value = stored is double primitive ? primitive : stored is NumberCell number ? number.Value : Js.Cast<double?>(stored, "checked conversion failed");
         return true;
     }
@@ -59,14 +59,29 @@ sealed class OwnProperties
         else if (key == key1) stored = value1;
         else if (key == key2) stored = value2;
         else if (key == key3) stored = value3;
-        else if (tail == null || !tail.TryGetValue(key, out stored)) return false;
+        else if (!TryGetTail(key, out stored)) return false;
         return stored is double or NumberCell || ReferenceEquals(stored, Js.Undefined);
     }
     string key0, key1, key2, key3;
     object value0, value1, value2, value3;
     int inlineCount, version, symbolCount, numericWrites;
     Dictionary<string, object> tail;
-    List<string> tailOrder;
+    // The order slot holds one compact entry until a sixth property needs a
+    // dictionary. With a dictionary it holds the optional deletion order.
+    object tailOrder;
+    sealed class SingleProperty(string key, object value)
+    {
+        internal readonly string Key = key;
+        internal object Value = value;
+    }
+    bool TryGetTail(string key, out object value)
+    {
+        if (tail != null) return tail.TryGetValue(key, out value);
+        if (tailOrder is SingleProperty single && key == single.Key) { value = single.Value; return true; }
+        value = null; return false;
+    }
+    bool TailContainsKey(string key) => tail != null ? tail.ContainsKey(key)
+        : tailOrder is SingleProperty single && key == single.Key;
     public OwnProperties() { }
     internal OwnProperties(object iteratorValue, object iteratorDone)
     {
@@ -81,10 +96,11 @@ sealed class OwnProperties
         value0=Read(source.value0);value1=Read(source.value1);value2=Read(source.value2);value3=Read(source.value3);
         inlineCount=source.inlineCount;version=source.version;symbolCount=source.symbolCount;
         if (source.tail != null) tail = new Dictionary<string, object>(source.tail);
-        if (source.tailOrder != null) tailOrder = new List<string>(source.tailOrder);
+        if (source.tailOrder is List<string> order) tailOrder = new List<string>(order);
+        else if (source.tailOrder is SingleProperty single) tailOrder = new SingleProperty(single.Key, Read(single.Value));
     }
     public int Version => version;
-    public int Count => inlineCount + (tail?.Count ?? 0);
+    public int Count => inlineCount + (tail?.Count ?? (tailOrder is SingleProperty ? 1 : 0));
     public int StringCount => Count - symbolCount;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(string key, out object value)
@@ -95,12 +111,12 @@ sealed class OwnProperties
         if (key==key2) { value=(numericWrites & HasNumberCells)==0 ? value2 : Read(value2);return true; }
         if (key==key3) { value=(numericWrites & HasNumberCells)==0 ? value3 : Read(value3);return true; }
         value=null;
-        return tail != null && tail.TryGetValue(key, out value);
+        return TryGetTail(key, out value);
     }
     public bool ContainsKey(string key)
     {
         ArgumentNullException.ThrowIfNull(key);
-        return key == key0 || inlineCount > 1 && (key == key1 || key == key2 || key == key3 || tail != null && tail.ContainsKey(key));
+        return key == key0 || inlineCount > 1 && (key == key1 || key == key2 || key == key3 || TailContainsKey(key));
     }
     public object this[string key]
     {
@@ -120,10 +136,20 @@ sealed class OwnProperties
                 if (Js.IsSymbolKey(key)) symbolCount++;
                 version++;
             } else {
-                tail ??= new Dictionary<string, object>();
+                if (tail == null) {
+                    if (tailOrder is SingleProperty single) {
+                        if (key == single.Key) { single.Value = value; return; }
+                        tail = new Dictionary<string, object> { [single.Key] = single.Value };
+                        tailOrder = null;
+                    } else {
+                        tailOrder = new SingleProperty(key, value);
+                        if (Js.IsSymbolKey(key)) symbolCount++;
+                        version++; return;
+                    }
+                }
                 ref object slot = ref CollectionsMarshal.GetValueRefOrAddDefault(tail, key, out bool present);
                 slot=value;
-                if (!present) { if (Js.IsSymbolKey(key)) symbolCount++; tailOrder?.Add(key); version++; }
+                if (!present) { if (Js.IsSymbolKey(key)) symbolCount++; (tailOrder as List<string>)?.Add(key); version++; }
             }
         }
     }
@@ -146,18 +172,29 @@ sealed class OwnProperties
             for(int j=i;j+1<inlineCount;j++) InlineSet(j,InlineKey(j+1),InlineValue(j+1));
             InlineSet(--inlineCount,null,null);
             if(tail is not null && tail.Count!=0) {
-                tailOrder ??= new List<string>(tail.Keys);
-                string first=tailOrder[0];InlineSet(inlineCount++,first,tail[first]);
-                tail.Remove(first);tailOrder.RemoveAt(0);
+                var order = tailOrder as List<string>;
+                if (order == null) tailOrder = order = new List<string>(tail.Keys);
+                string first=order[0];InlineSet(inlineCount++,first,tail[first]);
+                tail.Remove(first);order.RemoveAt(0);
+            } else if (tailOrder is SingleProperty single) {
+                InlineSet(inlineCount++, single.Key, single.Value);
+                tailOrder = null;
             }
             if (Js.IsSymbolKey(key)) symbolCount--;
             version++;return true;
         }
-        if(tail is null || !tail.ContainsKey(key))return false;
-        // Dictionary slots can be reused after removal. Keep explicit order only
-        // once deletion makes its enumeration order unsuitable.
-        tailOrder ??= new List<string>(tail.Keys);
-        tail.Remove(key);tailOrder.Remove(key);if (Js.IsSymbolKey(key)) symbolCount--;version++;return true;
+        if (tail == null) {
+            if (tailOrder is not SingleProperty single || key != single.Key) return false;
+            tailOrder = null;
+        } else {
+            if (!tail.ContainsKey(key)) return false;
+            // Dictionary slots can be reused after removal. Keep explicit order
+            // once deletion makes its enumeration order unsuitable.
+            var order = tailOrder as List<string>;
+            if (order == null) tailOrder = order = new List<string>(tail.Keys);
+            tail.Remove(key);order.Remove(key);
+        }
+        if (Js.IsSymbolKey(key)) symbolCount--;version++;return true;
     }
     string InlineKey(int index) => index switch {0=>key0,1=>key1,2=>key2,_=>key3};
     public KeyCollection Keys => new KeyCollection(this);
@@ -185,8 +222,13 @@ sealed class OwnProperties
         {
             if (version != source.version) throw new InvalidOperationException("Properties changed during enumeration");
             if (index+1 < source.inlineCount) { Current=source.InlineKey(++index);return true; }
-            if (!tailStarted) { tailStarted=true;if(source.tailOrder!=null)orderedTail=source.tailOrder.GetEnumerator();else if (source.tail != null) tail=source.tail.Keys.GetEnumerator(); }
-            if(source.tailOrder!=null) {if(orderedTail.MoveNext()){Current=orderedTail.Current;return true;}}
+            if (!tailStarted) {
+                tailStarted=true;
+                if (source.tailOrder is SingleProperty single) { Current=single.Key; return true; }
+                if(source.tailOrder is List<string> order)orderedTail=order.GetEnumerator();
+                else if (source.tail != null) tail=source.tail.Keys.GetEnumerator();
+            }
+            if(source.tailOrder is List<string>) {if(orderedTail.MoveNext()){Current=orderedTail.Current;return true;}}
             else if (source.tail != null && tail.MoveNext()) { Current=tail.Current;return true; }
             return false;
         }
