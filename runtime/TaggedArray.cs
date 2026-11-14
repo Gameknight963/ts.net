@@ -8,6 +8,7 @@ public sealed partial class TaggedArray : JsArray
 {
     byte[] tags = Array.Empty<byte>(); // 0: hole, 1: number, 2: reference
     double[] numbers = Array.Empty<double>();
+    // Numeric maps need this only for reference values or cached number boxes.
     object[] references = Array.Empty<object>();
     uint length;
     JsArray materialized;
@@ -23,9 +24,13 @@ public sealed partial class TaggedArray : JsArray
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void StoreMappedNumber(int index, double? value)
     {
+        if (!value.HasValue) { EnsureReferences(); references[index] = Js.Undefined; }
         tags[index] = value.HasValue ? (byte)1 : (byte)2;
         numbers[index] = value.GetValueOrDefault();
-        references[index] = value.HasValue ? null : Js.Undefined;
+    }
+    void EnsureReferences()
+    {
+        if (references.Length == 0) references = new object[tags.Length];
     }
     internal double[] TryPackedNumbers(double limit)
     {
@@ -53,15 +58,23 @@ public sealed partial class TaggedArray : JsArray
     {
         if(materialized!=null){materialized.DeleteOwn(index.ToString(System.Globalization.CultureInfo.InvariantCulture));return;}
         if(index>=length || index>=(uint)tags.Length)return;
-        tags[index]=0;numbers[index]=0;references[index]=null;
+        tags[index]=0;numbers[index]=0;if (index < (uint)references.Length) references[index]=null;
     }
     object BoxAt(uint index)
     {
         // Read and the internal copy loop check the representation and range.
         // Reuse the reference slot to cache a box only when this numeric slot
         // is read as an object. Numeric writes already clear that slot.
-        if (tags[index] == 1) return references[index] ??= numbers[index];
+        if (tags[index] == 1) {
+            object[] boxes = references;
+            return index < (uint)boxes.Length ? boxes[index] ??= numbers[index] : CacheNumber(index);
+        }
         return tags[index] == 2 ? references[index] : Js.Undefined;
+    }
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    object CacheNumber(uint index)
+    {
+        EnsureReferences(); return references[index] ??= numbers[index];
     }
     JsArray Materialize()
     {
@@ -81,7 +94,7 @@ public sealed partial class TaggedArray : JsArray
         if (capacity <= tags.Length) return;
         // Numeric payloads are read only when their initialized number tag is set.
         // Publish only after all allocations succeed.
-        var newTags = new byte[capacity];var newNumbers = GC.AllocateUninitializedArray<double>(capacity);var newReferences = new object[capacity];
+        var newTags = new byte[capacity];var newNumbers = GC.AllocateUninitializedArray<double>(capacity);var newReferences = references.Length == 0 ? Array.Empty<object>() : new object[capacity];
         Array.Copy(tags, newTags, tags.Length);Array.Copy(numbers, newNumbers, numbers.Length);Array.Copy(references, newReferences, references.Length);
         tags = newTags;numbers = newNumbers;references = newReferences;
     }
@@ -98,8 +111,8 @@ public sealed partial class TaggedArray : JsArray
     {
         if (TryWriteDefinedElement(index, value)) return;
         if (!Prepare(index)) { materialized.Set(index.ToString(System.Globalization.CultureInfo.InvariantCulture), value);return; }
-        if (value is double number) { tags[index] = 1;numbers[index] = number;references[index] = null; }
-        else { tags[index] = 2;references[index] = value;numbers[index] = 0; }
+        if (value is double number) { tags[index] = 1;numbers[index] = number;if (index < (uint)references.Length) references[index] = null; }
+        else { EnsureReferences();tags[index] = 2;references[index] = value;numbers[index] = 0; }
         if (index >= length) length = index + 1;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -110,7 +123,7 @@ public sealed partial class TaggedArray : JsArray
         if ((uint)index < length && materialized == null && (uint)index < (uint)tags.Length && tags[index] != 0 &&
             !HasIndexedAccessors && !ElementsFrozen && value.HasValue)
         {
-            tags[index] = 1;numbers[index] = value.Value;references[index] = null;
+            tags[index] = 1;numbers[index] = value.Value;if ((uint)index < (uint)references.Length) references[index] = null;
             return;
         }
         SetNumberAtSlow(index, value);
@@ -121,7 +134,7 @@ public sealed partial class TaggedArray : JsArray
         if (TryWriteDefinedNumber((uint)index, value)) return;
         if (!value.HasValue) { Write((uint)index, Js.Undefined);return; }
         if (!Prepare((uint)index)) { materialized.SetAt(index, value.Value);return; }
-        tags[index] = 1;numbers[index] = value.Value;references[index] = null;
+        tags[index] = 1;numbers[index] = value.Value;if ((uint)index < (uint)references.Length) references[index] = null;
         if ((uint)index >= length) length = (uint)index + 1;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -131,7 +144,7 @@ public sealed partial class TaggedArray : JsArray
         if (SetThroughPrototype((uint)index, value)) return;
         if (TryWriteDefinedElement((uint)index, value)) return;
         if (!Prepare((uint)index)) { materialized.SetAt(index, value);return; }
-        tags[index] = 2;references[index] = value;
+        EnsureReferences();tags[index] = 2;references[index] = value;
         if ((uint)index >= length) length = (uint)index + 1;
     }
     protected override void Resize(uint count)
@@ -142,7 +155,7 @@ public sealed partial class TaggedArray : JsArray
         if (count < length && count < (uint)tags.Length)
         {
             int end = (int)Math.Min(length, (uint)tags.Length), start = (int)count;
-            Array.Clear(tags, start, end - start);Array.Clear(numbers, start, end - start);Array.Clear(references, start, end - start);
+            Array.Clear(tags, start, end - start);Array.Clear(numbers, start, end - start);if (references.Length != 0) Array.Clear(references, start, end - start);
         }
         length = count;
     }
