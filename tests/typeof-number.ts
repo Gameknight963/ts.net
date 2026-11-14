@@ -27,3 +27,27 @@ function optionalCondition(value?: number): number {
     return 2;
 }
 console.log(optionalCondition(), optionalCondition(3), optionalCondition(NaN));
+
+function looseClassify(value: any): number {
+    let result = 0;
+    if (typeof value == "number") result += 1;
+    if ("number" == typeof value) result += 2;
+    if (typeof value != "number") result += 4;
+    if ("number" != typeof value) result += 8;
+    console.log('loose values', typeof value == "number", "number" == typeof value,
+        typeof value != "number", "number" != typeof value);
+    return result;
+}
+for (const value of [2, NaN, Infinity, -0, undefined, null, false, "2", {}, [], 1n, Symbol()])
+    console.log('loose branch', looseClassify(value));
+function looseOptional(value?: number): boolean {return typeof value == "number";}
+console.log('loose optional', looseOptional(), looseOptional(3), looseOptional(NaN));
+console.log('loose effects', typeof next() == "number", "number" != typeof next(), visits);
+console.log('loose void', typeof nothing() == "number", visits);
+const looseItems: any[] = [3, 'text', , undefined, NaN];
+let looseGets = 0;
+Object.defineProperty(looseItems, '1', {get() {looseGets++; return 4;}, configurable: true});
+for (let i=0;i<looseItems.length;i++) {
+    console.log('loose array', typeof looseItems[i] == "number", "number" != typeof looseItems[i]);
+}
+console.log('loose getters', looseGets);
