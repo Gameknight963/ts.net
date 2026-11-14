@@ -313,6 +313,11 @@ internal static partial class CompilerFunctions
         b.call(receiver_count >= 0 ? RuntimeMember.ReceiverFunctionConstructor : RuntimeMember.FunctionConstructor);
         if (context != 0) { b.emit(0xfe09, 0); b.emit(0xfe09, 5); b.emit(0x7d, environment_field); }
         b.op(0x2a);
+        if (b.function_values_needed.at(symbol) != 0)
+        {
+            b.begin(b.plan.method0(5, type, 0xc6, -5, "GetCallProperty"));
+            b.emit(0xfe09, 0); b.call(RuntimeMember.ReadFunctionCallProperty); b.op(0x2a);
+        }
         if (receiver_count >= 0)
         {
             il_numeric_receiver_methods(symbol, type, context, environment_field, receiver_count, c, b);

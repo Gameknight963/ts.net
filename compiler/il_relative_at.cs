@@ -12,7 +12,12 @@ internal static partial class CompilerFunctions
         if(callee.kind==NodeKind.OptionalChain)return il_optional_chain(calleeId,true,c,b);
         if (callee.kind is not (NodeKind.Property or NodeKind.Index)) { il_boxed(calleeId,c,b); return -1; }
         il_boxed(callee.left,c,b); b.op(0x25); int receiver=b.local(-5); b.emit(0xfe0e,receiver);
-        if (callee.kind==NodeKind.Property) { if (callee.fourth != 0) { il_boxed(callee.fourth, c, b); b.call(RuntimeMember.PrivateGet); } else { il_text(callee.name,c,b); b.call(RuntimeMember.DynamicGet); } }
+        if (callee.kind==NodeKind.Property) {
+            if (callee.fourth != 0) { il_boxed(callee.fourth, c, b); b.call(RuntimeMember.PrivateGet); }
+            else if (is_text(callee.name, "call", c) && get_type(get_node(callee.left, c).type, c).kind is TypeKind.Any or TypeKind.Unknown)
+                b.call(RuntimeMember.GetFunctionCallProperty);
+            else { il_text(callee.name,c,b); b.call(RuntimeMember.DynamicGet); }
+        }
         else if (il_direct_index(calleeId, c, b)) { il_integer(callee.right, c, b); b.call(RuntimeMember.ArrayIndexGetAt); }
         else { il_boxed(callee.right,c,b); b.call(RuntimeMember.IndexGet); }
         return receiver;

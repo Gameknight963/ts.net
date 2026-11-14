@@ -45,6 +45,7 @@ public partial class JsFunction : JsDescriptorObject
     }
     internal virtual void SetObjectHome(TsObject home) { }
     public virtual object InvokeWithReceiver(object receiver,object[] arguments)=>Invoke(arguments);
+    public virtual object GetCallProperty() => Get("call");
     // Generated continuations and ordinary zero/one-argument functions can
     // override this without an argument array.
     public virtual object InvokeContinuation(object value) => InvokeWithReceiver(Js.Undefined, new[] { value });
