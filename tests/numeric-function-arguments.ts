@@ -54,3 +54,23 @@ try{invalid.check(++argument);}catch(error){console.log('invalid',(error as Erro
     const testsUndefined:any={calculate(first:number,second:number):number{return second===undefined?7:second;}};
     console.log('tested missing argument',testsUndefined.calculate(1));
 }
+
+{
+    function invoke(callback: (value: number) => number, value: number): number { return callback(value); }
+    function empty(callback: () => number): number { return callback(); }
+    function extra(callback: (a: number, b: number) => number): number { return callback(3, 7); }
+    const anyValue = (value: any = 11): number => typeof value === 'number' ? value + 1 : -1;
+    const unknownValue = (value?: unknown): number => typeof value === 'number' ? value * 2 : -1;
+    console.log('mixed numeric entry', invoke(anyValue, 3), invoke(unknownValue, 5), extra(anyValue), empty(anyValue), anyValue.length);
+    console.log('unknown missing', empty(unknownValue), invoke(unknownValue, undefined as any));
+    console.log('structural numeric entry', invoke((value: { toString(): string }): number => value.toString().length, 123));
+    let fallback = 7, visits = 0;
+    const captured = (value: any = (++visits, fallback)): number => value;
+    console.log('captured numeric default', empty(captured), invoke(captured, 3), visits);
+    fallback = 19;
+    console.log('changed numeric default', empty(captured), visits);
+    const rest = (...values: any[]): number => values.length;
+    console.log('rest numeric entry', extra(rest), empty(rest));
+    const observes = function(value: any): number { return arguments.length; };
+    console.log('arguments numeric entry', extra(observes), empty(observes as unknown as () => number));
+}
