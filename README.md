@@ -177,6 +177,7 @@ Runtime performance:
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | 0.04x |
 | Borrow an object method with call, 100K calls | 1.99 ms | 0.0628 ms | 0.03x |
 | Borrow an object method with apply and a one-number array, 100K calls | 2.34 ms | 0.0636 ms | 0.03x |
+| Call a custom call handler with an object and a number, 100K calls | 2.35 ms | 0.0625 ms | 0.03x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | 0.02x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 2.67 ms | 0.0628 ms | 0.02x |
 
