@@ -295,7 +295,9 @@ internal sealed partial class IlBackend
     }
     public void check_global(int symbol)
     {
-        if (this.global_vars.at(symbol) == 0)
+        // The packed-buffer guard already loaded this binding successfully.
+        // Its loop proof excludes callbacks and rebinding the array.
+        if (this.global_vars.at(symbol) == 0 && this.packed_arrays.at(symbol) == 0)
         {
             int flag = this.global_flags.at(symbol); this.emit(0x7e, flag); this.call(RuntimeMember.CheckInitialized);
         }
