@@ -16,7 +16,6 @@
 - Preserve TypeScript behavior when optimizing. Use proofs or runtime guards
   with a correct fallback.
 - Prefer safe C# code. Use unsafe code only where it makes sense.
-- Observe Crust’s strengths, annoyances, and architectural issues while working.
   Put these observations under artifacts; do not commit them.
 - Do not introduce dependencies with licensing obligations without discussing
   those obligations first.
