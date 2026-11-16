@@ -11,13 +11,17 @@ internal sealed partial class IlBackend
 internal static partial class CompilerFunctions
 {
     // Only small numeric methods with one ordinary number parameter qualify.
+    // Literal methods use the same function and receiver guards as class methods.
     internal static void il_prepare_simple_class_methods(Compiler c, IlBackend b)
     {
         var sources = new Dictionary<int, int>(); var ambiguous = new HashSet<int>();
         for (int i = 1; i <= c.node_store.count(); i++) {
             Node node = get_node(i, c);
-            if (node.kind != NodeKind.ClassValue || node.fourth == 0) continue;
-            int type = get_node(node.fourth, c).type;
+            if (node.kind != NodeKind.ClassValue && node.kind != NodeKind.Object) continue;
+            if (node.kind == NodeKind.ClassValue && node.fourth == 0) continue;
+            if (node.kind == NodeKind.Object && (il_object_needs_entries(i, c) ||
+                get_type(node.type, c).kind != TypeKind.Shape || get_type(node.type, c).name != 0)) continue;
+            int type = node.kind == NodeKind.Object ? node.type : get_node(node.fourth, c).type;
             if (!sources.TryAdd(type, i)) ambiguous.Add(type);
         }
         // A known replacement would only pay for a failing function-type guard.
@@ -33,8 +37,12 @@ internal static partial class CompilerFunctions
         }
         foreach (var pair in sources) {
             Node klass = get_node(pair.Value, c);
-            if (ambiguous.Contains(pair.Key) || klass.third != 0) continue;
-            var data = new List<int>(); int fields = scalar_field_function(klass.left, c);
+            bool literal = klass.kind == NodeKind.Object;
+            if (ambiguous.Contains(pair.Key) || !literal && klass.third != 0) continue;
+            var data = new List<int>(); int fields = literal ? 0 : scalar_field_function(klass.left, c);
+            if (literal)
+                for (int item = klass.children; item != 0; item = get_node(item, c).next)
+                    if (get_type(get_node(get_node(item, c).left, c).type, c).kind == TypeKind.Number) data.Add(get_node(item, c).name);
             if (fields != 0 && get_node(fields, c).left != 0) {
                 Node body = get_node(get_node(fields, c).left, c);
                 for (int item = body.children; item != 0; item = get_node(item, c).next) {
@@ -45,8 +53,8 @@ internal static partial class CompilerFunctions
             var methods = new List<SimpleClassMethod>();
             for (int item = klass.children; item != 0; item = get_node(item, c).next) {
                 Node method = get_node(item, c);
-                if (method.constant || method.name == 0 || method.right != 0 || method.third != 0 || method.fourth != 0) continue;
-                if (writes.Any(write => write.ClassName == get_type(pair.Key, c).name && same(write.Name, method.name, c))) continue;
+                if (method.name == 0 || !literal && (method.constant || method.right != 0 || method.third != 0 || method.fourth != 0)) continue;
+                if (!literal && writes.Any(write => write.ClassName == get_type(pair.Key, c).name && same(write.Name, method.name, c))) continue;
                 int entry = scalar_field_function(method.left, c); if (entry == 0) continue;
                 Node function = get_node(entry, c);
                 if (get_type(function.type, c).kind != TypeKind.Number || function.left == 0) continue;
@@ -97,13 +105,15 @@ internal static partial class CompilerFunctions
                 b.emit(0xfe09, 1); b.emit(0x75, b.classes.at(type)); b.emit(0xfe0e, receiver);
                 b.emit(0xfe0c, receiver); b.emit(0x39, fallback);
             }
+            int literalType = get_type(type, c).name == 0 ? type : 0;
             Node value = get_node(method.Expression, c);
             if (value.kind == NodeKind.Name && value.symbol == method.Parameter) b.emit(0xfe09, 2);
             else if (value.kind == NodeKind.Property) {
-                b.emit(0xfe0c, receiver); il_text(value.name, c, b); b.emit(0xfe0c, receiver);
-                b.call(RuntimeMember.GetStoredNumberWithReceiver);
+                b.emit(0xfe0c, receiver);
+                if (literalType != 0) il_shape_read(type, field(type, value.name, c), b);
+                else { il_text(value.name, c, b); b.emit(0xfe0c, receiver); b.call(RuntimeMember.GetStoredNumberWithReceiver); }
             }
-            else { il_simple_getter_number(method.Expression, c, b, receiver, method.Parameter); b.call(RuntimeMember.WrapNumber); }
+            else { il_simple_getter_number(method.Expression, c, b, receiver, method.Parameter, literalType: literalType); b.call(RuntimeMember.WrapNumber); }
             b.op(0x2a);
             b.mark(fallback); b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 2);
             b.call(RuntimeMember.CallMethodNumber1); b.op(0x2a);

@@ -95,7 +95,7 @@ internal static partial class CompilerFunctions
             il_simple_getter_expression(value.right, receiver, data, ref remaining, c, parameter);
     }
 
-    internal static void il_simple_getter_number(int entry, Compiler c, IlBackend b, int receiver = -1, int parameter = 0, List<(int Name, int Slot)> fields = null, int counter = 0)
+    internal static void il_simple_getter_number(int entry, Compiler c, IlBackend b, int receiver = -1, int parameter = 0, List<(int Name, int Slot)> fields = null, int counter = 0, int literalType = 0)
     {
         Node value = get_node(entry, c);
         if (scalar_class_literal(entry, TypeKind.Number, c)) { il_number(entry, c, b); return; }
@@ -113,14 +113,18 @@ internal static partial class CompilerFunctions
                     if (same(field.Name, value.name, c)) { b.emit(0xfe0c, field.Slot); return; }
                 fail(value.token, "class getter loop field missing", c); return;
             }
+            if (literalType != 0) {
+                b.emit(0xfe0c, receiver); il_shape_read(literalType, field(literalType, value.name, c), b);
+                b.call(RuntimeMember.NumberValue); return;
+            }
             b.emit(receiver < 0 ? 0xfe09 : 0xfe0c, receiver < 0 ? 0 : receiver); il_text(value.name, c, b);
             b.emit(receiver < 0 ? 0xfe09 : 0xfe0c, receiver < 0 ? 0 : receiver);
             b.call(RuntimeMember.GetStoredNumberWithReceiver); b.call(RuntimeMember.NumberValue); return;
         }
-        il_simple_getter_number(value.left, c, b, receiver, parameter, fields, counter);
+        il_simple_getter_number(value.left, c, b, receiver, parameter, fields, counter, literalType);
         int op = get_token(value.token, c).text;
         if (value.kind == NodeKind.Unary) { if (is_text(op, text_minus, c)) b.op(0x65); return; }
-        il_simple_getter_number(value.right, c, b, receiver, parameter, fields, counter);
+        il_simple_getter_number(value.right, c, b, receiver, parameter, fields, counter, literalType);
         b.op(is_text(op, text_plus, c) ? 0x58 : is_text(op, text_minus, c) ? 0x59 : is_text(op, text_star, c) ? 0x5a : 0x5b);
     }
 

@@ -1015,6 +1015,7 @@ bool il_logical_assignment(int op, Compiler c)
                 int base_type = b.RuntimeToken(RuntimeMember.TsObjectType);
                 int klass = b.plan.type(name.view(), base_type, b.layout_needed.at(type) != 0 || b.spread_types.at(type) != 0 ? 1 : 0x101);
                 b.classes.at_mut(type) = klass;
+                il_simple_class_method_callers(type, c, b);
                 int target = c.types;
                 while (target != 0)
                 {
