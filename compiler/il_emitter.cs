@@ -898,7 +898,11 @@ internal static partial class CompilerFunctions
                 Node left = get_node(n.left, c); Node right = get_node(n.right, c);
                 bool left_defined = il_defined(n.left, c) || (left.kind == NodeKind.Name && b.raw_slot(left.symbol) == -3);
                 bool right_defined = il_defined(n.right, c) || (right.kind == NodeKind.Name && b.raw_slot(right.symbol) == -3);
-                if (left_kind == TypeKind.Number && right_kind == TypeKind.Number && il_integer_value(n.left, c, b) && il_integer_value(n.right, c, b))
+                if (!il_is_loose_equality(op, c) && (il_reference_value(n.left, c, b) || il_reference_value(n.right, c, b)))
+                {
+                    il_boxed(n.left, c, b); il_boxed(n.right, c, b); b.op(0xfe01);
+                }
+                else if (left_kind == TypeKind.Number && right_kind == TypeKind.Number && il_integer_value(n.left, c, b) && il_integer_value(n.right, c, b))
                 {
                     il_integer(n.left, c, b); il_integer(n.right, c, b); b.op(0xfe01);
                 }
@@ -1172,6 +1176,7 @@ internal static partial class CompilerFunctions
             b.function_allocator_cache=b.plan.field(program,0x13,-5,"functionInstanceFactory");
             b.begin(b.function_allocator);b.emit(0x73,b.spread_any_constructor);b.op(0x2a);
         }
+        il_prepare_reference_bindings(c, b);
         il_prepare_closures(c, b); il_prepare_function_values(program, c, b);
         il_prepare_object_receivers(c, b);
         il_prepare_array_value_callbacks(c, b);

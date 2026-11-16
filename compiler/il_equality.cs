@@ -2,8 +2,50 @@ namespace Tsnet.Compiler;
 
 using static Tsnet.Compiler.CompilerFunctions;
 
+internal sealed partial class IlBackend
+{
+    internal readonly HashSet<int> reference_bindings = [];
+}
+
 internal static partial class CompilerFunctions
 {
+    internal static bool il_reference_value(int entry, Compiler c, IlBackend b)
+    {
+        Node n = get_node(entry, c);
+        if (n.kind is NodeKind.Object or NodeKind.Array or NodeKind.FunctionValue or NodeKind.Null or NodeKind.Undefined) return true;
+        if (n.kind == NodeKind.Name) return b.reference_bindings.Contains(n.symbol) ||
+            n.symbol != 0 && get_symbol(n.symbol, c).function != 0 && b.written_symbols.at(n.symbol) == 0;
+        // Named function expressions use a factory to establish their self binding.
+        // Recognize only an immediate function with one function-valued binding
+        // followed by returning that binding. No general call-result inference.
+        if (n.kind != NodeKind.Call || n.children != 0 || get_type(n.type, c).kind is not (TypeKind.Any or TypeKind.Unknown)) return false;
+        Node callee = get_node(n.left, c);
+        if (callee.kind != NodeKind.FunctionValue || callee.symbol == 0) return false;
+        Node function = get_node(get_symbol(callee.symbol, c).function, c);
+        if (function.children != 0 || function.right != 0 || function.fourth != 0) return false;
+        Node body = get_node(function.left, c);
+        if (body.kind != NodeKind.Block || body.children == 0) return false;
+        Node binding = get_node(body.children, c);
+        if (binding.kind != NodeKind.Variable || binding.symbol == 0 || b.written_symbols.at(binding.symbol) != 0 ||
+            get_node(binding.left, c).kind != NodeKind.FunctionValue || binding.next == 0) return false;
+        Node returned = get_node(binding.next, c), value = get_node(returned.left, c);
+        return returned.kind == NodeKind.Return && returned.next == 0 && value.kind == NodeKind.Name && value.symbol == binding.symbol;
+    }
+
+    internal static void il_prepare_reference_bindings(Compiler c, IlBackend b)
+    {
+        bool changed;
+        do {
+            changed = false;
+            for (int i = 1; i <= c.node_store.count(); i++) {
+                Node n = get_node(i, c);
+                if (n.kind != NodeKind.Variable || n.symbol == 0 || n.left == 0 || b.written_symbols.at(n.symbol) != 0 ||
+                    il_parameter_binding(i, c, b) || b.reference_bindings.Contains(n.symbol)) continue;
+                if (il_reference_value(n.left, c, b)) { b.reference_bindings.Add(n.symbol); changed = true; }
+            }
+        } while (changed);
+    }
+
     internal static bool il_is_loose_equality(int op, Compiler c) =>
         is_text(op, text_loose_equal, c) || is_text(op, text_loose_not_equal, c);
 
