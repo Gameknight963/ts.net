@@ -90,6 +90,7 @@ Runtime performance:
 | Reduce 100K number/string/undefined values with a default parameter | 0.596 ms | 0.640 ms | — | 1.08x |
 | Mixed numeric strings, 1M conversions | 28.60 ms | 30.37 ms | — | 1.06x |
 | Set.forEach numeric sum, 10 passes over 10K values | 0.580 ms | 0.608 ms | — | 1.05x |
+| Create/read a two-field object in a 100K-iteration loop, with conditional-key deletion elsewhere | 0.0679 ms | 0.0698 ms | 0.0704 ms (struct) | 1.03x |
 | Create/read a two-field object in a 100K-iteration loop, with a read-only Reflect alias in the program | 0.0706 ms | 0.0717 ms | — | 1.02x |
 | Create/read a two-field object in a 100K-iteration loop, with a constant-key deletion elsewhere in the program | 0.0706 ms | 0.0720 ms | — | 1.02x |
 | Masked integer remainder, 1M iterations | 1.10 ms | 1.11 ms | — | 1.01x |
