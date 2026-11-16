@@ -996,6 +996,13 @@ internal static partial class CompilerFunctions
         if (get_type(target.type, c).kind != TypeKind.Any) { return false; }
         il_expression(target.left, c, b); int receiver = b.local(-5); b.emit(0xfe0e, receiver);
         il_integer(target.right, c, b); int index = b.local(-6); b.emit(0xfe0e, index);
+        int packed = il_packed_slot(n.left, c, b);
+        if (packed >= 0 && get_type(get_node(n.right, c).type, c).kind == TypeKind.Number)
+        {
+            b.emit(0xfe0c, packed); b.emit(0xfe0c, index); il_number(n.right, c, b);
+            if (!il_integer_value(n.right, c, b)) b.call(RuntimeMember.CanonicalNumber);
+            b.op(0xa1); return true;
+        }
         il_tagged_store_value(n.right, receiver, index, c, b); return true;
     }
     internal static void il_statement(int entry, int return_type, Compiler c, IlBackend b)

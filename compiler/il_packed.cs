@@ -95,8 +95,23 @@ internal static partial class CompilerFunctions
             if (n.kind == NodeKind.Index)
             {
                 Node receiver = get_node(n.left, c); Node index = get_node(n.right, c);
-                if (receiver.kind != NodeKind.Name || get_type(receiver.type, c).kind != TypeKind.Array ||
-                    (get_type(get_type(receiver.type, c).element, c).kind == TypeKind.Number) != numeric) { return 0; }
+                if (receiver.kind != NodeKind.Name || get_type(receiver.type, c).kind != TypeKind.Array) { return 0; }
+                bool numericElement = get_type(get_type(receiver.type, c).element, c).kind == TypeKind.Number;
+                if (numeric && !numericElement)
+                {
+                    // A mixed array can still have an entirely numeric prefix.
+                    // Only discarded, plain numeric stores use its raw buffer;
+                    // reads and compound assignments retain their declared type.
+                    int assignmentEntry = (int)b.node_parents.at(i);
+                    Node assignment = get_node(assignmentEntry, c);
+                    Node statement = get_node((int)b.node_parents.at(assignmentEntry), c);
+                    if (assignment.kind != NodeKind.Assign || assignment.left != i ||
+                        !is_text(get_token(assignment.token, c).text, text_assign, c) ||
+                        statement.kind != NodeKind.Expression || statement.left != assignmentEntry ||
+                        get_type(n.type, c).kind != TypeKind.Any ||
+                        get_type(get_node(assignment.right, c).type, c).kind != TypeKind.Number) return 0;
+                }
+                else if (!numeric && numericElement) { return 0; }
                 int current = il_index_extent(n.right, c, b) > 0 ? 1 : 0;
                 if (current == 0 && (index.kind != NodeKind.Name || index.symbol != counter)) { return 0; }
                 // A constant extent and the loop limit need separate guards. Keep
