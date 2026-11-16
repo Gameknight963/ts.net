@@ -491,7 +491,12 @@ public static partial class Js
         TaggedArray tagged => tagged.TryPackedNumbers(tagged.Length()),
         _ => null
     };
-    public static double[] ArrayTryPacked(object receiver, double limit) => receiver is NumberArray numbers && !numbers.ElementsFrozen ? numbers.TryPacked(limit) : null;
+    public static double[] ArrayTryPacked(object receiver, double limit) => receiver switch
+    {
+        NumberArray numbers when !numbers.ElementsFrozen => numbers.TryPacked(limit),
+        TaggedArray tagged => tagged.TryWritablePackedNumbers(limit),
+        _ => null
+    };
     public static void ArrayReservePushes(object receiver, double additions)
     {
         if (receiver is NumberArray numbers) numbers.ReservePushes(additions);

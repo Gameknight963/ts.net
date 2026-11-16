@@ -40,6 +40,18 @@ public sealed partial class TaggedArray : JsArray
         if (tags.AsSpan(0, (int)limit).IndexOfAnyExcept((byte)1) >= 0) return null;
         return numbers;
     }
+    internal double[] TryWritablePackedNumbers(double limit)
+    {
+        if (ElementsFrozen || limit < 0) return null;
+        // A fractional counted-loop limit still visits its final integer index.
+        double extent = Math.Ceiling(limit);
+        double[] buffer = TryPackedNumbers(extent);
+        if (buffer == null) return null;
+        // Compiler guards exclude callbacks while the buffer is in use. Drop
+        // cached primitive boxes so subsequent object reads see the new values.
+        if (references.Length != 0) Array.Clear(references, 0, (int)extent);
+        return buffer;
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double? GetNumberAt(int index)
     {
