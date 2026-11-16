@@ -47,13 +47,15 @@ internal static partial class CompilerFunctions
                 Field field = get_field(member, c); int storage = b.type(field.type, c);
                 int reader = b.plan.method1(5, b.interface_type(check.Type), 0x16, storage, -5, field_name(field.name, "Read_p_", c).view());
                 b.shape_readers[member] = reader; b.begin(reader);
-                int typed = b.label();
-                b.emit(0xfe09, 0); b.emit(0x75, b.interface_type(check.Type)); b.op(0x25); b.emit(0x3a, typed); b.op(0x26);
+                // Keep the branch stack empty so inlined nullable getters stay in registers.
+                int typed = b.label(), instance = b.local(b.interface_type(check.Type));
+                b.emit(0xfe09, 0); b.emit(0x75, b.interface_type(check.Type)); b.emit(0xfe0e, instance);
+                b.emit(0xfe0c, instance); b.emit(0x3a, typed);
                 b.emit(0xfe09, 0); il_text(field.name, c, b);
                 if (get_type(field.type, c).kind == TypeKind.Number) b.call(RuntimeMember.GetNumber);
                 else { b.call(RuntimeMember.DynamicGet); b.from_object(field.type, c); }
                 b.op(0x2a);
-                b.mark(typed); b.emit(0x6f, b.getter(member)); b.op(0x2a);
+                b.mark(typed); b.emit(0xfe0c, instance); b.emit(0x6f, b.getter(member)); b.op(0x2a);
 
                 int writer = b.plan.method2(5, b.interface_type(check.Type), 0x16, -1, -5, storage, field_name(field.name, "Write_p_", c).view());
                 b.shape_writers[member] = writer; b.begin(writer); typed = b.label();
