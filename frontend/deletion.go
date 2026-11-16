@@ -252,8 +252,15 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 				}
 			}
 			if len(arguments) >= 1 {
-				if len(arguments) >= 2 && arguments[1].Kind == ast.KindStringLiteral {
-					b.deletedNames[arguments[1].Text()] = true
+				var keys []string
+				known := false
+				if len(arguments) >= 2 {
+					keys, known = b.constantDeletionKeys(arguments[1])
+				}
+				if known {
+					for _, key := range keys {
+						b.deletedNames[key] = true
+					}
 				} else {
 					properties := b.c.GetPropertiesOfType(b.c.GetTypeAtLocation(arguments[0]))
 					if len(properties) == 0 {
