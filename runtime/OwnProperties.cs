@@ -100,6 +100,15 @@ sealed class OwnProperties
         else if (source.tailOrder is SingleProperty single) tailOrder = new SingleProperty(single.Key, Read(single.Value));
     }
     public int Version => version;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal bool TryReadInlineSlot(string key, int slot, out object value)
+    {
+        // Initial built-in keys are interned literals. Equal strings with a
+        // different identity keep the ordinary lookup path.
+        if (!ReferenceEquals(InlineKey(slot), key)) { value = null; return false; }
+        value = (numericWrites & HasNumberCells) == 0 ? InlineValue(slot) : Read(InlineValue(slot));
+        return true;
+    }
     public int Count => inlineCount + (tail?.Count ?? (tailOrder is SingleProperty ? 1 : 0));
     public int StringCount => Count - symbolCount;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -43,7 +43,8 @@ public static partial class Js
             var prototype = FunctionPrototypeState.Prototype;
             if (ReferenceEquals(function.PropertyPrototype, prototype) &&
                 ReferenceEquals(prototype.WatchAccessorStructure(), FunctionPrototypeState.AccessorStructure) &&
-                prototype.TryReadOwnDataSlot("apply", out var target)) return target;
+                (prototype.TryReadOwnDataSlot("apply", 1, out var target) ||
+                 prototype.TryReadOwnDataSlot("apply", out target))) return target;
         }
         if (!function.TryOwnAccessor("apply", out _) && function.TryReadOwnDataSlot("apply", out var own)) return own;
         return function.Get("apply");
@@ -85,6 +86,14 @@ public static partial class Js
 
 public abstract partial class TsObject
 {
+    // The caller separately guards accessors. Check the actual key because
+    // deleting an earlier property can move the remaining inline entries.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal bool TryReadOwnDataSlot(string key, int index, out object value)
+    {
+        value = null;
+        return extra != null && extra.TryReadInlineSlot(key, index, out value);
+    }
     // The caller must guard the accessor structure before reading stored data.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal bool TryReadOwnDataSlot(string key, out object value)
