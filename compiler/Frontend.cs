@@ -1,33 +1,35 @@
+using System.Buffers.Binary;
+
 namespace Tsnet.Compiler;
 
 using static Tsnet.Compiler.CompilerFunctions;
 internal sealed class IrReader
 {
-    public Vector<byte> bytes;
-    public int position;
-    public static IrReader create(TextBytes data)
-    {
-        Vector<byte> bytes = new Vector<byte>();
-        for (int i = 0; i < data.length; i++) { bytes.push(data[i]); }
-        return new IrReader { bytes = identity(bytes), position = 0 };
-    }
+    readonly byte[] bytes;
+    int position;
+    public bool AtEnd => position == bytes.Length;
+    IrReader(byte[] bytes) { this.bytes = bytes; }
+    public static IrReader create(byte[] data) => new(data);
     public byte ReadByte()
     {
-        if (this.position >= this.bytes.count()) { print("tsnetc: truncated frontend IR"); exit(1); }
-        return this.bytes.at(this.position++);
+        if (position >= bytes.Length) throw new CompilationException("truncated frontend IR");
+        return bytes[position++];
     }
     public int integer()
     {
-        uint value = 0;
-        for (int i = 0; i < 4; i++) { value |= (uint)tsnet_unsigned_byte(this.ReadByte()) << (8 * i); }
-        if (value > 2147483647) { print("tsnetc: invalid frontend IR integer"); exit(1); }
+        if (bytes.Length - position < sizeof(uint)) throw new CompilationException("truncated frontend IR");
+        uint value = BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(position, sizeof(uint)));
+        position += sizeof(uint);
+        if (value > int.MaxValue) throw new CompilationException("invalid frontend IR integer");
         return (int)value;
     }
     public int id() { return (int)this.integer(); }
     public void text(Compiler c)
     {
         int length = this.id(); int start = c.source.length();
-        for (int i = 0; i < length; i++) { c.source.append(this.ReadByte()); }
+        if (length > bytes.Length - position) throw new CompilationException("truncated frontend IR");
+        c.source.append(bytes.AsSpan(position, length));
+        position += length;
         source_text(start, length, c);
     }
 }
@@ -95,6 +97,6 @@ internal static partial class CompilerFunctions
             c.function_sources.Add(node, source);
             if (get_node(node,c).kind == NodeKind.ClassValue) c.class_sources[get_node(get_node(node,c).fourth,c).type] = source;
         }
-        if (r.position != r.bytes.count()) { print("tsnetc: trailing frontend IR data"); exit(1); }
+        if (!r.AtEnd) { print("tsnetc: trailing frontend IR data"); exit(1); }
     }
 }

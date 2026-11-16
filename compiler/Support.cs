@@ -42,6 +42,7 @@ internal sealed class Source
     }
     public int length() => bytes.Count;
     public void append(byte value) => bytes.Add(value);
+    public void append(ReadOnlySpan<byte> value) => bytes.AddRange(value);
     public byte peek(int index) => index >= bytes.Count ? (byte)0 : bytes[index];
 }
 internal sealed class Output
