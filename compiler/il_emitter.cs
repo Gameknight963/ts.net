@@ -628,7 +628,8 @@ internal static partial class CompilerFunctions
         else if(n.kind==NodeKind.Arguments){il_boxed(n.left,c,b);b.call(RuntimeMember.Arguments);}
         else if(n.kind==NodeKind.SuperBase){il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.emit(0x20,n.constant?1:0);b.call(RuntimeMember.SuperBase);}
         else if(n.kind==NodeKind.SuperCall){
-            il_boxed(n.left,c,b);b.emit(0x20,0);b.emit(0x73,b.RuntimeToken(RuntimeMember.ArrayConstructor));int args=b.local(-5);b.emit(0xfe0e,args);
+            il_boxed(n.left,c,b); b.op(0x25); b.call(RuntimeMember.GetSuperConstructor);
+            b.emit(0x20,0);b.emit(0x73,b.RuntimeToken(RuntimeMember.ArrayConstructor));int args=b.local(-5);b.emit(0xfe0e,args);
             int child=n.children;while(child!=0){il_append_call_argument(child,args,0,c,b);child=get_node(child,c).next;}
             b.emit(0xfe0c,args);b.call(RuntimeMember.SuperCall);
         }

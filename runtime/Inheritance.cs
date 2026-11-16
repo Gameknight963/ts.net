@@ -70,15 +70,17 @@ public static partial class Js
     }
     public static object MarkObjectHome(object function, object home) { ((JsFunction)function).SetObjectHome((TsObject)home); return function; }
     public static void SuperInitializer(object receiver, object callback) => ((JsConstructorFrame)ArgumentsReceiver(receiver)).AfterSuper = (JsFunction)callback;
-    public static object SuperCall(object receiver, object arguments)
+    public static object GetSuperConstructor(object receiver) => ((JsConstructorFrame)ArgumentsReceiver(receiver)).Home.PropertyPrototype;
+    public static object SuperCall(object receiver, object arguments) => SuperCall(receiver, GetSuperConstructor(receiver), arguments);
+    public static object SuperCall(object receiver, object constructor, object arguments)
     {
         var frame = (JsConstructorFrame)ArgumentsReceiver(receiver);
-        if (frame.Home.Parent is null) throw new InvalidOperationException("Super constructor is not callable");
+        if (constructor is not JsFunction parent || !parent.CanInitializeDerived) throw new InvalidOperationException("Super constructor is not callable");
         int length = checked((int)Iteration.Length(arguments)); var values = new object[length];
         for (int i = 0; i < length; i++) values[i] = Iteration.Value(arguments, i);
         object allocated = frame.Calls++ == 0 ? frame.Allocated : ((JsClassInstance)frame.Allocated).Owner.Allocate();
         if (!ReferenceEquals(allocated, frame.Allocated)) ((TsObject)allocated).SetPrototype(((TsObject)frame.Allocated).PropertyPrototype);
-        object result = frame.Home.Parent.InitializeDerived(allocated, values, frame.NewTarget);
+        object result = parent.InitializeDerived(allocated, values, frame.NewTarget);
         if (frame.Initialized) throw MakeThrown(new JsCaughtError("ReferenceError", "Super constructor may only be called once"));
         frame.Value = result; frame.Initialized = true;
         frame.Home.InitializeFields(result);

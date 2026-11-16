@@ -103,8 +103,8 @@ public sealed partial class JsClassFunction : JsFunction
         }
         if (constructor is null)
         {
-            if (Parent is null) throw new InvalidOperationException("Super constructor is not callable");
-            object result = Parent.InitializeDerived(instance, arguments, newTarget); InitializeFields(result); return result;
+            if (PropertyPrototype is not JsFunction parent || !parent.CanInitializeDerived) throw new InvalidOperationException("Super constructor is not callable");
+            object result = parent.InitializeDerived(instance, arguments, newTarget); InitializeFields(result); return result;
         }
         var frame = new JsConstructorFrame(this, instance, newTarget);
         object returned = constructor.InvokeWithReceiver(frame, arguments);
