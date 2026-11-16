@@ -48,6 +48,14 @@ public sealed partial class TaggedArray : JsArray
         return Js.Cast<double?>(Js.IndexGet(this, (double)index), "Array element is not a number");
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal bool TryReadNumericPayload(int index, out double value)
+    {
+        if (!HasIndexedAccessors && materialized == null && (uint)index < length && (uint)index < (uint)tags.Length && tags[index] == 1) {
+            value = numbers[index]; return true;
+        }
+        value = 0; return false;
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal object GetStoredAt(uint index)
     {
         if (!HasIndexedAccessors && materialized == null && index < length && index < (uint)tags.Length)
@@ -221,6 +229,16 @@ public sealed partial class TaggedArray : JsArray
 
 public static partial class Js
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double CheckedArrayNumberValue(object receiver, double? index)
+    {
+        if (receiver is TaggedArray tagged && index.HasValue) {
+            double number = index.GetValueOrDefault();
+            if (number >= 0 && number <= int.MaxValue && number == (int)number && tagged.TryReadNumericPayload((int)number, out double value))
+                return value;
+        }
+        return CheckedNumberValue(ArrayIndexGetNumberKey(receiver, index));
+    }
     // Inlining these index checks enlarged callers and slowed mixed-array loops.
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static bool ArrayIsNumberKey(object receiver, double? index)

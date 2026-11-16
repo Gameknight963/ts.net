@@ -72,6 +72,7 @@ internal static partial class CompilerFunctions
         if (n.kind == NodeKind.Assert && get_type(n.type, c).kind == TypeKind.Number &&
             get_type(get_node(n.left, c).type, c).kind is TypeKind.Any or TypeKind.Unknown)
         {
+            if (il_checked_index_helper(entry, c, b)) return;
             il_boxed(n.left, c, b); b.call(RuntimeMember.CheckedNumberValue); return;
         }
         if (n.kind == NodeKind.Name && b.numeric_methods.at(n.symbol) == b.method)
