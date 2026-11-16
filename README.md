@@ -86,6 +86,7 @@ Runtime performance:
 | Sum 100K local arrays of two numbers using index & 1 | 0.0702 ms | 0.0877 ms | — | 1.25x |
 | String `.at(index)`, 1M calls | 4.26 ms | 5.28 ms | — | 1.24x |
 | toSorted with numeric comparator and traversal, 10 copies of 10K integers | 10.31 ms | 12.78 ms | — | 1.24x |
+| 100K numeric writes to a four-element mapped array | 0.0378 ms | 0.0419 ms | 0.0377 ms (`double[]`) | 1.11x |
 | Map.forEach numeric sum, 10 passes over 10K entries | 0.579 ms | 0.626 ms | — | 1.08x |
 | Reduce 100K number/string/undefined values with a default parameter | 0.596 ms | 0.640 ms | — | 1.08x |
 | Mixed numeric strings, 1M conversions | 28.60 ms | 30.37 ms | — | 1.06x |
@@ -134,7 +135,6 @@ Runtime performance:
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | — | 0.60x |
 | Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | — | 0.60x |
 | Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | — | 0.59x |
-| 100K numeric writes to a four-element mapped array | 0.0695 ms | 0.0413 ms | 0.0370 ms (`double[]`) | 0.59x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 0.717 ms | 0.415 ms | — | 0.58x |
 | Read varying string keys through an `any` helper from a Float64Array, 100K reads | 1.23 ms | 0.713 ms | — | 0.58x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
