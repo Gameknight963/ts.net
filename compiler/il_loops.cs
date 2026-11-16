@@ -150,6 +150,13 @@ internal static partial class CompilerFunctions
         b.emit(0xfe0c, bound); b.plan.number(b.method, 0); b.op(0xfe02); b.emit(0x39, fallback);
         b.load(array); il_buffer_bound(entry, bound, c, b); b.call(RuntimeMember.ArrayTryPacked); b.emit(0xfe0e, snapshot);
         b.emit(0xfe0c, snapshot); b.emit(0x39, fallback);
+        // Export the buffer-size fact as an integer comparison the JIT can use
+        // to remove bounds checks, including masked indices with a fixed extent.
+        b.emit(0xfe0c, snapshot); b.op(0x8e); b.op(0x69);
+        int extent = il_buffer_extent(entry, c, b);
+        if (extent != 0) b.emit(0x20, extent);
+        else { b.emit(0xfe0c, bound); b.call(RuntimeMember.LoopLimit); }
+        b.op(0xfe04); b.emit(0x3a, fallback);
         b.packed_arrays.at_mut(array) = snapshot + 1;
         il_loop_code(entry, result, counter, bound, c, b); b.emit(0x38, done);
         b.packed_arrays.at_mut(array) = 0;

@@ -217,6 +217,7 @@ sealed class AssemblyPlan
                 case 0x7b:
                 case 0x8c:
                 case 0x8d:
+                case 0x8e:
                 case 0xa5: pop = 1; push = 1; break;
                 case 0x7d: pop = 2; break;
                 case 0xa1: case 0xa2: pop = 3; break;
