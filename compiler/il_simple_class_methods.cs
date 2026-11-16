@@ -41,8 +41,12 @@ internal static partial class CompilerFunctions
             if (ambiguous.Contains(pair.Key) || !literal && klass.third != 0) continue;
             var data = new List<int>(); int fields = literal ? 0 : scalar_field_function(klass.left, c);
             if (literal)
-                for (int item = klass.children; item != 0; item = get_node(item, c).next)
-                    if (get_type(get_node(get_node(item, c).left, c).type, c).kind == TypeKind.Number) data.Add(get_node(item, c).name);
+                for (int item = klass.children; item != 0; item = get_node(item, c).next) {
+                    Node property = get_node(item, c);
+                    int member = field(pair.Key, property.name, c);
+                    if (member != 0 && get_type(get_field(member, c).type, c).kind == TypeKind.Number &&
+                        get_type(get_node(property.left, c).type, c).kind == TypeKind.Number) data.Add(property.name);
+                }
             if (fields != 0 && get_node(fields, c).left != 0) {
                 Node body = get_node(get_node(fields, c).left, c);
                 for (int item = body.children; item != 0; item = get_node(item, c).next) {
@@ -54,6 +58,7 @@ internal static partial class CompilerFunctions
             for (int item = klass.children; item != 0; item = get_node(item, c).next) {
                 Node method = get_node(item, c);
                 if (method.name == 0 || !literal && (method.constant || method.right != 0 || method.third != 0 || method.fourth != 0)) continue;
+                if (literal && field(pair.Key, method.name, c) == 0) continue;
                 if (!literal && writes.Any(write => write.ClassName == get_type(pair.Key, c).name && same(write.Name, method.name, c))) continue;
                 int entry = scalar_field_function(method.left, c); if (entry == 0) continue;
                 Node function = get_node(entry, c);

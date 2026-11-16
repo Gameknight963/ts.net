@@ -74,7 +74,15 @@ internal static partial class CompilerFunctions
             // allow a failed proof to use the original branch evaluation order.
             if (condition != 0 && (b.global_fields.at(receiver.symbol) == 0 || b.capture_fields.at(receiver.symbol) != 0)) return false;
             int type = receiver.type;
-            if (get_type(type, c).kind != TypeKind.Shape || get_type(type, c).name == 0 || !b.simple_class_methods.TryGetValue(type, out var methods)) return false;
+            if (get_type(type, c).kind != TypeKind.Shape) return false;
+            if (!b.simple_class_methods.TryGetValue(type, out var methods) && get_type(type, c).name == 0) {
+                foreach (var source in b.simple_class_methods) {
+                    if (get_type(source.Key, c).name != 0 || !fits(source.Key, type, c) ||
+                        !source.Value.Any(method => same(method.Name, methodName, c))) continue;
+                    type = source.Key; methods = source.Value; break;
+                }
+            }
+            if (methods == null) return false;
             SimpleClassMethod method = default;
             foreach (var candidate in methods) if (same(candidate.Name, methodName, c)) { method = candidate; break; }
             if (method.Function == 0 || !b.function_class_types.ContainsKey(method.Function)) return false;
@@ -117,9 +125,17 @@ internal static partial class CompilerFunctions
             il_boxed(target.Entry, c, b); b.emit(0x75, b.classes.at(target.Type)); b.emit(0xfe0e, instance);
             b.emit(0xfe0c, instance); b.emit(0x39, ordinaryLoop);
             // Accessors and shadowed methods retain ordinary per-call behavior.
-            b.emit(0xfe0c, instance); il_text(methodName, c, b); b.call(RuntimeMember.GetClassMethodData);
+            bool literal = get_type(target.Type, c).name == 0;
+            if (literal) {
+                b.emit(0xfe0c, instance);
+                b.emit(0x28, b.plan.specialize(b.RuntimeToken(RuntimeMember.IsPlainDataRecord), b.classes.at(target.Type)));
+                b.emit(0x39, ordinaryLoop);
+                b.emit(0xfe0c, instance); b.load_field(field(target.Type, methodName, c), c);
+            } else {
+                b.emit(0xfe0c, instance); il_text(methodName, c, b); b.call(RuntimeMember.GetClassMethodData);
+            }
             b.emit(0x75, b.function_class_types[method.Function]); b.emit(0x39, ordinaryLoop);
-            foreach (int name in names)
+            if (!literal) foreach (int name in names)
             {
                 b.emit(0xfe0c, instance); il_text(name, c, b); b.call(RuntimeMember.HasOwnNumberData); b.emit(0x39, ordinaryLoop);
             }
@@ -127,7 +143,10 @@ internal static partial class CompilerFunctions
             foreach (int name in names)
             {
                 int slot = b.local(-3); fields.Add((name, slot));
-                b.emit(0xfe0c, instance); il_text(name, c, b); b.call(RuntimeMember.GetNumber); b.call(RuntimeMember.NumberValue); b.emit(0xfe0e, slot);
+                b.emit(0xfe0c, instance);
+                if (literal) b.load_field(field(target.Type, name, c), c);
+                else { il_text(name, c, b); b.call(RuntimeMember.GetNumber); }
+                b.call(RuntimeMember.NumberValue); b.emit(0xfe0e, slot);
             }
             bodies.Add(new(method.Expression, fields, method.Parameter, counter));
         }
