@@ -17,9 +17,10 @@ internal static partial class CompilerFunctions
         int parent = b.node_parents.at(entry);
         if (parent == 0 || get_node(parent, c).kind != NodeKind.Block || loop.fourth == 0) return false;
         Node body = get_node(loop.fourth, c);
-        if (body.kind != NodeKind.Block || body.children == 0) return false;
+        int firstStatement = body.kind == NodeKind.Block ? body.children : loop.fourth;
+        if (firstStatement == 0) return false;
         // Reject ordinary loops before scanning declarations for the whole program.
-        int last = body.children, count = 1;
+        int last = firstStatement, count = 1;
         while (get_node(last, c).next != 0)
         {
             if (++count > 32) return false;
@@ -110,7 +111,7 @@ internal static partial class CompilerFunctions
             return false;
         }
         int push = 0, array = 0, statements = 0;
-        for (int statement = body.children; statement != 0; statement = get_node(statement, c).next)
+        for (int statement = firstStatement; statement != 0; statement = get_node(statement, c).next)
         {
             if (++statements > 32) return false;
             Node n = get_node(statement, c);
@@ -144,7 +145,17 @@ internal static partial class CompilerFunctions
             if (expression.kind != NodeKind.Call || expression.left == 0 || expression.children == 0 || n.next != 0) return false;
             Node callee = get_node(expression.left, c), argument = get_node(expression.children, c);
             if (callee.kind != NodeKind.Property || callee.left == 0 || callee.fourth != 0 || !is_text(callee.name, text_push, c) ||
-                argument.kind != NodeKind.Name || argument.next != 0 || !Record(argument.symbol)) return false;
+                argument.next != 0) return false;
+            if (argument.kind == NodeKind.Name)
+            {
+                if (!Record(argument.symbol)) return false;
+            }
+            else if (Plain(expression.children))
+            {
+                for (int item = argument.children; item != 0; item = get_node(item, c).next)
+                    if (!Pure(get_node(item, c).left)) return false;
+            }
+            else return false;
             Node owner = get_node(callee.left, c);
             if (owner.kind != NodeKind.Name || !arrays.Contains(owner.symbol)) return false;
             push = n.left;array = owner.symbol;
