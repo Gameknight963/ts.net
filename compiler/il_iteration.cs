@@ -63,6 +63,11 @@ internal static partial class CompilerFunctions
             b.emit(0xfe0c, value); b.box(type, c); b.call(direct ? RuntimeMember.ArrayIndexSetAt : RuntimeMember.IndexSet); return;
         }
         if (target.kind != NodeKind.Property) { fail(target.token, "unsupported iteration binding", c); }
+        if (target.fourth != 0)
+        {
+            il_boxed(target.left, c, b); il_boxed(target.fourth, c, b);
+            b.emit(0xfe0c, value); b.box(type, c); b.call(RuntimeMember.PrivateSet); b.op(0x26); return;
+        }
         il_expression(target.left, c, b); int owner = get_node(target.left, c).type;
         if (get_type(owner, c).kind == TypeKind.Any || get_type(owner, c).name != 0 || (get_type(owner, c).kind == TypeKind.Shape && field(owner, target.name, c) == 0 && get_type(owner, c).element != 0))
         {
