@@ -128,6 +128,7 @@ internal static partial class CompilerFunctions
             {
                 int tags = b.local(-13); int ordinary = b.label(); tagged_done = b.label();
                 b.emit(0xfe0c, bound); b.plan.number(b.method, 0); b.op(0xfe02); b.emit(0x39, ordinary);
+                il_buffer_binding_guard(array, ordinary, b);
                 b.load(array); il_buffer_bound(entry, bound, c, b); b.call(RuntimeMember.ArrayTryTags); b.emit(0xfe0e, tags);
                 b.emit(0xfe0c, tags); b.emit(0x39, ordinary);
                 b.tag_arrays.at_mut(array) = tags + 1;
@@ -138,6 +139,7 @@ internal static partial class CompilerFunctions
             int snapshotLocal = b.local(-7); int fallbackLocal = b.label(); int doneLocal = b.label();
             // Empty loops must not read the array binding before the body would.
             b.emit(0xfe0c, bound); b.plan.number(b.method, 0); b.op(0xfe02); b.emit(0x39, fallbackLocal);
+            il_buffer_binding_guard(array, fallbackLocal, b);
             b.load(array); il_buffer_bound(entry, bound, c, b); b.call(RuntimeMember.ArrayTryDense); b.emit(0xfe0e, snapshotLocal);
             b.emit(0xfe0c, snapshotLocal); b.emit(0x39, fallbackLocal);
             b.dense_arrays.at_mut(array) = snapshotLocal + 1;
@@ -148,6 +150,7 @@ internal static partial class CompilerFunctions
         }
         int snapshot = b.local(-12); int fallback = b.label(); int done = b.label();
         b.emit(0xfe0c, bound); b.plan.number(b.method, 0); b.op(0xfe02); b.emit(0x39, fallback);
+        il_buffer_binding_guard(array, fallback, b);
         b.load(array); il_buffer_bound(entry, bound, c, b); b.call(RuntimeMember.ArrayTryPacked); b.emit(0xfe0e, snapshot);
         b.emit(0xfe0c, snapshot); b.emit(0x39, fallback);
         // Export the buffer-size fact as an integer comparison the JIT can use

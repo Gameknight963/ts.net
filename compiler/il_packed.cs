@@ -47,6 +47,21 @@ internal static partial class CompilerFunctions
         if (extent != 0) { b.plan.number(b.method, (double)extent); }
         else { b.emit(0xfe0c, bound); }
     }
+    internal static void il_buffer_binding_guard(int symbol, int fallback, IlBackend b)
+    {
+        // An eager initialization error would skip earlier body effects, or
+        // throw even when a branch never accesses the array. Use the ordinary
+        // loop until its binding is initialized instead of throwing here.
+        if (b.capture_fields.at(symbol) != 0) {
+            int flag = b.capture_flags.at(symbol);
+            if (flag != 0) {
+                b.load_context(b.capture_scopes.at(symbol)); b.emit(0x7b, flag); b.emit(0x39, fallback);
+            }
+        } else if (b.global_fields.at(symbol) != 0 && b.global_vars.at(symbol) == 0) {
+            int flag = b.global_flags.at(symbol);
+            if (flag != 0) { b.emit(0x7e, flag); b.emit(0x39, fallback); }
+        }
+    }
     internal static bool il_key_may_invoke(Node n, Compiler c)
     {
         if (n.kind == NodeKind.Property && n.fourth != 0) return true;
