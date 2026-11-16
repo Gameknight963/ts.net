@@ -82,8 +82,16 @@ internal static partial class CompilerFunctions
         {
             Node n = get_node(i, c);
             if (!il_inside(i, body, b)) { continue; }
-            // Explicit or implicit calls and nested loops can invalidate the buffer.
-            if (il_key_may_invoke(n, c) || il_coercion_may_invoke(n, c) || n.kind is NodeKind.Call or NodeKind.OptionalChain || n.kind == NodeKind.Function || n.kind == NodeKind.For || (n.kind == NodeKind.ForOf || n.kind == NodeKind.ForIn) || n.kind == NodeKind.While || n.kind == NodeKind.Do) { return 0; }
+            // Getters, construction, spread and other callbacks can invalidate
+            // the buffer. New expression kinds keep the ordinary path until
+            // their effects are checked here.
+            if (il_key_may_invoke(n, c) || il_coercion_may_invoke(n, c) ||
+                n.kind is not (NodeKind.Block or NodeKind.Expression or NodeKind.If or NodeKind.Variable or NodeKind.Name or
+                    NodeKind.Number or NodeKind.Boolean or NodeKind.String or NodeKind.Null or NodeKind.Undefined or
+                    NodeKind.Index or NodeKind.Binary or NodeKind.Unary or NodeKind.Conditional or NodeKind.Sequence or
+                    NodeKind.Assign or NodeKind.Update or NodeKind.Assert or NodeKind.TypeOf or NodeKind.Nullish or
+                    NodeKind.Return or NodeKind.Break or NodeKind.Continue or NodeKind.Switch or NodeKind.Case or NodeKind.Label) ||
+                n.kind == NodeKind.Unary && is_text(get_token(n.token, c).text, text_delete, c)) return 0;
             if (n.kind == NodeKind.Index)
             {
                 Node receiver = get_node(n.left, c); Node index = get_node(n.right, c);
