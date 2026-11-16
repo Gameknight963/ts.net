@@ -6,35 +6,55 @@ import (
 	"github.com/microsoft/typescript-go/internal/ast"
 )
 
-// Resolve values, not asserted types. Mutable bindings and expressions that
-// can execute code retain the conservative unknown-key path.
-func (b *irBuilder) constantDeletionKey(n *ast.Node) (string, bool) {
-	seen := map[*ast.Node]bool{}
-	for n != nil && !seen[n] {
-		seen[n] = true
-		switch n.Kind {
-		case ast.KindStringLiteral:
-			return n.Text(), true
-		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
-			n = n.Expression()
-		case ast.KindIdentifier:
-			symbol := b.c.GetSymbolAtLocation(n)
-			if symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
-				symbol = b.c.GetAliasedSymbol(symbol)
+// Resolve values, not asserted types. Conditions may execute code, but every
+// resulting key must be known. Mutable bindings and unknown branches retain
+// the conservative path. Bound the work when aliases form a large graph.
+func (b *irBuilder) constantDeletionKeys(n *ast.Node) ([]string, bool) {
+	remaining := 256
+	var resolve func(*ast.Node, map[*ast.Node]bool) ([]string, bool)
+	resolve = func(n *ast.Node, seen map[*ast.Node]bool) ([]string, bool) {
+		for n != nil && !seen[n] {
+			remaining--
+			if remaining < 0 {
+				return nil, false
 			}
-			if symbol == nil || symbol.ValueDeclaration == nil {
-				return "", false
+			seen[n] = true
+			switch n.Kind {
+			case ast.KindStringLiteral:
+				return []string{n.Text()}, true
+			case ast.KindConditionalExpression:
+				expression := n.AsConditionalExpression()
+				left, known := resolve(expression.WhenTrue, maps.Clone(seen))
+				if !known {
+					return nil, false
+				}
+				right, known := resolve(expression.WhenFalse, seen)
+				if !known {
+					return nil, false
+				}
+				return append(left, right...), true
+			case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+				n = n.Expression()
+			case ast.KindIdentifier:
+				symbol := b.c.GetSymbolAtLocation(n)
+				if symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
+					symbol = b.c.GetAliasedSymbol(symbol)
+				}
+				if symbol == nil || symbol.ValueDeclaration == nil {
+					return nil, false
+				}
+				declaration := symbol.ValueDeclaration
+				if declaration.Kind != ast.KindVariableDeclaration || ast.GetCombinedNodeFlags(declaration)&ast.NodeFlagsConst == 0 {
+					return nil, false
+				}
+				n = declaration.Initializer()
+			default:
+				return nil, false
 			}
-			declaration := symbol.ValueDeclaration
-			if declaration.Kind != ast.KindVariableDeclaration || ast.GetCombinedNodeFlags(declaration)&ast.NodeFlagsConst == 0 {
-				return "", false
-			}
-			n = declaration.Initializer()
-		default:
-			return "", false
 		}
+		return nil, false
 	}
-	return "", false
+	return resolve(n, map[*ast.Node]bool{})
 }
 
 func deletionAccess(n *ast.Node) (*ast.Node, string) {
@@ -254,8 +274,10 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 				b.deletedNames[operand.Name().Text()] = true
 			} else if operand.Kind == ast.KindElementAccessExpression {
 				key := operand.AsElementAccessExpression().ArgumentExpression
-				if name, known := b.constantDeletionKey(key); known {
-					b.deletedNames[name] = true
+				if names, known := b.constantDeletionKeys(key); known {
+					for _, name := range names {
+						b.deletedNames[name] = true
+					}
 				} else {
 					b.deleteAnyName = true
 				}
