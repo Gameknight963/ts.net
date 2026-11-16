@@ -4,12 +4,23 @@ using static Tsnet.Compiler.CompilerFunctions;
 internal sealed partial class IlBackend
 {
     internal readonly Dictionary<int, int> object_receiver_shapes = [];
+    internal readonly Dictionary<int, (int Owner, int Member)> object_receiver_fields = [];
 }
 
 internal static partial class CompilerFunctions
 {
     internal static void il_prepare_object_receivers(Compiler c, IlBackend b)
     {
+        // Existing one-field interfaces also describe borrowed receivers with
+        // a different concrete layout. Their readers retain dynamic fallback.
+        for (int type = c.types; type != 0; type = get_type(type, c).next) {
+            Type shape = get_type(type, c);
+            int member = shape.fields;
+            if (shape.kind != TypeKind.Shape || shape.name != 0 || member == 0 ||
+                get_field(member, c).next != 0 || get_type(get_field(member, c).type, c).kind != TypeKind.Number ||
+                !b.shape_readers.ContainsKey(member)) continue;
+            b.object_receiver_fields.TryAdd(get_field(member, c).name, (type, member));
+        }
         for (int i = 1; i <= c.node_store.count(); i++) {
             Node literal = get_node(i, c);
             if (literal.kind != NodeKind.Object || get_type(literal.type, c).kind != TypeKind.Shape ||
@@ -36,6 +47,11 @@ internal static partial class CompilerFunctions
         if (name.kind != NodeKind.Name || !b.object_receiver_shapes.TryGetValue(name.symbol, out int owner) || owner == 0) return false;
         int member = field(owner, property.name, c);
         if (member == 0 || get_type(get_field(member, c).type, c).kind != TypeKind.Number || b.getter(member) == 0) return false;
+        if (b.object_receiver_fields.TryGetValue(property.name, out var narrow) && fits(owner, narrow.Owner, c)) {
+            il_boxed(property.left, c, b);
+            il_shape_read(narrow.Owner, narrow.Member, b);
+            return true;
+        }
         int fallback = b.label(), done = b.label(), original = b.local(-5), typed = b.local(b.classes.at(owner));
         il_boxed(property.left, c, b); b.emit(0xfe0e, original);
         b.emit(0xfe0c, original); b.emit(0x75, b.classes.at(owner)); b.emit(0xfe0e, typed);
