@@ -33,14 +33,14 @@ internal static partial class CompilerFunctions
             Node node = get_node(i, c);
             if (node.kind != NodeKind.Name || node.symbol != array.symbol) continue;
             if (scalar_owner(i, b.node_parents, c) != entry) return;
-            int indexEntry = b.node_parents.at(i);
-            Node index = get_node(indexEntry, c);
-            if (index.kind != NodeKind.Index || index.left != i || index.type == 0 ||
-                get_type(index.type, c).kind != TypeKind.Number) return;
-            Node key = get_node(index.right, c);
-            if (!scalar_array_index_literal(key) ||
-                number(get_token(key.token, c).text, c) != 0) return;
-            Node use = get_node(b.node_parents.at(indexEntry), c);
+            int accessEntry = b.node_parents.at(i);
+            Node access = get_node(accessEntry, c);
+            if (access.left != i || access.type == 0 || get_type(access.type, c).kind != TypeKind.Number) return;
+            if (access.kind == NodeKind.Index) {
+                Node key = get_node(access.right, c);
+                if (!scalar_array_index_literal(key) || number(get_token(key.token, c).text, c) != 0) return;
+            } else if (access.kind != NodeKind.Property || access.fourth != 0 || !is_text(access.name, text_length, c)) return;
+            Node use = get_node(b.node_parents.at(accessEntry), c);
             if (use.kind is not (NodeKind.Binary or NodeKind.Unary or NodeKind.Return or NodeKind.Assert or
                 NodeKind.TypeOf or NodeKind.Conditional or NodeKind.Nullish or NodeKind.Sequence) ||
                 use.kind == NodeKind.Unary && is_text(get_token(use.token, c).text, text_delete, c)) return;
@@ -74,8 +74,13 @@ internal static partial class CompilerFunctions
     internal static bool il_apply_array_read(int entry, Compiler c, IlBackend b)
     {
         if (b.apply_array_parameter == 0) return false;
-        Node index = get_node(entry, c), receiver = get_node(index.left, c);
-        if (index.kind != NodeKind.Index || receiver.kind != NodeKind.Name || receiver.symbol != b.apply_array_parameter) return false;
+        Node access = get_node(entry, c), receiver = get_node(access.left, c);
+        if (receiver.kind != NodeKind.Name || receiver.symbol != b.apply_array_parameter) return false;
+        if (access.kind == NodeKind.Property && is_text(access.name, text_length, c)) {
+            // This entry represents a fresh one-element array, even for undefined.
+            b.plan.number(b.method, 1); b.call(RuntimeMember.WrapNumber); return true;
+        }
+        if (access.kind != NodeKind.Index) return false;
         b.load_storage(receiver.symbol); return true;
     }
 }

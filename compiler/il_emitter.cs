@@ -701,6 +701,7 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Property)
         {
+            if (il_apply_array_read(entry, c, b)) return;
             if (il_scalar_class_property(entry, c, b)) return;
             if (n.fourth == 0 && il_object_receiver_number_read(entry, c, b)) return;
             if (n.fourth != 0) { il_boxed(n.left, c, b); il_boxed(n.fourth, c, b); b.call(RuntimeMember.PrivateGet); b.from_object(n.type, c); return; }

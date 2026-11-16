@@ -1,7 +1,7 @@
 function work(): number {
     const fn = (value: number): number => value;
     Object.defineProperty(fn, "apply", {
-        value: (target: {base: number}, values: number[]): number => target.base + values[0]
+        value: (target: {base: number}, values: number[]): number => target.base + values[0] + values.length - 1
     });
     const target = {base: 2};
     let total = 0;

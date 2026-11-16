@@ -19,6 +19,18 @@ console.log("repeated", fn.apply(null, [argument()]), evaluations);
 handler((_target: any, values: number[]): number => typeof values[0] === "undefined" ? 17 : values[0]);
 console.log("conditional", fn.apply(null, [undefined as unknown as number]), fn.apply(null, [19]));
 
+handler((_target: any, values: number[]): number => values.length);
+console.log("length only", fn.apply(null, [undefined as unknown as number]));
+console.log("length argument", fn.apply(null, [argument()]), evaluations);
+function failArgument(): number { throw new Error("argument"); }
+try { fn.apply(null, [failArgument()]); } catch (error) { console.log("length failure", (error as Error).message); }
+const lengthFunction: any = fn;
+console.log("ordinary lengths", lengthFunction.apply(null, []), lengthFunction.apply(null, [1, 2]));
+handler((_target: any, values: number[]): number => values.length + values[0]);
+console.log("length", fn.apply(null, [31]));
+handler((target: {length: number}, values: number[]): number => target.length + values.length + values[0]);
+console.log("separate length", fn.apply({length: 7} as any, [3]));
+
 // Observable arrays and argument lists keep the ordinary entry point.
 let observed: number[] = [];
 handler((_target: any, values: number[]): number => (observed = values, values[0]));
@@ -26,8 +38,6 @@ fn.apply(null, [23]);
 const first = observed;
 fn.apply(null, [29]);
 console.log("escape", first !== observed, Array.isArray(observed), first[0], observed[0], Object.hasOwn(observed, "0"));
-handler((_target: any, values: number[]): number => values.length + values[0]);
-console.log("length", fn.apply(null, [31]));
 handler((_target: any, values: number[]): number => values[1] ?? 37);
 console.log("other index", fn.apply(null, [41]));
 handler((_target: any, values: number[]): number => ++values[0]);
@@ -38,6 +48,8 @@ handler((_target: any, values: number[]): number => (delete values[0], values[0]
 console.log("delete", fn.apply(null, [0]));
 handler((_target: any, values: number[]): number => (values.length = 0, values[0] ?? 51));
 console.log("resize", fn.apply(null, [0]));
+handler((_target: any, values: number[]): number => (++values.length, values.length));
+console.log("grow", fn.apply(null, [0]));
 handler((_target: any, values: number[]): number => (() => values[0])());
 console.log("capture", fn.apply(null, [53]));
 handler(function(_target: any, values: number[]): number { return arguments.length + values[0]; });
