@@ -170,12 +170,12 @@ Runtime performance:
 | Object spread, 100K copies stored in an array | 5.51 ms | 1.66 ms | — | 0.30x |
 | Add an `any` value to a number, 200K additions | 0.185 ms | 0.0548 ms | — | 0.30x |
 | Serialize 10K numbers divided by 7, 20 times | 21.81 ms | 6.30 ms | — | 0.29x |
+| Self-returning function, 2M calls | 1.97 ms | 0.572 ms | 1.51 ms (delegate) | 0.29x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | — | 0.28x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 1.84 ms | 0.463 ms | — | 0.25x |
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
 | Object literal method through a helper, 100K calls | 0.251 ms | 0.0639 ms | 0.0723 ms | 0.25x |
-| Self-returning function, 2M calls | 3.57 ms | 0.813 ms | — | 0.23x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | — | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.17 ms | 0.479 ms | — | 0.22x |
 | Create, retain, and sum 100K two-number objects | 5.27 ms | 1.11 ms | 0.996 ms | 0.21x |
