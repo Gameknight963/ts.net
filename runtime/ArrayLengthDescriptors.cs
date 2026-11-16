@@ -4,8 +4,8 @@ using System.Globalization;
 
 public partial class JsArray
 {
-    internal override bool IsExtensible => ArrayExtensionsAllowed;
-    internal void PreventExtensions() => PreventArrayExtensions();
+    internal override bool IsExtensible => StoredExtensionsAllowed;
+    internal void PreventExtensions() => PreventStoredExtensions();
     internal bool ElementsSealed => StoredArrayElementsSealed;
     internal bool ElementsFrozen => StoredArrayElementsFrozen;
     internal void SealElements(bool frozen) => SealStoredArrayElements(frozen);

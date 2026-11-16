@@ -11,7 +11,7 @@ public abstract partial class TsObject
     }
     internal virtual TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : IsModuleNamespace ? null : Js.DefaultClassObjectPrototype;
     internal virtual bool IsReadOnlyOwnProperty(string key) => false;
-    internal virtual bool IsExtensible => true;
+    internal virtual bool IsExtensible => StoredExtensionsAllowed;
     internal bool CanSetPrototype(TsObject value)
     {
         if (ReferenceEquals(PropertyPrototype, value)) return false;

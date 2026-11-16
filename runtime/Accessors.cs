@@ -60,27 +60,27 @@ internal class JsAccessors : Dictionary<string, JsAccessor>
 
 public abstract partial class TsObject
 {
-    sealed class NonExtensibleArrayAccessors : JsAccessors
+    sealed class NonExtensibleAccessors : JsAccessors
     {
         internal bool ElementsSealed, ElementsFrozen;
-        internal NonExtensibleArrayAccessors() { }
-        internal NonExtensibleArrayAccessors(Dictionary<string, JsAccessor> source) : base(source) { }
+        internal NonExtensibleAccessors() { }
+        internal NonExtensibleAccessors(Dictionary<string, JsAccessor> source) : base(source) { }
     }
     JsAccessors accessors;
-    protected bool ArrayExtensionsAllowed => accessors is not NonExtensibleArrayAccessors;
-    protected bool StoredArrayElementsSealed => accessors is NonExtensibleArrayAccessors {ElementsSealed: true};
-    protected bool StoredArrayElementsFrozen => accessors is NonExtensibleArrayAccessors {ElementsFrozen: true};
+    protected bool StoredExtensionsAllowed => accessors is not NonExtensibleAccessors;
+    protected bool StoredArrayElementsSealed => accessors is NonExtensibleAccessors {ElementsSealed: true};
+    protected bool StoredArrayElementsFrozen => accessors is NonExtensibleAccessors {ElementsFrozen: true};
     protected void SealStoredArrayElements(bool frozen)
     {
-        PreventArrayExtensions();
-        var state = (NonExtensibleArrayAccessors)accessors;
+        PreventStoredExtensions();
+        var state = (NonExtensibleAccessors)accessors;
         state.ElementsSealed = true;
         state.ElementsFrozen |= frozen;
     }
-    protected void PreventArrayExtensions()
+    internal void PreventStoredExtensions()
     {
-        if (accessors is not NonExtensibleArrayAccessors)
-            accessors = accessors == null ? new NonExtensibleArrayAccessors() : new NonExtensibleArrayAccessors(accessors);
+        if (accessors is not NonExtensibleAccessors)
+            accessors = accessors == null ? new NonExtensibleAccessors() : new NonExtensibleAccessors(accessors);
     }
     internal bool HasIndexedAccessors => accessors != null && accessors.IndexedCount != 0;
     internal bool HasOwnAccessors => accessors != null && accessors.Count != 0;
