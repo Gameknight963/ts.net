@@ -67,6 +67,7 @@ internal static partial class CompilerFunctions
     {
         if (il_loop_getter_read(entry, c, b)) return;
         if (il_typed_buffer_read(entry, c, b)) return;
+        if (il_packed_field_number(entry, c, b)) return;
         Node n = get_node(entry, c);
         if (n.kind == NodeKind.Assert && get_type(n.type, c).kind == TypeKind.Number &&
             get_type(get_node(n.left, c).type, c).kind is TypeKind.Any or TypeKind.Unknown)
