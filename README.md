@@ -73,6 +73,7 @@ Runtime performance:
 | Numeric `any[]`, 1M iterations | 0.954 ms | 1.66 ms | 1.74x |
 | Typed-object loop, 500K iterations | 0.381 ms | 0.650 ms | 1.70x |
 | `any` property loop, 350K iterations | 0.266 ms | 0.435 ms | 1.64x |
+| Update typed fields and sum through a helper, 2M iterations | 1.42 ms | 2.33 ms | 1.64x |
 | Map 10K number/string values to numbers or undefined and reduce, 20 passes | 1.76 ms | 2.80 ms | 1.59x |
 | WritableStream, queue and complete 1K numeric writes | 0.394 ms | 0.618 ms | 1.57x |
 | reduce and reduceRight, 10 pairs over 10K integers from 0-255 | 0.775 ms | 1.21 ms | 1.56x |
