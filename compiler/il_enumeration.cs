@@ -68,7 +68,7 @@ internal static partial class CompilerFunctions
                     b.op(0x25); b.emit(0x20, 1);
                 }
                 b.emit(0xfe09, 0);
-                if (mode == 2) { b.emit(0x7b, b.field_token(member)); }
+                if (mode == 2) { b.emit(0x7b, b.field_token(member)); if (b.field_storage(member, c) != -3) b.call(RuntimeMember.EncodeNumberField); }
                 else { b.load_field(member, c); b.box(get_field(member, c).type, c); }
                 if (mode == 1) { b.op(0xa2); b.emit(0x73, b.RuntimeToken(RuntimeMember.ArrayBufferConstructor)); }
                 b.op(mode == 2 ? 0xa1 : 0xa2);

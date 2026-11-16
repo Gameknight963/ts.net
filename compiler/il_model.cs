@@ -182,12 +182,17 @@ internal sealed partial class IlBackend
         };
     }
     public int RuntimeToken(RuntimeMember member) { return this.runtime.at((int)member); }
-    public int field_storage(int type, Compiler c) { return get_type(type, c).kind == TypeKind.Number ? -3 : this.type(type, c); }
+    public int field_storage(int member, Compiler c)
+    {
+        int type = get_field(member, c).type;
+        bool compact = get_type(type, c).kind == TypeKind.Number && !nullable_number_fields.Contains(member);
+        return compact ? -3 : this.type(type, c);
+    }
     public void load_field(int member, Compiler c)
     {
         if (il_dynamic_index_field(member,c)) { il_text(get_field(member,c).name,c,this);this.call(RuntimeMember.Get);this.from_object(get_field(member,c).type,c);return; }
         this.emit(0x7b, this.field_token(member));
-        if (get_type(get_field(member, c).type, c).kind == TypeKind.Number) { this.call(RuntimeMember.DecodeNumberField); }
+        if (this.field_storage(member, c) == -3) this.call(RuntimeMember.DecodeNumberField);
     }
     public void store_field(int member, Compiler c)
     {
@@ -196,7 +201,7 @@ internal sealed partial class IlBackend
             int type=get_field(member,c).type;int value=this.local(this.type(type,c));this.emit(0xfe0e,value);
             il_text(get_field(member,c).name,c,this);this.emit(0xfe0c,value);this.box(type,c);this.call(RuntimeMember.Set);this.op(0x26);return;
         }
-        if (get_type(get_field(member, c).type, c).kind == TypeKind.Number) { this.call(RuntimeMember.EncodeNumberField); }
+        if (this.field_storage(member, c) == -3) this.call(RuntimeMember.EncodeNumberField);
         this.emit(0x7d, this.field_token(member));
     }
     public int field_token(int id) { return this.fields.at(id); }
@@ -936,6 +941,7 @@ bool il_logical_assignment(int op, Compiler c)
     }
     internal static void il_shapes(Compiler c, IlBackend b)
     {
+        il_choose_number_field_storage(c, b);
         int type = c.types;
         while (type != 0)
         {
@@ -1023,7 +1029,7 @@ bool il_logical_assignment(int op, Compiler c)
                 {
                     Field record = get_field(member, c); int value_type = b.type(record.type, c);
                     Vector<byte> storage = field_name(record.name, "p_", c);
-                    int storage_type = b.field_storage(record.type, c); int value = b.plan.field(klass, 6, storage_type, storage.view()); b.fields.at_mut(member) = value;
+                    int storage_type = b.field_storage(member, c); int value = b.plan.field(klass, 6, storage_type, storage.view()); b.fields.at_mut(member) = value;
                     Vector<byte> get = field_name(record.name, "get_p_", c);
                     Vector<byte> set = field_name(record.name, "set_p_", c);
                     b.begin(b.plan.method0(5, klass, 0x1e6, value_type, get.view()));

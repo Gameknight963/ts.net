@@ -20,11 +20,11 @@ foreach (var method in methods)
 Console.WriteLine("PASS computed method stack sizes and compact field getters");
 foreach (Type scalar in new[] { typeof(double?), typeof(bool?) })
 {
-    Type storage = scalar == typeof(double?) ? typeof(double) : scalar;
+    Type storage = scalar;
     if (!types.Where(t => t.Name.StartsWith('O')).SelectMany(t => t.GetFields()).Any(f => f.FieldType == storage))
         throw new Exception($"Missing object field storage: {storage}");
     if (!methods.Any(m => m.ReturnType == scalar)) throw new Exception($"No nullable return: {scalar}");
     if (!methods.Any(m => m.GetParameters().Any(p => p.ParameterType == scalar))) throw new Exception($"No nullable parameter: {scalar}");
     if (!methods.Any(m => m.GetMethodBody()?.LocalVariables.Any(v => v.LocalType == scalar) == true)) throw new Exception($"No nullable local: {scalar}");
 }
-Console.WriteLine("PASS compact numeric fields, nullable booleans, and nullable scalar parameters, returns, and locals");
+Console.WriteLine("PASS nullable scalar fields, parameters, returns, and locals");

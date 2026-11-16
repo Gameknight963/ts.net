@@ -22,7 +22,7 @@ foreach(var method in counts) {
 // A foreign subclass must keep its virtual property behavior even when its
 // generated parent has a fast data-only projection.
 var parent=assembly.GetTypes().First(t=>t.Name.StartsWith("O") && !t.IsSealed &&
-    t.GetFields(BindingFlags.Public|BindingFlags.Instance|BindingFlags.DeclaredOnly).Count(f=>f.FieldType==typeof(double))==2 &&
+    t.GetFields(BindingFlags.Public|BindingFlags.Instance|BindingFlags.DeclaredOnly).Count(f=>f.FieldType==typeof(double) || f.FieldType==typeof(double?))==2 &&
     t.GetMethod("OwnValues")!.DeclaringType==t);
 var dynamicAssembly=AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("EnumerationGetterProbe"),AssemblyBuilderAccess.Run);
 var child=dynamicAssembly.DefineDynamicModule("Probe").DefineType("GetterProbe",TypeAttributes.Public,parent);
