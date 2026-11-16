@@ -20,3 +20,9 @@ function deleteWithShadowedKey(): void {
     console.log('shadowed', delete target[deleteKey], Object.keys(target).join(','));
 }
 deleteWithShadowedKey();
+function unknownBranch(flag:boolean,key:string):void {
+    const record:any={first:12,second:13,third:14};
+    console.log('unknown-branch',delete record[flag?'first':key],Object.keys(record).join(','));
+}
+unknownBranch(true,'third');
+unknownBranch(false,'third');

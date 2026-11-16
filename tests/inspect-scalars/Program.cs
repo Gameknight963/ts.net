@@ -30,6 +30,18 @@ bool AllocatesObject(MethodInfo method)
     }
     return false;
 }
+if (args.Length == 2)
+{
+    var work = methods.Single(m => m.Name.StartsWith("work_f", StringComparison.Ordinal)).CreateDelegate<Func<double?>>();
+    double expected = double.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture);
+    for (int i = 0; i < 10; i++) if (work() != expected) throw new Exception("Incorrect warmup result");
+    long start = GC.GetAllocatedBytesForCurrentThread();
+    double? sum = work();
+    long bytes = GC.GetAllocatedBytesForCurrentThread() - start;
+    if (sum != expected || bytes != 0) throw new Exception($"Expected {expected} and zero allocation, got {sum} and {bytes} bytes");
+    Console.WriteLine("PASS unrelated conditional deletion preserves allocation-free local objects");
+    return;
+}
 var scalar = methods.Single(m => m.Name.EndsWith("_f0", StringComparison.Ordinal));
 if (AllocatesObject(scalar)) throw new Exception("Local object was not eliminated");
 if (!scalar.GetMethodBody()!.LocalVariables.Any(v => v.LocalType == typeof(int))) throw new Exception("Counted loop has no integer counter");
