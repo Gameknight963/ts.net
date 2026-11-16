@@ -244,10 +244,13 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double CheckedArrayNumberValue(object receiver, double? index)
     {
-        if (receiver is TaggedArray tagged && index.HasValue) {
+        if (receiver is JsArray array && index.HasValue) {
             double number = index.GetValueOrDefault();
-            if (number >= 0 && number <= int.MaxValue && number == (int)number && tagged.TryReadNumericPayload((int)number, out double value))
-                return value;
+            if (number >= 0 && number <= int.MaxValue && number == (int)number) {
+                int position = (int)number;
+                if (array is TaggedArray tagged && tagged.TryReadNumericPayload(position, out double value)) return value;
+                if (JsArray.TryReadOwnDenseValue(array, position, out object stored) && stored is double numeric) return numeric;
+            }
         }
         return CheckedNumberValue(ArrayIndexGetNumberKey(receiver, index));
     }
