@@ -181,9 +181,9 @@ Runtime performance:
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
 | 100K numeric writes to a four-element mapped array | 0.255 ms | 0.0416 ms | — | 0.16x |
 | Object literal method through a helper, 100K calls | 0.379 ms | 0.0619 ms | — | 0.16x |
+| Read and sum one numeric element 100K times through a mixed-array helper | 0.195 ms | 0.0272 ms | 0.0694 ms (`object[]`) | 0.14x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.284 ms | 0.0358 ms | — | 0.13x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
-| Read and sum 100K numbers from a mixed array through a helper | 0.249 ms | 0.0274 ms | — | 0.11x |
 | Borrow an object method with call, 100K calls | 0.712 ms | 0.0628 ms | 0.211 ms (delegate) | 0.09x |
 | Borrow an object method with apply and a one-number array, 100K calls | 0.824 ms | 0.0615 ms | — | 0.07x |
 | Call a custom call handler with an object and a number, 100K calls | 0.853 ms | 0.0632 ms | — | 0.07x |
