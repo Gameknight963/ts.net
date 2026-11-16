@@ -97,7 +97,6 @@ public static partial class Js
         }
         return CallFunctionCallNumberFallback(target, receiver, thisValue, value);
     }
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
     static double? CallFunctionCallNumberFallback(object target, object receiver, object thisValue, double? value) =>
         target is JsFunction function
             ? function.InvokeValueNumber(SuperReceiver(receiver), thisValue, value)
