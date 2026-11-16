@@ -134,6 +134,7 @@ Runtime performance:
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | — | 0.60x |
 | Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | — | 0.60x |
 | Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | — | 0.59x |
+| 100K numeric writes to a four-element mapped array | 0.0695 ms | 0.0413 ms | 0.0370 ms (`double[]`) | 0.59x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 0.717 ms | 0.415 ms | — | 0.58x |
 | Read varying string keys through an `any` helper from a Float64Array, 100K reads | 1.23 ms | 0.713 ms | — | 0.58x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
@@ -179,7 +180,6 @@ Runtime performance:
 | Call a callback with an object and a number, 100K calls | 0.307 ms | 0.0611 ms | — | 0.20x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
-| 100K numeric writes to a four-element mapped array | 0.255 ms | 0.0416 ms | — | 0.16x |
 | Object literal method through a helper, 100K calls | 0.379 ms | 0.0619 ms | — | 0.16x |
 | Read and sum one numeric element 100K times through a mixed-array helper | 0.195 ms | 0.0272 ms | 0.0694 ms (`object[]`) | 0.14x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.284 ms | 0.0358 ms | — | 0.13x |
