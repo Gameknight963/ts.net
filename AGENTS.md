@@ -25,6 +25,11 @@
 
 - Test supported behavior against Node.
 - Compare equivalent workloads and verify matching results.
+- Compare performance-sensitive generated code with equivalent and idiomatic C#.
+- Decompile and rebuild generated assemblies through C# when investigating IL
+  quality; inspect both IL and optimized machine code.
+- Use focused screening experiments first. Repeat measurements for promising
+  changes; avoid rerunning broad benchmarks without a specific reason.
 - Use Release builds, warmup, repeated measurements, and fresh processes.
 - Distinguish execution time from startup and compilation time.
 - Inspect generated code or allocation measurements when explaining an
