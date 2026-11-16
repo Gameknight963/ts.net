@@ -86,6 +86,7 @@ Runtime performance:
 | Sum 100K local arrays of two numbers using index & 1 | 0.0702 ms | 0.0877 ms | — | 1.25x |
 | String `.at(index)`, 1M calls | 4.26 ms | 5.28 ms | — | 1.24x |
 | toSorted with numeric comparator and traversal, 10 copies of 10K integers | 10.31 ms | 12.78 ms | — | 1.24x |
+| 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.0282 ms | 0.0344 ms | 0.414 ms (`object[]`) | 1.22x |
 | 100K numeric writes to a four-element mapped array | 0.0378 ms | 0.0419 ms | 0.0377 ms (`double[]`) | 1.11x |
 | Map.forEach numeric sum, 10 passes over 10K entries | 0.579 ms | 0.626 ms | — | 1.08x |
 | Reduce 100K number/string/undefined values with a default parameter | 0.596 ms | 0.640 ms | — | 1.08x |
@@ -182,7 +183,6 @@ Runtime performance:
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
 | Object literal method through a helper, 100K calls | 0.379 ms | 0.0619 ms | — | 0.16x |
 | Read and sum one numeric element 100K times through a mixed-array helper | 0.195 ms | 0.0272 ms | 0.0694 ms (`object[]`) | 0.14x |
-| 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.284 ms | 0.0358 ms | — | 0.13x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Borrow an object method with call, 100K calls | 0.712 ms | 0.0628 ms | 0.211 ms (delegate) | 0.09x |
 | Borrow an object method with apply and a one-number array, 100K calls | 0.824 ms | 0.0615 ms | — | 0.07x |
