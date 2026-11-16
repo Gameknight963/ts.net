@@ -113,6 +113,7 @@ Runtime performance:
 | Serialize a 1 MiB ASCII string 10 times | 6.94 ms | 6.19 ms | — | 0.89x |
 | Local constructor parameter property and field read, 100K instances | 0.0698 ms | 0.0617 ms | — | 0.88x |
 | Class method through a helper, 100K calls | 0.0703 ms | 0.0619 ms | — | 0.88x |
+| Object literal method through a helper, 100K calls | 0.0715 ms | 0.0630 ms | 0.0710 ms | 0.88x |
 | Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | — | 0.83x |
 | Object valueOf, 1M numeric conversions | 27.57 ms | 22.64 ms | — | 0.82x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | — | 0.77x |
@@ -175,7 +176,6 @@ Runtime performance:
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 1.84 ms | 0.463 ms | — | 0.25x |
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
-| Object literal method through a helper, 100K calls | 0.251 ms | 0.0639 ms | 0.0723 ms | 0.25x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | — | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.17 ms | 0.479 ms | — | 0.22x |
 | Create, retain, and sum 100K two-number objects | 5.27 ms | 1.11 ms | 0.996 ms | 0.21x |
