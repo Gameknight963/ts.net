@@ -174,6 +174,7 @@ Runtime performance:
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 1.84 ms | 0.463 ms | — | 0.25x |
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
+| Object literal method through a helper, 100K calls | 0.251 ms | 0.0639 ms | 0.0723 ms | 0.25x |
 | Self-returning function, 2M calls | 3.57 ms | 0.813 ms | — | 0.23x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | — | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.17 ms | 0.479 ms | — | 0.22x |
@@ -181,7 +182,6 @@ Runtime performance:
 | Call a callback with an object and a number, 100K calls | 0.307 ms | 0.0611 ms | — | 0.20x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
-| Object literal method through a helper, 100K calls | 0.379 ms | 0.0619 ms | — | 0.16x |
 | Read and sum one numeric element 100K times through a mixed-array helper | 0.195 ms | 0.0272 ms | 0.0694 ms (`object[]`) | 0.14x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
