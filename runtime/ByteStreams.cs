@@ -47,5 +47,8 @@ public static partial class Js
         internal IllegalByteControllerConstructor() : base("ReadableByteStreamController",static _=>throw new InvalidOperationException("Illegal constructor"),0)
         {UseObjectPrototype(ByteControllerMethods.Prototype);}
         public override object Construct(object[] args)=>throw new InvalidOperationException("Illegal constructor");
+        internal override bool CanInitializeDerived=>true;
+        internal override object InitializeDerived(object instance,object[] args)=>Construct(args);
+        internal override object InitializeDerived(object instance,object[] args,JsFunction newTarget){ConstructionPrototype(newTarget);return Construct(args);}
     }
 }

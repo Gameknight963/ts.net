@@ -157,5 +157,8 @@ public static partial class Js
             Member("asUintN", new JsFunction((FunctionBody)(static args => BigIntWidth(args, false)), null, "asUintN", 2));
         }
         public override object Construct(object[] args) => throw new InvalidOperationException("BigInt is not a constructor");
+        internal override bool CanInitializeDerived => true;
+        internal override object InitializeDerived(object instance, object[] args) => Construct(args);
+        internal override object InitializeDerived(object instance, object[] args, JsFunction newTarget) => Construct(args);
     }
 }

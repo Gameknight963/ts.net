@@ -66,5 +66,8 @@ public static partial class Js
             Member("keyFor", new JsFunction((FunctionBody)(static arguments => FunctionArgument(arguments, 0) is JsSymbol symbol ? symbol.RegistryKey is string key ? key : Undefined : throw new InvalidOperationException("Symbol.keyFor requires a symbol")), null, "keyFor", 1));
         }
         public override object Construct(object[] arguments) => throw new InvalidOperationException("Symbol is not a constructor");
+        internal override bool CanInitializeDerived => true;
+        internal override object InitializeDerived(object instance, object[] arguments) => Construct(arguments);
+        internal override object InitializeDerived(object instance, object[] arguments, JsFunction newTarget) => Construct(arguments);
     }
 }
