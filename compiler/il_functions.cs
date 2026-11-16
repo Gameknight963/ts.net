@@ -324,6 +324,7 @@ internal static partial class CompilerFunctions
             b.begin(b.plan.method0(5, type, 0xc6, -5, "GetApplyProperty"));
             b.emit(0xfe09, 0); b.call(RuntimeMember.ReadFunctionApplyProperty); b.op(0x2a);
         }
+        il_apply_array_override(symbol, type, c, b);
         if (receiver_count >= 0)
         {
             il_numeric_receiver_methods(symbol, type, context, environment_field, receiver_count, c, b);

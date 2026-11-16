@@ -56,6 +56,8 @@ public partial class JsFunction : JsDescriptorObject
         Js.Cast<double?>(InvokeWithReceiver(receiver, new[] { first, second }), "checked conversion failed");
     public virtual double? InvokeValueNumber(object receiver, object first, double? second) =>
         InvokeValuePairNumber(receiver, first, Js.BoxNumber(second));
+    public virtual double? InvokeValueNumberArray(object receiver, object first, double? value) =>
+        InvokeValuePairNumber(receiver, first, NumberArray.FromSingleNumber(value));
     // Generated callbacks override this only when the extra arguments and
     // receiver are unobservable. Other functions still receive all three.
     public virtual bool SupportsArrayValue() => false;

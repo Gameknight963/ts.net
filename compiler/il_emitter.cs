@@ -669,6 +669,7 @@ internal static partial class CompilerFunctions
         else if (n.kind == NodeKind.Array) { il_array_literal(entry, n.type, c, b); }
         else if (n.kind == NodeKind.Index)
         {
+            if (il_apply_array_read(entry, c, b)) return;
             if (il_scalar_array_read(entry, c, b)) return;
             int dense = il_dense_slot(entry, c, b);
             if (dense >= 0) { b.emit(0xfe0c, dense); il_integer(n.right, c, b); b.op(0x9a); b.call(RuntimeMember.ArrayDecode); b.from_object(n.type, c); return; }
@@ -1207,6 +1208,7 @@ internal static partial class CompilerFunctions
                 Vector<byte> flat_name = il_method_name(n, 'g', c);
                 b.binding_methods.at_mut(n.symbol) = b.plan.method(5, program, 0x16, result_type, fields.view(), flat_name.view());
             }
+            il_prepare_apply_array_function(function, program, c, b);
             function = n.next;
         }
         function = c.functions;
@@ -1269,7 +1271,7 @@ internal static partial class CompilerFunctions
             function = n.next;
         }
         function = c.functions;
-        while (function != 0) { il_raw_function_body(function, c, b); il_function_adapter(function, c, b); function = get_node(function, c).next; }
+        while (function != 0) { il_raw_function_body(function, c, b); il_apply_array_body(function, c, b); il_function_adapter(function, c, b); function = get_node(function, c).next; }
         b.begin(main); il_prepare_iteration_vars(0, c, b); int statement = c.statements;
         while (statement != 0) { il_statement(statement, 0, c, b); statement = get_node(statement, c).next; }
         b.op(0x2a);

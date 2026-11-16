@@ -110,10 +110,9 @@ public static partial class Js
         }
         return CallFunctionApplyNumberFallback(target, receiver, thisValue, value);
     }
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
     static double? CallFunctionApplyNumberFallback(object target, object receiver, object thisValue, double? value) =>
         target is JsFunction function
-            ? function.InvokeValuePairNumber(SuperReceiver(receiver), thisValue, NumberArray.FromSingleNumber(value))
+            ? function.InvokeValueNumberArray(SuperReceiver(receiver), thisValue, value)
             : Cast<double?>(CallMethod(target, receiver, new object[] { thisValue, NumberArray.FromSingleNumber(value) }), "checked conversion failed");
     static class FunctionMethods
     {
