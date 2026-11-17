@@ -90,7 +90,7 @@ public sealed partial class JsClassFunction : JsFunction
         return result;
     }
     internal void DefineField(string key, object value) { if (key == "prototype") throw Js.MakeThrown(new JsCaughtError("TypeError", "Cannot redefine class prototype")); Js.DefineDictionaryField(this, key, value); }
-    internal void InitializeFields(object instance) => fields.InvokeWithReceiver(instance, Array.Empty<object>());
+    internal void InitializeFields(object instance) => fields.InvokeReceiver0(instance);
     internal object Initialize(object instance, object[] arguments) => Initialize(instance, arguments, ((JsClassInstance)instance).Owner);
     internal object Initialize(object instance, object[] arguments, JsFunction newTarget)
     {
@@ -117,6 +117,15 @@ public sealed partial class JsClassFunction : JsFunction
         var instance = (JsClassInstance)factory(Array.Empty<object>()); instance.Owner = this; return instance;
     }
     public override object Construct(object[] arguments) => Initialize(Allocate(), arguments);
+    public override object ConstructNumber1(double? value)
+    {
+        if (derived) return base.ConstructNumber1(value);
+        var instance = Allocate();
+        instance.SetPrototype(ConstructionPrototype(this));
+        InitializeFields(instance);
+        object returned = constructor?.InvokeReceiverNumber1(constructor.ConstructionReceiver(instance, this), value);
+        return returned is TsObject ? returned : instance;
+    }
     internal override bool CanInitializeDerived => true;
     internal override object InitializeDerived(object instance, object[] arguments) => Initialize(instance, arguments);
     internal override object InitializeDerived(object instance, object[] arguments, JsFunction newTarget) => Initialize(instance, arguments, newTarget);
