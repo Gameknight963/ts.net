@@ -2,12 +2,15 @@ param(
     [string]$InputFile = 'examples/structural.ts',
     [string]$OutputDirectory = 'artifacts/app',
     [switch]$Run,
+    [switch]$ServerGC,
+    [ValidateRange(0, 1024)][int]$GCHeapCount = 0,
     [switch]$ExperimentalDecorators,
     [switch]$SkipCompilerBuild,
     [switch]$SkipRuntimeBuild,
     [switch]$LinkRuntime
 )
 $ErrorActionPreference = 'Stop'
+if ($GCHeapCount -and !$ServerGC) { throw 'GCHeapCount requires ServerGC' }
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
@@ -46,7 +49,13 @@ try {
             catch { Copy-Item -LiteralPath $runtimeSource -Destination $runtimeTarget }
         } else { Copy-Item -LiteralPath $runtimeSource -Destination $runtimeTarget }
     }
-    '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' |
+    $runtimeOptions = @{
+        tfm = 'net10.0'
+        framework = @{name = 'Microsoft.NETCore.App'; version = '10.0.0'}
+    }
+    if ($ServerGC) { $runtimeOptions.configProperties = @{'System.GC.Server' = $true} }
+    if ($GCHeapCount) { $runtimeOptions.configProperties['System.GC.HeapCount'] = $GCHeapCount }
+    @{runtimeOptions = $runtimeOptions} | ConvertTo-Json -Depth 4 |
         Set-Content "$applicationPath/App.runtimeconfig.json" -Encoding utf8
     if ($Run) {
         & dotnet "$outputPath/bin/Release/net10.0/App.dll"
