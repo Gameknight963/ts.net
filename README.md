@@ -191,6 +191,7 @@ Runtime performance:
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
 | Borrow an object method with call, 100K calls | 0.712 ms | 0.0628 ms | 0.211 ms (delegate) | 0.09x |
 | Borrow an object method with apply and a one-number array, 100K calls | 0.697 ms | 0.0624 ms | 0.208 ms (delegate) | 0.09x |
+| Retained numeric class instances and field traversal, 100K instances | 12.84 ms | 1.031 ms | 0.785 ms | 0.08x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | — | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | — | 0.02x |
 
