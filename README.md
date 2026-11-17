@@ -55,6 +55,7 @@ Runtime performance:
 | `Object.values(value)`, 100K calls and reads | 1.73 ms | 9.53 ms | — | 5.51x |
 | Numeric loop, 20M iterations | 14.58 ms | 75.45 ms | — | 5.17x |
 | Computed keys, 100K objects and reads | 5.97 ms | 29.00 ms | — | 4.86x |
+| Parse ten JSON arrays of 1K strings, 896 characters per string | 1.624 ms | 7.520 ms | 25.33 ms (`JsonSerializer`) | 4.63x |
 | Cached date formatter, 1K daily UTC dates in 2024, Gregorian calendar | 0.312 ms | 1.22 ms | — | 3.90x |
 | Gzip-decompress 1,052 bytes into 1 MiB of repeated ASCII A | 1.19 ms | 4.38 ms | — | 3.68x |
 | Small integer bases and varying exponents, 1M iterations | 4.07 ms | 13.85 ms | — | 3.41x |
