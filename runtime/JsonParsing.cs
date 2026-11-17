@@ -86,6 +86,35 @@ public static partial class Js
             }
             throw Invalid();
         }
+        double ReadNumber()
+        {
+            int start = position;
+            bool negative = Consume('-');
+            int digitsStart = position;
+            ulong integer = 0;
+            if (!Consume('0')) {
+                if (position == text.Length || text[position] is < '1' or > '9') throw Invalid();
+                while (position < text.Length && char.IsAsciiDigit(text[position])) {
+                    integer = unchecked(integer * 10 + (uint)(text[position] - '0'));
+                    position++;
+                }
+            }
+            int integerEnd = position;
+            if (Consume('.')) { int digits = position; while (position < text.Length && char.IsAsciiDigit(text[position])) position++; if (digits == position) throw Invalid(); }
+            if (position < text.Length && text[position] is 'e' or 'E')
+            {
+                position++; if (position < text.Length && text[position] is '+' or '-') position++;
+                int digits = position; while (position < text.Length && char.IsAsciiDigit(text[position])) position++; if (digits == position) throw Invalid();
+            }
+            double number;
+            // Every integer with at most 15 decimal digits is exactly
+            // representable as a double. Longer tokens use the full parser,
+            // even if the unchecked accumulator wrapped while scanning.
+            if (position == integerEnd && integerEnd - digitsStart <= 15)
+                number = negative ? -(double)integer : integer;
+            else if (!double.TryParse(text.AsSpan(start, position - start), NumberStyles.Float, CultureInfo.InvariantCulture, out number)) throw Invalid();
+            return number;
+        }
         object ReadValue(out JsonValue record)
         {
             record = null;
@@ -94,7 +123,11 @@ public static partial class Js
             char ch = text[position]; object value;
             if (ch is '{' or '[')
             {
-                position++; value = ch == '{' ? new JsDynamicObject() : new JsArray(0);
+                position++;
+                if (ch == '[' && !remember) Space();
+                bool packed = ch == '[' && !remember && position < text.Length &&
+                    (text[position] == '-' || char.IsAsciiDigit(text[position]));
+                value = ch == '{' ? new JsDynamicObject() : packed ? new TaggedArray(0) : new JsArray(0);
                 if (remember) record = new JsonValue(value, start) { Children = new(StringComparer.Ordinal) };
                 frames.Push(new(value, record, frames.Count == 0 ? null : frames.Peek().Keys)); return value;
             }
@@ -107,31 +140,7 @@ public static partial class Js
             }
             else
             {
-                bool negative = Consume('-');
-                int digitsStart = position;
-                ulong integer = 0;
-                if (!Consume('0')) {
-                    if (position == text.Length || text[position] is < '1' or > '9') throw Invalid();
-                    while (position < text.Length && char.IsAsciiDigit(text[position])) {
-                        integer = unchecked(integer * 10 + (uint)(text[position] - '0'));
-                        position++;
-                    }
-                }
-                int integerEnd = position;
-                if (Consume('.')) { int digits = position; while (position < text.Length && char.IsAsciiDigit(text[position])) position++; if (digits == position) throw Invalid(); }
-                if (position < text.Length && text[position] is 'e' or 'E')
-                {
-                    position++; if (position < text.Length && text[position] is '+' or '-') position++;
-                    int digits = position; while (position < text.Length && char.IsAsciiDigit(text[position])) position++; if (digits == position) throw Invalid();
-                }
-                double number;
-                // Every integer with at most 15 decimal digits is exactly
-                // representable as a double. Longer tokens use the full parser,
-                // even if the unchecked accumulator wrapped while scanning.
-                if (position == integerEnd && integerEnd - digitsStart <= 15)
-                    number = negative ? -(double)integer : integer;
-                else if (!double.TryParse(text.AsSpan(start, position - start), NumberStyles.Float, CultureInfo.InvariantCulture, out number)) throw Invalid();
-                value = number;
+                value = ReadNumber();
             }
             if (remember) record = new JsonValue(value, start) { End = position };
             return value;
@@ -147,8 +156,16 @@ public static partial class Js
                 {
                     if (frame.State == 0 && Consume(']') || frame.State == 1 && Consume(']')) { if (frame.Node != null) frame.Node.End = position; frames.Pop(); continue; }
                     if (frame.State == 1) { Expect(','); frame.State = 2; continue; }
+                    if (array is TaggedArray packed && position < text.Length &&
+                        (text[position] == '-' || char.IsAsciiDigit(text[position]))) {
+                        packed.AppendParsedNumber(ReadNumber());
+                        frame.State = 1;
+                        continue;
+                    }
                     string key = remember ? array.Length().ToString(CultureInfo.InvariantCulture) : null;
-                    object child = ReadValue(out JsonValue childRecord); array.Append(child); if (remember) frame.Node.Children[key] = childRecord;
+                    object child = ReadValue(out JsonValue childRecord);
+                    if (array is TaggedArray mixed) mixed.AppendParsedReference(child); else array.Append(child);
+                    if (remember) frame.Node.Children[key] = childRecord;
                     frame.State = 1;
                 }
                 else

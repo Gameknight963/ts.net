@@ -30,6 +30,18 @@ public sealed partial class TaggedArray : JsArray
     }
     public void InitializeLiteralNumber(int index, double? value) => StoreMappedNumber(index, value);
     public void InitializeLiteralElement(int index, object value) => Write((uint)index, value);
+    // JSON parsing fills a fresh, unexposed array. Like literal initialization,
+    // it defines own elements without consulting inherited setters.
+    internal void AppendParsedNumber(double value)
+    {
+        uint index = length;
+        if (!Prepare(index)) { materialized.Append(value); return; }
+        tags[index] = 1;
+        numbers[index] = value;
+        length = index + 1;
+    }
+    // Stop paying for parallel numeric storage when the parsed array is mixed.
+    internal void AppendParsedReference(object value) => Materialize().Append(value);
     void EnsureReferences()
     {
         if (references.Length == 0) references = new object[tags.Length];
