@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.Loader;
 
 try
@@ -9,34 +8,8 @@ try
         ? AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.Combine(Path.GetDirectoryName(path)!, "Tsnet.Runtime.dll")) : null;
     var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(path);
     var methods = assembly.GetType("Program")!.GetMethods(BindingFlags.Public | BindingFlags.Static);
-    var opcodes = typeof(OpCodes).GetFields().Where(f => f.FieldType == typeof(OpCode))
-        .Select(f => (OpCode)f.GetValue(null)!).ToDictionary(op => (ushort)op.Value);
-    bool Constructs(MethodInfo method)
-    {
-        var bytes = method.GetMethodBody()!.GetILAsByteArray()!;
-        for (int position = 0; position < bytes.Length;)
-        {
-            ushort code = bytes[position++];
-            if (code == 0xfe) code = (ushort)(0xfe00 | bytes[position++]);
-            var opcode = opcodes[code];
-            if (opcode == OpCodes.Call && method.Module.ResolveMethod(BitConverter.ToInt32(bytes, position)) is MethodInfo target &&
-                target.DeclaringType!.Name == "Js" && target.Name is "Construct" or "ConstructArguments" or "ConstructNumberArgument" or "ConstructArgument") return true;
-            position += opcode.OperandType switch
-            {
-                OperandType.InlineNone => 0,
-                OperandType.ShortInlineBrTarget or OperandType.ShortInlineI or OperandType.ShortInlineVar => 1,
-                OperandType.InlineVar => 2,
-                OperandType.InlineI8 or OperandType.InlineR => 8,
-                OperandType.InlineSwitch => 4 + 4 * BitConverter.ToInt32(bytes, position),
-                _ => 4
-            };
-        }
-        return false;
-    }
     var kernel = methods.Single(method => method.Name.StartsWith("kernel_f", StringComparison.Ordinal));
     var escape = methods.Single(method => method.Name.StartsWith("escape_f", StringComparison.Ordinal));
-    if (Constructs(kernel)) throw new Exception("Local class kernel still constructs objects");
-    if (!Constructs(escape)) throw new Exception("Escaping class has no constructor call");
     var output = Console.Out;
     try
     {
@@ -53,7 +26,23 @@ try
     long bytesAllocated = GC.GetAllocatedBytesForCurrentThread() - before;
     double expected = args.Length > 1 ? double.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture) : 251000;
     if (bytesAllocated != 0 || checksum != expected) throw new Exception($"Local classes allocated {bytesAllocated} bytes or produced {checksum}");
-    Console.WriteLine("PASS local classes allocate zero bytes; escaping classes retain construction");
+    var create = escape.CreateDelegate<Func<object>>();
+    for (int i = 0; i < 100; i++) create();
+    var escaped = new object[16];
+    before = GC.GetAllocatedBytesForCurrentThread();
+    for (int i = 0; i < escaped.Length; i++) escaped[i] = create();
+    long escapingBytes = GC.GetAllocatedBytesForCurrentThread() - before;
+    if (escaped.Any(value => value is null || value.GetType().IsValueType) ||
+        escaped.Distinct(ReferenceEqualityComparer.Instance).Count() != escaped.Length)
+        throw new Exception("Escaping classes lost their reference identity");
+    var runtime = AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.Combine(Path.GetDirectoryName(path)!, "Tsnet.Runtime.dll"));
+    var js = runtime.GetType("Js")!;
+    var get = js.GetMethod("Get", [typeof(object), typeof(string)])!;
+    var instanceOf = js.GetMethod("InstanceOf", [typeof(object), typeof(object)])!;
+    object constructor = get.Invoke(null, [escaped[0], "constructor"])!;
+    foreach (object value in escaped)
+        if (!(bool)instanceOf.Invoke(null, [value, constructor])!) throw new Exception("Escaping class lost its prototype");
+    Console.WriteLine($"PASS local classes allocate zero bytes; escaped classes retain identity and prototypes ({escapingBytes} bytes)");
 
     return 0;
 }
