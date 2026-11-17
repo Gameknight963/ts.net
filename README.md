@@ -121,6 +121,7 @@ Runtime performance:
 | Object literal method through a helper, 100K calls | 0.0715 ms | 0.0630 ms | 0.0710 ms | 0.88x |
 | Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | — | 0.83x |
 | Object valueOf, 1M numeric conversions | 27.57 ms | 22.64 ms | — | 0.82x |
+| Call a callback with an object and a number, 100K calls | 0.0776 ms | 0.0621 ms | 0.0698 ms (delegate) | 0.80x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | — | 0.77x |
 | `== null` on nullable arrays, 1M comparisons | 1.51 ms | 1.15 ms | — | 0.76x |
 | Numeric class property increments, 2M updates | 5.908 ms | 4.505 ms | 1.348 ms | 0.76x |
@@ -148,7 +149,6 @@ Runtime performance:
 | Sum 100K values in a loop, awaiting only on the final iteration | 0.717 ms | 0.415 ms | — | 0.58x |
 | Read varying string keys through an `any` helper from a Float64Array, 100K reads | 1.23 ms | 0.713 ms | — | 0.58x |
 | Create a Map, insert and read 10K entries, then delete half | 1.184 ms | 0.658 ms | 0.395 ms (`Dictionary`) | 0.56x |
-| Call a callback with an object and a number, 100K calls | 0.118 ms | 0.0640 ms | 0.0707 ms (delegate) | 0.54x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
 | Parse, filter, group, sort and serialize 1K records, 10 passes | 7.86 ms | 4.12 ms | — | 0.52x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
