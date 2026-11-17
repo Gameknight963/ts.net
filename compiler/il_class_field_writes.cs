@@ -1,8 +1,10 @@
 ﻿namespace Tsnet.Compiler;
 
+internal enum ClassFieldWriteForm { Value, Number, String }
+
 internal sealed partial class IlBackend
 {
-    internal readonly Dictionary<(int Type, int Index, bool Numeric), int> class_field_writers = [];
+    internal readonly Dictionary<(int Type, int Index, ClassFieldWriteForm Form), int> class_field_writers = [];
     internal Dictionary<int, int> class_field_receivers;
 }
 
@@ -14,7 +16,8 @@ internal static partial class CompilerFunctions
         // the program. Unused fields do not need either form of the helper.
         foreach (var entry in b.class_field_writers)
         {
-            var (type, index, numeric) = entry.Key;
+            var (type, index, form) = entry.Key;
+            bool numeric = form == ClassFieldWriteForm.Number;
             int klass = b.classes.at(type);
             int name = get_field(b.numeric_class_members[type][index], c).name;
             b.begin(entry.Value);
@@ -24,7 +27,12 @@ internal static partial class CompilerFunctions
             // The runtime guard rejects missing or materialized fields. Those
             // writes must still observe descriptors and inherited setters.
             b.emit(0xfe0c, instance); b.emit(0x20, index); b.emit(0xfe09, 1);
-            b.call(numeric ? RuntimeMember.TrySetClassNumber : RuntimeMember.TrySetClassValue);
+            RuntimeMember store = form switch {
+                ClassFieldWriteForm.Number => RuntimeMember.TrySetClassNumber,
+                ClassFieldWriteForm.String => RuntimeMember.TrySetClassString,
+                _ => RuntimeMember.TrySetClassValue
+            };
+            b.call(store);
             b.emit(0x39, fallback); b.op(0x2a);
             b.mark(fallback); b.emit(0xfe09, 0); il_text(name, c, b); b.emit(0xfe09, 1);
             b.call(numeric ? RuntimeMember.DynamicSetNumber : RuntimeMember.DynamicSet);
@@ -41,7 +49,7 @@ internal static partial class CompilerFunctions
         if (symbol != 0) b.class_field_receivers[symbol] = type;
     }
 
-    static int il_class_field_writer(int target, int valueType, Compiler c, IlBackend b)
+    static int il_class_field_writer(int target, int valueType, bool stringValue, Compiler c, IlBackend b)
     {
         var property = get_node(target, c);
         if (property.kind != NodeKind.Property || property.fourth != 0) return 0;
@@ -72,10 +80,17 @@ internal static partial class CompilerFunctions
         {
             if (!same(get_field(members[index], c).name, property.name, c)) continue;
             bool numeric = get_type(valueType, c).kind == TypeKind.Number;
-            var key = (owner, index, numeric);
+            ClassFieldWriteForm form = numeric ? ClassFieldWriteForm.Number :
+                stringValue || get_type(valueType, c).kind == TypeKind.String ? ClassFieldWriteForm.String : ClassFieldWriteForm.Value;
+            var key = (owner, index, form);
             if (!b.class_field_writers.TryGetValue(key, out int method))
             {
-                method = b.plan.method2(5, b.classes.at(owner), 0x16, -1, -5, numeric ? -10 : -5, (numeric ? "Set_number_" : "Set_value_") + index);
+                string prefix = form switch {
+                    ClassFieldWriteForm.Number => "Set_number_",
+                    ClassFieldWriteForm.String => "Set_string_",
+                    _ => "Set_value_"
+                };
+                method = b.plan.method2(5, b.classes.at(owner), 0x16, -1, -5, numeric ? -10 : -5, prefix + index);
                 b.class_field_writers.Add(key, method);
             }
             return method;

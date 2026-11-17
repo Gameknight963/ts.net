@@ -56,6 +56,18 @@ public abstract class JsNumericClassInstance : JsClassInstance
         return true;
     }
     protected bool TrySetClassNumber(int index, double? value) => StoreNumber(index, value, false);
+    protected bool TrySetClassString(int index, object value)
+    {
+        // Declared string values can still be null or undefined. Keep the
+        // general representation for those; actual strings are always defined.
+        if (value is not string) return TrySetClassValue(index, value);
+        if (materialized || index < 0 || !IsReferenceField(index)) return false;
+        int shift = index * 2;
+        if ((states >> shift & 3) == 0) return false;
+        WriteReferenceField(index, value);
+        states |= 3u << shift;
+        return true;
+    }
     protected bool TrySetClassValue(int index, object value)
     {
         if (StoreReference(index, value, false)) return true;

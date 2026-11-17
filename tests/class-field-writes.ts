@@ -39,3 +39,31 @@ class Looped {
 }
 export function work(count: number): number { return new Looped(count).value.length; }
 console.log(work(10));
+
+{
+    class Holder {
+     value: string;
+     constructor(value: string) { this.value = value; }
+     write(value: string) { this.value = value; }
+    }
+    const value = new Holder("start");
+    console.log(value.value);
+    value.write(undefined as any);
+    console.log(value.value === undefined, Object.hasOwn(value, "value"));
+    value.write("again"); console.log(value.value);
+    value.write(null as any); console.log(value.value === null);
+    value.write("last"); console.log(value.value);
+    class UnknownHolder {
+     value: unknown = "";
+     write(value: string) { this.value = value; }
+    }
+    const unknown = new UnknownHolder();
+    unknown.write("text"); console.log(unknown.value);
+    unknown.write(undefined as any); console.log(unknown.value === undefined);
+    unknown.write("restored"); console.log(unknown.value);
+    const changes: string[] = [];
+    const proxy = new Proxy(value, { set(target, key, input, receiver) { changes.push(String(input)); return Reflect.set(target, key, input, receiver); } });
+    proxy.write("proxy"); console.log(value.value, changes.join(","));
+    Object.defineProperty(value, "value", { get() { return "accessor"; }, set(input: string) { changes.push(input); } });
+    value.write("setter"); console.log(value.value, changes.join(","));
+}
