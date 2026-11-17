@@ -46,3 +46,15 @@ function shifted(items: Point[]): number {
  return total;
 }
 console.log("nonzero start", shifted(items), shifted([]));
+
+let calls = 0;
+function more(): boolean {return calls++ < 3;}
+let ordinary = 0;
+for (let i = 0; more(); i++) ordinary += i;
+console.log("call condition", ordinary, calls);
+for (let i = 0; false; i++) ordinary += 100;
+let running = true;
+for (let i = 0; running; i++) {ordinary += i; running = i < 2;}
+const status = {running: true};
+for (let i = 0; status.running; i++) {ordinary += i; status.running = false;}
+console.log("other conditions", ordinary);

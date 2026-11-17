@@ -21,7 +21,9 @@ internal static partial class CompilerFunctions
         if (b.loop_versions != 0 || b.record_array_fields.Count != 0) return false;
         Node loop = get_node(entry, c);
         if (loop.kind != NodeKind.For || loop.right == 0) return false;
-        Node condition = get_node(loop.right, c), length = get_node(condition.right, c);
+        Node condition = get_node(loop.right, c);
+        if (condition.kind != NodeKind.Binary || condition.right == 0) return false;
+        Node length = get_node(condition.right, c);
         if (length.kind != NodeKind.Property || length.fourth != 0 || !is_text(length.name, text_length, c)) return false;
         Node source = get_node(length.left, c);
         int counter = il_counted_loop(entry, c, b, true);
@@ -29,8 +31,10 @@ internal static partial class CompilerFunctions
             b.global_fields.at(counter) != 0 || b.capture_fields.at(counter) != 0) return false;
         Node body = get_node(loop.fourth, c);
         int statement = body.kind == NodeKind.Block ? body.children : loop.fourth;
-        Node expression = get_node(statement, c), assignment = get_node(expression.left, c);
-        if (expression.kind != NodeKind.Expression || expression.next != 0 || assignment.kind != NodeKind.Assign ||
+        Node expression = get_node(statement, c);
+        if (expression.kind != NodeKind.Expression || expression.next != 0) return false;
+        Node assignment = get_node(expression.left, c);
+        if (assignment.kind != NodeKind.Assign ||
             !is_text(get_token(assignment.token, c).text, text_add_assign, c)) return false;
         Node total = get_node(assignment.left, c);
         if (total.kind != NodeKind.Name || total.symbol == counter || total.symbol == source.symbol ||
