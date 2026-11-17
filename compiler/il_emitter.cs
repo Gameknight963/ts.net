@@ -46,6 +46,7 @@ internal static partial class CompilerFunctions
         if (get_type(source, c).kind == TypeKind.Void && get_type(target, c).kind != TypeKind.Void) { b.empty(target, c); return; }
         // The freshly allocated class implements every compatible shape interface.
         if (value.kind == NodeKind.Object && fits(source, target, c)) { return; }
+        if (il_fixed_object_fits(entry, target, c, b)) return;
         b.convert(source, target, c);
     }
     internal static void il_conditional_value(int entry, int target, int condition, bool whenTrue, Compiler c, IlBackend b)

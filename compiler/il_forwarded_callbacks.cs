@@ -67,7 +67,8 @@ internal static partial class CompilerFunctions
             b.emit(0xfe0c, slots[parameter.Argument]);
             // Numeric callback entries already accept nullable numbers. Other
             // arguments retain the checks performed by the erased adapter.
-            if (get_type(source, c).kind != TypeKind.Number || get_type(destination, c).kind != TypeKind.Number)
+            if (!il_fixed_object_fits(arguments[parameter.Argument], destination, c, b) &&
+                (get_type(source, c).kind != TypeKind.Number || get_type(destination, c).kind != TypeKind.Number))
             { b.box(source, c); b.from_object(destination, c); }
         }
         b.emit(0x28, b.function(callback));

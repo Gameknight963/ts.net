@@ -317,6 +317,7 @@ internal sealed partial class IlBackend
         }
         int global = this.global_fields.at(symbol);
         if (global == 0) { this.store(symbol); return; }
+        if (this.fixed_object_layouts.TryGetValue(symbol, out int layout)) this.emit(0x74, this.classes.at(layout));
         this.emit(0x80, global); int flag = this.global_flags.at(symbol);
         if (flag != 0) { this.emit(0x20, 1); this.emit(0x80, flag); }
     }

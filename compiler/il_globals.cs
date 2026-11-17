@@ -31,11 +31,13 @@ internal static partial class CompilerFunctions
     internal static void il_globals(int program, Compiler c, IlBackend b)
     {
         Vector<int> declarations = zero_ids(c.symbol_store.count() + 1);
+        HashSet<int> repeated = [];
         for (int i = 1; i <= c.node_store.count(); i++)
         {
             Node n = get_node(i, c);
             if ((n.kind == NodeKind.Variable || n.kind == NodeKind.Binding || n.kind == NodeKind.AsyncBindingScope) && n.symbol != 0 && (scalar_owner(i, b.node_parents, c) == 0 || il_module_binding(i, c, b)) && b.capture_fields.at(n.symbol) == 0)
             {
+                if (declarations.at(n.symbol) != 0) repeated.Add(n.symbol);
                 declarations.at_mut(n.symbol) = (int)i;
                 if ((n.kind == NodeKind.Variable && n.fourth != 0) || ((n.kind == NodeKind.Binding || n.kind == NodeKind.AsyncBindingScope) && n.name != 0 && is_text(n.name, text_var, c))) { b.global_vars.at_mut(n.symbol) = 1; }
             }
@@ -49,7 +51,10 @@ internal static partial class CompilerFunctions
             int type = get_symbol(n.symbol, c).type;
             if (get_type(type, c).kind == TypeKind.Void) { fail(n.token, "void-valued globals need lowering", c); }
             Vector<byte> name = numbered_name('v', (int)n.symbol); Vector<byte> flag = numbered_name('i', (int)n.symbol);
-            int storage = b.type(type, c); b.global_fields.at_mut(n.symbol) = b.plan.field(program, 0x13, storage, name.view());
+            int layout = repeated.Contains(n.symbol) ? 0 : il_fixed_object_layout(declaration, c, b);
+            if (layout != 0) b.fixed_object_layouts[n.symbol] = layout;
+            int storage = layout != 0 ? b.classes.at(layout) : b.type(type, c);
+            b.global_fields.at_mut(n.symbol) = b.plan.field(program, 0x13, storage, name.view());
             if (b.global_vars.at(n.symbol) == 0) { b.global_flags.at_mut(n.symbol) = b.plan.field(program, 0x13, -2, flag.view()); }
             b.raw_slots.at_mut(n.symbol) = 0;
             if (b.global_vars.at(n.symbol) != 0 && get_type(type, c).kind == TypeKind.Number) { b.numeric_globals = true; }
@@ -67,7 +72,11 @@ internal static partial class CompilerFunctions
         {
             int field = b.global_fields.at(symbol);
             if (field == 0) { continue; }
-            b.empty(get_symbol(symbol, c).type, c); b.emit(0x80, field);
+            // A lexical read checks its flag before loading the field, so the
+            // initial null in concrete object storage is never observable.
+            if (b.fixed_object_layouts.ContainsKey(symbol)) b.op(0x14);
+            else b.empty(get_symbol(symbol, c).type, c);
+            b.emit(0x80, field);
             int flag = b.global_flags.at(symbol); if (flag != 0) { b.emit(0x20, 0); b.emit(0x80, flag); }
         }
         b.op(0x2a);
