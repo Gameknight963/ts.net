@@ -258,6 +258,12 @@ internal static partial class CompilerFunctions
                 }
             }
         }
+        // A plain write's value can retain its numeric representation even
+        // when the receiver's property is declared any. SetNumber keeps the
+        // ordinary setter fallback, and expression results convert below.
+        if (n.kind == NodeKind.Assign && is_text(op, text_assign, c) && target.kind == NodeKind.Property && target.fourth == 0 &&
+            get_type(get_node(target.left, c).type, c).kind == TypeKind.Any && get_type(get_node(n.right, c).type, c).kind == TypeKind.Number)
+            value_type = get_node(n.right, c).type;
         if (logical)
         {
             logical_done = b.label(); il_load_target(n.left, receiver, index, c, b); b.convert(target.type, value_type, c); b.op(0x25);
@@ -294,7 +300,11 @@ internal static partial class CompilerFunctions
             get_type(get_node(n.right, c).type, c).kind == TypeKind.Any)
         {
             il_load_target(n.left, receiver, index, c, b);
-            il_boxed(n.right, c, b); b.call(RuntimeMember.AddToNumber);
+            Node right = get_node(n.right, c);
+            if (right.kind == NodeKind.Property && right.fourth == 0 && get_type(get_node(right.left, c).type, c).kind == TypeKind.Any) {
+                il_boxed(right.left, c, b); il_text(right.name, c, b); b.call(RuntimeMember.AddPropertyToNumber);
+            }
+            else { il_boxed(n.right, c, b); b.call(RuntimeMember.AddToNumber); }
         }
         else if (n.kind == NodeKind.Assign && is_text(op, text_add_assign, c) && (get_type(target.type, c).kind == TypeKind.Any || get_type(get_node(n.right, c).type, c).kind == TypeKind.Any))
         {
