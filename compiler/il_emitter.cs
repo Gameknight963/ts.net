@@ -216,6 +216,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_mutation(int entry, Compiler c, IlBackend b, bool discardBox = false)
     {
+        if (il_bigint_mutation(entry, discardBox, c, b)) return;
         if (il_loop_field_write(entry, c, b)) return;
         Node n = get_node(entry, c); Node target = get_node(n.left, c);
         ScalarField scalar = il_scalar_field(n.left, c, b);
@@ -541,6 +542,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_expression(int entry, Compiler c, IlBackend b)
     {
+        if (il_bigint_expression(entry, c, b)) return;
         if (il_loop_getter_read(entry, c, b)) { b.call(RuntimeMember.WrapNumber); return; }
         if (il_loop_field_write(entry, c, b)) return;
         if (il_typed_buffer_read(entry, c, b)) { b.call(RuntimeMember.WrapNumber); return; }
@@ -1145,7 +1147,8 @@ internal static partial class CompilerFunctions
             }
             int raw = b.raw_slot(n.symbol); int slot = b.local(raw != 0 ? raw : b.type(n.type, c));
             b.slots.at_mut(n.symbol) = slot;
-            if (raw == -6) { il_integer(n.left, c, b); b.store_storage(n.symbol); }
+            if (raw == b.RuntimeToken(RuntimeMember.BigIntegerType)) { il_bigint_value(n.left, c, b); b.store_storage(n.symbol); }
+            else if (raw == -6) { il_integer(n.left, c, b); b.store_storage(n.symbol); }
             else { il_as(n.left, n.type, c, b); b.store(n.symbol); }
         }
         else if(n.kind==NodeKind.SuperInitializer){il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.SuperInitializer);}
@@ -1214,7 +1217,7 @@ internal static partial class CompilerFunctions
         string assemblyName = System.IO.Path.GetFileNameWithoutExtension(path.Decode());
         if (assemblyName.Length == 0) throw new CompilationException("Output filename must include an assembly name");
         int numeric_array = il_numeric_array_type(c);
-        IlBackend b = IlBackend.create(c, assemblyName); il_prove_locals(c, b); il_prove_scalars(c, b); il_prove_var_initializers(c, b); il_prove_reversible_arrays(c, b); il_choose_tagged_arrays(c, b); il_runtime(b); il_prepare_enumeration(c, b); il_prepare_spreads(c, b); il_prepare_key_layouts(c, b); il_shapes(c, b); il_key_layouts(c, b); il_spread_shapes(c, b); il_prepare_spread_hints(c, b); il_spread_clones(c, b);
+        IlBackend b = IlBackend.create(c, assemblyName); il_prove_locals(c, b); il_prove_scalars(c, b); il_prove_var_initializers(c, b); il_prove_reversible_arrays(c, b); il_choose_tagged_arrays(c, b); il_runtime(b); il_prove_bigint_locals(c, b); il_prepare_enumeration(c, b); il_prepare_spreads(c, b); il_prepare_key_layouts(c, b); il_shapes(c, b); il_key_layouts(c, b); il_spread_shapes(c, b); il_prepare_spread_hints(c, b); il_spread_clones(c, b);
         int object_type = b.RuntimeToken(RuntimeMember.ObjectType);
         int program = b.plan.type("Program", object_type, 0x181);
         // Keep the constructor allocator with this assembly so its instances

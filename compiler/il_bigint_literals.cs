@@ -10,14 +10,19 @@ internal sealed partial class IlBackend
 
 internal static partial class CompilerFunctions
 {
+    internal static int il_bigint_literal_text(int entry, Compiler c)
+    {
+        if (entry == 0) return 0;
+        Node call = get_node(entry, c);
+        if (call.kind != NodeKind.Call || !call.constant || call.children == 0) return 0;
+        Node target = get_node(call.left, c), literal = get_node(call.children, c);
+        return target.kind == NodeKind.BuiltinNamespace && is_text(get_token(target.token, c).text, "BigInt", c) &&
+            literal.kind == NodeKind.String && literal.next == 0 ? get_token(literal.token, c).text : 0;
+    }
     internal static bool il_bigint_literal(int entry, Compiler c, IlBackend b)
     {
-        Node call = get_node(entry, c), target = get_node(call.left, c);
-        if (!call.constant || target.kind != NodeKind.BuiltinNamespace ||
-            !is_text(get_token(target.token, c).text, "BigInt", c) || call.children == 0) return false;
-        Node literal = get_node(call.children, c);
-        if (literal.kind != NodeKind.String || literal.next != 0) return false;
-        int text = get_token(literal.token, c).text;
+        int text = il_bigint_literal_text(entry, c);
+        if (text == 0) return false;
         if (!b.bigint_literals.TryGetValue(text, out int cache))
         {
             if (b.bigint_literal_type == 0)

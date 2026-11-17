@@ -34,6 +34,7 @@ sealed class AssemblyPlan
     }
     readonly List<(int Method,int Constructor,string Source)> functionSources = [];
     readonly List<ExternalType> references = [];
+    readonly HashSet<int> externalValueTypes = [];
     readonly List<TypeRow> types = [];
     readonly List<MethodRow> members = [];
     readonly List<(int Id, int Method, int Type)> specifications = [];
@@ -86,6 +87,9 @@ sealed class AssemblyPlan
             switch (command)
             {
                 case 1: references.Add(new(id, Text(reader), Text(reader), Text(reader))); break;
+                case 16:
+                    references.Add(new(id, Text(reader), Text(reader), Text(reader)));
+                    externalValueTypes.Add(id); break;
                 case 2:
                     var type = new TypeRow(id, reader.ReadInt32(), Text(reader), reader.ReadInt32());
                     types.Add(type); typeRows.Add(id, type); break;
@@ -136,7 +140,7 @@ sealed class AssemblyPlan
             case -11: encoder.GenericInstantiation(nullableType, 1, isValueType: true).AddArgument().Boolean(); break;
             case -12: encoder.SZArray().Double(); break;
             case -13: encoder.SZArray().Byte(); break;
-            default: encoder.Type(Handle(type), isValueType: false); break;
+            default: encoder.Type(Handle(type), isValueType: externalValueTypes.Contains(type)); break;
         }
     }
     BlobHandle Signature(MethodRow method, bool external)

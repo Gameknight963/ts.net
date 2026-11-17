@@ -6,6 +6,10 @@ using System.Text;
 public static partial class Js
 {
     public static object BigIntLiteral(string source) => ParseBigInt(source);
+    public static BigInteger BigIntDivide(BigInteger left, BigInteger right) => right.IsZero
+        ? throw new ArgumentOutOfRangeException(nameof(right), "BigInt division by zero") : left / right;
+    public static BigInteger BigIntRemainder(BigInteger left, BigInteger right) => right.IsZero
+        ? throw new ArgumentOutOfRangeException(nameof(right), "BigInt division by zero") : left % right;
     public static double ExplicitNumber(object value)
     {
         if (value is TsObject obj) return ObjectNumber(obj, true);

@@ -36,9 +36,9 @@ internal sealed class AssemblyPlan
         this.integer(code); this.integer(id);
         return id;
     }
-    public int reference(TextBytes assembly, TextBytes space, TextBytes name)
+    public int reference(TextBytes assembly, TextBytes space, TextBytes name, bool valueType = false)
     {
-        int id = this.command(1);
+        int id = this.command(valueType ? 16 : 1);
         this.text(assembly); this.text(space); this.text(name);
         return id;
     }

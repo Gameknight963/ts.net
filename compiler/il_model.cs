@@ -4,6 +4,7 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 internal enum RuntimeMember
 {
+    BigIntegerType, BigIntAdd, BigIntSubtract, BigIntMultiply, BigIntDivide, BigIntRemainder, BigIntAnd, BigIntOr, BigIntXor, BigIntNegate, BigIntNot,
     BigIntLiteral, IterationStart, CloseIteration, CloseIterationAt, SequenceIteratorHasReturn, CloseAsyncIteration, CloseDestructuring,
     ForAwaitNext, ForAwaitAccept, ForAwaitNeedsClose, ForAwaitClose, RequireIteratorResult, AsyncIteratorTry,
     BeginDestructuring, ReadDestructuring, SkipDestructuring, ForOfSkip, RestDestructuring, AsyncResume, BeginAsyncIteration, NextAsyncIteration, AsyncIterationValue, AsyncTry, AsyncTryEnd,
@@ -268,12 +269,14 @@ internal sealed partial class IlBackend
         if (this.raw_slot(symbol) == -6) { this.op(0x6c); this.call(RuntimeMember.WrapNumber); }
         else if (this.raw_slot(symbol) == -3) { this.call(RuntimeMember.WrapNumber); }
         else if (this.raw_slot(symbol) == -2) { this.call(RuntimeMember.WrapBoolean); }
+        else if (this.raw_slot(symbol) == this.RuntimeToken(RuntimeMember.BigIntegerType)) { this.emit(0x8c, this.RuntimeToken(RuntimeMember.BigIntegerType)); }
     }
     public void store(int symbol)
     {
         if (this.raw_slot(symbol) == -6) { this.call(RuntimeMember.NumberValue); this.op(0x69); }
         else if (this.raw_slot(symbol) == -3) { this.call(RuntimeMember.NumberValue); }
         else if (this.raw_slot(symbol) == -2) { this.call(RuntimeMember.BooleanValue); }
+        else if (this.raw_slot(symbol) == this.RuntimeToken(RuntimeMember.BigIntegerType)) { this.emit(0xa5, this.RuntimeToken(RuntimeMember.BigIntegerType)); }
         this.store_storage(symbol);
     }
     public void store_storage(int symbol)
@@ -507,6 +510,7 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.BuiltinNamespace,b.plan.method1(6,js,0,-5,-4,"BuiltinNamespace"));
         b.ref_set(RuntimeMember.BuiltinNamespaceById,b.plan.method1(6,js,0,-5,-6,"BuiltinNamespaceById"));
         b.ref_set(RuntimeMember.BigIntLiteral,b.plan.method1(6,js,0,-5,-4,"BigIntLiteral"));
+        il_bigint_runtime(b);
         Vector<int> restParameters=new Vector<int>();restParameters.push(-5);restParameters.push(-5);restParameters.push(-7);
         b.ref_set(RuntimeMember.CopyObjectRest,b.plan.method(6,js,0,-1,restParameters.view(),"CopyObjectRest"));
         b.ref_set(RuntimeMember.ResolveThis,b.plan.method1(6,js,0,-5,-5,"ResolveThis"));
