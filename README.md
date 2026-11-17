@@ -72,6 +72,7 @@ Runtime performance:
 | String indexOf, 1M searches | 10.21 ms | 17.82 ms | — | 1.75x |
 | Numeric `any[]`, 1M iterations | 0.954 ms | 1.66 ms | — | 1.74x |
 | Typed-object loop, 500K iterations | 0.381 ms | 0.650 ms | — | 1.70x |
+| Write and sum a numeric property on `Object.create(null)`, 100K iterations | 0.610 ms | 1.02 ms | 1.43 ms (`Dictionary<string, object>`) | 1.67x |
 | `any` property loop, 350K iterations | 0.266 ms | 0.435 ms | — | 1.64x |
 | Update typed fields and sum through a helper, 2M iterations | 1.42 ms | 2.33 ms | 1.39 ms | 1.64x |
 | Map 10K number/string values to numbers or undefined and reduce, 20 passes | 1.76 ms | 2.80 ms | — | 1.59x |
