@@ -32,6 +32,7 @@ internal static partial class CompilerFunctions
     {
         Vector<int> declarations = zero_ids(c.symbol_store.count() + 1);
         HashSet<int> repeated = [];
+        Dictionary<int, int> layouts = [];
         for (int i = 1; i <= c.node_store.count(); i++)
         {
             Node n = get_node(i, c);
@@ -51,7 +52,7 @@ internal static partial class CompilerFunctions
             int type = get_symbol(n.symbol, c).type;
             if (get_type(type, c).kind == TypeKind.Void) { fail(n.token, "void-valued globals need lowering", c); }
             Vector<byte> name = numbered_name('v', (int)n.symbol); Vector<byte> flag = numbered_name('i', (int)n.symbol);
-            int layout = repeated.Contains(n.symbol) ? 0 : il_fixed_object_layout(declaration, c, b);
+            int layout = il_fixed_object_layout(declaration, declarations, repeated, layouts, c, b);
             if (layout != 0) b.fixed_object_layouts[n.symbol] = layout;
             int storage = layout != 0 ? b.classes.at(layout) : b.type(type, c);
             b.global_fields.at_mut(n.symbol) = b.plan.field(program, 0x13, storage, name.view());
