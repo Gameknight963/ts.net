@@ -267,7 +267,16 @@ public static partial class Js
         if (index.HasValue && arguments.TryReadIndex(index.Value, out object value)) return value;
         return IndexGetNumberKey(receiver, index);
     }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object ArrayIndexGetNumberKey(object receiver, double? index)
+    {
+        double number = index.GetValueOrDefault();
+        int position = (int)number;
+        if (index.HasValue && number == position && position >= 0 && receiver is JsArray array &&
+            JsArray.TryReadOwnDenseValue(array, position, out object value)) return value;
+        return ArrayIndexGetNumberKeyCore(receiver, index);
+    }
+    static object ArrayIndexGetNumberKeyCore(object receiver, double? index)
     {
         if (receiver is TaggedArray compact && index.HasValue) {
             double number = index.Value;
