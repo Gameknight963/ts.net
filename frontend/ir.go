@@ -524,6 +524,8 @@ func (b *irBuilder) lower(n *ast.Node) int {
 		row.left = callee
 		row.children = literal
 		row.typ = b.typ(b.c.GetAnyType())
+		// Literal values are immutable and do not call a user-visible constructor.
+		row.constant = 1
 	case ast.KindNumericLiteral:
 		text := strings.ReplaceAll(n.Text(), "_", "")
 		if len(text) > 2 && text[0] == '0' && strings.ContainsAny(text[1:2], "xXbBoO") {

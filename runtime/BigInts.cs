@@ -5,6 +5,7 @@ using System.Text;
 
 public static partial class Js
 {
+    public static object BigIntLiteral(string source) => ParseBigInt(source);
     public static double ExplicitNumber(object value)
     {
         if (value is TsObject obj) return ObjectNumber(obj, true);
