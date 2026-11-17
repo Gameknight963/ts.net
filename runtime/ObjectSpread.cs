@@ -10,10 +10,17 @@ public abstract partial class TsObject
         // Initializing their store directly avoids general property-write checks.
         return new JsDynamicObject { extra = new OwnProperties(value, done) };
     }
-    public void DefineOwn(string key, object value) {if (!IsExtensible && !HasOwn(key)) throw new InvalidOperationException("Object is not extensible");accessors?.Remove(key);(extra ??= new OwnProperties())[key] = value;}
+    public void DefineOwn(string key, object value)
+    {
+        if (this is JsNumericClassInstance numeric) numeric.MaterializeProperties();
+        if (!IsExtensible && !HasOwn(key)) throw new InvalidOperationException("Object is not extensible");
+        accessors?.Remove(key); (extra ??= new OwnProperties())[key] = value;
+    }
     public virtual void MarkPresent(string key) { }
     public void CopySpreadExtras(object destination)
     {
+        if (this is JsNumericClassInstance sourceNumeric) sourceNumeric.MaterializeProperties();
+        if (destination is JsNumericClassInstance destinationNumeric) destinationNumeric.MaterializeProperties();
         if (extra != null) ((TsObject)destination).extra = new OwnProperties(extra);
     }
     public virtual object CloneForSpread()

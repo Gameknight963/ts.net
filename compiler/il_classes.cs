@@ -6,25 +6,29 @@ internal sealed partial class IlBackend { internal readonly Dictionary<int, int>
 
 internal static partial class CompilerFunctions
 {
-    // Class instances use dynamic own properties and a shared prototype. Typed
-    // interfaces still expose the checked field types at their CLR boundary.
+    // Numeric data classes can keep their values in CLR fields. Other classes
+    // use the own-property store; both share the same prototype behavior.
     internal static void il_class_shape(int type, Compiler c, IlBackend b)
     {
-        int parent = b.RuntimeToken(RuntimeMember.ClassInstanceType);
+        bool numeric = il_numeric_class_eligible(type,c,b);
+        int parent = b.RuntimeToken(numeric ? RuntimeMember.NumericClassInstanceType : RuntimeMember.ClassInstanceType);
         Vector<byte> name = numbered_name('C', get_type(type, c).id);
         int klass = b.plan.type(name.view(), parent, 0x101); b.classes.at_mut(type) = klass;
         int constructor = b.plan.method0(5, klass, 0x1886, -1, ".ctor"); b.constructors.at_mut(type) = constructor;
-        b.begin(constructor); b.emit(0xfe09, 0); b.call(RuntimeMember.ClassInstanceConstructor); b.op(0x2a);
+        b.begin(constructor); b.emit(0xfe09, 0); b.call(numeric ? RuntimeMember.NumericClassConstructor : RuntimeMember.ClassInstanceConstructor); b.op(0x2a);
         int factory = b.plan.method1(5, klass, 0x16, -5, -7, "CreateInstance"); b.class_factories[type] = factory;
         if(c.class_sources.TryGetValue(type,out int source)) il_function_source(factory,source,c,b);
         b.plan.instruction(factory, 0x73, constructor); b.plan.instruction(factory, 0x2a, 0);
 
-        // This sealed generated class uses the runtime's own-property store.
-        b.begin(b.plan.method2(5, klass, 0xc6, -5, -4, -5, "GetWithReceiver"));
-        b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 2);
-        b.call(RuntimeMember.GetStoredWithReceiver); b.op(0x2a);
+        if (numeric) il_numeric_class_fields(type,klass,c,b);
+        else {
+            // This sealed generated class uses the runtime's own-property store.
+            b.begin(b.plan.method2(5, klass, 0xc6, -5, -4, -5, "GetWithReceiver"));
+            b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 2);
+            b.call(RuntimeMember.GetStoredWithReceiver); b.op(0x2a);
 
-        il_stored_numeric_properties(klass, b);
+            il_stored_numeric_properties(klass, b);
+        }
         il_simple_class_method_callers(type, c, b);
         for (int member = get_type(type, c).fields; member != 0; member = get_field(member, c).next)
             if (get_type(get_field(member, c).type, c).kind == TypeKind.Number && il_simple_class_getter(type, get_field(member, c).name, c, b, out _))
@@ -53,8 +57,11 @@ internal static partial class CompilerFunctions
                     il_simple_class_getter_body(getter, c, b); b.mark(fallback);
                 }
                 b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 0);
-                if (get_type(field.type, c).kind == TypeKind.Number) b.call(RuntimeMember.GetStoredNumberWithReceiver);
-                else { b.call(RuntimeMember.GetStoredWithReceiver); b.from_object(field.type, c); }
+                if (get_type(field.type, c).kind == TypeKind.Number) b.call(numeric ? RuntimeMember.NumericClassRead : RuntimeMember.GetStoredNumberWithReceiver);
+                else {
+                    if (numeric) b.op(0x26); // Js.Get takes the object and key, without a separate receiver.
+                    b.call(numeric ? RuntimeMember.DynamicGet : RuntimeMember.GetStoredWithReceiver); b.from_object(field.type, c);
+                }
                 b.op(0x2a);
                 b.begin(b.plan.method1(5, klass, 0x1e6, -1, storage, set.view()));
                 b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 1);

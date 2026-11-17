@@ -27,7 +27,11 @@ public class JsClassInstance : JsDescriptorObject
             mode == 2 ? (JsFunction)function : previous?.Setter, true, false, false, true));
         ((JsFunction)function).InferPropertyName((mode == 1 ? "get " : "set ") + Js.PropertyFunctionName(key));
     }
-    internal void DefineField(string name, object value) => Js.DefineDictionaryField(this, name, value);
+    internal void DefineField(string name, object value)
+    {
+        if (this is JsNumericClassInstance numeric && numeric.TryDefineNumericValue(name, value)) return;
+        Js.DefineDictionaryField(this, name, value);
+    }
 }
 public sealed partial class JsClassFunction : JsFunction
 {

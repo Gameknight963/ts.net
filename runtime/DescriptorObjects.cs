@@ -17,6 +17,7 @@ public abstract class JsDescriptorObject : TsObject
     internal override bool IsExtensible => descriptors is not NonExtensibleProperties;
     internal void PreventExtensions()
     {
+        if (this is JsNumericClassInstance numeric) numeric.MaterializeProperties();
         if (descriptors is not NonExtensibleProperties)
             descriptors = descriptors == null ? new NonExtensibleProperties() : new NonExtensibleProperties(descriptors);
     }
@@ -25,6 +26,7 @@ public abstract class JsDescriptorObject : TsObject
     internal void DefineMethod(string key, object value, bool writable = true) => Define(new(key, value, null, null, false, writable, false, true));
     internal virtual void Define(Descriptor descriptor)
     {
+        if (this is JsNumericClassInstance numeric) numeric.MaterializeProperties();
         DefineOwn(descriptor.Key, descriptor.Value);
         descriptor.Value = Js.Undefined;
         (descriptors ??= new())[descriptor.Key] = descriptor;

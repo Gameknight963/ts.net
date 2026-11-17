@@ -104,6 +104,7 @@ public abstract partial class TsObject
     public void DefineAccessor(string key, object function, int mode) => DefineAccessor(key, function, mode, true);
     internal void DefineAccessor(string key, object function, int mode, bool inferName)
     {
+        if (this is JsNumericClassInstance numeric) numeric.MaterializeProperties();
         if (!IsExtensible && !HasOwn(key) && (extra == null || !extra.ContainsKey(key))) throw new InvalidOperationException("Object is not extensible");
         if (!TryOwnAccessor(key, out var accessor))
         {

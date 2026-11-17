@@ -1143,9 +1143,10 @@ internal static partial class CompilerFunctions
             if (n.third != 0) { il_boxed(n.third, c, b); b.call(RuntimeMember.PropertyKey); } else { il_text(n.name, c, b); }
             int key = -1;
             if (n.constant) { key = b.local(-4); b.op(0x25); b.emit(0xfe0e, key); }
-            il_boxed(n.right, c, b);
+            bool numericField = !n.constant && get_type(get_node(n.right,c).type,c).kind==TypeKind.Number && il_numeric_class_initializer(entry,c,b);
+            if(numericField) il_expression(n.right,c,b); else il_boxed(n.right,c,b);
             if (n.constant) { b.emit(0xfe0c, key); b.call(RuntimeMember.NamePropertyFunction); }
-            b.call(RuntimeMember.DefineClassField);
+            b.call(numericField ? RuntimeMember.DefineClassNumberField : RuntimeMember.DefineClassField);
         }
         else if (n.kind == NodeKind.Return)
         {
