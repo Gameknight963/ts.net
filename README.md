@@ -123,6 +123,7 @@ Runtime performance:
 | Read varying `keyof` keys through a typed helper from a 64-field object, 100K reads | 1.97 ms | 1.48 ms | — | 0.75x |
 | String `charCodeAt(index)`, 1M calls | 2.27 ms | 1.66 ms | — | 0.73x |
 | Read varying keys through an `any` helper from a 64-field object, 100K reads | 2.04 ms | 1.49 ms | — | 0.73x |
+| Create, retain, and sum 100K two-number objects | 1.62 ms | 1.15 ms | 1.71 ms (`List<Point>`) | 0.71x |
 | Float64Array toSorted and traversal, 10 copies of 10K values | 11.56 ms | 8.06 ms | — | 0.70x |
 | Int32Array toSorted and traversal, 10 copies of 10K values | 5.74 ms | 4.03 ms | — | 0.70x |
 | TransformStream pipeline, double 1K numbers | 5.17 ms | 3.57 ms | — | 0.69x |
@@ -174,7 +175,6 @@ Runtime performance:
 | Serialize 10K numbers divided by 7, 20 times | 21.81 ms | 6.30 ms | — | 0.29x |
 | Self-returning function, 2M calls | 1.97 ms | 0.572 ms | 1.51 ms (delegate) | 0.29x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | — | 0.28x |
-| Create, retain, and sum 100K two-number objects | 4.17 ms | 1.12 ms | 1.90 ms (`List<Point>`) | 0.27x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 1.84 ms | 0.463 ms | — | 0.25x |
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
