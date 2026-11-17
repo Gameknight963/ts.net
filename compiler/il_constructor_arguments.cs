@@ -2,25 +2,25 @@ namespace Tsnet.Compiler;
 
 internal static partial class CompilerFunctions
 {
-    internal static bool il_numeric_constructor(int symbol, Compiler c)
+    internal static int il_constructor_parameter(int symbol, Compiler c)
     {
         int entry = get_symbol(symbol, c).function;
         Node function = get_node(entry, c);
         if (get_type(function.type, c).kind is not (TypeKind.Void or TypeKind.Any or TypeKind.Unknown) || function.right != 0 || function.internal_continuation ||
-            function.children == 0 || function.left == 0) return false;
+            function.children == 0 || function.left == 0) return 0;
         int parameter = function.children;
         if (function.fourth != 0)
         {
             Node receiver = get_node(function.fourth, c);
-            if (parameter != function.fourth || receiver.name != 0 || get_type(receiver.type, c).kind != TypeKind.Any) return false;
+            if (parameter != function.fourth || receiver.name != 0 || get_type(receiver.type, c).kind != TypeKind.Any) return 0;
             parameter = receiver.next;
         }
-        if (parameter == 0) return false;
+        if (parameter == 0) return 0;
         Node argument = get_node(parameter, c);
         if (argument.kind != NodeKind.Variable || argument.symbol == 0 || argument.constant || argument.next != 0 ||
-            get_type(argument.type, c).kind != TypeKind.Number || argument.left != 0 || argument.right != 0 ||
-            argument.third != 0 || argument.fourth != 0 || argument.children != 0) return false;
-        return true;
+            get_type(argument.type, c).kind == TypeKind.Void || argument.left != 0 || argument.right != 0 ||
+            argument.third != 0 || argument.fourth != 0 || argument.children != 0) return 0;
+        return parameter;
     }
 
     internal static bool il_constructor_returns_value(int entry, Compiler c, IlBackend b)
@@ -39,10 +39,17 @@ internal static partial class CompilerFunctions
         return b.constructor_value_returns.Contains(entry);
     }
 
-    internal static void il_numeric_constructor_method(int symbol, int type, int context, int environment, Compiler c, IlBackend b)
+    internal static void il_constructor_methods(int symbol, int parameter, int type, int context, int environment, Compiler c, IlBackend b)
+    {
+        il_constructor_method(symbol, parameter, type, context, environment, false, c, b);
+        if (get_type(get_node(parameter, c).type, c).kind == TypeKind.Number)
+            il_constructor_method(symbol, parameter, type, context, environment, true, c, b);
+    }
+
+    internal static void il_constructor_method(int symbol, int parameter, int type, int context, int environment, bool numeric, Compiler c, IlBackend b)
     {
         Node function = get_node(get_symbol(symbol, c).function, c);
-        b.begin(b.plan.method1(5, type, 0xc6, -5, -10, "ConstructNumber1"));
+        b.begin(b.plan.method1(5, type, 0xc6, -5, numeric ? -10 : -5, numeric ? "ConstructNumber1" : "ConstructArgument"));
         int receiver = b.local(-5);
         b.emit(0xfe09, 0); b.call(RuntimeMember.BeginOrdinaryConstruction); b.emit(0xfe0e, receiver);
         if (context != 0) {b.emit(0xfe09, 0);b.emit(0x7b, environment);}
@@ -50,7 +57,9 @@ internal static partial class CompilerFunctions
         {
             b.emit(0xfe09, 0); b.emit(0xfe0c, receiver); b.call(RuntimeMember.PrepareReceiver);
         }
-        b.emit(0xfe09, 1); b.emit(0x28, b.function(symbol));
+        b.emit(0xfe09, 1);
+        if (!numeric) b.from_object(get_node(parameter, c).type, c);
+        b.emit(0x28, b.function(symbol));
         if (get_type(function.type, c).kind == TypeKind.Void || !il_constructor_returns_value(get_symbol(symbol, c).function, c, b))
         {
             if (get_type(function.type, c).kind != TypeKind.Void) b.op(0x26);

@@ -302,9 +302,10 @@ internal static partial class CompilerFunctions
         int value_count = b.function_values_needed.at(symbol) != 0 ? il_numeric_value_function(symbol, c) : -1;
         bool value_pair = value_count == 2;
         int receiver_count = il_numeric_receiver_function(symbol, c);
-        bool numeric_constructor = il_numeric_constructor(symbol, c);
-        bool receiver_class = receiver_count >= 0 || numeric_constructor && get_node(get_symbol(symbol,c).function,c).fourth != 0;
-        if (!numeric_constructor && count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !reduce_callback && value_count < 0 && receiver_count < 0) return;
+        int constructor_parameter = il_constructor_parameter(symbol, c);
+        bool constructor_entry = constructor_parameter != 0;
+        bool receiver_class = receiver_count >= 0 || constructor_entry && get_node(get_symbol(symbol,c).function,c).fourth != 0;
+        if (!constructor_entry && count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !reduce_callback && value_count < 0 && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
         int parent = b.RuntimeToken(receiver_class ? RuntimeMember.ReceiverFunctionType : RuntimeMember.FunctionType);
         if (!b.function_class_types.TryGetValue(symbol, out int type)) {
@@ -327,8 +328,8 @@ internal static partial class CompilerFunctions
             b.emit(0xfe09, 0); b.call(RuntimeMember.ReadFunctionApplyProperty); b.op(0x2a);
         }
         il_apply_array_override(symbol, type, c, b);
-        if (numeric_constructor) il_numeric_constructor_method(symbol, type, context, environment_field, c, b);
-        if (numeric_constructor && receiver_class && receiver_count < 0) return;
+        if (constructor_entry) il_constructor_methods(symbol, constructor_parameter, type, context, environment_field, c, b);
+        if (constructor_entry && receiver_class && receiver_count < 0) return;
         if (receiver_count >= 0)
         {
             il_numeric_receiver_methods(symbol, type, context, environment_field, receiver_count, c, b);

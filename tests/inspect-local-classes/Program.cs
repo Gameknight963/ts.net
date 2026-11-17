@@ -20,7 +20,7 @@ try
             if (code == 0xfe) code = (ushort)(0xfe00 | bytes[position++]);
             var opcode = opcodes[code];
             if (opcode == OpCodes.Call && method.Module.ResolveMethod(BitConverter.ToInt32(bytes, position)) is MethodInfo target &&
-                target.DeclaringType!.Name == "Js" && target.Name is "Construct" or "ConstructArguments" or "ConstructNumberArgument") return true;
+                target.DeclaringType!.Name == "Js" && target.Name is "Construct" or "ConstructArguments" or "ConstructNumberArgument" or "ConstructArgument") return true;
             position += opcode.OperandType switch
             {
                 OperandType.InlineNone => 0,
