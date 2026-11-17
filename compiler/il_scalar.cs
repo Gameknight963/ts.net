@@ -185,6 +185,12 @@ internal static partial class CompilerFunctions
             if (root != 0 && invalid.at(root) != 0) { b.scalar_roots.at_mut(i) = 0; }
         }
         b.node_parents = identity(parents);
+        for (int i = 1; i <= c.node_store.count(); i++) {
+            if (get_node(i, c).kind != NodeKind.Construct || !il_numeric_class_eligible(get_node(i, c).type, c, b)) continue;
+            var fields = scalar_class_fields(i, initializers, declarations, parameters, c, b);
+            if (fields != null) b.direct_class_initializers[i] = fields;
+        }
+
     }
     internal static ScalarField il_scalar_field(int entry, Compiler c, IlBackend b)
     {

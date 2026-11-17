@@ -663,6 +663,7 @@ internal static partial class CompilerFunctions
         else if(n.kind==NodeKind.ClassValue){il_class_value(entry,c,b);}
         else if(n.kind==NodeKind.BuiltinError){il_text(get_token(n.token,c).text,c,b);b.call(RuntimeMember.GetErrorConstructor);}
         else if(n.kind==NodeKind.Construct){
+            if (il_direct_class_construction(entry, c, b)) return;
             il_boxed(n.left,c,b);
             if(il_call_has_spread(entry,c)){
                 b.emit(0x20,0);b.emit(0x73,b.RuntimeToken(RuntimeMember.ArrayConstructor));int args=b.local(-5);b.emit(0xfe0e,args);
@@ -1330,6 +1331,7 @@ internal static partial class CompilerFunctions
         while (statement != 0) { il_statement(statement, 0, c, b); statement = get_node(statement, c).next; }
         b.op(0x2a);
         b.begin(entry); b.op(0x14); b.emit(0xfe06, main); b.emit(0x73, b.RuntimeToken(RuntimeMember.ActionConstructor)); b.call(RuntimeMember.Run); b.op(0x2a);
+        il_direct_class_constructor_bodies(c, b);
         il_class_field_reader_bodies(c, b);
         il_class_field_writer_bodies(c, b);
         il_class_field_initializer_bodies(c, b);

@@ -2,6 +2,13 @@ using System;
 
 public abstract class JsNumericClassInstance : JsClassInstance
 {
+    // Used only for freshly allocated classes whose initializer and constructor
+    // have been proved to consist entirely of direct field definitions.
+    protected void InitializeDirectClass(object owner, int initialStates)
+    {
+        Owner = (JsClassFunction)owner;
+        states = (uint)initialStates;
+    }
     bool materialized;
     // Two bits per field: absent (0), own undefined (1), or own value (3).
     uint states;
