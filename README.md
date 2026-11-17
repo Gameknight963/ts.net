@@ -87,6 +87,7 @@ Runtime performance:
 | Sum 100K local arrays of two numbers using index & 1 | 0.0702 ms | 0.0877 ms | — | 1.25x |
 | String `.at(index)`, 1M calls | 4.26 ms | 5.28 ms | — | 1.24x |
 | toSorted with numeric comparator and traversal, 10 copies of 10K integers | 10.31 ms | 12.78 ms | — | 1.24x |
+| Write and sum a numeric field on a function-constructed object, 100K iterations | 0.574 ms | 0.703 ms | 0.0702 ms (class) | 1.23x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.0282 ms | 0.0344 ms | 0.414 ms (`object[]`) | 1.22x |
 | 100K numeric writes to a four-element mapped array | 0.0378 ms | 0.0419 ms | 0.0377 ms (`double[]`) | 1.11x |
 | Map.forEach numeric sum, 10 passes over 10K entries | 0.579 ms | 0.626 ms | — | 1.08x |
@@ -176,6 +177,7 @@ Runtime performance:
 | Serialize 10K numbers divided by 7, 20 times | 21.81 ms | 6.30 ms | — | 0.29x |
 | Self-returning function, 2M calls | 1.97 ms | 0.572 ms | 1.51 ms (delegate) | 0.29x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | — | 0.28x |
+| Construct objects with a numeric argument and sum their field, 100K instances | 7.84 ms | 2.16 ms | 0.278 ms (class) | 0.28x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 1.84 ms | 0.463 ms | — | 0.25x |
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
