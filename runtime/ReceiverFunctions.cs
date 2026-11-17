@@ -41,6 +41,7 @@ public class JsReceiverFunction : JsFunction
     public sealed override object InvokeWithReceiver(object receiver, object[] arguments) => invocation.Invoke(receiver, arguments);
     internal object InvokeNumberArgument(object receiver, double? value) => invocation.InvokeValues(new[] { receiver, Js.BoxNumber(value) });
     public override object InvokeReceiverNumber1(object receiver, double? value) => InvokeNumberArgument(receiver, value);
+    public override object InvokeReceiverArgument1(object receiver, object value) => invocation.InvokeValues(new[] {receiver, value});
     public override double? InvokeMethodNumber0(object receiver) => Js.Cast<double?>(invocation.InvokeValues(new[] { receiver }), "Function result violates number type");
     public override double? InvokeMethodNumber1(object receiver, double? first) => Js.Cast<double?>(invocation.InvokeValues(new[] { receiver, Js.BoxNumber(first) }), "Function result violates number type");
     public override double? InvokeMethodNumber2(object receiver, double? first, double? second) => Js.Cast<double?>(invocation.InvokeValues(new[] { receiver, Js.BoxNumber(first), Js.BoxNumber(second) }), "Function result violates number type");

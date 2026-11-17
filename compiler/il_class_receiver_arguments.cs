@@ -26,7 +26,7 @@ internal static partial class CompilerFunctions
         if (receiver.next == 0) return 0;
         Node parameter = get_node(receiver.next, c);
         return parameter.kind == NodeKind.Variable && parameter.symbol != 0 && !parameter.constant && parameter.next == 0 &&
-            get_type(parameter.type, c).kind is (TypeKind.Number or TypeKind.Any or TypeKind.Unknown) && parameter.left == 0 && parameter.right == 0 &&
+            get_type(parameter.type, c).kind != TypeKind.Void && parameter.left == 0 && parameter.right == 0 &&
             parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0 ? 1 : -1;
     }
 
@@ -41,20 +41,23 @@ internal static partial class CompilerFunctions
     internal static void il_class_receiver_argument_methods(int symbol, int count, int type, int context, int environment, Compiler c, IlBackend b)
     {
         Node function = get_node(get_symbol(symbol, c).function, c);
-        for (int arity = 0; arity <= 1; arity++)
+        // Emit zero-argument, numeric-argument, and object-argument entry points.
+        for (int form = 0; form <= 2; form++)
         {
-            b.begin(arity == 0 ? b.plan.method1(5, type, 0xc6, -5, -5, "InvokeReceiver0")
-                : b.plan.method2(5, type, 0xc6, -5, -5, -10, "InvokeReceiverNumber1"));
+            b.begin(form == 0 ? b.plan.method1(5, type, 0xc6, -5, -5, "InvokeReceiver0")
+                : form == 1 ? b.plan.method2(5, type, 0xc6, -5, -5, -10, "InvokeReceiverNumber1")
+                : b.plan.method2(5, type, 0xc6, -5, -5, -5, "InvokeReceiverArgument1"));
             if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment); }
             b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.call(RuntimeMember.PrepareReceiver);
             b.from_object(get_node(function.fourth, c).type, c);
             if (count != 0)
             {
                 int parameterType = get_node(get_node(function.fourth, c).next, c).type;
-                if (arity != 0)
+                if (form != 0)
                 {
                     b.emit(0xfe09, 2);
-                    if (get_type(parameterType, c).kind != TypeKind.Number) b.call(RuntimeMember.BoxNumber);
+                    if (form == 1 && get_type(parameterType, c).kind != TypeKind.Number) {b.call(RuntimeMember.BoxNumber);b.from_object(parameterType,c);}
+                    else if(form == 2) b.from_object(parameterType,c);
                 }
                 else b.empty(parameterType, c);
             }
