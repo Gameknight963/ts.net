@@ -171,6 +171,7 @@ Runtime performance:
 | Mixed array, 100K elements and 5 traversals | 3.19 ms | 1.15 ms | — | 0.36x |
 | Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | — | 0.35x |
 | Numeric callback reading `arguments.length`, 100K calls | 1.26 ms | 0.435 ms | — | 0.35x |
+| map, filter and sum, 10 passes over 10K integers from 0-255 | 1.39 ms | 0.483 ms | 0.310 ms (array methods) | 0.35x |
 | Currency names, 10K cached calls across German, French, Russian and British English | 28.24 ms | 9.55 ms | — | 0.34x |
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | — | 0.33x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | — | 0.32x |
@@ -185,7 +186,6 @@ Runtime performance:
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | — | 0.28x |
 | Construct objects with a numeric argument and sum their field, 100K instances | 7.84 ms | 2.16 ms | 0.278 ms (class) | 0.28x |
 | Retained class instances with number, string and boolean fields, 100K instances; one server GC heap for both .NET builds | 4.08 ms | 1.125 ms | 1.100 ms | 0.28x |
-| map, filter and sum, 10 passes over 10K integers from 0-255 | 1.84 ms | 0.463 ms | — | 0.25x |
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
 | Attach 10K handlers to one pending promise and sum their results | 3.47 ms | 0.835 ms | 1.03 ms (queued Task continuations) | 0.24x |
