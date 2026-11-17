@@ -20,7 +20,7 @@ try
             if (code == 0xfe) code = (ushort)(0xfe00 | bytes[position++]);
             var opcode = opcodes[code];
             if (opcode == OpCodes.Call && method.Module.ResolveMethod(BitConverter.ToInt32(bytes, position)) is MethodInfo target &&
-                target.DeclaringType!.Name == "Js" && target.Name is "Construct" or "ConstructArguments") return true;
+                target.DeclaringType!.Name == "Js" && target.Name is "Construct" or "ConstructArguments" or "ConstructNumberArgument") return true;
             position += opcode.OperandType switch
             {
                 OperandType.InlineNone => 0,
@@ -35,7 +35,8 @@ try
     }
     var kernel = methods.Single(method => method.Name.StartsWith("kernel_f", StringComparison.Ordinal));
     var escape = methods.Single(method => method.Name.StartsWith("escape_f", StringComparison.Ordinal));
-    if (Constructs(kernel) || !Constructs(escape)) throw new Exception("Local class construction was not eliminated or escaping construction was lost");
+    if (Constructs(kernel)) throw new Exception("Local class kernel still constructs objects");
+    if (!Constructs(escape)) throw new Exception("Escaping class has no constructor call");
     var output = Console.Out;
     try
     {
