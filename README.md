@@ -120,6 +120,7 @@ Runtime performance:
 | Object valueOf, 1M numeric conversions | 27.57 ms | 22.64 ms | — | 0.82x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | — | 0.77x |
 | `== null` on nullable arrays, 1M comparisons | 1.51 ms | 1.15 ms | — | 0.76x |
+| Numeric class property increments, 2M updates | 5.908 ms | 4.505 ms | 1.348 ms | 0.76x |
 | String substring and first-character read, 1M calls | 14.27 ms | 10.75 ms | — | 0.75x |
 | Sum 1K values in a loop, awaiting each value | 0.0563 ms | 0.0423 ms | — | 0.75x |
 | Read varying `keyof` keys through a typed helper from a 64-field object, 100K reads | 1.97 ms | 1.48 ms | — | 0.75x |
