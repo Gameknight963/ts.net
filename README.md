@@ -148,6 +148,7 @@ Runtime performance:
 | Sum 100K values in a loop, awaiting only on the final iteration | 0.717 ms | 0.415 ms | — | 0.58x |
 | Read varying string keys through an `any` helper from a Float64Array, 100K reads | 1.23 ms | 0.713 ms | — | 0.58x |
 | Create a Map, insert and read 10K entries, then delete half | 1.184 ms | 0.658 ms | 0.395 ms (`Dictionary`) | 0.56x |
+| Call a callback with an object and a number, 100K calls | 0.118 ms | 0.0640 ms | 0.0707 ms (delegate) | 0.54x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
 | Parse, filter, group, sort and serialize 1K records, 10 passes | 7.86 ms | 4.12 ms | — | 0.52x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
@@ -189,7 +190,6 @@ Runtime performance:
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | — | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.17 ms | 0.479 ms | — | 0.22x |
-| Call a callback with an object and a number, 100K calls | 0.307 ms | 0.0611 ms | — | 0.20x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
 | Retained class instances with number, string and boolean fields, 100K instances | 8.75 ms | 1.133 ms | 1.058 ms | 0.13x |
