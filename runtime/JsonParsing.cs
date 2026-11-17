@@ -158,7 +158,7 @@ public static partial class Js
                     if (frame.State == 1) { Expect(','); frame.State = 2; continue; }
                     if (array is TaggedArray packed && position < text.Length &&
                         (text[position] == '-' || char.IsAsciiDigit(text[position]))) {
-                        packed.AppendParsedNumber(ReadNumber());
+                        packed.AppendUnexposedNumber(ReadNumber());
                         frame.State = 1;
                         continue;
                     }

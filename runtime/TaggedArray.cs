@@ -30,9 +30,9 @@ public sealed partial class TaggedArray : JsArray
     }
     public void InitializeLiteralNumber(int index, double? value) => StoreMappedNumber(index, value);
     public void InitializeLiteralElement(int index, object value) => Write((uint)index, value);
-    // JSON parsing fills a fresh, unexposed array. Like literal initialization,
+    // Parsing and filtering fill a fresh, unexposed array. Like literal initialization,
     // it defines own elements without consulting inherited setters.
-    internal void AppendParsedNumber(double value)
+    internal void AppendUnexposedNumber(double value)
     {
         uint index = length;
         if (!Prepare(index)) { materialized.Append(value); return; }

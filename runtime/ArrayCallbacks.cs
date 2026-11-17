@@ -90,12 +90,14 @@ public static partial class Js
             Span<object> mapSlots = default;
             bool privateResult = false;
             if (kind is ArrayCallbackKind.Map or ArrayCallbackKind.Filter) {
-                result = ArraySpeciesCreate(source, kind == ArrayCallbackKind.Map ? length : 0, kind == ArrayCallbackKind.Map, out privateResult, kind == ArrayCallbackKind.Map && (unboxedResult || TValueMode.Number));
+                result = ArraySpeciesCreate(source, kind == ArrayCallbackKind.Map ? length : 0, kind == ArrayCallbackKind.Map, out privateResult,
+                    kind == ArrayCallbackKind.Map && (unboxedResult || TValueMode.Number) || kind == ArrayCallbackKind.Filter && numericCallback);
                 // The intrinsic result cannot escape to callbacks. Its length,
                 // storage and property attributes stay unchanged until return.
                 if (kind == ArrayCallbackKind.Map && privateResult && result.GetType() == typeof(JsArray) && ((JsArray)result).DenseRange(length) is object[] slots) mapSlots = slots;
             }
             TaggedArray numericMap = kind == ArrayCallbackKind.Map && privateResult ? result as TaggedArray : null;
+            TaggedArray numericFilter = kind == ArrayCallbackKind.Filter && privateResult ? result as TaggedArray : null;
             bool testResult = kind is not ArrayCallbackKind.Map and not ArrayCallbackKind.ForEach;
             long selected = 0;
             for (long i = backwards ? length - 1 : 0; i >= 0 && i < length; i += backwards ? -1 : 1)
@@ -121,7 +123,11 @@ public static partial class Js
                     }
                     if (find && truth) return kind is ArrayCallbackKind.FindIndex or ArrayCallbackKind.FindLastIndex ? (object)(double)i : BoxNumber(numberValue);
                     if (kind == ArrayCallbackKind.Map) { if (!mapSlots.IsEmpty) mapSlots[(int)i] = numericMapped; else ArraySpeciesSet(result, i, numericMapped); }
-                    else if (kind == ArrayCallbackKind.Filter && truth) ArraySpeciesSet(result, selected++, BoxNumber(numberValue));
+                    else if (kind == ArrayCallbackKind.Filter && truth) {
+                        if (numericFilter != null) numericFilter.AppendUnexposedNumber(numberValue);
+                        else ArraySpeciesSet(result, selected, BoxNumber(numberValue));
+                        selected++;
+                    }
                     else if (kind == ArrayCallbackKind.Every && !truth) return BoxBoolean(false);
                     else if (kind == ArrayCallbackKind.Some && truth) return BoxBoolean(true);
                     continue;
@@ -159,7 +165,11 @@ public static partial class Js
                     : callback.InvokeWithReceiver(thisValue, new object[] { value, (double)i, source });
                 if (find && Truthy(mapped)) return kind is ArrayCallbackKind.FindIndex or ArrayCallbackKind.FindLastIndex ? (object)(double)i : value;
                 if (kind == ArrayCallbackKind.Map) { if (numericMap != null) numericMap.SetOwnElement((uint)i, mapped); else if (!mapSlots.IsEmpty) mapSlots[(int)i] = mapped; else ArraySpeciesSet(result, i, mapped); }
-                else if (kind == ArrayCallbackKind.Filter) { if (Truthy(mapped)) ArraySpeciesSet(result, selected++, value); }
+                else if (kind == ArrayCallbackKind.Filter && Truthy(mapped)) {
+                    if (numericFilter != null) numericFilter.SetOwnElement((uint)selected, value);
+                    else ArraySpeciesSet(result, selected, value);
+                    selected++;
+                }
                 else if (kind == ArrayCallbackKind.Every && !Truthy(mapped)) return BoxBoolean(false);
                 else if (kind == ArrayCallbackKind.Some && Truthy(mapped)) return BoxBoolean(true);
             }
