@@ -55,6 +55,13 @@ public abstract class JsNumericClassInstance : JsClassInstance
         states = states & ~(3u << shift) | (value.HasValue ? 3u : 1u) << shift;
         return true;
     }
+    protected bool TrySetClassNumber(int index, double? value) => StoreNumber(index, value, false);
+    protected bool TrySetClassValue(int index, object value)
+    {
+        if (StoreReference(index, value, false)) return true;
+        if (value is double number) return StoreNumber(index, number, false);
+        return ReferenceEquals(value, Js.Undefined) && StoreNumber(index, null, false);
+    }
     internal bool TryDefineNumber(string key, double? value)
     {
         if (StoreNumber(NumericFieldIndex(key), value, true)) return true;

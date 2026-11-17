@@ -409,9 +409,16 @@ internal static partial class CompilerFunctions
             }
             else if (get_type(owner, c).kind is TypeKind.Any or TypeKind.Array || get_type(owner, c).name != 0 || (get_type(owner, c).kind == TypeKind.Shape && field(owner, target.name, c) == 0 && get_type(owner, c).element != 0))
             {
-                il_text(target.name, c, b); b.emit(0xfe0c, value);
-                if (get_type(value_type, c).kind == TypeKind.Number) b.call(RuntimeMember.DynamicSetNumber);
-                else { b.box(value_type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26); }
+                int writer = il_class_field_writer(n.left, value_type, c, b);
+                if (writer != 0) {
+                    b.emit(0xfe0c, value);
+                    if (get_type(value_type, c).kind != TypeKind.Number) b.box(value_type, c);
+                    b.emit(0x28, writer);
+                } else {
+                    il_text(target.name, c, b); b.emit(0xfe0c, value);
+                    if (get_type(value_type, c).kind == TypeKind.Number) b.call(RuntimeMember.DynamicSetNumber);
+                    else { b.box(value_type, c); b.call(RuntimeMember.DynamicSet); b.op(0x26); }
+                }
             }
             else
             {
@@ -1309,6 +1316,7 @@ internal static partial class CompilerFunctions
         while (statement != 0) { il_statement(statement, 0, c, b); statement = get_node(statement, c).next; }
         b.op(0x2a);
         b.begin(entry); b.op(0x14); b.emit(0xfe06, main); b.emit(0x73, b.RuntimeToken(RuntimeMember.ActionConstructor)); b.call(RuntimeMember.Run); b.op(0x2a);
+        il_class_field_writer_bodies(c, b);
         b.plan.finish(entry, path);
     }
 }
