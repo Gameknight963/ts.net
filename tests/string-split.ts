@@ -19,7 +19,7 @@ console.log('metadata', split.name, split.length, Object.keys(String.prototype).
 
 const samples = ['', 'a', 'a,b,,', 'aaaaa', 'a\u0000b', '\uD83D\uDE00x', '\uD800a', 'x\uDC00'];
 const separators: any[] = ['', ',', 'aa', undefined, null, '\uD83D'];
-const limits = [undefined, 0, 1, 2, -1, Infinity, NaN, 4294967296, 4294967297];
+const limits = [undefined, 0, 1, 2, 15, 16, 17, -1, Infinity, NaN, 4294967296, 4294967297];
 for (let sample = 0; sample < samples.length; sample++) {
     for (let separator = 0; separator < separators.length; separator++) {
         for (let limit = 0; limit < limits.length; limit++) {
@@ -33,3 +33,14 @@ for (let sample = 0; sample < samples.length; sample++) {
         }
     }
 }
+for (const limit of [1, 2, 15, 16, 17]) {
+    for (const separator of [',', '::', 'aa']) {
+        for (const count of [14, 15, 16, 17, 40]) {
+            const text = (separator + 'item').repeat(count) + separator;
+            console.log('bounded', limit, separator, count, JSON.stringify(text.split(separator, limit)));
+        }
+    }
+}
+console.log('long tail', JSON.stringify(('a,b,c,' + 'tail,'.repeat(10000)).split(',', 3)));
+const protocol = {[Symbol.split](text: string, limit?: number): string[] {return [text, String(limit)];}};
+console.log('protocol', JSON.stringify('custom'.split(protocol as any, 3)));

@@ -91,6 +91,22 @@ public static partial class Js
             string text = AtString(receiver);
             uint limit = IsUndefined(limitValue) ? uint.MaxValue : unchecked((uint)ToInt32(Number(limitValue)));
             string pattern = StringValue(separator);
+            if (limit is > 0 and <= 16 && !IsUndefined(separator) && pattern.Length != 0)
+            {
+                var items = new object[(int)limit];
+                int count = 0, copied = 0;
+                while (count < items.Length)
+                {
+                    int match = pattern.Length == 1 ? text.IndexOf(pattern[0], copied)
+                        : text.IndexOf(pattern, copied, StringComparison.Ordinal);
+                    if (match < 0) { items[count++] = text.Substring(copied); break; }
+                    items[count++] = text.Substring(copied, match - copied);
+                    copied = match + pattern.Length;
+                }
+                var limited = new JsArray(items);
+                if (count != items.Length) limited.SetLength(count);
+                return limited;
+            }
             var result = new JsArray(0);
             if (limit == 0) return result;
             if (IsUndefined(separator)) { result.Append(text); return result; }
