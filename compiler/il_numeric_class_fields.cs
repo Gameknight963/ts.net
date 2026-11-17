@@ -54,7 +54,7 @@ internal static partial class CompilerFunctions
                 {
                     var member=get_field(field,c);
                     if(prototypeNames.Any(name=>same(name,member.name,c))) continue;
-                    if(get_type(member.type,c).kind!=TypeKind.Number || members.Count==16) {numeric=false;break;}
+                    if(get_type(member.type,c).kind==TypeKind.Void || members.Count==16) {numeric=false;break;}
                     members.Add(field);
                 }
                 if (numeric && members.Count!=0) {b.numeric_class_types.Add(candidate);b.numeric_class_members[candidate]=members;}
@@ -65,9 +65,12 @@ internal static partial class CompilerFunctions
     }
     static void il_numeric_class_fields(int type,int klass,Compiler c,IlBackend b)
     {
-        var fields=new List<(int Name,int Token)>();
+        var fields=new List<(int Name,int Token,bool Numeric)>();
         foreach(int member in b.numeric_class_members[type])
-            fields.Add((get_field(member,c).name,b.plan.field(klass,1,-3,"number_"+fields.Count)));
+        {
+            bool numeric=get_type(get_field(member,c).type,c).kind==TypeKind.Number;
+            fields.Add((get_field(member,c).name,b.plan.field(klass,1,numeric ? -3 : -5,"field_"+fields.Count),numeric));
+        }
         b.begin(b.plan.method1(5,klass,0xc4,-6,-4,"NumericFieldIndex"));
         for(int i=0;i<fields.Count;i++)
         {
@@ -78,6 +81,7 @@ internal static partial class CompilerFunctions
         b.begin(b.plan.method1(5,klass,0xc4,-3,-6,"ReadNumericField"));
         for(int i=0;i<fields.Count;i++)
         {
+            if(!fields[i].Numeric) continue;
             int next=b.label();b.emit(0xfe09,1);b.emit(0x20,i);b.op(0xfe01);b.emit(0x39,next);
             b.emit(0xfe09,0);b.emit(0x7b,fields[i].Token);b.op(0x2a);b.mark(next);
         }
@@ -85,13 +89,38 @@ internal static partial class CompilerFunctions
         b.begin(b.plan.method2(5,klass,0xc4,-1,-6,-3,"WriteNumericField"));
         for(int i=0;i<fields.Count;i++)
         {
+            if(!fields[i].Numeric) continue;
             int next=b.label();b.emit(0xfe09,1);b.emit(0x20,i);b.op(0xfe01);b.emit(0x39,next);
             b.emit(0xfe09,0);b.emit(0xfe09,2);b.emit(0x7d,fields[i].Token);b.op(0x2a);b.mark(next);
         }
         b.op(0x2a);
+        if(fields.Any(field=>!field.Numeric))
+        {
+            b.begin(b.plan.method1(5,klass,0xc4,-2,-6,"IsReferenceField"));
+            for(int i=0;i<fields.Count;i++) if(!fields[i].Numeric) {
+                int next=b.label();b.emit(0xfe09,1);b.emit(0x20,i);b.op(0xfe01);b.emit(0x39,next);
+                b.emit(0x20,1);b.op(0x2a);b.mark(next);
+            }
+            b.emit(0x20,0);b.op(0x2a);
+            b.begin(b.plan.method1(5,klass,0xc4,-5,-6,"ReadReferenceField"));
+            for(int i=0;i<fields.Count;i++) if(!fields[i].Numeric) {
+                int next=b.label();b.emit(0xfe09,1);b.emit(0x20,i);b.op(0xfe01);b.emit(0x39,next);
+                b.emit(0xfe09,0);b.emit(0x7b,fields[i].Token);b.op(0x2a);b.mark(next);
+            }
+            b.op(0x14);b.op(0x2a);
+            b.begin(b.plan.method2(5,klass,0xc4,-1,-6,-5,"WriteReferenceField"));
+            for(int i=0;i<fields.Count;i++) if(!fields[i].Numeric) {
+                int next=b.label();b.emit(0xfe09,1);b.emit(0x20,i);b.op(0xfe01);b.emit(0x39,next);
+                b.emit(0xfe09,0);b.emit(0xfe09,2);b.emit(0x7d,fields[i].Token);b.op(0x2a);b.mark(next);
+            }
+            b.op(0x2a);
+        }
         b.begin(b.plan.method0(5,klass,0xc4,-1,"CopyNumericFields"));
         for(int i=0;i<fields.Count;i++)
         {b.emit(0xfe09,0);b.emit(0x20,i);il_text(fields[i].Name,c,b);b.call(RuntimeMember.NumericClassCopy);}
+        // Once copied, references belong to the property store. Do not keep
+        // deleted or replaced values alive through stale CLR fields.
+        foreach(var field in fields) if(!field.Numeric) {b.emit(0xfe09,0);b.op(0x14);b.emit(0x7d,field.Token);}
         b.op(0x2a);
     }
 }
