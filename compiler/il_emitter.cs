@@ -264,6 +264,11 @@ internal static partial class CompilerFunctions
         if (n.kind == NodeKind.Assign && is_text(op, text_assign, c) && target.kind == NodeKind.Property && target.fourth == 0 &&
             get_type(get_node(target.left, c).type, c).kind == TypeKind.Any && get_type(get_node(n.right, c).type, c).kind == TypeKind.Number)
             value_type = get_node(n.right, c).type;
+        // A checked numeric read produces a numeric update. SetNumber retains
+        // the ordinary property setter fallback without boxing the stored value.
+        if (n.kind == NodeKind.Update && target.kind == NodeKind.Property && target.fourth == 0 &&
+            get_type(target.type, c).kind == TypeKind.Number)
+            value_type = target.type;
         if (logical)
         {
             logical_done = b.label(); il_load_target(n.left, receiver, index, c, b); b.convert(target.type, value_type, c); b.op(0x25);

@@ -1,0 +1,11 @@
+using System.Reflection;
+_=typeof(Js).Assembly;
+var assembly=Assembly.LoadFile(Path.GetFullPath(args[0]));
+var method=assembly.GetType("Program")!.GetMethods().Single(m=>m.Name.StartsWith("work_f"));
+var work=method.CreateDelegate<Func<double?,double?>>();
+for(int i=0;i<30;i++)work(1000);
+long before=GC.GetAllocatedBytesForCurrentThread();
+var result=work(2000000);
+long allocated=GC.GetAllocatedBytesForCurrentThread()-before;
+if(result!=2000000 || allocated>8192)throw new Exception($"Numeric property update result/allocation changed: {result}, {allocated}");
+Console.WriteLine($"PASS two million numeric property updates: {allocated} bytes");
