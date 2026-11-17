@@ -10,10 +10,22 @@ public abstract partial class TsObject
 public partial class JsArray
 {
     internal void AppendGuarded(object value) => values.Set(values.Length, value);
+    internal object[] PlainRecordElements<T>() where T : TsObject
+    {
+        if (GetType() != typeof(JsArray) || HasIndexedAccessors || values.Length > (uint)values.Dense.Length) return null;
+        object[] elements = values.Dense;
+        for (int i = 0; i < (int)values.Length; i++)
+            if (!TsObject.IsPlainDataRecord<T>(elements[i])) return null;
+        return elements;
+    }
+
 }
 
 public static partial class Js
 {
+    public static object[] TryPlainRecordArray<T>(object receiver) where T : TsObject =>
+        receiver is JsArray array ? array.PlainRecordElements<T>() : null;
+
     public static bool GuardPrivateArrayPush(object receiver, double limit)
     {
         if (receiver is not JsArray array || receiver.GetType() != typeof(JsArray) ||
