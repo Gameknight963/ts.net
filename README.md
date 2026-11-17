@@ -85,6 +85,7 @@ Runtime performance:
 | UTF-8 roundtrip, 1K chunks of 80 UTF-16 code units | 11.23 ms | 16.11 ms | — | 1.43x |
 | `==` on mixed values, 1M comparisons | 5.15 ms | 7.26 ms | — | 1.41x |
 | join, 20 joins of 10K integers from 0-99 | 1.64 ms | 2.23 ms | — | 1.36x |
+| Split 10K comma-separated strings, keep three parts, and sum lengths | 1.542 ms | 1.938 ms | 0.382 ms (`string[]`) | 1.26x |
 | Sum 100K local arrays of two numbers using index & 1 | 0.0702 ms | 0.0877 ms | — | 1.25x |
 | String `.at(index)`, 1M calls | 4.26 ms | 5.28 ms | — | 1.24x |
 | toSorted with numeric comparator and traversal, 10 copies of 10K integers | 10.31 ms | 12.78 ms | — | 1.24x |
@@ -146,7 +147,6 @@ Runtime performance:
 | Read varying string keys through an `any` helper from a Float64Array, 100K reads | 1.23 ms | 0.713 ms | — | 0.58x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
 | Parse, filter, group, sort and serialize 1K records, 10 passes | 7.86 ms | 4.12 ms | — | 0.52x |
-| Split 10K comma-separated strings, keep three parts, and sum lengths | 4 ms | 2 ms | — | 0.50x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
 | Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | — | 0.48x |
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | — | 0.48x |
