@@ -19,9 +19,10 @@ internal static partial class CompilerFunctions
             if (statement.next != 0) return false;
         }
         if (statement.kind != NodeKind.Return || statement.left == 0) return false;
-        Node forwarded = get_node(statement.left, c), target = get_node(forwarded.left, c);
-        if (forwarded.kind != NodeKind.Call || target.kind != NodeKind.Name ||
-            get_type(forwarded.type, c).kind != TypeKind.Number) return false;
+        Node forwarded = get_node(statement.left, c);
+        if (forwarded.kind != NodeKind.Call || get_type(forwarded.type, c).kind != TypeKind.Number) return false;
+        Node target = get_node(forwarded.left, c);
+        if (target.kind != NodeKind.Name) return false;
         List<int> parameters = [], arguments = [];
         for (int parameter = helper.children, argument = call.children; parameter != 0 || argument != 0;)
         {

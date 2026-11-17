@@ -13,6 +13,8 @@ console.log('duplicate', duplicate(sum, 6));
 function empty(callback: () => number): number { return callback(); }
 function constant(): number { return 11; }
 console.log('empty', empty(constant));
+function identity(value: number): number { return value; }
+console.log('ordinary returns', identity(3), constant());
 function numeric(callback: (value: number) => number, value: number): number { return callback(value); }
 function plus(value: number): number { return value + 7; }
 function observe(value: any): number { return typeof value === 'number' ? value + 7 : -1; }
