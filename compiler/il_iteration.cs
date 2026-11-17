@@ -6,6 +6,41 @@ using static Tsnet.Compiler.CompilerFunctions;
 
 internal static partial class CompilerFunctions
 {
+    internal static void il_prove_var_initializers(Compiler c, IlBackend b)
+    {
+        Dictionary<(int Owner, int Symbol), int> firstReads = [];
+        HashSet<int> invalidRoots = [];
+        for (int i = 1; i <= c.node_store.count(); i++)
+        {
+            Node n = get_node(i, c);
+            if (n.kind == NodeKind.Name && n.symbol != 0)
+                firstReads.TryAdd((scalar_owner(i, b.node_parents, c), n.symbol), i);
+        }
+        for (int i = 1; i <= c.node_store.count(); i++)
+        {
+            Node n = get_node(i, c);
+            if (n.kind != NodeKind.Variable || n.symbol == 0 || n.fourth == 0) continue;
+            int owner = scalar_owner(i, b.node_parents, c), current = i;
+            bool definite = true;
+            for (int parent = b.node_parents.at(current); parent != owner && parent != 0; parent = b.node_parents.at(current))
+            {
+                Node container = get_node(parent, c);
+                if (container.kind != NodeKind.Block && !(container.kind == NodeKind.For && container.left == current)) { definite = false; break; }
+                current = parent;
+            }
+            bool forward = firstReads.TryGetValue((owner, n.symbol), out int read) && read < i;
+            if (!definite || forward)
+            {
+                b.iteration_vars.at_mut(n.symbol) = 1;
+                b.raw_slots.at_mut(n.symbol) = 0;
+                b.nonnegative_ints.at_mut(n.symbol) = 0;
+                int root = b.scalar_roots.at(n.symbol);
+                if (root != 0) invalidRoots.Add(root);
+            }
+        }
+        for (int symbol = 1; symbol < b.scalar_roots.count(); symbol++)
+            if (invalidRoots.Contains(b.scalar_roots.at(symbol))) b.scalar_roots.at_mut(symbol) = 0;
+    }
     internal static void il_close_iteration(int source, int enabled, bool suppress, IlBackend b, int position = -1)
     {
         int skip = b.label(); b.emit(0xfe0c, enabled); b.emit(0x39, skip);
