@@ -178,8 +178,8 @@ Runtime performance:
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | — | 0.23x |
+| Create, retain, and sum 100K two-number objects | 4.88 ms | 1.14 ms | 1.18 ms (`List<Point>`) | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.17 ms | 0.479 ms | — | 0.22x |
-| Create, retain, and sum 100K two-number objects | 5.27 ms | 1.11 ms | 0.996 ms | 0.21x |
 | Call a callback with an object and a number, 100K calls | 0.307 ms | 0.0611 ms | — | 0.20x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
