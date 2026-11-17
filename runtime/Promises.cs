@@ -7,7 +7,8 @@ public static partial class Js
     {
         internal void Run()
         {
-            if (target is PromiseReactionBase reaction) reaction.Run(value, rejected);
+            if (target is JsPromise native) native.RunReaction(value, rejected);
+            else if (target is PromiseReactionBase reaction) reaction.Run(value, rejected);
             else if (target is Action callback) callback();
             else ((JsFunction)target).InvokeWithReceiver(Undefined, Array.Empty<object>());
         }
@@ -17,7 +18,7 @@ public static partial class Js
     static void EnqueuePromiseJob(Action job) => (promiseJobs ??= new()).Enqueue(new(job, null, false));
     static void EnqueueMicrotask(JsFunction callback) =>
         (promiseJobs ??= new()).Enqueue(new(callback, null, false));
-    static void EnqueuePromiseReaction(PromiseReactionBase reaction, object value, bool rejected) =>
+    static void EnqueuePromiseReaction(IPromiseReaction reaction, object value, bool rejected) =>
         (promiseJobs ??= new()).Enqueue(new(reaction, value, rejected));
     static void DrainPromiseJobs()
     {
@@ -76,10 +77,12 @@ public static partial class Js
         }
         internal void RejectError(Exception error) => RejectValue(CaughtValue(error));
     }
-    abstract class PromiseReactionBase
+    interface IPromiseReaction { void Run(object value, bool rejected); }
+    abstract class PromiseReactionBase : IPromiseReaction
     {
         internal void Enqueue(object value, bool rejected) => EnqueuePromiseReaction(this, value, rejected);
         internal abstract void Run(object value, bool rejected);
+        void IPromiseReaction.Run(object value, bool rejected) => Run(value, rejected);
     }
     sealed class PromiseReaction(PromiseCapability capability, JsFunction fulfilled, JsFunction rejected)
         : PromiseReactionBase
@@ -116,13 +119,29 @@ public static partial class Js
             else target.ResolveValue(value);
         }
     }
-    sealed class JsPromise : JsDescriptorObject
+    sealed class JsPromise : JsDescriptorObject, IPromiseReaction
     {
-        int state; // 0 pending, 1 fulfilled, 2 rejected
+        int state; // -1 waiting for an incoming reaction, 0 pending, 1 fulfilled, 2 rejected
         // Most pending promises have one reaction; allocate a list only for fan-out.
-        object reactions; // null, PromiseReactionBase, or List<PromiseReactionBase>
+        object reactions; // null, IPromiseReaction, or List<IPromiseReaction>
         internal object Result;
         internal bool Handled;
+        // Until its incoming job runs, a native result holds the fulfillment
+        // handler in Result. Settlement replaces it with the actual value.
+        internal static JsPromise ForFulfilledReaction(JsFunction handler) => new() { state = -1, Result = handler };
+        void IPromiseReaction.Run(object value, bool rejected) => RunReaction(value, rejected);
+        internal void RunReaction(object value, bool rejected)
+        {
+            if (state != -1) return;
+            var handler = (JsFunction)Result;
+            state = 0; Result = null;
+            if (rejected) { Settle(value, true); return; }
+            if (handler != null) {
+                try { value = handler.InvokeContinuation(value); }
+                catch (Exception error) { Settle(CaughtValue(error), true); return; }
+            }
+            ResolveValue(value);
+        }
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : (TsObject)RuntimeNamespaces.Promise.Get("prototype");
         internal void ResolveValue(object value)
         {
@@ -146,24 +165,24 @@ public static partial class Js
         }
         internal void Settle(object value, bool rejected)
         {
-            if (state != 0) return;
+            if (state > 0) return;
             state = rejected ? 2 : 1; Result = value;
             if (rejected && !Handled) (unhandledPromises ??= new()).Add(this);
-            if (reactions is PromiseReactionBase single) single.Enqueue(value, rejected);
-            else if (reactions is List<PromiseReactionBase> multiple)
-                foreach (var reaction in multiple) reaction.Enqueue(value, rejected);
+            if (reactions is IPromiseReaction single) EnqueuePromiseReaction(single, value, rejected);
+            else if (reactions is List<IPromiseReaction> multiple)
+                foreach (var reaction in multiple) EnqueuePromiseReaction(reaction, value, rejected);
             reactions = null;
         }
-        internal void Then(PromiseReactionBase reaction)
+        internal void Then(IPromiseReaction reaction)
         {
             Handled = true; unhandledPromises?.Remove(this);
-            if (state == 0)
+            if (state <= 0)
             {
                 if (reactions == null) reactions = reaction;
-                else if (reactions is List<PromiseReactionBase> multiple) multiple.Add(reaction);
-                else reactions = new List<PromiseReactionBase> { (PromiseReactionBase)reactions, reaction };
+                else if (reactions is List<IPromiseReaction> multiple) multiple.Add(reaction);
+                else reactions = new List<IPromiseReaction> { (IPromiseReaction)reactions, reaction };
             }
-            else reaction.Enqueue(Result, state == 2);
+            else EnqueuePromiseReaction(reaction, Result, state == 2);
         }
     }
     static PromiseCapability NewPromiseCapability(object constructor)
@@ -225,6 +244,10 @@ public static partial class Js
             var constructor = PromiseSpecies(promise);
             if (ReferenceEquals(constructor, RuntimeNamespaces.Promise))
             {
+                if (rejected is not JsFunction) {
+                    var result = JsPromise.ForFulfilledReaction(fulfilled as JsFunction);
+                    promise.Then(result); return result;
+                }
                 var target = new JsPromise();
                 promise.Then(new NativePromiseReaction(target, fulfilled as JsFunction, rejected as JsFunction));
                 return target;
