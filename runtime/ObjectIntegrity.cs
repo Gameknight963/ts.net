@@ -42,17 +42,22 @@ public static partial class Js
     }
     static object SetObjectIntegrity(object value, bool frozen)
     {
-        if (value is not TsObject target || ObjectIntegrity(value, frozen)) return value;
+        if (value is not TsObject target) return value;
+        // Proxy traps must run even when the target already has this integrity
+        // level; checking first would change their order or skip them entirely.
+        if (target is not IProxyValue && ObjectIntegrity(value, frozen)) return value;
         ObjectPreventExtensions(value);
         if (target is JsArray ordinary) ordinary.SealElements(frozen);
         var names = (JsArray)(target is TypedArrayValue typed ? typed.ExtraPropertyNames() : target is JsArray indexed ? indexed.ExtraPropertyNames() : target.OwnPropertyNames());
         for (uint index = 0; index < names.Length(); index++)
         {
             string key = (string)names.ElementAt(index);
-            var descriptor = target.OwnPropertyDescriptor(key) as TsObject;
-            if (descriptor == null) continue;
             DescriptorFields fields = DescriptorFields.Configurable;
-            if (frozen && descriptor.HasOwn("writable")) fields |= DescriptorFields.Writable;
+            if (frozen) {
+                var descriptor = target.OwnPropertyDescriptor(key) as TsObject;
+                if (descriptor == null) continue;
+                if (descriptor.HasOwn("writable")) fields |= DescriptorFields.Writable;
+            }
             ApplyPropertyDefinition(target, key, new(Undefined, null, null, false, false, false, fields));
         }
         if (target is TypedArrayValue {Count: > 0}) throw new InvalidOperationException("Cannot change typed-array element attributes");
