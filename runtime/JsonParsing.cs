@@ -107,15 +107,30 @@ public static partial class Js
             }
             else
             {
-                Consume('-');
-                if (!Consume('0')) { if (position == text.Length || text[position] is < '1' or > '9') throw Invalid(); while (position < text.Length && char.IsAsciiDigit(text[position])) position++; }
+                bool negative = Consume('-');
+                int digitsStart = position;
+                ulong integer = 0;
+                if (!Consume('0')) {
+                    if (position == text.Length || text[position] is < '1' or > '9') throw Invalid();
+                    while (position < text.Length && char.IsAsciiDigit(text[position])) {
+                        integer = unchecked(integer * 10 + (uint)(text[position] - '0'));
+                        position++;
+                    }
+                }
+                int integerEnd = position;
                 if (Consume('.')) { int digits = position; while (position < text.Length && char.IsAsciiDigit(text[position])) position++; if (digits == position) throw Invalid(); }
                 if (position < text.Length && text[position] is 'e' or 'E')
                 {
                     position++; if (position < text.Length && text[position] is '+' or '-') position++;
                     int digits = position; while (position < text.Length && char.IsAsciiDigit(text[position])) position++; if (digits == position) throw Invalid();
                 }
-                if (!double.TryParse(text.AsSpan(start, position - start), NumberStyles.Float, CultureInfo.InvariantCulture, out double number)) throw Invalid();
+                double number;
+                // Every integer with at most 15 decimal digits is exactly
+                // representable as a double. Longer tokens use the full parser,
+                // even if the unchecked accumulator wrapped while scanning.
+                if (position == integerEnd && integerEnd - digitsStart <= 15)
+                    number = negative ? -(double)integer : integer;
+                else if (!double.TryParse(text.AsSpan(start, position - start), NumberStyles.Float, CultureInfo.InvariantCulture, out number)) throw Invalid();
                 value = number;
             }
             if (remember) record = new JsonValue(value, start) { End = position };
