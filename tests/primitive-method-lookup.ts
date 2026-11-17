@@ -17,3 +17,14 @@ for (const method of [undefined, null, 42, {}]) {
     const blocked = {valueOf() {return {};}, get toString() {console.log('get blocked'); return method;}};
     try {console.log(Number(blocked));} catch (error) {console.log('blocked', (error as Error).name);}
 }
+const primitives: any[] = ['text', 42, true, 123n, Symbol('value')];
+const prototypes: any[] = [String.prototype, Number.prototype, Boolean.prototype, BigInt.prototype, Symbol.prototype];
+for (let index = 0; index < primitives.length; index++) {
+    const prototype = prototypes[index];
+    Object.defineProperty(prototype, '__lookupProbe', {
+        get(this: any): string { return typeof this + ':' + String(this); }, configurable: true
+    });
+    try { console.log('primitive getter', primitives[index].__lookupProbe); }
+    finally { delete prototype.__lookupProbe; }
+    console.log('primitive removed', typeof primitives[index].__lookupProbe);
+}

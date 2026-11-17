@@ -42,7 +42,14 @@ internal sealed class JsBoxedPrimitive(object value, bool intrinsicPrototype = f
 
 public static partial class Js
 {
-    internal static TsObject PrimitivePrototype(object value) => (TsObject)((JsFunction)BuiltinNamespace(value is BigInteger ? "BigInt" : value is JsSymbol ? "Symbol" : value is string ? "String" : value is double ? "Number" : "Boolean")).Get("prototype");
+    internal static TsObject PrimitivePrototype(object value) => (TsObject)(value switch
+    {
+        BigInteger => RuntimeNamespaces.BigInt,
+        JsSymbol => RuntimeNamespaces.Symbol,
+        string => RuntimeNamespaces.String,
+        double => RuntimeNamespaces.Number,
+        _ => RuntimeNamespaces.Boolean
+    }).Get("prototype");
     sealed class PrimitiveValueFunction(Type type, bool text) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Primitive method requires a receiver")), null, text ? "toString" : "valueOf", 0)
     {
         object Execute(object receiver)
