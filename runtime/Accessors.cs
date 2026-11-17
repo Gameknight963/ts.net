@@ -66,7 +66,20 @@ public abstract partial class TsObject
         internal NonExtensibleAccessors() { }
         internal NonExtensibleAccessors(Dictionary<string, JsAccessor> source) : base(source) { }
     }
-    JsAccessors accessors;
+    JsAccessors accessors
+    {
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        get => propertyState?.Accessors;
+        set
+        {
+            if (value != null) (propertyState ??= new()).Accessors = value;
+            else if (propertyState != null)
+            {
+                propertyState.Accessors = null;
+                if (propertyState.Extra == null) propertyState = null;
+            }
+        }
+    }
     protected bool StoredExtensionsAllowed => accessors is not NonExtensibleAccessors;
     protected bool StoredArrayElementsSealed => accessors is NonExtensibleAccessors {ElementsSealed: true};
     protected bool StoredArrayElementsFrozen => accessors is NonExtensibleAccessors {ElementsFrozen: true};
@@ -82,13 +95,14 @@ public abstract partial class TsObject
         if (accessors is not NonExtensibleAccessors)
             accessors = accessors == null ? new NonExtensibleAccessors() : new NonExtensibleAccessors(accessors);
     }
-    internal bool HasIndexedAccessors => accessors != null && accessors.IndexedCount != 0;
-    internal bool HasOwnAccessors => accessors != null && accessors.Count != 0;
-    internal IEnumerable<string> OwnAccessorKeys => accessors == null ? Array.Empty<string>() : accessors.Keys;
-    internal bool HasPropertyOverrides => extra != null || accessors != null;
+    internal bool HasIndexedAccessors => accessors is {IndexedCount: > 0};
+    internal bool HasOwnAccessors => accessors is {Count: > 0};
+    internal IEnumerable<string> OwnAccessorKeys => accessors is { } own ? own.Keys : Array.Empty<string>();
+    internal bool HasPropertyOverrides => propertyState != null;
     internal bool TryOwnAccessor(string key, out JsAccessor accessor)
     {
-        accessor = null; return accessors is not null && accessors.TryGetValue(key, out accessor);
+        JsAccessors own = accessors;
+        accessor = null; return own is not null && own.TryGetValue(key, out accessor);
     }
     public void DefineAccessor(string key, object function, int mode) => DefineAccessor(key, function, mode, true);
     internal void DefineAccessor(string key, object function, int mode, bool inferName)

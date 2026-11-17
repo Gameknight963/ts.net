@@ -9,7 +9,27 @@ using System.Runtime.CompilerServices;
 // does not pass through this representation.
 public abstract partial class TsObject
 {
-    private OwnProperties extra;
+    // Plain records carry one reference; property stores are created on demand.
+    private sealed class PropertyState
+    {
+        internal OwnProperties Extra;
+        internal JsAccessors Accessors;
+    }
+    private PropertyState propertyState;
+    private OwnProperties extra
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => propertyState?.Extra;
+        set
+        {
+            if (value != null) (propertyState ??= new()).Extra = value;
+            else if (propertyState != null)
+            {
+                propertyState.Extra = null;
+                if (propertyState.Accessors == null) propertyState = null;
+            }
+        }
+    }
     internal int OwnPropertyVersion => extra?.Version ?? 0;
 
     public virtual bool TrySetNumberProperty(string key, double? value) => false;
