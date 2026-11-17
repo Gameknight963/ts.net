@@ -27,11 +27,40 @@ internal sealed class CollectionKeyComparer : IEqualityComparer<object>, IAltern
     public object Create(double value) => value;
 }
 
-internal sealed class CollectionEntry(object key, object value)
+internal class CollectionEntry(object key, object value)
 {
-    internal object Key = key, Value = value;
+    // Numeric Map entries materialize immutable boxes only for object reads.
+    // Updating the raw value invalidates its cache without mutating earlier reads.
+    internal static readonly object NumberTag = new();
+    object storedValue = value;
+    object storedKey = key;
+    internal object Key
+    {
+        get => ReferenceEquals(storedKey, NumberTag)
+            ? storedKey = ((NumberCollectionEntry)this).NumberKey : storedKey;
+        set => storedKey = value;
+    }
+    internal object Value
+    {
+        get => ReferenceEquals(storedValue, NumberTag)
+            ? storedValue = ((NumberCollectionEntry)this).Number : storedValue;
+        set => storedValue = value;
+    }
+    internal double? ReadNumberValue() => ReferenceEquals(storedValue, NumberTag)
+        ? ((NumberCollectionEntry)this).Number : Js.Cast<double?>(storedValue, "Collection result violates number type");
+    protected void UseNumberPayload()
+    {
+        // Typed updates usually have no cached box to invalidate.
+        if (!ReferenceEquals(storedValue, NumberTag)) storedValue = NumberTag;
+    }
     internal bool Active = true;
     internal void Remove() { Active = false; Key = Value = Js.Undefined; }
+}
+internal sealed class NumberCollectionEntry(double key, double value) : CollectionEntry(NumberTag, NumberTag)
+{
+    internal readonly double NumberKey = key == 0 ? 0d : key;
+    internal double Number = value;
+    internal void SetNumber(double value) { Number = value; UseNumberPayload(); }
 }
 
 public sealed class JsKeyedCollection : JsDescriptorObject
@@ -40,45 +69,67 @@ public sealed class JsKeyedCollection : JsDescriptorObject
     internal readonly bool IsSet;
     internal List<CollectionEntry> Entries = new();
     Dictionary<object, int> index = new(CollectionKeyComparer.Instance);
+    Dictionary<double, CollectionEntry> numberIndex;
     readonly List<WeakReference<JsCollectionIterator>> iterators = new();
     int pruneAt = 64;
     internal JsKeyedCollection(bool set) { IsSet = set; }
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.KeyedCollectionPrototype(IsSet);
-    internal int Size => index.Count;
+    internal int Size => index.Count + (numberIndex?.Count ?? 0);
     static object Key(object value) => value ?? NullKey;
-    internal bool Contains(object key) => index.ContainsKey(Key(key));
-    internal bool ContainsNumber(double key) => index.GetAlternateLookup<double>().ContainsKey(key);
-    internal object Read(object key) => index.TryGetValue(Key(key), out int slot) ? Entries[slot].Value : Js.Undefined;
-    internal object ReadNumber(double key) => index.GetAlternateLookup<double>().TryGetValue(key, out int slot) ? Entries[slot].Value : Js.Undefined;
+    internal bool Contains(object key) => key is double number ? ContainsNumber(number) : index.ContainsKey(Key(key));
+    internal bool ContainsNumber(double key) => numberIndex != null && numberIndex.ContainsKey(key);
+    internal object Read(object key) => key is double number ? ReadNumber(number) : index.TryGetValue(Key(key), out int slot) ? Entries[slot].Value : Js.Undefined;
+    internal object ReadNumber(double key) => numberIndex != null && numberIndex.TryGetValue(key, out var entry) ? entry.Value : Js.Undefined;
+    internal double? ReadNumberValue(double key) => numberIndex != null && numberIndex.TryGetValue(key, out var entry)
+        ? entry.ReadNumberValue() : Js.Cast<double?>(Js.Undefined, "Collection result violates number type");
     internal void Write(object key, object value)
     {
-        if (key is double number && number == 0) key = 0d;
+        if (key is double number) { WriteNumber(number, value, key); return; }
         object lookup = Key(key);
         if (index.TryGetValue(lookup, out int slot)) { if (!IsSet) Entries[slot].Value = value; return; }
         index.Add(lookup, Entries.Count);
         Entries.Add(new CollectionEntry(key, IsSet ? key : value));
     }
-    internal void WriteNumber(double key, object value)
+    internal void WriteNumber(double key, object value, object boxedKey = null)
     {
-        if (index.GetAlternateLookup<double>().TryGetValue(key, out int slot)) { if (!IsSet) Entries[slot].Value = value; return; }
-        object boxed = key == 0 ? 0d : key;
-        index.Add(boxed, Entries.Count);
-        Entries.Add(new CollectionEntry(boxed, IsSet ? boxed : value));
+        var numbers = numberIndex ??= new();
+        if (numbers.TryGetValue(key, out var existing)) { if (!IsSet) existing.Value = value; return; }
+        object boxed = key == 0 ? 0d : boxedKey ?? key;
+        var entry = new CollectionEntry(boxed, IsSet ? boxed : value);
+        numbers.Add(key, entry);
+        Entries.Add(entry);
+    }
+    // Map.set's numeric entry point can retain the value without first boxing it.
+    internal void WriteMapNumbers(double key, double? value)
+    {
+        if (!value.HasValue) { WriteNumber(key, Js.Undefined); return; }
+        double number = value.GetValueOrDefault();
+        var numbers = numberIndex ??= new();
+        if (numbers.TryGetValue(key, out var existing))
+        {
+            if (existing is NumberCollectionEntry numeric) numeric.SetNumber(number);
+            else existing.Value = number;
+            return;
+        }
+        var entry = new NumberCollectionEntry(key, number);
+        numbers.Add(key, entry);
+        Entries.Add(entry);
     }
     internal bool Remove(object key)
     {
+        if (key is double number) return RemoveNumber(number);
         if (!index.Remove(Key(key), out int slot)) return false;
         Entries[slot].Remove(); Compact(); return true;
     }
     internal bool RemoveNumber(double key)
     {
-        if (!index.GetAlternateLookup<double>().Remove(key, out _, out int slot)) return false;
-        Entries[slot].Remove(); Compact(); return true;
+        if (numberIndex == null || !numberIndex.Remove(key, out var entry)) return false;
+        entry.Remove(); Compact(); return true;
     }
     internal void ClearEntries()
     {
         foreach (var entry in Entries) entry.Remove();
-        index.Clear(); Compact();
+        index.Clear(); numberIndex?.Clear(); Compact();
     }
     internal void Register(JsCollectionIterator iterator)
     {
@@ -94,13 +145,17 @@ public sealed class JsKeyedCollection : JsDescriptorObject
         if (Entries.Count <= (long)Size * 2 + 64) return;
         var positions = new int[Entries.Count + 1];
         var live = new List<CollectionEntry>(Size);
-        var lookup = new Dictionary<object, int>(Size, CollectionKeyComparer.Instance);
+        var lookup = new Dictionary<object, int>(index.Count, CollectionKeyComparer.Instance);
+        var numbers = numberIndex == null ? null : new Dictionary<double, CollectionEntry>(numberIndex.Count);
         for (int i = 0; i < Entries.Count; i++)
         {
             positions[i] = live.Count;
             var entry = Entries[i];
             if (!entry.Active) continue;
-            lookup.Add(Key(entry.Key), live.Count); live.Add(entry);
+            if (entry is NumberCollectionEntry numeric) numbers.Add(numeric.NumberKey, entry);
+            else if (entry.Key is double number) numbers.Add(number, entry);
+            else lookup.Add(Key(entry.Key), live.Count);
+            live.Add(entry);
         }
         positions[Entries.Count] = live.Count;
         iterators.RemoveAll(reference =>
@@ -108,7 +163,7 @@ public sealed class JsKeyedCollection : JsDescriptorObject
             if (!reference.TryGetTarget(out var cursor) || cursor.Owner != this) return true;
             cursor.Position = positions[cursor.Position]; return false;
         });
-        Entries = live; index = lookup;
+        Entries = live; index = lookup; numberIndex = numbers;
     }
 }
 
@@ -197,7 +252,7 @@ public static partial class Js
         internal object InvokeNumbers(object receiver, double? first, double? second)
         {
             var map = CollectionReceiver(receiver, false);
-            if (first.HasValue) map.WriteNumber(first.Value, BoxNumber(second));
+            if (first.HasValue) map.WriteMapNumbers(first.Value, second);
             else map.Write(Undefined, BoxNumber(second));
             return map;
         }
@@ -216,7 +271,8 @@ public static partial class Js
         public override double? InvokeMethodNumber1(object receiver, double? first)
         {
             var map = CollectionReceiver(receiver, false);
-            return Cast<double?>(first.HasValue ? map.ReadNumber(first.Value) : map.Read(Undefined), "Collection result violates number type");
+            return first.HasValue ? map.ReadNumberValue(first.Value)
+                : Cast<double?>(map.Read(Undefined), "Collection result violates number type");
         }
     }
     sealed class CollectionMethod(string name, int length, Func<object, object[], object> action)
