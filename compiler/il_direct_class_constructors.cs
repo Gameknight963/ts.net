@@ -50,6 +50,12 @@ internal static partial class CompilerFunctions
             var initializers = b.direct_class_initializers[entry.Key];
             var assignments = b.scalar_constructor_assignments.GetValueOrDefault(entry.Key) ?? [];
             b.begin(entry.Value);
+            var parameters = new Dictionary<int, (int Slot, int Type)>();
+            for (int i = 0; i < arguments.Count; i++) {
+                int slot = b.local(b.type(arguments[i].Type, c));
+                b.emit(0xfe09, i + 1); b.emit(0xfe0e, slot);
+                parameters[arguments[i].Symbol] = (slot, arguments[i].Type);
+            }
             int instance = b.local(b.classes.at(type)), states = b.local(-6);
             b.emit(0x73, b.constructors.at(type)); b.emit(0xfe0e, instance);
             b.emit(0x20, 0); b.emit(0xfe0e, states);
@@ -57,9 +63,9 @@ internal static partial class CompilerFunctions
                 Field field = get_field(members[i], c);
                 int value = b.local(b.type(field.type, c));
                 var assignment = assignments.LastOrDefault(item => same(item.Name, field.name, c));
-                if (assignment.Symbol != 0) {
-                    int parameter = arguments.FindIndex(argument => argument.Symbol == assignment.Symbol);
-                    b.emit(0xfe09, parameter + 1); b.convert(arguments[parameter].Type, field.type, c);
+                if (assignment.Value != 0) {
+                    il_scalar_constructor_expression(assignment.Value, parameters, c, b);
+                    b.convert(get_node(assignment.Value, c).type, field.type, c);
                 }
                 else il_as(initializers.Last(item => same(item.Name, field.name, c)).Value, field.type, c, b);
                 b.emit(0xfe0e, value);
@@ -67,7 +73,7 @@ internal static partial class CompilerFunctions
                 if (get_type(field.type, c).kind == TypeKind.Number) b.call(RuntimeMember.NumberValue);
                 else b.box(field.type, c);
                 b.emit(0x7d, b.class_field_tokens[type][i]);
-                if (assignment.Symbol == 0) {
+                if (assignment.Value == 0) {
                     int initializer = initializers.Last(item => same(item.Name, field.name, c)).Value;
                     int state = get_node(initializer, c).kind == NodeKind.Undefined ? 1 : 3;
                     b.emit(0xfe0c, states); b.emit(0x20, state << (i * 2)); b.op(0x60); b.emit(0xfe0e, states);

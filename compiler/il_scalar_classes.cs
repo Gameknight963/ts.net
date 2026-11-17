@@ -6,7 +6,7 @@ internal sealed partial class IlBackend
 {
     internal readonly Dictionary<int, List<(int Name, int Value)>> scalar_class_initializers = [];
     internal readonly Dictionary<int, List<(int Argument, int Type, int Symbol)>> scalar_constructor_arguments = [];
-    internal readonly Dictionary<int, List<(int Name, int Symbol)>> scalar_constructor_assignments = [];
+    internal readonly Dictionary<int, List<(int Name, int Value)>> scalar_constructor_assignments = [];
 }
 
 internal static partial class CompilerFunctions
@@ -146,12 +146,12 @@ internal static partial class CompilerFunctions
             if (supplied) argument = value.next;
         }
         if (argument != 0) return false;
-        var assignments = new List<(int Name, int Symbol)>();
+        var assignments = new List<(int Name, int Value)>();
         for (int statement = body.children; statement != 0; statement = get_node(statement, c).next)
         {
             Node expression = get_node(statement, c);
             int name;
-            Node value;
+            int expressionValue;
             if (expression.kind == NodeKind.ClassField)
             {
                 if (expression.name == 0 || expression.left == 0 || expression.right == 0 ||
@@ -159,7 +159,7 @@ internal static partial class CompilerFunctions
                 Node owner = get_node(expression.left, c);
                 if (owner.kind != NodeKind.Name || owner.symbol != receiver.symbol) return false;
                 name = expression.name;
-                value = get_node(expression.right, c);
+                expressionValue = expression.right;
                 if (!owned.Any(previous => same(previous, name, c))) owned.Add(name);
             }
             else
@@ -174,16 +174,17 @@ internal static partial class CompilerFunctions
                 if (owner.kind != NodeKind.ResolveThis || owner.left == 0 || get_node(owner.left, c).kind != NodeKind.Name ||
                     get_node(owner.left, c).symbol != receiver.symbol) return false;
                 name = property.name;
-                value = get_node(assign.right, c);
+                expressionValue = assign.right;
                 // Assignments must not skip a possible inherited setter.
                 if (!owned.Any(previous => same(previous, name, c))) return false;
             }
-            if (value.kind != NodeKind.Name) return false;
             int member = field(construction.type, name, c);
-            if (member == 0 || !arguments.Any(p => p.Symbol == value.symbol &&
-                get_type(p.Type, c).kind == get_type(get_field(member, c).type, c).kind)) return false;
+            if (member == 0) return false;
+            int remaining = 32;
+            if (!scalar_constructor_expression(expressionValue, get_type(get_field(member, c).type, c).kind,
+                arguments, ref remaining, c)) return false;
             if (assignments.Count == 32) return false;
-            assignments.Add((name, value.symbol));
+            assignments.Add((name, expressionValue));
         }
         if (owned.Count != count) return false;
         if (recordPlan) {
@@ -224,9 +225,9 @@ internal static partial class CompilerFunctions
         {
             foreach (var assignment in assignments)
             {
-                var parameter = parameters[assignment.Symbol];
                 ScalarField storage = fields.First(field => same(field.name, assignment.Name, c));
-                b.emit(0xfe0c, parameter.Slot); b.convert(parameter.Type, storage.type, c); b.emit(0xfe0e, storage.slot);
+                il_scalar_constructor_expression(assignment.Value, parameters, c, b);
+                b.convert(get_node(assignment.Value, c).type, storage.type, c); b.emit(0xfe0e, storage.slot);
             }
         }
     }
