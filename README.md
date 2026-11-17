@@ -91,6 +91,7 @@ Runtime performance:
 | toSorted with numeric comparator and traversal, 10 copies of 10K integers | 10.31 ms | 12.78 ms | — | 1.24x |
 | Write and sum a numeric field on a function-constructed object, 100K iterations | 0.574 ms | 0.703 ms | 0.0702 ms (class) | 1.23x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.0282 ms | 0.0344 ms | 0.414 ms (`object[]`) | 1.22x |
+| BigInt add/subtract loop, 100K iterations | 0.440 ms | 0.494 ms | 0.435 ms (`BigInteger`) | 1.12x |
 | 100K numeric writes to a four-element mapped array | 0.0378 ms | 0.0419 ms | 0.0377 ms (`double[]`) | 1.11x |
 | Map.forEach numeric sum, 10 passes over 10K entries | 0.579 ms | 0.626 ms | — | 1.08x |
 | Reduce 100K number/string/undefined values with a default parameter | 0.596 ms | 0.640 ms | — | 1.08x |
@@ -139,6 +140,7 @@ Runtime performance:
 | BigInt64Array toSorted and Number conversion, 10 copies of 10K values | 7.99 ms | 5.00 ms | — | 0.63x |
 | Sum 10K numbers, 20 traversals | 0.139 ms | 0.0869 ms | — | 0.63x |
 | String slice and first-character read, 1M calls | 14.55 ms | 8.98 ms | — | 0.62x |
+| Add a 32-digit BigInt literal 10K times | 0.212 ms | 0.132 ms | 0.221 ms (`BigInteger`) | 0.62x |
 | Sum 10K mapped numbers, 20 traversals | 0.142 ms | 0.0864 ms | — | 0.61x |
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | — | 0.60x |
 | Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | — | 0.60x |
@@ -155,7 +157,6 @@ Runtime performance:
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | — | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | — | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | — | 0.45x |
-| Add a 32-digit BigInt literal 10K times | 0.310 ms | 0.138 ms | 0.221 ms (`BigInteger`) | 0.45x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 2.28 ms | 0.985 ms | — | 0.43x |
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | — | 0.41x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | — | 0.40x |
@@ -191,7 +192,6 @@ Runtime performance:
 | Call a callback with an object and a number, 100K calls | 0.307 ms | 0.0611 ms | — | 0.20x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
-| BigInt add/subtract loop, 100K iterations | 3.097 ms | 0.492 ms | 0.448 ms (`BigInteger`) | 0.16x |
 | Retained class instances with number, string and boolean fields, 100K instances | 8.75 ms | 1.133 ms | 1.058 ms | 0.13x |
 | Retained numeric class instances and field traversal, 100K instances | 7.82 ms | 0.970 ms | 0.855 ms | 0.12x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
