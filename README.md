@@ -160,6 +160,7 @@ Runtime performance:
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | — | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | — | 0.45x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 2.28 ms | 0.985 ms | — | 0.43x |
+| map, filter and sum, 10 passes over 10K integers from 0-255 | 1.14 ms | 0.477 ms | 0.268 ms (array methods) | 0.42x |
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | — | 0.41x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | — | 0.40x |
 | Class getter returning `this.base * 2 + 1`, 100K reads | 0.0682 ms | 0.0274 ms | — | 0.40x |
@@ -171,7 +172,6 @@ Runtime performance:
 | Mixed array, 100K elements and 5 traversals | 3.19 ms | 1.15 ms | — | 0.36x |
 | Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | — | 0.35x |
 | Numeric callback reading `arguments.length`, 100K calls | 1.26 ms | 0.435 ms | — | 0.35x |
-| map, filter and sum, 10 passes over 10K integers from 0-255 | 1.39 ms | 0.483 ms | 0.310 ms (array methods) | 0.35x |
 | Currency names, 10K cached calls across German, French, Russian and British English | 28.24 ms | 9.55 ms | — | 0.34x |
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | — | 0.33x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | — | 0.32x |
