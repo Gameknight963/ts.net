@@ -259,6 +259,8 @@ public static partial class Js
     }
     public static object CallPromiseThen(object target, object receiver, object handler) => target is PromiseThenFunction method
         ? method.InvokeSingle(SuperReceiver(receiver), handler) : CallMethod(target, receiver, new[] { handler });
+    public static bool CanReusePromiseHandler(object target, object receiver) =>
+        target is PromiseThenFunction && receiver is JsPromise;
     sealed class PromiseCatchFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("catch requires a receiver")), null, "catch", 1)
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments) => CallMethod(Js.Get(receiver, "then"), receiver, new[] { Undefined, FunctionArgument(arguments, 0) });

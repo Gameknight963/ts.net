@@ -114,6 +114,7 @@ internal static partial class CompilerFunctions
             Vector<byte> name = numbered_name('d', get_symbol(n.symbol, c).id);
             b.function_body_caches.at_mut(n.symbol) = b.plan.field(program, 0x13, b.RuntimeToken(RuntimeMember.FunctionBodyType), name.view());
         }
+        il_prepare_promise_handlers(program, c, b);
     }
     internal static int il_numeric_function(int symbol, Compiler c)
     {
