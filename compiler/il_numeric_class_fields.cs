@@ -71,6 +71,7 @@ internal static partial class CompilerFunctions
             bool numeric=get_type(get_field(member,c).type,c).kind==TypeKind.Number;
             fields.Add((get_field(member,c).name,b.plan.field(klass,1,numeric ? -3 : -5,"field_"+fields.Count),numeric));
         }
+        b.class_field_tokens[type] = fields.Select(field => field.Token).ToList();
         b.begin(b.plan.method1(5,klass,0xc4,-6,-4,"NumericFieldIndex"));
         for(int i=0;i<fields.Count;i++)
         {

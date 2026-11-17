@@ -766,6 +766,12 @@ internal static partial class CompilerFunctions
             }
             ScalarField scalar = il_scalar_field(entry, c, b);
             if (scalar.slot >= 0) { b.emit(0xfe0c, scalar.slot); b.convert(scalar.type, n.type, c); return; }
+            int fieldReader = il_class_field_reader(entry, c, b);
+            if (fieldReader != 0) {
+                il_boxed(n.left, c, b); b.emit(0x28, fieldReader);
+                if (get_type(n.type, c).kind != TypeKind.Number) b.from_object(n.type, c);
+                return;
+            }
             il_expression(n.left, c, b); int owner = get_node(n.left, c).type;
             if (get_type(owner, c).kind == TypeKind.Array && is_text(n.name, text_length, c))
             {
@@ -1324,6 +1330,7 @@ internal static partial class CompilerFunctions
         while (statement != 0) { il_statement(statement, 0, c, b); statement = get_node(statement, c).next; }
         b.op(0x2a);
         b.begin(entry); b.op(0x14); b.emit(0xfe06, main); b.emit(0x73, b.RuntimeToken(RuntimeMember.ActionConstructor)); b.call(RuntimeMember.Run); b.op(0x2a);
+        il_class_field_reader_bodies(c, b);
         il_class_field_writer_bodies(c, b);
         il_class_field_initializer_bodies(c, b);
         b.plan.finish(entry, path);
