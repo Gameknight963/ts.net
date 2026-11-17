@@ -254,6 +254,14 @@ public static partial class Js
         }
         return CheckedNumberValue(ArrayIndexGetNumberKey(receiver, index));
     }
+    // A missing result means the loop must use ordinary lookup. This probe
+    // never invokes accessors or reads inherited elements.
+    public static double? TryReadOwnArrayNumber(object receiver, int index)
+    {
+        if (receiver is TaggedArray tagged && tagged.TryReadNumericPayload(index, out double value)) return value;
+        if (receiver is JsArray array && JsArray.TryReadOwnDenseValue(array, index, out object stored) && stored is double numeric) return numeric;
+        return null;
+    }
     // Inlining these index checks enlarged callers and slowed mixed-array loops.
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static bool ArrayIsNumberKey(object receiver, double? index)

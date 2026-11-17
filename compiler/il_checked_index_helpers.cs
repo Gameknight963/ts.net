@@ -1,10 +1,13 @@
 namespace Tsnet.Compiler;
 using static Tsnet.Compiler.CompilerFunctions;
 
+internal readonly record struct CheckedIndexHelperCall(int Receiver, int Index, int ReceiverType, int IndexType);
+
 internal static partial class CompilerFunctions
 {
-    internal static bool il_checked_index_helper(int entry, Compiler c, IlBackend b)
+    internal static bool il_checked_index_helper_call(int entry, Compiler c, IlBackend b, out CheckedIndexHelperCall match)
     {
+        match = default;
         Node assertion = get_node(entry, c);
         if (assertion.kind != NodeKind.Assert || get_type(assertion.type, c).kind != TypeKind.Number) return false;
         Node call = get_node(assertion.left, c);
@@ -31,9 +34,16 @@ internal static partial class CompilerFunctions
         if (argument == 0 || get_node(argument, c).kind == NodeKind.Spread) return false;
         int position = get_node(argument, c).next;
         if (position == 0 || get_node(position, c).next != 0 || get_node(position, c).kind == NodeKind.Spread) return false;
+        match = new(argument, position, first.type, second.type);
+        return true;
+    }
+
+    internal static bool il_checked_index_helper(int entry, Compiler c, IlBackend b)
+    {
+        if (!il_checked_index_helper_call(entry, c, b, out var match)) return false;
         // Preserve parameter conversions and their left-to-right evaluation.
-        il_as(argument, first.type, c, b);
-        il_as(position, second.type, c, b);
+        il_as(match.Receiver, match.ReceiverType, c, b);
+        il_as(match.Index, match.IndexType, c, b);
         b.call(RuntimeMember.CheckedArrayNumberValue);
         return true;
     }
