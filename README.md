@@ -155,6 +155,7 @@ Runtime performance:
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | — | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | — | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | — | 0.45x |
+| Add a 32-digit BigInt literal 10K times | 0.310 ms | 0.138 ms | 0.221 ms (`BigInteger`) | 0.45x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 2.28 ms | 0.985 ms | — | 0.43x |
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | — | 0.41x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | — | 0.40x |
@@ -190,6 +191,7 @@ Runtime performance:
 | Call a callback with an object and a number, 100K calls | 0.307 ms | 0.0611 ms | — | 0.20x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
+| BigInt add/subtract loop, 100K iterations | 3.097 ms | 0.492 ms | 0.448 ms (`BigInteger`) | 0.16x |
 | Retained class instances with number, string and boolean fields, 100K instances | 8.75 ms | 1.133 ms | 1.058 ms | 0.13x |
 | Retained numeric class instances and field traversal, 100K instances | 7.82 ms | 0.970 ms | 0.855 ms | 0.12x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
