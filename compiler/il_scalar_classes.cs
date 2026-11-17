@@ -37,7 +37,7 @@ internal static partial class CompilerFunctions
     }
 
     internal static List<(int Name, int Value)> scalar_class_fields(int entry, Vector<int> definitions,
-        Vector<int> declarations, Vector<int> parameters, Compiler c, IlBackend b)
+        Vector<int> declarations, Vector<int> parameters, Compiler c, IlBackend b, bool recordPlan = true)
     {
         Node construction = get_node(entry, c);
         if (construction.kind != NodeKind.Construct || construction.left == 0 || construction.type == 0 ||
@@ -101,11 +101,11 @@ internal static partial class CompilerFunctions
             if (!literal && (value.kind != NodeKind.Undefined || value.constant)) return null;
             values.Add((field.name, field.right));
         }
-        if (!scalar_constructor(entry, klass.right, values.Select(value => value.Name).ToList(), count, c, b)) return null;
+        if (!scalar_constructor(entry, klass.right, values.Select(value => value.Name).ToList(), count, c, b, recordPlan)) return null;
         return values;
     }
 
-    internal static bool scalar_constructor(int entry, int constructor, List<int> owned, int count, Compiler c, IlBackend b)
+    internal static bool scalar_constructor(int entry, int constructor, List<int> owned, int count, Compiler c, IlBackend b, bool recordPlan = true)
     {
         Node construction = get_node(entry, c);
         if (constructor == 0) return construction.children == 0 && owned.Count == count;
@@ -183,8 +183,10 @@ internal static partial class CompilerFunctions
             assignments.Add((name, value.symbol));
         }
         if (owned.Count != count) return false;
-        b.scalar_constructor_arguments[entry] = arguments;
-        b.scalar_constructor_assignments[entry] = assignments;
+        if (recordPlan) {
+            b.scalar_constructor_arguments[entry] = arguments;
+            b.scalar_constructor_assignments[entry] = assignments;
+        }
         return true;
     }
 

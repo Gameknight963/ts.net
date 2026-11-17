@@ -94,10 +94,36 @@ internal static partial class CompilerFunctions
             Node owner = get_node(property.left, c);
             return owner.kind == NodeKind.Name && Record(owner.symbol) && field(get_node(records[owner.symbol], c).type, property.name, c) != 0;
         }
+        Vector<int> classDefinitions = default, classDeclarations = default, classParameters = default;
+        bool classProofReady = false;
+        bool PureConstruction(int value)
+        {
+            if (!classProofReady) {
+                classProofReady = true;
+                classDefinitions = zero_ids(c.symbol_store.count() + 1);
+                classDeclarations = zero_ids(c.symbol_store.count() + 1);
+                classParameters = zero_ids(c.symbol_store.count() + 1);
+                for (int i = 1; i <= c.node_store.count(); i++) {
+                    Node node = get_node(i, c);
+                    if ((node.kind is NodeKind.Variable or NodeKind.Binding) && node.symbol != 0) {
+                        classDefinitions.at_mut(node.symbol) = i;
+                        classDeclarations.at_mut(node.symbol)++;
+                    }
+                    if (node.kind == NodeKind.Function)
+                        for (int parameter = node.children; parameter != 0; parameter = get_node(parameter, c).next)
+                            if (get_node(parameter, c).symbol != 0) classParameters.at_mut(get_node(parameter, c).symbol) = 1;
+                }
+            }
+            if (scalar_class_fields(value, classDefinitions, classDeclarations, classParameters, c, b, recordPlan: false) == null) return false;
+            for (int argument = get_node(value, c).children; argument != 0; argument = get_node(argument, c).next)
+                if (!Pure(argument)) return false;
+            return true;
+        }
         bool Pure(int value)
         {
             if (value == 0) return false;
             Node n = get_node(value, c);
+            if (n.kind == NodeKind.Construct) return PureConstruction(value);
             if (il_key_may_invoke(n, c) || il_coercion_may_invoke(n, c)) return false;
             if (n.kind is NodeKind.Number or NodeKind.String or NodeKind.Boolean or NodeKind.Undefined) return true;
             if (n.kind == NodeKind.Name) return n.symbol != 0 && declarations.ContainsKey(n.symbol) &&
@@ -155,7 +181,7 @@ internal static partial class CompilerFunctions
                 for (int item = argument.children; item != 0; item = get_node(item, c).next)
                     if (!Pure(get_node(item, c).left)) return false;
             }
-            else return false;
+            else if (argument.kind != NodeKind.Construct || !Pure(expression.children)) return false;
             Node owner = get_node(callee.left, c);
             if (owner.kind != NodeKind.Name || !arrays.Contains(owner.symbol)) return false;
             push = n.left;array = owner.symbol;
