@@ -50,7 +50,10 @@ public static partial class Js
             return ReadBinaryNumber(Buffer.Bytes.AsSpan(Offset + (int)index * Size, Size), Kind, BitConverter.IsLittleEndian);
         }
         internal object ReadIndex(double index) => Valid(index) ? Read((int)index) : Undefined;
-        internal void WriteIndex(double index, object value) => Write(Valid(index) ? (int)index : -1, value);
+        // Conversion can resize the buffer. Preserve the integer index and let
+        // Write check the current bounds after converting the value.
+        internal void WriteIndex(double index, object value) => Write(
+            index >= 0 && index <= int.MaxValue && index == Math.Truncate(index) ? (int)index : -1, value);
         internal bool Valid(double index) => index >= 0 && index < Count && index == Math.Truncate(index);
         internal double? ReadNumberProperty(string key)
         {
@@ -73,7 +76,7 @@ public static partial class Js
         public override object Set(string key, object value)
         {
             if (!NumericKey(key, out double index)) return base.Set(key, value);
-            Write(Valid(index) ? (int)index : -1, value); return value;
+            WriteIndex(index, value); return value;
         }
         public override object SetOwnValue(string key, object value) => NumericKey(key, out _) ? Set(key, value) : base.SetOwnValue(key, value);
         public override bool HasOwn(string key) => NumericKey(key, out double index) ? Valid(index) : base.HasOwn(key);
