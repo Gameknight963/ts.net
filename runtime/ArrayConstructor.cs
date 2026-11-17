@@ -49,7 +49,7 @@ public static partial class Js
             foreach (string name in new[] { "at", "copyWithin", "entries", "fill", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "includes", "keys", "toReversed", "toSorted", "toSpliced", "values" })
                 unscopables.DefineOwn(name, BoxedTrue);
             prototype.DefineArrayProperty(new(PropertyKey(UnscopablesSymbol), unscopables, null, null, false, false, false, true));
-            Member("isArray", new JsFunction((FunctionBody)(static args => BoxBoolean(FunctionArgument(args, 0) is JsArray)), null, "isArray", 1));
+            Member("isArray", new JsFunction((FunctionBody)(static args => BoxBoolean(IsProxyArray(FunctionArgument(args, 0)))), null, "isArray", 1));
             Member("of", new ArrayOfFunction()); Member("from", new ArrayFromFunction()); Member("fromAsync", new ArrayFromAsyncFunction());
         }
         public override object Construct(object[] arguments) => CreateArray(arguments);

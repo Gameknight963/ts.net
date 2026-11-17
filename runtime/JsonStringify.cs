@@ -49,7 +49,7 @@ public static partial class Js
         internal bool Written;
         internal JsonWriteFrame(TsObject value, JsArray propertyList, object[] previousNames)
         {
-            Value = value; Array = value is JsArray;
+            Value = value; Array = IsProxyArray(value);
             if (Array)
             {
                 DirectArray = value.GetType() == typeof(JsArray) || value is NumberArray or TaggedArray;
@@ -78,7 +78,7 @@ public static partial class Js
         internal JsonWriter(object replacement, object space)
         {
             replacer = replacement as JsFunction;
-            if (replacement is JsArray array)
+            if (replacement is TsObject array && IsProxyArray(array))
             {
                 propertyList = new JsArray(0); var seen = new HashSet<string>(StringComparer.Ordinal);
                 long length = IndexedLength(array);

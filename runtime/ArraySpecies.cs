@@ -26,10 +26,10 @@ public static partial class Js
     static JsFunction ArraySpeciesConstructor(TsObject source, out bool native)
     {
         native = false;
-        if (source is not JsArray) return null;
+        if (source is not JsArray && !IsProxyArray(source)) return null;
         string key = PropertyKey(SpeciesSymbol);
         // This guard avoids calling user code on the existing array-copy path.
-        if (!source.HasOwn("constructor") && ReferenceEquals(source.PropertyPrototype, ArrayPrototype) &&
+        if (source is not IProxyValue && !source.HasOwn("constructor") && ReferenceEquals(source.PropertyPrototype, ArrayPrototype) &&
             !ArrayPrototype.TryOwnAccessor("constructor", out _) && ReferenceEquals(ArrayPrototype.Get("constructor"), RuntimeNamespaces.Array) &&
             RuntimeNamespaces.Array.TryOwnAccessor(key, out var accessor) && accessor.Getter is ConstructorSpeciesGetter)
         { native = true; return null; }

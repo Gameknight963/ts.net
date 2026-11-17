@@ -62,6 +62,7 @@ public static partial class Js
         internal object Copy(object value)
         {
             RuntimeHelpers.EnsureSufficientExecutionStack();
+            if (value is IProxyValue) throw Uncloneable();
             if (value is null or string or double or bool or BigInteger || IsUndefined(value)) return value;
             if (value is not TsObject source || source is JsFunction || source.IsModuleNamespace) throw Uncloneable();
             if (copies.TryGetValue(source, out var existing)) return existing;

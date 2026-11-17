@@ -5,6 +5,7 @@ public static partial class Js
     static bool ObjectExtensible(object value) => value is TsObject target && target.IsExtensible && !target.IsModuleNamespace && target is not (JsTemplateArray or JsRawJson);
     static object ObjectPreventExtensions(object value)
     {
+        if (value is IProxyValue proxy) { if (!proxy.Proxy.PreventExtensions()) throw new InvalidOperationException("Proxy rejected preventing extensions"); return value; }
         if (value is not TsObject target || !ObjectExtensible(value)) return value;
         if (target is TypedArrayValue array && !array.CanPreventExtensions) throw new InvalidOperationException("Cannot prevent extensions on this typed array");
         if (target is JsArray ordinary) { ordinary.PreventExtensions(); return value; }
@@ -15,6 +16,7 @@ public static partial class Js
     static object ReflectPreventExtensions(object value)
     {
         var target = ReflectTarget(value);
+        if (target is IProxyValue proxy) return BoxBoolean(proxy.Proxy.PreventExtensions());
         if (target is TypedArrayValue array && !array.CanPreventExtensions) return BoxBoolean(false);
         ObjectPreventExtensions(target);
         return BoxBoolean(true);

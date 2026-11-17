@@ -38,7 +38,7 @@ public static partial class Js
                 stack[top] = frame;
                 if (!TryIndexedValue(frame.Source, index, out object value)) continue;
                 if (frame.Map) value = callback.InvokeWithReceiver(thisValue, new object[] { value, (double)index, source });
-                if (frame.Depth > 0 && value is JsArray array)
+                if (frame.Depth > 0 && value is TsObject array && IsProxyArray(array))
                 {
                     // Bound recursive input just as an engine bounds its call stack.
                     // Ordinary deep input uses managed frames rather than C# recursion.

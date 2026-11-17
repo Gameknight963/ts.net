@@ -4,6 +4,7 @@ public static partial class Js
 {
     static bool ReflectSet(TsObject target, string key, object value, object receiver)
     {
+        if (target is IProxyValue proxy) return proxy.Proxy.Set(key, value, receiver);
         if (target.IsModuleNamespace) return false;
         object own = target.OwnPropertyDescriptor(key);
         if (IsUndefined(own)) {
@@ -24,6 +25,11 @@ public static partial class Js
         if (!IsUndefined(existing)) {
             var descriptor = (TsObject)existing;
             if (!descriptor.HasOwn("writable") || !Truthy(descriptor.Get("writable"))) return false;
+        }
+        if (destination is IProxyValue proxyReceiver) {
+            var fields = DescriptorFields.Value;
+            if (IsUndefined(existing)) fields |= DescriptorFields.Writable | DescriptorFields.Enumerable | DescriptorFields.Configurable;
+            return proxyReceiver.Proxy.Define(key, new(value, null, null, true, true, true, fields));
         }
         try { destination.SetOwnValue(key, value); }
         catch (JsArray.LengthBlockedException) { return false; }

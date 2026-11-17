@@ -147,7 +147,7 @@ public static partial class Js
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object Check<T>(object value, string message) where T : class =>
-        value == null || ReferenceEquals(value, Undefined) || value is T ? value : throw new InvalidCastException(message);
+        value == null || ReferenceEquals(value, Undefined) || value is T || value is IProxyValue proxy && typeof(T).IsAssignableFrom(proxy.Proxy.TargetType) ? value : throw new InvalidCastException(message);
     public static int StringLength(object value) =>
         value is string text ? text.Length : throw new InvalidOperationException("Expected string");
 
@@ -343,7 +343,7 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double ArrayPushOne(object receiver, object value)
     {
-        if (receiver is not JsArray array) throw new InvalidOperationException("push requires an array");
+        if (receiver is not JsArray array) return ArrayPush(receiver, new[] {value});
         if (!array.CanAppendDirectly) return ArrayPush(array, new[] {value});
         array.Append(value);
         return array.Length();
@@ -479,11 +479,11 @@ public static partial class Js
         else IndexSet(receiver, index, BoxNumber(value));
     }
     public static double ArrayLength(object receiver) =>
-        receiver is JsArray array ? array.Length() : throw new InvalidOperationException("Expected array");
+        receiver is JsArray array ? array.Length() : CheckedNumberValue(Get(receiver, "length"));
     public static void ArraySetLength(object receiver, double length)
     {
-        if (receiver is not JsArray array) throw new InvalidOperationException("Expected array");
-        array.SetLength(length);
+        if (receiver is JsArray array) array.SetLength(length);
+        else Set(receiver, "length", length);
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double? ArrayGetNumberAt(object receiver, int index)

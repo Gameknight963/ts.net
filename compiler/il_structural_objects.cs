@@ -29,6 +29,7 @@ internal static partial class CompilerFunctions
             int good = b.label(), bad = b.label();
             int fastType = get_type(check.Type, c).name != 0 ? b.RuntimeToken(RuntimeMember.TsObjectType) : b.interface_type(check.Type);
             b.emit(0xfe09, 0); b.emit(0x75, fastType); b.emit(0x3a, good);
+            b.emit(0xfe09, 0); b.emit(0x28, b.plan.specialize(b.RuntimeToken(RuntimeMember.ProxyMatchesType), fastType)); b.emit(0x3a, good);
             for (int member = get_type(check.Type, c).fields; member != 0; member = get_field(member, c).next)
             {
                 Field field = get_field(member, c);

@@ -12,10 +12,10 @@ public static partial class Js
             long position = 0;
             void Append(object item)
             {
-                bool spreadable = item is JsArray;
+                bool spreadable = false;
                 if (item is TsObject obj) {
                     object flag = obj.Get(PropertyKey(ConcatSpreadableSymbol));
-                    if (!IsUndefined(flag)) spreadable = Truthy(flag);
+                    spreadable = IsUndefined(flag) ? IsProxyArray(item) : Truthy(flag);
                 }
                 if (spreadable)
                 {
