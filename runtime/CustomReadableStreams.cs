@@ -182,7 +182,18 @@ public static partial class Js
         internal JsPromise ClosedPromise = new() {Handled = true};
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : BufferedReaderMethods.Prototype;
         internal CustomStreamReader(CustomReadableStream owner) {Owner = owner;owner.InitializeReader(this);}
-        internal JsPromise Read() => BodyPromiseOperation(() => Owner == null ? throw new InvalidOperationException("Reader lock has been released") : Owner.Read(this));
+        internal JsPromise Read()
+        {
+            try {
+                if (Owner == null) throw new InvalidOperationException("Reader lock has been released");
+                return Owner.Read(this);
+            }
+            catch (Exception error) {
+                var result = new JsPromise();
+                result.Settle(CaughtValue(error), true);
+                return result;
+            }
+        }
         internal JsPromise Cancel(object reason) => Owner == null ? throw new InvalidOperationException("Reader lock has been released") : Owner.Cancel(reason);
         internal void Release()
         {
