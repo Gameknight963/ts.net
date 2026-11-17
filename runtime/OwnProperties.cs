@@ -3,9 +3,15 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+// Data stores can serve as the state header, avoiding a separate container.
+class ObjectPropertyState
+{
+    internal JsAccessors Accessors;
+}
+
 // Most dynamic records have only a few keys. Keep those entries together and
 // use a dictionary for the tail, preserving insertion order across both.
-sealed class OwnProperties
+sealed class OwnProperties : ObjectPropertyState
 {
     // Low bits remember first writes; this bit remains set after a cell is created.
     const int HasNumberCells = 16;

@@ -19,10 +19,8 @@ public abstract partial class TsObject
     public virtual object CloneForSpread()
     {
         var result = (TsObject)MemberwiseClone();
-        if (propertyState != null) result.propertyState = new PropertyState {
-            Extra = extra == null ? null : new OwnProperties(extra),
-            Accessors = accessors
-        };
+        if (extra is { } properties) result.propertyState = new OwnProperties(properties) {Accessors = accessors};
+        else if (propertyState != null) result.propertyState = new ObjectPropertyState {Accessors = accessors};
         return result;
     }
 }

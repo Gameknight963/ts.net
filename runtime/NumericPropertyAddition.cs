@@ -6,9 +6,9 @@ public abstract partial class TsObject
         // Unknown CLR overrides and descriptor-backed properties retain Get.
         if (this is not JsCreatedObject && GetType() != typeof(JsDynamicObject)) return false;
         if (((JsDescriptorObject)this).HasPropertyDescriptors) return false;
-        PropertyState state = propertyState;
-        if (state == null || state.Extra == null || state.Accessors is { } accessors && accessors.ContainsKey(key)) return false;
-        return state.Extra.TryReadNumber(key, out value);
+        OwnProperties properties = extra;
+        if (properties == null || properties.Accessors is { } accessors && accessors.ContainsKey(key)) return false;
+        return properties.TryReadNumber(key, out value);
     }
 }
 

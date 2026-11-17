@@ -72,12 +72,9 @@ public abstract partial class TsObject
         get => propertyState?.Accessors;
         set
         {
-            if (value != null) (propertyState ??= new()).Accessors = value;
-            else if (propertyState != null)
-            {
-                propertyState.Accessors = null;
-                if (propertyState.Extra == null) propertyState = null;
-            }
+            if (propertyState != null) propertyState.Accessors = value;
+            else if (value != null) propertyState = new ObjectPropertyState {Accessors = value};
+            if (value == null && propertyState is not OwnProperties) propertyState = null;
         }
     }
     protected bool StoredExtensionsAllowed => accessors is not NonExtensibleAccessors;
@@ -110,8 +107,9 @@ public abstract partial class TsObject
         if (!IsExtensible && !HasOwn(key) && (extra == null || !extra.ContainsKey(key))) throw new InvalidOperationException("Object is not extensible");
         if (!TryOwnAccessor(key, out var accessor))
         {
-            accessor = new JsAccessor(); (accessors ??= new())[key] = accessor;
+            accessor = new JsAccessor();
             (extra ??= new OwnProperties())[key] = Js.Undefined;
+            (accessors ??= new())[key] = accessor;
         }
         var callable = (JsFunction)function;
         if (inferName) callable.InferPropertyName((mode == 1 ? "get " : "set ") + Js.PropertyFunctionName(key));

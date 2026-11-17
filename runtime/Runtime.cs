@@ -9,25 +9,18 @@ using System.Runtime.CompilerServices;
 // does not pass through this representation.
 public abstract partial class TsObject
 {
-    // Plain records carry one reference; property stores are created on demand.
-    private sealed class PropertyState
-    {
-        internal OwnProperties Extra;
-        internal JsAccessors Accessors;
-    }
-    private PropertyState propertyState;
+    // Plain records carry one reference. When both stores are needed, the
+    // data store also owns the accessor store, avoiding another container.
+    private ObjectPropertyState propertyState;
     private OwnProperties extra
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => propertyState?.Extra;
+        get => propertyState as OwnProperties;
         set
         {
-            if (value != null) (propertyState ??= new()).Extra = value;
-            else if (propertyState != null)
-            {
-                propertyState.Extra = null;
-                if (propertyState.Accessors == null) propertyState = null;
-            }
+            JsAccessors previous = accessors;
+            if (value == null) propertyState = previous == null ? null : new ObjectPropertyState {Accessors = previous};
+            else {value.Accessors = previous; propertyState = value;}
         }
     }
     internal int OwnPropertyVersion => extra?.Version ?? 0;

@@ -46,10 +46,10 @@ long Allocate(int count) {
     return bytes;
 }
 for(int i=0;i<100;i++) Allocate(4);
-// Include the lazy property-state container, while requiring inline fields
-// to share the same storage allocation rather than grow a dictionary.
+// Inline fields share one data store; adding entries must not allocate
+// a separate container or grow a dictionary.
 long singleBagBytes = Allocate(1), fourFieldBagBytes = Allocate(4);
-if (singleBagBytes != fourFieldBagBytes || fourFieldBagBytes > 176)
+if (singleBagBytes != fourFieldBagBytes || fourFieldBagBytes > 160)
     throw new Exception($"Small property bag storage grew: {singleBagBytes} and {fourFieldBagBytes} bytes");
 var numeric = new JsClassInstance(); numeric.DefineOwn("value", 0d); Js.SetNumber(numeric, "value", 1d); Js.SetNumber(numeric, "value", 2d);
 object oldNumber = numeric.Get("value"); var numericCopy = new JsDynamicObject(); numeric.CopySpreadExtras(numericCopy);
