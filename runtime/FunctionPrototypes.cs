@@ -72,6 +72,7 @@ public partial class JsFunction
 public static partial class Js
 {
     public static object BeginOrdinaryConstruction(object target) => ((JsFunction)target).BeginOrdinaryConstruction();
+    public static object FinishOrdinaryConstruction(object returned, object receiver) => returned is TsObject ? returned : ResolveThis(receiver);
     public static object ConstructNumberArgument(object target, double? value) => target is JsFunction function
         ? function.ConstructNumber1(value) : throw new InvalidOperationException("Value is not a constructor");
 

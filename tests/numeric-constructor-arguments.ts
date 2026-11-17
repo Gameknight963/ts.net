@@ -52,3 +52,25 @@ console.log("class", new ClassPoint(79).value);
 const NativeNumber: any = Number;
 const NativeDate: any = Date;
 console.log("builtins", new NativeNumber(83).valueOf(), new NativeDate(0).getTime());
+
+const ConditionalReturn: any = function(this: any, value: number): any {
+ this.value = value;
+ if (value === 0) return {value: 101};
+ if (value === 1) return [103];
+ if (value === 2) return function() {return 107;};
+ if (value === 3) return null;
+ return value;
+};
+console.log("conditional returns", new ConditionalReturn(0).value, new ConditionalReturn(1)[0], new ConditionalReturn(2)(), new ConditionalReturn(3).value, new ConditionalReturn(4).value);
+const NestedReturn: any = function(this: any, value: number): void {
+ function inner(): object {return {value};}
+ this.value = (inner() as {value: number}).value;
+};
+console.log("nested return", new NestedReturn(109).value);
+const CapturedTarget: any = function(this: any, value: number): void {
+ const target = () => new.target;
+ this.value = value;
+ this.target = target;
+};
+const capturedTarget = new CapturedTarget(113);
+console.log("captured target", capturedTarget.value, capturedTarget.target() === CapturedTarget);
