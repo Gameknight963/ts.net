@@ -157,6 +157,7 @@ Runtime performance:
 | Construct and run a chain of 10K handlers | 0.759 ms | 0.306 ms | — | 0.40x |
 | Class numeric getter, 100K reads | 0.0702 ms | 0.0274 ms | — | 0.39x |
 | Serialize 1,000 records with 16 numeric fields 20 times, without a replacer | 13.48 ms | 5.28 ms | — | 0.39x |
+| Read and sum one numeric element 100K times through a mixed-array helper | 0.0698 ms | 0.0273 ms | 0.0675 ms (`object[]`) | 0.39x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | — | 0.38x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | — | 0.37x |
 | Mixed array, 100K elements and 5 traversals | 3.19 ms | 1.15 ms | — | 0.36x |
@@ -182,7 +183,6 @@ Runtime performance:
 | Call a callback with an object and a number, 100K calls | 0.307 ms | 0.0611 ms | — | 0.20x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
-| Read and sum one numeric element 100K times through a mixed-array helper | 0.195 ms | 0.0272 ms | 0.0694 ms (`object[]`) | 0.14x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
