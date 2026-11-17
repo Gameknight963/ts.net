@@ -159,10 +159,10 @@ Runtime performance:
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | — | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | — | 0.45x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 2.28 ms | 0.985 ms | — | 0.43x |
+| Construct and run a chain of 10K handlers | 0.760 ms | 0.312 ms | 0.624 ms (queued Task continuations) | 0.41x |
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | — | 0.41x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | — | 0.40x |
 | Class getter returning `this.base * 2 + 1`, 100K reads | 0.0682 ms | 0.0274 ms | — | 0.40x |
-| Construct and run a chain of 10K handlers | 0.759 ms | 0.306 ms | — | 0.40x |
 | Class numeric getter, 100K reads | 0.0702 ms | 0.0274 ms | — | 0.39x |
 | Serialize 1,000 records with 16 numeric fields 20 times, without a replacer | 13.48 ms | 5.28 ms | — | 0.39x |
 | Read and sum one numeric element 100K times through a mixed-array helper | 0.0698 ms | 0.0273 ms | 0.0675 ms (`object[]`) | 0.39x |
@@ -188,6 +188,7 @@ Runtime performance:
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 1.84 ms | 0.463 ms | — | 0.25x |
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
+| Attach 10K handlers to one pending promise and sum their results | 3.47 ms | 0.835 ms | 1.03 ms (queued Task continuations) | 0.24x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | — | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.17 ms | 0.479 ms | — | 0.22x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
