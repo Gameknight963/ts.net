@@ -68,3 +68,11 @@ function withEffects(): number {
  return total;
 }
 console.log("index effects", withEffects(), effects);
+
+function firstValue(values: any[]): any {return values[0];}
+const firstValues: any[] = [3, "text"];
+let firstTotal = 0;
+for (let i = 0; i < 64; i++) firstTotal += firstValue(firstValues) as number;
+console.log("one parameter helper", firstTotal);
+function emptyLoop(count: number): number {for (let i = 0; i < count; i++) {} return 17;}
+console.log("empty loop", emptyLoop(64), emptyLoop(0));

@@ -6,10 +6,13 @@ internal static partial class CompilerFunctions
     {
         if (counter == 0 || bound < 0 || b.loop_getter_values.Count != 0 || b.loop_getter_bodies.Count != 0 ||
             b.loop_getter_choices.Count != 0 || b.global_fields.at(counter) != 0 || b.capture_fields.at(counter) != 0) return false;
-        Node loop = get_node(entry, c), body = get_node(loop.fourth, c);
+        Node loop = get_node(entry, c);
+        if (loop.fourth == 0) return false;
+        Node body = get_node(loop.fourth, c);
         int statement = body.kind == NodeKind.Block ? body.children : loop.fourth;
+        if (statement == 0) return false;
         Node expression = get_node(statement, c);
-        if (expression.kind != NodeKind.Expression || expression.next != 0) return false;
+        if (expression.kind != NodeKind.Expression || expression.left == 0 || expression.next != 0) return false;
         Node assignment = get_node(expression.left, c);
         if (assignment.kind != NodeKind.Assign || !is_text(get_token(assignment.token, c).text, text_add_assign, c)) return false;
         Node total = get_node(assignment.left, c);

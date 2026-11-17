@@ -19,8 +19,10 @@ internal static partial class CompilerFunctions
         Node function = get_node(get_symbol(symbol, c).function, c);
         if (function.fourth != 0 || function.right != 0 || function.internal_continuation || function.children == 0 ||
             get_type(function.type, c).kind is not (TypeKind.Any or TypeKind.Unknown)) return false;
-        Node first = get_node(function.children, c), second = get_node(first.next, c);
-        if (first.kind != NodeKind.Variable || first.next == 0 || second.kind != NodeKind.Variable || second.next != 0 ||
+        Node first = get_node(function.children, c);
+        if (first.kind != NodeKind.Variable || first.next == 0) return false;
+        Node second = get_node(first.next, c);
+        if (second.kind != NodeKind.Variable || second.next != 0 ||
             first.left != 0 || first.third != 0 || second.left != 0 || second.third != 0 ||
             get_type(first.type, c).kind != TypeKind.Array || get_type(second.type, c).kind != TypeKind.Number ||
             get_type(get_type(first.type, c).element, c).kind is not (TypeKind.Any or TypeKind.Unknown)) return false;

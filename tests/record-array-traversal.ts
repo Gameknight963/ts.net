@@ -58,3 +58,9 @@ for (let i = 0; running; i++) {ordinary += i; running = i < 2;}
 const status = {running: true};
 for (let i = 0; status.running; i++) {ordinary += i; status.running = false;}
 console.log("other conditions", ordinary);
+
+function emptyRecords(values: Point[]): number {
+ for (let i = 0; i < values.length; i++) {}
+ return values.length;
+}
+console.log("empty record traversal", emptyRecords(items), emptyRecords([]));

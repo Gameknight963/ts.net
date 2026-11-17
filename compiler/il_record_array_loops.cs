@@ -20,7 +20,7 @@ internal static partial class CompilerFunctions
     {
         if (b.loop_versions != 0 || b.record_array_fields.Count != 0) return false;
         Node loop = get_node(entry, c);
-        if (loop.kind != NodeKind.For || loop.right == 0) return false;
+        if (loop.kind != NodeKind.For || loop.right == 0 || loop.fourth == 0) return false;
         Node condition = get_node(loop.right, c);
         if (condition.kind != NodeKind.Binary || condition.right == 0) return false;
         Node length = get_node(condition.right, c);
@@ -31,8 +31,9 @@ internal static partial class CompilerFunctions
             b.global_fields.at(counter) != 0 || b.capture_fields.at(counter) != 0) return false;
         Node body = get_node(loop.fourth, c);
         int statement = body.kind == NodeKind.Block ? body.children : loop.fourth;
+        if (statement == 0) return false;
         Node expression = get_node(statement, c);
-        if (expression.kind != NodeKind.Expression || expression.next != 0) return false;
+        if (expression.kind != NodeKind.Expression || expression.left == 0 || expression.next != 0) return false;
         Node assignment = get_node(expression.left, c);
         if (assignment.kind != NodeKind.Assign ||
             !is_text(get_token(assignment.token, c).text, text_add_assign, c)) return false;
@@ -61,6 +62,7 @@ internal static partial class CompilerFunctions
                     (owner != 0 && owner != shape)) return false;
                 owner = shape; reads.Add((item, member)); return true;
             }
+            if (node.kind is not (NodeKind.Binary or NodeKind.Unary)) return false;
             int op = get_token(node.token, c).text;
             bool sign = is_text(op, text_plus, c) || is_text(op, text_minus, c);
             if (node.kind == NodeKind.Unary) return sign && Pure(node.left);
