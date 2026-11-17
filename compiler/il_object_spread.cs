@@ -136,7 +136,10 @@ void il_spread_shapes(Compiler c, IlBackend b)
                         else { b.call(RuntimeMember.Get); if (storage != -5) b.from_object(record.type, c); }
                         b.op(0x2a);
                         b.begin(b.plan.method1(5, klass, 0x1e6, -1, storage, set.view()));
-                        b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0xfe09, 1); b.box(record.type, c); b.call(RuntimeMember.Set); b.op(0x26); b.op(0x2a);
+                        b.emit(0xfe09, 0); il_text(record.name, c, b); b.emit(0xfe09, 1);
+                        if (get_type(record.type, c).kind == TypeKind.Number) b.call(RuntimeMember.DynamicSetNumber);
+                        else { b.box(record.type, c); b.call(RuntimeMember.Set); b.op(0x26); }
+                        b.op(0x2a);
                     }
                     member = record.next;
                 }
