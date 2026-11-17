@@ -21,16 +21,18 @@ public static partial class Js
         }
         if (receiver is not TsObject destination || destination.IsModuleNamespace || destination is JsRawJson or JsTemplateArray) return false;
         object existing = destination.OwnPropertyDescriptor(key);
-        if (IsUndefined(existing) && !destination.IsExtensible) return false;
         if (!IsUndefined(existing)) {
             var descriptor = (TsObject)existing;
             if (!descriptor.HasOwn("writable") || !Truthy(descriptor.Get("writable"))) return false;
         }
         if (destination is IProxyValue proxyReceiver) {
+            // The definition operation decides whether this write can succeed.
+            // A separate extensibility query would introduce another trap.
             var fields = DescriptorFields.Value;
             if (IsUndefined(existing)) fields |= DescriptorFields.Writable | DescriptorFields.Enumerable | DescriptorFields.Configurable;
             return proxyReceiver.Proxy.Define(key, new(value, null, null, true, true, true, fields));
         }
+        if (IsUndefined(existing) && !destination.IsExtensible) return false;
         try { destination.SetOwnValue(key, value); }
         catch (JsArray.LengthBlockedException) { return false; }
         return true;
