@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -39,6 +40,9 @@ public static partial class Js
     }
     sealed class JsonParser(string text, bool remember)
     {
+        static readonly SearchValues<char> StringStops = SearchValues.Create(
+            "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\u0009\u000a\u000b\u000c\u000d\u000e\u000f" +
+            "\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f\"\\");
         int position;
         readonly Stack<JsonParseFrame> frames = new();
         Exception Invalid() => MakeThrown(new JsCaughtError("SyntaxError", "Invalid JSON at position " + position.ToString(CultureInfo.InvariantCulture)));
@@ -50,6 +54,9 @@ public static partial class Js
             Expect('"'); int start = position; StringBuilder result = null;
             while (position < text.Length)
             {
+                int next = text.AsSpan(position).IndexOfAny(StringStops);
+                if (next < 0) { position = text.Length; throw Invalid(); }
+                position += next;
                 char ch = text[position++];
                 if (ch == '"')
                 {
