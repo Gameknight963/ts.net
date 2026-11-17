@@ -10,6 +10,6 @@ for (int i = 0; i < 30; i++) kernel(1000, 0);
 long before = GC.GetAllocatedBytesForCurrentThread();
 var result = kernel(100000, 0);
 long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-if (result != 4999950000d || allocated > 28010000)
+if (result != 4999950000d || allocated > 18410000)
     throw new Exception($"Constructor result or allocation budget changed: {result}, {allocated}");
 Console.WriteLine($"PASS 100000 typed constructor results and allocation budget: {allocated} bytes");

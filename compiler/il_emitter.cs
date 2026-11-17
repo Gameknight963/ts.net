@@ -654,6 +654,9 @@ internal static partial class CompilerFunctions
                 b.emit(0xfe0c,args);b.call(RuntimeMember.ConstructArguments);b.from_object(n.type,c);return;
             }
             int argument=n.children,count=0;while(argument!=0){count++;argument=get_node(argument,c).next;}
+            if (count == 1 && get_type(get_node(n.children,c).type,c).kind == TypeKind.Number) {
+                il_expression(n.children,c,b);b.call(RuntimeMember.ConstructNumberArgument);b.from_object(n.type,c);return;
+            }
             b.emit(0x20,count);b.emit(0x8d,b.RuntimeToken(RuntimeMember.ObjectType));argument=n.children;int index=0;
             while(argument!=0){b.op(0x25);b.emit(0x20,index++);il_boxed(argument,c,b);b.op(0xa2);argument=get_node(argument,c).next;}
             b.call(RuntimeMember.Construct);b.from_object(n.type,c);

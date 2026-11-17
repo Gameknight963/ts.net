@@ -302,9 +302,11 @@ internal static partial class CompilerFunctions
         int value_count = b.function_values_needed.at(symbol) != 0 ? il_numeric_value_function(symbol, c) : -1;
         bool value_pair = value_count == 2;
         int receiver_count = il_numeric_receiver_function(symbol, c);
-        if (count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !reduce_callback && value_count < 0 && receiver_count < 0) return;
+        bool numeric_constructor = il_numeric_constructor(symbol, c, b);
+        bool receiver_class = receiver_count >= 0 || numeric_constructor && get_node(get_symbol(symbol,c).function,c).fourth != 0;
+        if (!numeric_constructor && count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !reduce_callback && value_count < 0 && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
-        int parent = b.RuntimeToken(receiver_count >= 0 ? RuntimeMember.ReceiverFunctionType : RuntimeMember.FunctionType);
+        int parent = b.RuntimeToken(receiver_class ? RuntimeMember.ReceiverFunctionType : RuntimeMember.FunctionType);
         if (!b.function_class_types.TryGetValue(symbol, out int type)) {
             type = b.plan.type(name.view(), parent, 0x101); b.function_class_types[symbol] = type;
         }
@@ -314,7 +316,7 @@ internal static partial class CompilerFunctions
         int constructor = b.plan.method(5, type, 0x1886, -1, parameters.view(), ".ctor");
         b.function_constructors.at_mut(symbol) = constructor; b.begin(constructor);
         for (int i = 0; i < 5; i++) { b.emit(0xfe09, i); }
-        b.call(receiver_count >= 0 ? RuntimeMember.ReceiverFunctionConstructor : RuntimeMember.FunctionConstructor);
+        b.call(receiver_class ? RuntimeMember.ReceiverFunctionConstructor : RuntimeMember.FunctionConstructor);
         if (context != 0) { b.emit(0xfe09, 0); b.emit(0xfe09, 5); b.emit(0x7d, environment_field); }
         b.op(0x2a);
         if (b.function_values_needed.at(symbol) != 0)
@@ -325,6 +327,8 @@ internal static partial class CompilerFunctions
             b.emit(0xfe09, 0); b.call(RuntimeMember.ReadFunctionApplyProperty); b.op(0x2a);
         }
         il_apply_array_override(symbol, type, c, b);
+        if (numeric_constructor) il_numeric_constructor_method(symbol, type, context, environment_field, c, b);
+        if (numeric_constructor && receiver_class && receiver_count < 0) return;
         if (receiver_count >= 0)
         {
             il_numeric_receiver_methods(symbol, type, context, environment_field, receiver_count, c, b);

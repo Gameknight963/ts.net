@@ -74,6 +74,7 @@ public partial class JsFunction : JsDescriptorObject
     public virtual double? InvokeMethodNumber1(object receiver,double? first)=>InvokeNumber1(first);
     public virtual double? InvokeMethodNumber2(object receiver,double? first,double? second)=>InvokeNumber2(first,second);
     public virtual object Construct(object[] arguments) => ConstructOrdinary(arguments);
+    public virtual object ConstructNumber1(double? value) => Construct(new[] {Js.BoxNumber(value)});
     public virtual bool HasInstance(object value) => OrdinaryHasInstance(value);
     internal override bool IsReadOnlyOwnProperty(string key) => key == "name" && !deletedName || key == "length" && !deletedLength || base.IsReadOnlyOwnProperty(key);
     internal void InferPropertyName(string value) { name = Js.PropertyFunctionName(value); }

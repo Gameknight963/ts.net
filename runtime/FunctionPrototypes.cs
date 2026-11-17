@@ -37,13 +37,18 @@ public partial class JsFunction
     }
     internal void MarkOrdinaryPrototype() => ordinaryPrototype = UncreatedPrototype;
     internal void UseObjectPrototype(TsObject prototype) => ordinaryPrototype = prototype;
-    private object ConstructOrdinary(object[] arguments)
+    internal object BeginOrdinaryConstruction()
     {
         if (!sourceConstructor) throw new InvalidOperationException("Value is not a constructor");
         var instance = constructFactory != null ? (TsObject)constructFactory(Array.Empty<object>()) : new JsDynamicObject();
         instance.SetPrototype(ReadOrdinaryPrototype() as TsObject ?? Js.DefaultClassObjectPrototype);
-        object returned = InvokeWithReceiver(ConstructionReceiver(instance, this), arguments);
-        return returned is TsObject ? returned : instance;
+        return ConstructionReceiver(instance, this);
+    }
+    private object ConstructOrdinary(object[] arguments)
+    {
+        object receiver = BeginOrdinaryConstruction();
+        object returned = InvokeWithReceiver(receiver, arguments);
+        return returned is TsObject ? returned : Js.ResolveThis(receiver);
     }
     private bool OrdinaryHasInstance(object value)
     {
@@ -66,6 +71,10 @@ public partial class JsFunction
 
 public static partial class Js
 {
+    public static object BeginOrdinaryConstruction(object target) => ((JsFunction)target).BeginOrdinaryConstruction();
+    public static object ConstructNumberArgument(object target, double? value) => target is JsFunction function
+        ? function.ConstructNumber1(value) : throw new InvalidOperationException("Value is not a constructor");
+
     public static object MarkFunctionPrototype(object value) { var fn = (JsFunction)value; fn.MarkOrdinaryPrototype(); fn.sourceConstructor = true; return value; }
     public static object MarkFunctionPrototype(object value, object factory) { var fn = (JsFunction)value; fn.MarkOrdinaryPrototype(); fn.sourceConstructor = true; fn.constructFactory = (FunctionBody)factory; return value; }
 }
