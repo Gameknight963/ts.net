@@ -49,11 +49,9 @@ internal static partial class CompilerFunctions
         if (symbol != 0) b.class_field_receivers[symbol] = type;
     }
 
-    static int il_class_field_writer(int target, int valueType, bool stringValue, Compiler c, IlBackend b)
+    static int il_class_field_owner(int receiverEntry, Compiler c, IlBackend b)
     {
-        var property = get_node(target, c);
-        if (property.kind != NodeKind.Property || property.fourth != 0) return 0;
-        int owner = get_node(property.left, c).type;
+        int owner = get_node(receiverEntry, c).type;
         if (!il_numeric_class_eligible(owner, c, b))
         {
             if (b.class_field_receivers == null)
@@ -71,10 +69,19 @@ internal static partial class CompilerFunctions
                         if (!get_node(child, c).constant) il_class_field_receiver(get_node(child, c).left, type, c, b);
                 }
             }
-            var receiver = get_node(property.left, c);
+            var receiver = get_node(receiverEntry, c);
             while (receiver.kind is NodeKind.Assert or NodeKind.ResolveThis && receiver.left != 0) receiver = get_node(receiver.left, c);
             if (receiver.kind != NodeKind.Name || !b.class_field_receivers.TryGetValue(receiver.symbol, out owner)) return 0;
         }
+        return owner;
+    }
+
+    static int il_class_field_writer(int target, int valueType, bool stringValue, Compiler c, IlBackend b)
+    {
+        var property = get_node(target, c);
+        if (property.kind != NodeKind.Property || property.fourth != 0) return 0;
+        int owner = il_class_field_owner(property.left, c, b);
+        if (owner == 0) return 0;
         var members = b.numeric_class_members[owner];
         for (int index = 0; index < members.Count; index++)
         {

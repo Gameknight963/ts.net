@@ -74,6 +74,14 @@ public abstract class JsNumericClassInstance : JsClassInstance
         if (value is double number) return StoreNumber(index, number, false);
         return ReferenceEquals(value, Js.Undefined) && StoreNumber(index, null, false);
     }
+    // Creating a field retains the same ordering checks as definition by name.
+    protected bool TryDefineClassNumber(int index, double? value) => StoreNumber(index, value, true);
+    protected bool TryDefineClassValue(int index, object value)
+    {
+        if (StoreReference(index, value, true)) return true;
+        if (value is double number) return StoreNumber(index, number, true);
+        return ReferenceEquals(value, Js.Undefined) && StoreNumber(index, null, true);
+    }
     internal bool TryDefineNumber(string key, double? value)
     {
         if (StoreNumber(NumericFieldIndex(key), value, true)) return true;

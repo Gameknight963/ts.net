@@ -1155,6 +1155,13 @@ internal static partial class CompilerFunctions
             {
                 il_boxed(n.left, c, b); il_boxed(n.fourth, c, b); il_boxed(n.right, c, b); b.emit(0x20, n.constant ? 1 : 0); b.call(RuntimeMember.InitializeAutoAccessor); return;
             }
+            int initializer = !n.constant && n.third == 0 ? il_class_field_initializer(entry, c, b) : 0;
+            if (initializer != 0) {
+                il_boxed(n.left, c, b);
+                if (get_type(get_node(n.right, c).type, c).kind == TypeKind.Number) il_expression(n.right, c, b);
+                else il_boxed(n.right, c, b);
+                b.emit(0x28, initializer); return;
+            }
             il_boxed(n.left, c, b);
             if (n.third != 0) { il_boxed(n.third, c, b); b.call(RuntimeMember.PropertyKey); } else { il_text(n.name, c, b); }
             int key = -1;
@@ -1318,6 +1325,7 @@ internal static partial class CompilerFunctions
         b.op(0x2a);
         b.begin(entry); b.op(0x14); b.emit(0xfe06, main); b.emit(0x73, b.RuntimeToken(RuntimeMember.ActionConstructor)); b.call(RuntimeMember.Run); b.op(0x2a);
         il_class_field_writer_bodies(c, b);
+        il_class_field_initializer_bodies(c, b);
         b.plan.finish(entry, path);
     }
 }
