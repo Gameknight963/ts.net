@@ -34,6 +34,8 @@ public abstract class JsNumericClassInstance : JsClassInstance
         return true;
     }
 
+    internal bool HasDefinedClassFields(int mask) => !materialized && (states & unchecked((uint)mask)) == unchecked((uint)mask);
+
     protected int NumericFieldState(int index) => materialized ? -1 : (int)(states >> (index * 2) & 3);
     protected void CopyNumericField(int index, string key)
     {

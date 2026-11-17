@@ -12,7 +12,11 @@ internal static partial class CompilerFunctions
     {
         if (!b.record_array_fields.TryGetValue(entry, out var read)) return false;
         b.emit(0xfe0c, read.Buffer); b.load_storage(read.Counter); b.op(0x9a);
-        b.emit(0x74, b.classes.at(read.Owner)); b.emit(0x7b, b.field_token(read.Member));
+        b.emit(0x74, b.classes.at(read.Owner));
+        int token = il_numeric_class_eligible(read.Owner, c, b)
+            ? b.class_field_tokens[read.Owner][b.numeric_class_members[read.Owner].IndexOf(read.Member)]
+            : b.field_token(read.Member);
+        b.emit(0x7b, token);
         return true;
     }
 
@@ -56,10 +60,13 @@ internal static partial class CompilerFunctions
                 Node array = get_node(index.left, c), key = get_node(index.right, c);
                 if (array.kind != NodeKind.Name || array.symbol != source.symbol || key.kind != NodeKind.Name || key.symbol != counter) return false;
                 int shape = index.type, member = field(shape, node.name, c);
-                if (get_type(shape, c).kind != TypeKind.Shape || get_type(shape, c).name != 0 || b.classes.at(shape) == 0 ||
-                    b.spread_types.at(shape) != 0 || member == 0 || get_field(member, c).optional ||
-                    b.field_token(member) == 0 || il_dynamic_index_field(member, c) || b.field_storage(member, c) != -3 ||
-                    (owner != 0 && owner != shape)) return false;
+                if (get_type(shape, c).kind != TypeKind.Shape || b.classes.at(shape) == 0 || member == 0 ||
+                    get_field(member, c).optional || (owner != 0 && owner != shape)) return false;
+                if (il_numeric_class_eligible(shape, c, b)) {
+                    if (!b.numeric_class_members[shape].Contains(member) || get_type(get_field(member, c).type, c).kind != TypeKind.Number) return false;
+                }
+                else if (get_type(shape, c).name != 0 || b.spread_types.at(shape) != 0 || b.field_token(member) == 0 ||
+                    il_dynamic_index_field(member, c) || b.field_storage(member, c) != -3) return false;
                 owner = shape; reads.Add((item, member)); return true;
             }
             if (node.kind is not (NodeKind.Binary or NodeKind.Unary)) return false;
@@ -74,7 +81,13 @@ internal static partial class CompilerFunctions
         // The probe invokes no user code. It verifies every element's exact
         // layout and lack of overrides before freezing the length and reads.
         b.load(source.symbol);
-        b.emit(0x28, b.plan.specialize(b.RuntimeToken(RuntimeMember.TryPlainRecordArray), b.classes.at(owner)));
+        if (il_numeric_class_eligible(owner, c, b)) {
+            int mask = 0;
+            foreach (var read in reads) mask |= 3 << (b.numeric_class_members[owner].IndexOf(read.Member) * 2);
+            b.emit(0x20, mask);
+            b.emit(0x28, b.plan.specialize(b.RuntimeToken(RuntimeMember.TryClassArray), b.classes.at(owner)));
+        }
+        else b.emit(0x28, b.plan.specialize(b.RuntimeToken(RuntimeMember.TryPlainRecordArray), b.classes.at(owner)));
         b.emit(0xfe0e, buffer); b.emit(0xfe0c, buffer); b.emit(0x39, fallback);
         b.load(source.symbol); b.call(RuntimeMember.ArrayLength); b.emit(0xfe0e, bound);
         int saved = b.raw_slot(counter), nonnegative = b.nonnegative_ints.at(counter);
