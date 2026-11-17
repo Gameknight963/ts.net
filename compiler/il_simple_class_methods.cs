@@ -111,14 +111,15 @@ internal static partial class CompilerFunctions
                 b.emit(0xfe0c, receiver); b.emit(0x39, fallback);
             }
             int literalType = get_type(type, c).name == 0 ? type : 0;
+            bool numericClass=il_numeric_class_eligible(type,c,b);
             Node value = get_node(method.Expression, c);
             if (value.kind == NodeKind.Name && value.symbol == method.Parameter) b.emit(0xfe09, 2);
             else if (value.kind == NodeKind.Property) {
                 b.emit(0xfe0c, receiver);
                 if (literalType != 0) il_shape_read(type, field(type, value.name, c), b);
-                else { il_text(value.name, c, b); b.emit(0xfe0c, receiver); b.call(RuntimeMember.GetStoredNumberWithReceiver); }
+                else { il_text(value.name, c, b); b.emit(0xfe0c, receiver); b.call(numericClass ? RuntimeMember.NumericClassRead : RuntimeMember.GetStoredNumberWithReceiver); }
             }
-            else { il_simple_getter_number(method.Expression, c, b, receiver, method.Parameter, literalType: literalType); b.call(RuntimeMember.WrapNumber); }
+            else { il_simple_getter_number(method.Expression, c, b, receiver, method.Parameter, literalType: literalType, numericClass: numericClass); b.call(RuntimeMember.WrapNumber); }
             b.op(0x2a);
             b.mark(fallback); b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.emit(0xfe09, 2);
             b.call(RuntimeMember.CallMethodNumber1); b.op(0x2a);

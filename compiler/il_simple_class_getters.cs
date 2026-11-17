@@ -95,7 +95,7 @@ internal static partial class CompilerFunctions
             il_simple_getter_expression(value.right, receiver, data, ref remaining, c, parameter);
     }
 
-    internal static void il_simple_getter_number(int entry, Compiler c, IlBackend b, int receiver = -1, int parameter = 0, List<(int Name, int Slot)> fields = null, int counter = 0, int literalType = 0)
+    internal static void il_simple_getter_number(int entry, Compiler c, IlBackend b, int receiver = -1, int parameter = 0, List<(int Name, int Slot)> fields = null, int counter = 0, int literalType = 0, bool numericClass = false)
     {
         Node value = get_node(entry, c);
         if (scalar_class_literal(entry, TypeKind.Number, c)) { il_number(entry, c, b); return; }
@@ -119,12 +119,12 @@ internal static partial class CompilerFunctions
             }
             b.emit(receiver < 0 ? 0xfe09 : 0xfe0c, receiver < 0 ? 0 : receiver); il_text(value.name, c, b);
             b.emit(receiver < 0 ? 0xfe09 : 0xfe0c, receiver < 0 ? 0 : receiver);
-            b.call(RuntimeMember.GetStoredNumberWithReceiver); b.call(RuntimeMember.NumberValue); return;
+            b.call(numericClass ? RuntimeMember.NumericClassRead : RuntimeMember.GetStoredNumberWithReceiver); b.call(RuntimeMember.NumberValue); return;
         }
-        il_simple_getter_number(value.left, c, b, receiver, parameter, fields, counter, literalType);
+        il_simple_getter_number(value.left, c, b, receiver, parameter, fields, counter, literalType, numericClass);
         int op = get_token(value.token, c).text;
         if (value.kind == NodeKind.Unary) { if (is_text(op, text_minus, c)) b.op(0x65); return; }
-        il_simple_getter_number(value.right, c, b, receiver, parameter, fields, counter, literalType);
+        il_simple_getter_number(value.right, c, b, receiver, parameter, fields, counter, literalType, numericClass);
         b.op(is_text(op, text_plus, c) ? 0x58 : is_text(op, text_minus, c) ? 0x59 : is_text(op, text_star, c) ? 0x5a : 0x5b);
     }
 
@@ -147,12 +147,12 @@ internal static partial class CompilerFunctions
         b.mark(typed); b.emit(0x6f, b.getter(member)); b.op(0x2a);
     }
 
-    internal static void il_simple_class_getter_body(SimpleClassGetter getter, Compiler c, IlBackend b)
+    internal static void il_simple_class_getter_body(SimpleClassGetter getter, Compiler c, IlBackend b, bool numericClass = false)
     {
-        if (getter.FieldName == 0) { il_simple_getter_number(getter.Expression, c, b); b.call(RuntimeMember.WrapNumber); }
+        if (getter.FieldName == 0) { il_simple_getter_number(getter.Expression, c, b, numericClass: numericClass); b.call(RuntimeMember.WrapNumber); }
         else {
             b.emit(0xfe09, 0); il_text(getter.FieldName, c, b); b.emit(0xfe09, 0);
-            b.call(RuntimeMember.GetStoredNumberWithReceiver);
+            b.call(numericClass ? RuntimeMember.NumericClassRead : RuntimeMember.GetStoredNumberWithReceiver);
         }
         b.op(0x2a);
     }

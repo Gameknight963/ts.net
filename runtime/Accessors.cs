@@ -118,7 +118,8 @@ public abstract partial class TsObject
     }
     public virtual object GetWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver) : HasOwn(key) ? Get(key) : InheritedValue(key, receiver);
     public virtual double? GetNumberWithReceiver(string key, object receiver) => Js.Cast<double?>(GetWithReceiver(key, receiver), "checked conversion failed");
-    internal bool HasOwnNumberData(string key) => !TryOwnAccessor(key, out _) && extra != null && extra.HasNumberValue(key);
+    internal bool HasOwnNumberData(string key) => this is JsNumericClassInstance numeric && numeric.HasNumericFieldValue(key) ||
+        !TryOwnAccessor(key, out _) && extra != null && extra.HasNumberValue(key);
     protected object GetStoredWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.Read(receiver)
         : extra != null && extra.TryGetValue(key, out var value) ? value : InheritedValue(key, receiver);
     protected double? GetStoredNumberWithReceiver(string key, object receiver) => TryOwnAccessor(key, out var accessor) ? accessor.ReadNumber(receiver)

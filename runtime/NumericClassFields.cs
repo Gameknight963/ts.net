@@ -74,6 +74,12 @@ public abstract class JsNumericClassInstance : JsClassInstance
         }
         return GetStoredWithReceiver(key, receiver);
     }
+    internal bool HasNumericFieldValue(string key)
+    {
+        if (materialized) return false;
+        int index = NumericFieldIndex(key);
+        return index >= 0 && NumericFieldState(index) == 3;
+    }
     public override bool HasOwn(string key)
     {
         if (materialized) return base.HasOwn(key);

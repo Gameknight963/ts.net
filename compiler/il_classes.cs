@@ -54,7 +54,7 @@ internal static partial class CompilerFunctions
                 if (simple && il_simple_class_getter(type, field.name, c, b, out var getter)) {
                     int fallback = b.label(); b.emit(0xfe09, 0); b.emit(0x20, getter.Slot);
                     b.call(RuntimeMember.MatchesSimpleClassGetter); b.emit(0x39, fallback);
-                    il_simple_class_getter_body(getter, c, b); b.mark(fallback);
+                    il_simple_class_getter_body(getter, c, b, numeric); b.mark(fallback);
                 }
                 b.emit(0xfe09, 0); il_text(field.name, c, b); b.emit(0xfe09, 0);
                 if (get_type(field.type, c).kind == TypeKind.Number) b.call(numeric ? RuntimeMember.NumericClassRead : RuntimeMember.GetStoredNumberWithReceiver);

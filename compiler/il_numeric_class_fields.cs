@@ -1,6 +1,6 @@
 namespace Tsnet.Compiler;
 
-internal sealed partial class IlBackend { internal HashSet<int> numeric_class_initializers; internal HashSet<int> numeric_class_types; }
+internal sealed partial class IlBackend { internal HashSet<int> numeric_class_initializers; internal HashSet<int> numeric_class_types; internal Dictionary<int,List<int>> numeric_class_members; }
 
 internal static partial class CompilerFunctions
 {
@@ -27,6 +27,7 @@ internal static partial class CompilerFunctions
         if (b.numeric_class_types == null)
         {
             b.numeric_class_types = [];
+            b.numeric_class_members = [];
             var seen = new HashSet<int>();
             var ambiguous = new HashSet<int>();
             for (int i = 1; i <= c.node_store.count(); i++)
@@ -35,14 +36,28 @@ internal static partial class CompilerFunctions
                 if (node.kind != NodeKind.ClassValue || node.fourth == 0) continue;
                 int candidate = get_node(node.fourth, c).type;
                 if (!seen.Add(candidate)) ambiguous.Add(candidate);
-                if (node.third != 0 || node.children != 0) continue;
+                if (node.third != 0) continue;
+                var prototypeNames = new List<int>();
+                bool supported = true;
+                for (int child=node.children;child!=0;child=get_node(child,c).next)
+                {
+                    var method=get_node(child,c);
+                    if (method.name==0 || method.symbol!=0 || method.fourth!=0 || method.right!=0) {supported=false;break;}
+                    if (!method.constant) prototypeNames.Add(method.name);
+                }
+                if (!supported) continue;
                 var shape = get_type(candidate, c);
                 if (shape.name == 0 || shape.element != 0 || shape.fields == 0) continue;
-                int count = 0;
+                var members = new List<int>();
                 bool numeric = true;
                 for (int field = shape.fields; field != 0; field = get_field(field, c).next)
-                    if (get_type(get_field(field, c).type, c).kind != TypeKind.Number || ++count > 16) { numeric = false; break; }
-                if (numeric) b.numeric_class_types.Add(candidate);
+                {
+                    var member=get_field(field,c);
+                    if(prototypeNames.Any(name=>same(name,member.name,c))) continue;
+                    if(get_type(member.type,c).kind!=TypeKind.Number || members.Count==16) {numeric=false;break;}
+                    members.Add(field);
+                }
+                if (numeric && members.Count!=0) {b.numeric_class_types.Add(candidate);b.numeric_class_members[candidate]=members;}
             }
             b.numeric_class_types.ExceptWith(ambiguous);
         }
@@ -51,7 +66,7 @@ internal static partial class CompilerFunctions
     static void il_numeric_class_fields(int type,int klass,Compiler c,IlBackend b)
     {
         var fields=new List<(int Name,int Token)>();
-        for(int member=get_type(type,c).fields;member!=0;member=get_field(member,c).next)
+        foreach(int member in b.numeric_class_members[type])
             fields.Add((get_field(member,c).name,b.plan.field(klass,1,-3,"number_"+fields.Count)));
         b.begin(b.plan.method1(5,klass,0xc4,-6,-4,"NumericFieldIndex"));
         for(int i=0;i<fields.Count;i++)
