@@ -884,6 +884,7 @@ internal static partial class CompilerFunctions
                 int symbol = il_direct_function(n.left, c, b);
                 if (symbol == 0) { il_value_call(entry, c, b); return; }
                 if (get_node(n.left, c).kind == NodeKind.Name && b.global_flags.at(get_node(n.left, c).symbol) != 0) { b.check_global(get_node(n.left, c).symbol); }
+                if (il_forwarded_callback(entry, symbol, c, b)) return;
                 if (get_node(n.left, c).symbol == symbol && il_flat_parameter_call(entry, c, b)) { return; }
                 int context = b.function_contexts.at(symbol); if (context != 0) { b.load_context(context); }
                 int parameter = get_node(get_symbol(symbol, c).function, c).children;
