@@ -187,8 +187,8 @@ Runtime performance:
 | Call a callback with an object and a number, 100K calls | 0.307 ms | 0.0611 ms | — | 0.20x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
+| Retained class instances with number, string and boolean fields, 100K instances | 8.75 ms | 1.133 ms | 1.058 ms | 0.13x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
-| Retained class instances with number, string and boolean fields, 100K instances | 10.09 ms | 1.128 ms | 1.069 ms | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
 | Borrow an object method with call, 100K calls | 0.712 ms | 0.0628 ms | 0.211 ms (delegate) | 0.09x |
