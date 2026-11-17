@@ -98,7 +98,10 @@ internal static partial class CompilerFunctions
             Node value = get_node(field.right, c);
             TypeKind kind = get_type(get_field(member, c).type, c).kind;
             bool literal = scalar_class_literal(field.right, kind, c);
-            if (!literal && (value.kind != NodeKind.Undefined || value.constant)) return null;
+            // A void expression can run user code before producing undefined.
+            bool emptyUndefined = value.kind == NodeKind.Undefined && !value.constant && value.left == 0 &&
+                value.right == 0 && value.third == 0 && value.fourth == 0 && value.children == 0;
+            if (!literal && !emptyUndefined) return null;
             values.Add((field.name, field.right));
         }
         if (!scalar_constructor(entry, klass.right, values.Select(value => value.Name).ToList(), count, c, b, recordPlan)) return null;
