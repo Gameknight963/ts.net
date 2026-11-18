@@ -1119,8 +1119,8 @@ internal static partial class CompilerFunctions
             b.plan.source_point(b.method, file.view(), location.line, Math.Clamp(location.column, 1, 65534));
         }
         if (b.loop_update_statements.TryGetValue(entry, out var update)) {
-            b.emit(0xfe0c, update.Receiver); b.emit(0x28, b.function(update.Function));
-            if (get_type(get_node(get_symbol(update.Function, c).function, c).type, c).kind != TypeKind.Void) b.op(0x26);
+            b.emit(0xfe0c, update.Slot); b.plan.number(b.method, update.Operand);
+            b.op(update.Subtract ? 0x59 : 0x58); b.emit(0xfe0e, update.Slot);
             return;
         }
         if (n.kind == NodeKind.Debugger) { b.call(RuntimeMember.DebugStatement); }
@@ -1399,6 +1399,7 @@ internal static partial class CompilerFunctions
         il_class_field_writer_bodies(c, b);
         il_class_field_update_bodies(c, b);
         il_class_field_initializer_bodies(c, b);
+        il_class_update_loop_guards(c, b);
         b.plan.finish(entry, path);
     }
 }

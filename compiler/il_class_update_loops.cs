@@ -2,13 +2,14 @@ namespace Tsnet.Compiler;
 
 internal sealed partial class IlBackend
 {
-    internal readonly Dictionary<int, (int Function, int Receiver)> loop_update_statements = [];
+    internal readonly Dictionary<int, (int Slot, double Operand, bool Subtract)> loop_update_statements = [];
+    internal readonly Dictionary<(int Type, int Index), int> loop_update_guards = [];
 }
 
 internal static partial class CompilerFunctions
 {
-    // No user code may run between the method guard and the last call. Restrict
-    // the body to a numeric own-field update; the original method still runs.
+    // No user code may run between the guards and the final field store. Keep
+    // each floating-point operation, but hold the unobservable updates locally.
     static bool il_class_update_loop(int entry, int result, int counter, int bound, Compiler c, IlBackend b)
     {
         if (counter == 0 || bound < 0 || b.loop_update_statements.Count != 0) return false;
@@ -55,6 +56,7 @@ internal static partial class CompilerFunctions
         }
         if (source == 0) return false;
         int functionSymbol = 0, fieldName = 0;
+        double operand = 0; bool subtract = false;
         for (int item = get_node(source, c).children; item != 0; item = get_node(item, c).next) {
             Node method = get_node(item, c);
             if (!same(method.name, name, c)) continue;
@@ -78,8 +80,13 @@ internal static partial class CompilerFunctions
             int operation = get_token(update.token, c).text;
             if (update.kind == NodeKind.Update) {
                 if (!is_text(operation, text_increment, c) && !is_text(operation, text_decrement, c)) return false;
+                operand = 1; subtract = is_text(operation, text_decrement, c);
             } else if (update.kind != NodeKind.Assign || get_node(update.right, c).kind != NodeKind.Number ||
                 !is_text(operation, text_add_assign, c) && !is_text(operation, text_subtract_assign, c)) return false;
+            else {
+                operand = number(get_token(get_node(update.right, c).token, c).text, c);
+                subtract = is_text(operation, text_subtract_assign, c);
+            }
             functionSymbol = function.symbol; fieldName = property.name;
         }
         if (functionSymbol == 0) return false;
@@ -89,6 +96,11 @@ internal static partial class CompilerFunctions
         double initial = number(get_token(get_node(get_node(il_loop_binding(entry, c), c).left, c).token, c).text, c);
         Node limit = get_node(get_node(loop.right, c).right, c);
         if (limit.kind == NodeKind.Number && number(get_token(limit.token, c).text, c) <= initial + 31) return false;
+        var guardKey = (receiver.type, fieldIndex);
+        if (!b.loop_update_guards.TryGetValue(guardKey, out int guard)) {
+            guard = b.plan.method1(5, b.classes.at(receiver.type), 0x16, -2, b.classes.at(receiver.type), "Can_update_field_" + fieldIndex);
+            b.loop_update_guards.Add(guardKey, guard);
+        }
 
         int fallback = b.label(), done = b.label(), instance = b.local(b.classes.at(receiver.type));
         b.emit(0xfe0c, bound); b.plan.number(b.method, initial + 31); b.op(0xfe02); b.emit(0x39, fallback);
@@ -97,15 +109,27 @@ internal static partial class CompilerFunctions
         b.emit(0xfe0c, instance); b.emit(0x39, fallback);
         b.emit(0xfe0c, instance); il_text(name, c, b); b.call(RuntimeMember.GetClassMethodData);
         b.emit(0x75, b.function_class_types[functionSymbol]); b.emit(0x39, fallback);
-        b.emit(0xfe0c, instance); il_text(fieldName, c, b); b.call(RuntimeMember.HasOwnNumberData); b.emit(0x39, fallback);
-        b.loop_update_statements[statement] = (functionSymbol, instance);
+        b.emit(0xfe0c, instance); b.emit(0x28, guard); b.emit(0x39, fallback);
+        int value = b.local(-3), fieldToken = b.class_field_tokens[receiver.type][fieldIndex];
+        b.emit(0xfe0c, instance); b.emit(0x7b, fieldToken); b.emit(0xfe0e, value);
+        b.loop_update_statements[statement] = (value, operand, subtract);
         il_loop_code(entry, result, counter, bound, c, b);
         b.loop_update_statements.Remove(statement);
+        b.emit(0xfe0c, instance); b.emit(0xfe0c, value); b.emit(0x7d, fieldToken);
         b.emit(0x38, done); b.mark(fallback);
         il_loop_code(entry, result, counter, bound, c, b); b.mark(done);
         return true;
 
         static bool ordinary(Node value) => value.symbol != 0 && !value.constant && value.left == 0 && value.right == 0 &&
             value.third == 0 && value.fourth == 0 && value.children == 0;
+    }
+
+    static void il_class_update_loop_guards(Compiler c, IlBackend b)
+    {
+        foreach (var (key, method) in b.loop_update_guards) {
+            b.begin(method);
+            b.emit(0xfe09, 0); b.emit(0x20, key.Index); b.call(RuntimeMember.NumericClassState);
+            b.emit(0x20, 3); b.op(0xfe01); b.op(0x2a);
+        }
     }
 }

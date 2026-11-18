@@ -152,6 +152,7 @@ Runtime performance:
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | — | 0.60x |
 | Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | — | 0.60x |
 | Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | — | 0.59x |
+| Call a zero-argument void class method through a helper, 100K calls | 0.0711 ms | 0.0419 ms | 0.0711 ms (double field) | 0.59x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 0.717 ms | 0.415 ms | — | 0.58x |
 | Read varying string keys through an `any` helper from a Float64Array, 100K reads | 1.23 ms | 0.713 ms | — | 0.58x |
 | Create a Map, insert and read 10K entries, then delete half | 1.184 ms | 0.658 ms | 0.395 ms (`Dictionary`) | 0.56x |
@@ -208,7 +209,6 @@ Runtime performance:
 | Construct and traverse 100K class instances whose constructor calls a helper | 6.41 ms | 1.09 ms | 1.41 ms (class) | 0.17x |
 | Call 100K callbacks stored in an array | 0.798 ms | 0.131 ms | 0.254 ms (delegates) | 0.16x |
 | Create and call 100K callbacks stored in an array | 9.81 ms | 1.61 ms | 6.45 ms (fresh delegates) | 0.16x |
-| Call a zero-argument void class method through a helper, 100K calls | 0.253 ms | 0.0398 ms | 0.0702 ms (double field) | 0.16x |
 | Create and traverse 100K retained objects with a numeric field and a method | 21.3 ms | 2.37 ms | 1.62 ms (class/list), 0.300 ms (struct/array) | 0.11x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |

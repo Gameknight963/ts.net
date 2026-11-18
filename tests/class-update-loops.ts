@@ -56,3 +56,29 @@ class ImpureCounter {total = 0; step(): void {this.total++; calls++;}}
 function impure(target: ImpureCounter): void {for (let i = 0; i < 40; i++) target.step();}
 const impureCounter = new ImpureCounter(); impure(impureCounter);
 console.log('side effects', impureCounter.total, calls);
+const rounded = new Counter(); rounded.total = 9007199254740992;
+forwarded(rounded, 40); console.log('rounded increments', rounded.total);
+class FractionalCounter {total = 0.1; step(): void {this.total += 0.2;}}
+function fractionalUpdates(target: FractionalCounter): void {for (let i = 0; i < 40; i++) target.step();}
+const fractions = new FractionalCounter(); fractionalUpdates(fractions);
+console.log('fractional updates', fractions.total);
+class Subtractor {total = -0; step(): void {this.total -= 0;}}
+function subtractZero(target: Subtractor): void {for (let i = 0; i < 40; i++) target.step();}
+const zero = new Subtractor(); subtractZero(zero); console.log('negative zero', Object.is(zero.total, -0));
+const notFinite = new Counter(); notFinite.total = Infinity; direct(notFinite, 40);
+console.log('infinity', notFinite.total);
+notFinite.total = NaN; direct(notFinite, 40); console.log('nan', Number.isNaN(notFinite.total));
+class WideCounter {
+    a0=0; a1=1; a2=2; a3=3; a4=4; a5=5; a6=6; a7=7;
+    a8=8; a9=9; a10=10; a11=11; a12=12; a13=13; a14=14; a15=15;
+    a16=16; a17=17; a18=18; a19=19; a20=20; a21=21; a22=22; a23=23;
+    a24=24; a25=25; a26=26; a27=27; a28=28; a29=29; a30=30; total=31;
+    step(): void {this.total++;}
+}
+function wideUpdates(target: WideCounter): void {for (let i = 5; i < 50; i++) target.step();}
+const wide = new WideCounter(); wideUpdates(wide); console.log('wide field', wide.total, wide.a30);
+const described = new Counter(); Object.defineProperty(described, 'total', {value: 12, writable: true});
+forwarded(described, 40); console.log('described data', described.total);
+const readonly = new Counter(); Object.defineProperty(readonly, 'total', {value: 12, writable: false});
+let readonlyThrew = false; try {forwarded(readonly, 40);} catch {readonlyThrew = true;}
+console.log('readonly data', readonlyThrew, readonly.total);
