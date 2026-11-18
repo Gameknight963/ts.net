@@ -151,6 +151,7 @@ Runtime performance:
 | Create a Map, insert and read 10K entries, then delete half | 1.184 ms | 0.658 ms | 0.395 ms (`Dictionary`) | 0.56x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
 | Parse, filter, group, sort and serialize 1K records, 10 passes | 7.86 ms | 4.12 ms | — | 0.52x |
+| map, filter and sum, 10 passes over 10K integers from 0-255 | 1.036 ms | 0.535 ms | 0.328 ms (array methods) | 0.52x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
 | Construct and run a chain of 10K handlers | 0.687 ms | 0.340 ms | 0.665 ms (queued Task continuations) | 0.49x |
 | Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | — | 0.48x |
@@ -160,7 +161,6 @@ Runtime performance:
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | — | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | — | 0.45x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 2.28 ms | 0.985 ms | — | 0.43x |
-| map, filter and sum, 10 passes over 10K integers from 0-255 | 1.14 ms | 0.477 ms | 0.268 ms (array methods) | 0.42x |
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | — | 0.41x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | — | 0.40x |
 | Class getter returning `this.base * 2 + 1`, 100K reads | 0.0682 ms | 0.0274 ms | — | 0.40x |

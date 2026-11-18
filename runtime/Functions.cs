@@ -74,6 +74,8 @@ public partial class JsFunction : JsDescriptorObject
     public virtual bool SupportsArrayNumber() => false;
     public virtual object InvokeArrayNumber(object receiver, double first, double second, object source) =>
         InvokeWithReceiver(receiver, new[] { Js.BoxNumber(first), Js.BoxNumber(second), source });
+    public virtual bool InvokeArrayNumberTruth(object receiver, double first, double second, object source) =>
+        Js.Truthy(InvokeArrayNumber(receiver, first, second, source));
     public virtual double? InvokeMethodNumber0(object receiver)=>InvokeNumber0();
     public virtual double? InvokeMethodNumber1(object receiver,double? first)=>InvokeNumber1(first);
     public virtual double? InvokeMethodNumber2(object receiver,double? first,double? second)=>InvokeNumber2(first,second);

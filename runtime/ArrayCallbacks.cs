@@ -118,8 +118,8 @@ public static partial class Js
                     }
                     else
                     {
-                        numericMapped = callback.InvokeArrayNumber(thisValue, numberValue, i, source);
-                        truth = testResult && Truthy(numericMapped);
+                        numericMapped = testResult ? Undefined : callback.InvokeArrayNumber(thisValue, numberValue, i, source);
+                        truth = testResult && callback.InvokeArrayNumberTruth(thisValue, numberValue, i, source);
                     }
                     if (find && truth) return kind is ArrayCallbackKind.FindIndex or ArrayCallbackKind.FindLastIndex ? (object)(double)i : BoxNumber(numberValue);
                     if (kind == ArrayCallbackKind.Map) { if (!mapSlots.IsEmpty) mapSlots[(int)i] = numericMapped; else ArraySpeciesSet(result, i, numericMapped); }
