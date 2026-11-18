@@ -13,10 +13,13 @@ internal static partial class CompilerFunctions
     static bool il_class_update_loop(int entry, int result, int counter, int bound, Compiler c, IlBackend b)
     {
         if (counter == 0 || bound < 0 || b.loop_update_statements.Count != 0) return false;
-        Node loop = get_node(entry, c), block = get_node(loop.fourth, c);
+        Node loop = get_node(entry, c);
+        if (loop.fourth == 0) return false;
+        Node block = get_node(loop.fourth, c);
         int statement = block.kind == NodeKind.Block ? block.children : loop.fourth;
+        if (statement == 0) return false;
         Node expression = get_node(statement, c);
-        if (expression.kind != NodeKind.Expression || expression.next != 0) return false;
+        if (expression.kind != NodeKind.Expression || expression.next != 0 || expression.left == 0) return false;
         Node call = get_node(expression.left, c);
         if (call.kind != NodeKind.Call) return false;
         int receiverEntry = 0, name = 0, helperSymbol = 0;
@@ -28,16 +31,19 @@ internal static partial class CompilerFunctions
             if (helperSymbol == 0 || member.kind != NodeKind.Name || member.symbol != helperSymbol ||
                 b.function_contexts.at(helperSymbol) != 0 || call.children == 0 || get_node(call.children, c).next != 0) return false;
             Node helper = get_node(get_symbol(helperSymbol, c).function, c);
-            if (helper.fourth != 0 || helper.right != 0 || helper.constant || helper.children == 0) return false;
+            if (helper.fourth != 0 || helper.right != 0 || helper.constant || helper.children == 0 || helper.left == 0) return false;
             Node parameter = get_node(helper.children, c);
             if (!ordinary(parameter) || parameter.next != 0 ||
                 parameter.type != get_node(call.children, c).type && get_type(parameter.type, c).kind != TypeKind.Any) return false;
             Node body = get_node(helper.left, c);
-            Node forwarded = get_node(body.kind == NodeKind.Block ? body.children : helper.left, c);
-            if (forwarded.next != 0 || forwarded.kind is not (NodeKind.Expression or NodeKind.Return)) return false;
+            int forwardedEntry = body.kind == NodeKind.Block ? body.children : helper.left;
+            if (forwardedEntry == 0) return false;
+            Node forwarded = get_node(forwardedEntry, c);
+            if (forwarded.next != 0 || forwarded.left == 0 || forwarded.kind is not (NodeKind.Expression or NodeKind.Return)) return false;
             Node invocation = get_node(forwarded.left, c);
+            if (invocation.kind != NodeKind.Call || invocation.children != 0) return false;
             member = get_node(invocation.left, c);
-            if (invocation.kind != NodeKind.Call || invocation.children != 0 || member.kind != NodeKind.Property || member.fourth != 0) return false;
+            if (member.kind != NodeKind.Property || member.fourth != 0) return false;
             Node target = get_node(member.left, c);
             if (target.kind != NodeKind.Name || target.symbol != parameter.symbol) return false;
             receiverEntry = call.children; name = member.name;
@@ -64,15 +70,19 @@ internal static partial class CompilerFunctions
             int functionEntry = scalar_field_function(method.left, c);
             if (functionEntry == 0) return false;
             Node function = get_node(functionEntry, c);
-            if (function.fourth == 0 || function.right != 0 || function.constant || function.children != function.fourth ||
+            if (function.fourth == 0 || function.left == 0 || function.right != 0 || function.constant || function.children != function.fourth ||
                 b.function_contexts.at(function.symbol) != 0 || b.object_home_functions.Contains(function.symbol) ||
                 !b.function_class_types.ContainsKey(function.symbol)) return false;
             Node self = get_node(function.fourth, c);
             if (!ordinary(self) || self.next != 0 || self.name != 0) return false;
             Node body = get_node(function.left, c);
-            Node action = get_node(body.kind == NodeKind.Block ? body.children : function.left, c);
+            int actionEntry = body.kind == NodeKind.Block ? body.children : function.left;
+            if (actionEntry == 0) return false;
+            Node action = get_node(actionEntry, c);
             if (action.kind != NodeKind.Expression || action.next != 0) return false;
-            Node update = get_node(action.left, c), property = get_node(update.left, c);
+            Node update = get_node(action.left, c);
+            if (update.kind is not (NodeKind.Assign or NodeKind.Update)) return false;
+            Node property = get_node(update.left, c);
             if (property.kind != NodeKind.Property || property.fourth != 0 || get_type(property.type, c).kind != TypeKind.Number) return false;
             Node target = get_node(property.left, c);
             if (target.kind == NodeKind.ResolveThis) target = get_node(target.left, c);
