@@ -106,6 +106,7 @@ internal static partial class CompilerFunctions
     internal static void il_context_enter(int scope, Compiler c, IlBackend b)
     {
         int type = b.context_types.at(scope); if (type == 0) { return; }
+        if (il_async_context_enter(scope, c, b)) return;
         int parent = b.context_parents.at(scope); if (parent != 0) { b.load_context(parent); }
         int constructor = b.context_constructors.at(scope); b.emit(0x73, constructor); int slot = b.local(type); b.emit(0xfe0e, slot); b.context_scope = (int)scope; b.context_slot = slot;
     }
