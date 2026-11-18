@@ -15,13 +15,34 @@ public static partial class Js
     }
     sealed class JsonKeyCache
     {
-        string first, second, third, fourth;
+        string first, second, third;
+        object fourth;
+        sealed class AdditionalKeys(string fourth)
+        {
+            Dictionary<string, string> names;
+            internal string Read(ReadOnlySpan<char> text)
+            {
+                if (text.SequenceEqual(fourth)) return fourth;
+                if (text.Length > 256) return text.ToString();
+                if (names != null && names.GetAlternateLookup<ReadOnlySpan<char>>().TryGetValue(text, out string cached)) return cached;
+                string value = text.ToString();
+                names ??= new(StringComparer.Ordinal);
+                if (names.Count < 128) names.TryAdd(value, value);
+                return value;
+            }
+        }
         internal string Read(ReadOnlySpan<char> text)
         {
             if (first != null && text.SequenceEqual(first)) return first;
             if (second != null && text.SequenceEqual(second)) return second;
             if (third != null && text.SequenceEqual(third)) return third;
-            if (fourth != null && text.SequenceEqual(fourth)) return fourth;
+            if (fourth is AdditionalKeys additional) return additional.Read(text);
+            if (fourth is string key && text.SequenceEqual(key)) {
+                // Repetition justifies the larger cache. A single object with
+                // unique keys keeps the same small header as before.
+                fourth = new AdditionalKeys(key);
+                return key;
+            }
             string value = text.ToString();
             if (first == null) first = value;
             else if (second == null) second = value;
