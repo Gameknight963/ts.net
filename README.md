@@ -207,7 +207,7 @@ Runtime performance:
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
-| Call a zero-argument void class method through a helper, 100K calls | 0.783 ms | 0.0401 ms | 0.261 ms (`double` field), 0.0237 ms (`int` field) | 0.05x |
+| Call a zero-argument void class method through a helper, 100K calls | 0.544 ms | 0.0403 ms | 0.0702 ms (`double` field), 0.0233 ms (`int` field) | 0.07x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | — | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | — | 0.02x |
 

@@ -7,6 +7,7 @@ public static partial class Js
         throw new InvalidOperationException("at requires a receiver")), null, "at", 1)
     {
         internal readonly bool Text = text;
+        public override object InvokeReceiver0(object receiver) => AtPrimitive(receiver, 0, Text);
         public override object InvokeReceiverArgument1(object receiver, object value) => AtConverted(receiver, value, Text);
         public override object InvokeWithReceiver(object receiver, object[] arguments) => AtConverted(receiver, FunctionArgument(arguments, 0), Text);
     }
@@ -85,14 +86,8 @@ public static partial class Js
         : target is RelativeAtFunction method
         ? AtPrimitive(receiver, index.GetValueOrDefault(), method.Text) : target is StringSearchFunction search
         ? StringSearchResult(search.Kind, StringSearchPrimitive(search, receiver, BoxNumber(index), null)) : CallMethod(target, receiver, new[] { BoxNumber(index) });
-    public static object CallMethod0(object target, object receiver) => target is StringRangeFunction range
-        ? StringRangePrimitive(range, receiver, null, null)
-        : target is CharacterFunction character
-        ? CharacterValue(AtString(receiver), 0, character.Kind)
-        : target is RelativeAtFunction method
-        ? AtPrimitive(receiver, 0, method.Text) : target is StringSearchFunction search
-        ? StringSearchResult(search.Kind, StringSearchPrimitive(search, receiver, Undefined, null))
-        : target is JsFunction function ? function.InvokeReceiver0(SuperReceiver(receiver))
+    public static object CallMethod0(object target, object receiver) => target is JsFunction function
+        ? function.InvokeReceiver0(SuperReceiver(receiver))
         : throw new InvalidOperationException("Value is not callable");
     public static object CallMethod(object target, object receiver, object[] arguments) => target is StringRangeFunction range
         ? StringRangeConverted(range, receiver, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1))

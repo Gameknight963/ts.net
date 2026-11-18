@@ -16,7 +16,11 @@ try
     if (!Equals(Js.CallFunctionArgument(specialized, "value"), "custom function") ||
         !Equals(Js.CallMethodArgument(specialized, "receiver", "value"), "method"))
         throw new Exception("A receiver function's ordinary call override was bypassed");
-    Console.WriteLine("PASS ordinary single-argument calls and receiver-based calls remain distinct");
+    if (!Equals(Js.CallMethod0(new SeparateZeroCalls(), "receiver"), "method zero"))
+        throw new Exception("A zero-argument method bypassed its native receiver override");
+    if (!Equals(Js.CallMethod0(new DirectZeroCalls(), "receiver"), "direct zero"))
+        throw new Exception("A zero-argument method bypassed its direct entry point");
+    Console.WriteLine("PASS ordinary function calls, receiver calls, and zero-argument overrides");
 }
 catch (Exception error)
 {
@@ -36,4 +40,17 @@ sealed class SeparateCalls() : JsFunction((FunctionBody)(_ => "delegate"), null,
 sealed class SeparateReceiverCalls() : JsReceiverFunction((FunctionBody)(_ => "method"), null, "separate receiver", 1)
 {
     public override object Invoke(object[] arguments) => "custom function";
+}
+
+sealed class SeparateZeroCalls() : JsFunction((FunctionBody)(_ => "delegate"), null, "separate zero", 0)
+{
+    public override object Invoke(object[] arguments) => "function zero";
+    public override object InvokeWithReceiver(object receiver, object[] arguments) =>
+        arguments.Length == 0 && Equals(receiver, "receiver") ? "method zero"
+            : throw new Exception("Zero-argument method receiver or arguments changed");
+}
+sealed class DirectZeroCalls() : JsFunction((FunctionBody)(_ => "delegate"), null, "direct zero", 0)
+{
+    public override object InvokeReceiver0(object receiver) => Equals(receiver, "receiver") ? "direct zero"
+        : throw new Exception("Direct zero-argument method receiver changed");
 }
