@@ -4,8 +4,6 @@ public partial class JsFunction
 {
     private static readonly object UncreatedPrototype = new();
     private static readonly object NullPrototypeValue = new();
-    private object ordinaryPrototype;
-    internal FunctionBody constructFactory;
     internal bool sourceConstructor;
     internal bool UsesNewTarget;
     internal object ConstructionReceiver(object receiver, object target) => UsesNewTarget ? new JsConstructionReceiver(receiver, target) : receiver;

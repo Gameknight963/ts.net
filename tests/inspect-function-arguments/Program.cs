@@ -35,6 +35,29 @@ try
     methodReceiver.DefineAccessor("value", new BoundNumericGetter(methodReceiver), 1);
     if (Js.GetNumber(methodReceiver, "value") != 42)
         throw new Exception("A numeric accessor ignored its bound receiver entry point");
+    var numericFunction = new JsFunction((FunctionBody)(static _ => Js.GetUndefined()),
+        (NumberFunction1)(static value => value + 1), "numeric constructor", 1);
+    FunctionBody factory = static _ => {
+        var instance = new JsDynamicObject();
+        instance.Set("factory", true);
+        return instance;
+    };
+    Js.MarkFunctionPrototype(numericFunction, factory);
+    if (!numericFunction.HasOwn("prototype") || numericFunction.InvokeNumber1(2) != 3)
+        throw new Exception("Constructor metadata replaced the numeric delegate");
+    var prototype = numericFunction.Get("prototype");
+    if (prototype is not TsObject || !ReferenceEquals(prototype, numericFunction.Get("prototype")))
+        throw new Exception("A lazy function prototype changed identity");
+    var constructed = (TsObject)numericFunction.Construct(Array.Empty<object>());
+    if (!Equals(constructed.Get("factory"), true) || numericFunction.InvokeNumber1(3) != 4)
+        throw new Exception("Materializing a prototype replaced the construction factory or numeric delegate");
+    numericFunction.Set("prototype", null);
+    if (numericFunction.Get("prototype") != null || !numericFunction.HasOwn("prototype") ||
+        !Equals(((TsObject)numericFunction.Construct(Array.Empty<object>())).Get("factory"), true))
+        throw new Exception("A null function prototype lost construction metadata");
+    numericFunction.Set("prototype", prototype);
+    if (!ReferenceEquals(numericFunction.Get("prototype"), prototype) || numericFunction.InvokeNumber1(4) != 5)
+        throw new Exception("Replacing a prototype changed unrelated function state");
     Console.WriteLine("PASS ordinary function calls, receiver calls, and zero/numeric argument overrides");
 }
 catch (Exception error)
