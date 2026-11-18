@@ -148,6 +148,7 @@ Runtime performance:
 | Sum 10K numbers, 20 traversals | 0.139 ms | 0.0869 ms | — | 0.63x |
 | String slice and first-character read, 1M calls | 14.55 ms | 8.98 ms | — | 0.62x |
 | Add a 32-digit BigInt literal 10K times | 0.212 ms | 0.132 ms | 0.221 ms (`BigInteger`) | 0.62x |
+| Create and traverse 100K retained objects with a numeric field and a method | 3.77 ms | 2.35 ms | 2.10 ms (class/list), 18.29 ms (fresh delegates) | 0.62x |
 | Sum 10K mapped numbers, 20 traversals | 0.142 ms | 0.0864 ms | — | 0.61x |
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | — | 0.60x |
 | Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | — | 0.60x |
@@ -162,7 +163,6 @@ Runtime performance:
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
 | Call a numeric void method on a record with 16 numeric fields through a helper, 100K calls | 0.477 ms | 0.233 ms | 0.0711 ms (class) | 0.49x |
 | Construct and run a chain of 10K handlers | 0.687 ms | 0.340 ms | 0.665 ms (queued Task continuations) | 0.49x |
-| Create and traverse 100K retained objects with a numeric field and a method | 4.72 ms | 2.33 ms | 1.52 ms (class/list), 15.4 ms (fresh delegates) | 0.49x |
 | Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | — | 0.48x |
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | — | 0.48x |
 | `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | — | 0.46x |
@@ -199,6 +199,7 @@ Runtime performance:
 | Retained class instances with number, string and boolean fields, 100K instances; one server GC heap for both .NET builds | 4.08 ms | 1.125 ms | 1.100 ms | 0.28x |
 | Create 10K resolved promises, collect with all, and sum results | 1.95 ms | 0.527 ms | 0.192 ms (Task.WhenAll) | 0.27x |
 | Retained numeric class instances and field traversal, 100K instances | 4.50 ms | 1.165 ms | 1.012 ms | 0.26x |
+| Create and call 100K callbacks stored in an array | 5.33 ms | 1.37 ms | 6.47 ms (fresh delegates) | 0.26x |
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
 | Retained class instances with number, string and boolean fields, 100K instances | 6.26 ms | 1.551 ms | 1.832 ms | 0.25x |
@@ -210,7 +211,6 @@ Runtime performance:
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
 | Construct and traverse 100K class instances whose constructor calls a helper | 6.41 ms | 1.09 ms | 1.41 ms (class) | 0.17x |
 | Call 100K callbacks stored in an array | 0.798 ms | 0.131 ms | 0.254 ms (delegates) | 0.16x |
-| Create and call 100K callbacks stored in an array | 9.81 ms | 1.61 ms | 6.45 ms (fresh delegates) | 0.16x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
