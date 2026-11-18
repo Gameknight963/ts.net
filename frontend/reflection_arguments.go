@@ -13,10 +13,22 @@ import (
 // be reassigned or pass through several functions before reaching an operation.
 func (b *irBuilder) prepareReflectionSources(files []*ast.SourceFile) {
 	b.reflectionSources = map[*ast.Node][]*ast.Node{}
+	b.reflectionIterations = map[*ast.Node][]*ast.Node{}
 	b.reflectionMapValues = nil
 	b.reflectionMapEntries = nil
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
+		if n.Kind == ast.KindForOfStatement {
+			loop := n.AsForInOrOfStatement()
+			if loop.Initializer.Kind == ast.KindVariableDeclarationList {
+				for _, declaration := range loop.Initializer.AsVariableDeclarationList().Declarations.Nodes {
+					b.reflectionIterations[declaration] = append(b.reflectionIterations[declaration], loop.Expression)
+				}
+			} else if symbol := b.c.GetSymbolAtLocation(loop.Initializer); symbol != nil && symbol.ValueDeclaration != nil {
+				declaration := symbol.ValueDeclaration
+				b.reflectionIterations[declaration] = append(b.reflectionIterations[declaration], loop.Expression)
+			}
+		}
 		if n.Kind == ast.KindBinaryExpression {
 			expression := n.AsBinaryExpression()
 			switch expression.OperatorToken.Kind {
@@ -106,6 +118,24 @@ func reflectionLiteralArguments(arguments []*ast.Node) []*ast.Node {
 	return result
 }
 
+func (b *irBuilder) reflectionIterationValue(source *ast.Node, seen map[*ast.Node]bool, classify func(*ast.Node, map[*ast.Node]bool) int) int {
+	if source == nil || seen[source] {
+		return 0
+	}
+	seen[source] = true
+	defer delete(seen, source)
+	result := 0
+	return b.reflectionContainerValue(source, nil, seen, func(element *ast.Node, active map[*ast.Node]bool) int {
+		value := classify(element, active)
+		if result == 1 && value >= 2 || value == 1 && result >= 2 {
+			result = 3
+		} else if value > result {
+			result = value
+		}
+		return result
+	})
+}
+
 func (b *irBuilder) reflectionBindingValue(parameter *ast.Node, seen map[*ast.Node]bool, classify func(*ast.Node, map[*ast.Node]bool) int) int {
 	if seen[parameter] {
 		return 0
@@ -151,6 +181,14 @@ func (b *irBuilder) reflectionBindingValue(parameter *ast.Node, seen map[*ast.No
 						result = value
 					}
 				}
+				for _, source := range b.reflectionIterations[owner] {
+					value := b.reflectionIterationValue(source, seen, func(element *ast.Node, active map[*ast.Node]bool) int {
+						return b.reflectionContainerValue(element, names, active, classify)
+					})
+					if value > result {
+						result = value
+					}
+				}
 			}
 		}
 	case ast.KindGetAccessor:
@@ -162,6 +200,11 @@ func (b *irBuilder) reflectionBindingValue(parameter *ast.Node, seen map[*ast.No
 	}
 	for _, argument := range b.reflectionSources[parameter] {
 		if value := classify(argument, seen); value > result {
+			result = value
+		}
+	}
+	for _, source := range b.reflectionIterations[parameter] {
+		if value := b.reflectionIterationValue(source, seen, classify); value > result {
 			result = value
 		}
 	}
@@ -252,6 +295,12 @@ func (b *irBuilder) reflectionContainerValue(owner *ast.Node, names []string, se
 				visit(declaration.Initializer())
 				for _, source := range b.reflectionSources[declaration] {
 					visit(source)
+				}
+				for _, source := range b.reflectionIterations[declaration] {
+					add(b.reflectionIterationValue(source, seen, func(element *ast.Node, _ map[*ast.Node]bool) int {
+						visit(element)
+						return result
+					}))
 				}
 			}
 		case ast.KindObjectLiteralExpression:

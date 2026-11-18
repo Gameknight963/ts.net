@@ -74,6 +74,7 @@ type irBuilder struct {
 	deletedNames          map[string]bool
 	deleteAnyName         bool
 	reflectionSources     map[*ast.Node][]*ast.Node
+	reflectionIterations  map[*ast.Node][]*ast.Node
 	reflectionMapValues   []*ast.Node
 	reflectionMapEntries  []*ast.Node
 	enumValues            map[*ast.Node]evaluator.Result
