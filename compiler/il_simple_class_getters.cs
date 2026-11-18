@@ -95,14 +95,15 @@ internal static partial class CompilerFunctions
             il_simple_getter_expression(value.right, receiver, data, ref remaining, c, parameter);
     }
 
-    internal static void il_simple_getter_number(int entry, Compiler c, IlBackend b, int receiver = -1, int parameter = 0, List<(int Name, int Slot)> fields = null, int counter = 0, int literalType = 0, bool numericClass = false)
+    internal static void il_simple_getter_number(int entry, Compiler c, IlBackend b, int receiver = -1, int parameter = 0, List<(int Name, int Slot)> fields = null, int counter = 0, int literalType = 0, bool numericClass = false, int argumentSlot = -1)
     {
         Node value = get_node(entry, c);
         if (scalar_class_literal(entry, TypeKind.Number, c)) { il_number(entry, c, b); return; }
         // Method helpers reserve arguments zero and one for function and receiver.
         if (parameter != 0 && value.kind == NodeKind.Name && value.symbol == parameter)
         {
-            if (counter == 0) { b.emit(0xfe09, 2); b.call(RuntimeMember.NumberValue); }
+            if (argumentSlot >= 0) b.emit(0xfe0c, argumentSlot);
+            else if (counter == 0) { b.emit(0xfe09, 2); b.call(RuntimeMember.NumberValue); }
             else { b.load_storage(counter); if (b.raw_slot(counter) == -6) b.op(0x6c); else if (b.raw_slot(counter) != -3) b.call(RuntimeMember.NumberValue); }
             return;
         }
@@ -121,10 +122,10 @@ internal static partial class CompilerFunctions
             b.emit(receiver < 0 ? 0xfe09 : 0xfe0c, receiver < 0 ? 0 : receiver);
             b.call(numericClass ? RuntimeMember.NumericClassRead : RuntimeMember.GetStoredNumberWithReceiver); b.call(RuntimeMember.NumberValue); return;
         }
-        il_simple_getter_number(value.left, c, b, receiver, parameter, fields, counter, literalType, numericClass);
+        il_simple_getter_number(value.left, c, b, receiver, parameter, fields, counter, literalType, numericClass, argumentSlot);
         int op = get_token(value.token, c).text;
         if (value.kind == NodeKind.Unary) { if (is_text(op, text_minus, c)) b.op(0x65); return; }
-        il_simple_getter_number(value.right, c, b, receiver, parameter, fields, counter, literalType, numericClass);
+        il_simple_getter_number(value.right, c, b, receiver, parameter, fields, counter, literalType, numericClass, argumentSlot);
         b.op(is_text(op, text_plus, c) ? 0x58 : is_text(op, text_minus, c) ? 0x59 : is_text(op, text_star, c) ? 0x5a : 0x5b);
     }
 

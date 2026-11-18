@@ -2,15 +2,17 @@ namespace Tsnet.Compiler;
 
 internal static partial class CompilerFunctions
 {
-    internal static bool il_loop_method_target(Node call, int counter, Compiler c, IlBackend b, out int receiverEntry, out int methodName)
+    internal static bool il_loop_method_target(Node call, Compiler c, IlBackend b, out int receiverEntry, out int methodName, out int argumentEntry)
     {
-        receiverEntry = methodName = 0;
+        receiverEntry = methodName = argumentEntry = 0;
+        bool ordinaryArgument(Node value) => value.next == 0 && get_type(value.type, c).kind == TypeKind.Number &&
+            (value.kind == NodeKind.Number || value.kind == NodeKind.Name && value.symbol != 0);
         Node direct = get_node(call.left, c);
         if (direct.kind == NodeKind.Property && direct.fourth == 0 && direct.name != 0 && call.children != 0)
         {
             Node directArgument = get_node(call.children, c);
-            if (directArgument.kind != NodeKind.Name || directArgument.symbol != counter || directArgument.next != 0) return false;
-            receiverEntry = direct.left; methodName = direct.name; return true;
+            if (!ordinaryArgument(directArgument)) return false;
+            receiverEntry = direct.left; methodName = direct.name; argumentEntry = call.children; return true;
         }
         Node callee = get_node(call.left, c);
         if (callee.kind != NodeKind.Name || callee.symbol == 0 || get_symbol(callee.symbol, c).function == 0 || il_direct_function(call.left, c, b) == 0) return false;
@@ -34,8 +36,8 @@ internal static partial class CompilerFunctions
         Node receiver = get_node(call.children, c);
         if (receiver.next == 0) return false;
         Node argument = get_node(receiver.next, c);
-        if (argument.kind != NodeKind.Name || argument.symbol != counter || argument.next != 0) return false;
-        receiverEntry = call.children; methodName = member.name; return true;
+        if (!ordinaryArgument(argument)) return false;
+        receiverEntry = call.children; methodName = member.name; argumentEntry = receiver.next; return true;
     }
     internal static bool il_class_method_loop(int entry, int result, int counter, int bound, Compiler c, IlBackend b)
     {
@@ -51,7 +53,10 @@ internal static partial class CompilerFunctions
         Node total = get_node(assignment.left, c), call = get_node(assignment.right, c);
         if (total.kind != NodeKind.Name || total.symbol == counter || get_type(total.type, c).kind != TypeKind.Number ||
             b.global_fields.at(total.symbol) != 0 || b.capture_fields.at(total.symbol) != 0 || call.kind != NodeKind.Call || get_type(call.type, c).kind != TypeKind.Number) return false;
-        if (!il_loop_method_target(call, counter, c, b, out int receiverEntry, out int methodName)) return false;
+        if (!il_loop_method_target(call, c, b, out int receiverEntry, out int methodName, out int argumentEntry)) return false;
+        Node argument = get_node(argumentEntry, c);
+        if (argument.kind == NodeKind.Name && argument.symbol == total.symbol) return false;
+        bool varyingArgument = argument.kind == NodeKind.Name && argument.symbol == counter;
         Node selected = get_node(receiverEntry, c);
         int condition = 0;
         int[] receivers = [receiverEntry];
@@ -109,6 +114,7 @@ internal static partial class CompilerFunctions
                 b.emit(0x7e, b.global_flags.at(symbol)); b.emit(0x39, ordinaryLoop);
             }
         var bodies = new List<LoopGetterBody>();
+        int argumentSlot = varyingArgument ? -1 : b.local(-3);
         foreach (var target in targets)
         {
             var method = target.Method;
@@ -148,8 +154,11 @@ internal static partial class CompilerFunctions
                 else { il_text(name, c, b); b.call(RuntimeMember.GetNumber); }
                 b.call(RuntimeMember.NumberValue); b.emit(0xfe0e, slot);
             }
-            bodies.Add(new(method.Expression, fields, method.Parameter, counter));
+            bodies.Add(new(method.Expression, fields, method.Parameter, counter, argumentSlot));
         }
+        // Load only after every guard. A fallback must retain the original
+        // receiver/argument evaluation order, including TDZ failures.
+        if (argumentSlot >= 0) { il_number(argumentEntry, c, b); b.emit(0xfe0e, argumentSlot); }
         if (condition == 0) b.loop_getter_bodies[assignment.right] = bodies[0];
         else b.loop_getter_choices[assignment.right] = new(condition, bodies[0], bodies[1]);
         il_loop_code(entry, result, counter, bound, c, b);

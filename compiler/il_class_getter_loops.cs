@@ -1,6 +1,6 @@
 namespace Tsnet.Compiler;
 
-internal readonly record struct LoopGetterBody(int Expression, List<(int Name, int Slot)> Fields, int Parameter = 0, int Counter = 0);
+internal readonly record struct LoopGetterBody(int Expression, List<(int Name, int Slot)> Fields, int Parameter = 0, int Counter = 0, int ArgumentSlot = -1);
 
 internal readonly record struct LoopGetterChoice(int Condition, LoopGetterBody WhenTrue, LoopGetterBody WhenFalse);
 
@@ -21,15 +21,15 @@ internal static partial class CompilerFunctions
             int alternate = b.label(), done = b.label();
             il_integer(choice.Condition, c, b); b.emit(0x39, alternate);
             var first = choice.WhenTrue;
-            il_simple_getter_number(first.Expression, c, b, parameter: first.Parameter, fields: first.Fields, counter: first.Counter);
+            il_simple_getter_number(first.Expression, c, b, parameter: first.Parameter, fields: first.Fields, counter: first.Counter, argumentSlot: first.ArgumentSlot);
             b.emit(0x38, done); b.mark(alternate);
             var second = choice.WhenFalse;
-            il_simple_getter_number(second.Expression, c, b, parameter: second.Parameter, fields: second.Fields, counter: second.Counter);
+            il_simple_getter_number(second.Expression, c, b, parameter: second.Parameter, fields: second.Fields, counter: second.Counter, argumentSlot: second.ArgumentSlot);
             b.mark(done); return true;
         }
         if (b.loop_getter_values.TryGetValue(entry, out int saved)) { b.emit(0xfe0c, saved); return true; }
         if (!b.loop_getter_bodies.TryGetValue(entry, out var body)) return false;
-        il_simple_getter_number(body.Expression, c, b, parameter: body.Parameter, fields: body.Fields, counter: body.Counter); return true;
+        il_simple_getter_number(body.Expression, c, b, parameter: body.Parameter, fields: body.Fields, counter: body.Counter, argumentSlot: body.ArgumentSlot); return true;
     }
     internal static bool il_loop_field_write(int entry, Compiler c, IlBackend b)
     {
