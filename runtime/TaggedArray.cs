@@ -32,7 +32,17 @@ public sealed partial class TaggedArray : JsArray
     public void InitializeLiteralElement(int index, object value) => Write((uint)index, value);
     // Parsing and filtering fill a fresh, unexposed array. Like literal initialization,
     // it defines own elements without consulting inherited setters.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void AppendUnexposedNumber(double value)
+    {
+        uint index = length;
+        if (materialized != null || index >= (uint)tags.Length) { AppendUnexposedNumberSlow(value); return; }
+        tags[index] = 1;
+        numbers[index] = value;
+        length = index + 1;
+    }
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    void AppendUnexposedNumberSlow(double value)
     {
         uint index = length;
         if (!Prepare(index)) { materialized.Append(value); return; }

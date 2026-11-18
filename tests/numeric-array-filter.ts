@@ -42,3 +42,15 @@ Object.defineProperty(Array.prototype, '0', { set() { setterCalls++; }, configur
 try { ownResult = ownSource.filter(value => value > 0); }
 finally { delete (Array.prototype as any)[0]; }
 console.log('own result', ownResult.join(','), setterCalls, Object.hasOwn(ownResult, '0'));
+for (const length of [0, 1, 16, 17, 32, 33, 127, 129, 1025]) {
+    const source: number[] = [];
+    for (let index = 0; index < length; index++) source.push(index);
+    const mapped = source.map(value => value * 2);
+    const all = mapped.filter(value => value >= 0);
+    const selected = mapped.filter(value => value % 4 === 0);
+    const parsed = JSON.parse(JSON.stringify(all)) as number[];
+    console.log('growth', length, all.length, selected.length, parsed.length,
+        all.reduce((sum, value) => sum + value, 0),
+        selected.reduce((sum, value) => sum + value, 0),
+        parsed.reduce((sum, value) => sum + value, 0));
+}
