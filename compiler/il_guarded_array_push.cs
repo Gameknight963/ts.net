@@ -114,7 +114,8 @@ internal static partial class CompilerFunctions
                             if (get_node(parameter, c).symbol != 0) classParameters.at_mut(get_node(parameter, c).symbol) = 1;
                 }
             }
-            if (scalar_class_fields(value, classDefinitions, classDeclarations, classParameters, c, b, recordPlan: false) == null) return false;
+            if (scalar_class_fields(value, classDefinitions, classDeclarations, classParameters, c, b,
+                recordPlan: false, heapConstruction: true) == null) return false;
             for (int argument = get_node(value, c).children; argument != 0; argument = get_node(argument, c).next)
                 if (!Pure(argument)) return false;
             return true;
