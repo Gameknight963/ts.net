@@ -36,42 +36,52 @@ internal static partial class CompilerFunctions
         return function.kind == NodeKind.Function && function.right == 0 && !function.internal_continuation ? reference.left : 0;
     }
 
-    internal static List<(int Name, int Value)> scalar_class_fields(int entry, Vector<int> definitions,
-        Vector<int> declarations, Vector<int> parameters, Compiler c, IlBackend b, bool recordPlan = true)
+    static int known_class_definition(int entry, Vector<int> definitions, Vector<int> declarations,
+        Vector<int> parameters, Compiler c, IlBackend b, bool allowMembers = false)
     {
         Node construction = get_node(entry, c);
         if (construction.kind != NodeKind.Construct || construction.left == 0 || construction.type == 0 ||
-            get_type(construction.type, c).kind != TypeKind.Shape) return null;
+            get_type(construction.type, c).kind != TypeKind.Shape) return 0;
         Node reference = get_node(construction.left, c);
         if (reference.kind != NodeKind.Name || reference.symbol == 0 || parameters.at(reference.symbol) != 0 ||
-            declarations.at(reference.symbol) != 1 || b.written_symbols.at(reference.symbol) != 0) return null;
+            declarations.at(reference.symbol) != 1 || b.written_symbols.at(reference.symbol) != 0) return 0;
         int declaration = (int)definitions.at(reference.symbol);
-        if (declaration == 0) return null;
+        if (declaration == 0) return 0;
         Node definition = get_node(declaration, c);
-        if (definition.kind != NodeKind.Variable || definition.left == 0) return null;
+        if (definition.kind != NodeKind.Variable || definition.left == 0) return 0;
         Node call = get_node(definition.left, c);
-        if (call.kind != NodeKind.Call || call.children != 0 || call.left == 0) return null;
+        if (call.kind != NodeKind.Call || call.children != 0 || call.left == 0) return 0;
         int factory = scalar_field_function(call.left, c);
-        if (factory == 0 || get_node(factory, c).children != 0 || get_node(factory, c).left == 0) return null;
+        if (factory == 0 || get_node(factory, c).children != 0 || get_node(factory, c).left == 0) return 0;
         Node scope = get_node(get_node(factory, c).left, c);
-        if (scope.kind != NodeKind.Block || scope.children == 0) return null;
+        if (scope.kind != NodeKind.Block || scope.children == 0) return 0;
         Node binding = get_node(scope.children, c);
-        if (binding.kind != NodeKind.Variable || binding.symbol == 0 || binding.left == 0 || binding.next == 0) return null;
+        if (binding.kind != NodeKind.Variable || binding.symbol == 0 || binding.left == 0 || binding.next == 0) return 0;
         Node initialize = get_node(binding.next, c);
-        if (initialize.kind != NodeKind.ClassStatic || initialize.left == 0 || initialize.right == 0 || initialize.next == 0) return null;
+        if (initialize.kind != NodeKind.ClassStatic || initialize.left == 0 || initialize.right == 0 || initialize.next == 0) return 0;
         Node result = get_node(initialize.next, c);
         if (binding.kind != NodeKind.Variable || binding.symbol == 0 || b.written_symbols.at(binding.symbol) != 0 ||
             result.kind != NodeKind.Return || result.left == 0 || result.next != 0 ||
             get_node(initialize.left, c).kind != NodeKind.Name || get_node(initialize.left, c).symbol != binding.symbol ||
-            get_node(result.left, c).kind != NodeKind.Name || get_node(result.left, c).symbol != binding.symbol) return null;
+            get_node(result.left, c).kind != NodeKind.Name || get_node(result.left, c).symbol != binding.symbol) return 0;
         Node klass = get_node(binding.left, c);
-        // Inheritance, methods, computed keys and decorators keep the ordinary
-        // construction path. Static initializers must also be empty.
-        if (klass.kind != NodeKind.ClassValue || klass.left == 0 || klass.fourth == 0 || klass.third != 0 || klass.children != 0 ||
-            get_node(klass.fourth, c).type != construction.type) return null;
+        // Scalar replacement excludes members and static initialization. Direct
+        // heap construction can retain them without changing their execution.
+        if (klass.kind != NodeKind.ClassValue || klass.left == 0 || klass.fourth == 0 || klass.third != 0 || (!allowMembers && klass.children != 0) ||
+            get_node(klass.fourth, c).type != construction.type) return 0;
         int statics = scalar_field_function(initialize.right, c);
         if (statics == 0 || get_node(statics, c).left == 0 || get_node(get_node(statics, c).left, c).kind != NodeKind.Block ||
-            get_node(get_node(statics, c).left, c).children != 0) return null;
+            (!allowMembers && get_node(get_node(statics, c).left, c).children != 0)) return 0;
+        return binding.left;
+    }
+
+    internal static List<(int Name, int Value)> scalar_class_fields(int entry, Vector<int> definitions,
+        Vector<int> declarations, Vector<int> parameters, Compiler c, IlBackend b, bool recordPlan = true)
+    {
+        int definition = known_class_definition(entry, definitions, declarations, parameters, c, b);
+        if (definition == 0) return null;
+        Node construction = get_node(entry, c);
+        Node klass = get_node(definition, c);
         int fields = scalar_field_function(klass.left, c);
         if (fields == 0) return null;
         Node function = get_node(fields, c);
