@@ -2,16 +2,17 @@ using System;
 
 public partial class JsFunction
 {
-    // Ordinary methods and callbacks need none of this state. An unobserved
-    // constructor prototype needs only a flag, not a separate allocation.
+    // Most functions need only a body. Share its slot with optional numeric,
+    // constructor and prototype state; an unobserved prototype needs a flag.
     sealed class FunctionState
     {
+        internal FunctionBody Body;
         internal Delegate Numeric;
         internal FunctionBody Factory;
         internal object Prototype;
     }
 
-    enum FunctionStateKind : byte {None, Numeric, Factory, Prototype, Combined}
+    enum FunctionStateKind : byte {None, Numeric, Factory, Prototype, Combined, Body}
 
     // A single optional value occupies this slot directly. A container is
     // needed only when a function uses more than one of these features.
@@ -23,6 +24,7 @@ public partial class JsFunction
     {
         if (functionStateKind == FunctionStateKind.Combined) return (FunctionState)functionState;
         var state = new FunctionState {
+            Body = functionStateKind == FunctionStateKind.Body ? (FunctionBody)functionState : null,
             Numeric = functionStateKind == FunctionStateKind.Numeric ? (Delegate)functionState : null,
             Factory = functionStateKind == FunctionStateKind.Factory ? (FunctionBody)functionState : null,
             Prototype = functionStateKind == FunctionStateKind.Prototype ? functionState : null

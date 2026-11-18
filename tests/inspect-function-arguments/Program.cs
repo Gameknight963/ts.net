@@ -37,6 +37,8 @@ try
         throw new Exception("A numeric accessor ignored its bound receiver entry point");
     var numericFunction = new JsFunction((FunctionBody)(static _ => Js.GetUndefined()),
         (NumberFunction1)(static value => value + 1), "numeric constructor", 1);
+    if (!ReferenceEquals(numericFunction.Invoke(Array.Empty<object>()), Js.GetUndefined()))
+        throw new Exception("A numeric delegate replaced the ordinary function body");
     FunctionBody factory = static _ => {
         var instance = new JsDynamicObject();
         instance.Set("factory", true);
@@ -58,6 +60,8 @@ try
     numericFunction.Set("prototype", prototype);
     if (!ReferenceEquals(numericFunction.Get("prototype"), prototype) || numericFunction.InvokeNumber1(4) != 5)
         throw new Exception("Replacing a prototype changed unrelated function state");
+    if (!ReferenceEquals(numericFunction.Invoke(Array.Empty<object>()), Js.GetUndefined()))
+        throw new Exception("Constructor metadata replaced the ordinary function body");
     Console.WriteLine("PASS ordinary function calls, receiver calls, and zero/numeric argument overrides");
 }
 catch (Exception error)

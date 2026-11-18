@@ -16,7 +16,8 @@ public interface INumberArgumentFunction
 
 public partial class JsFunction : JsDescriptorObject
 {
-    readonly FunctionBody body;
+    FunctionBody body => functionStateKind == FunctionStateKind.Body ? (FunctionBody)functionState :
+        functionStateKind == FunctionStateKind.Combined ? ((FunctionState)functionState).Body : null;
     Delegate numeric => functionStateKind == FunctionStateKind.Numeric ? (Delegate)functionState :
         functionStateKind == FunctionStateKind.Combined ? ((FunctionState)functionState).Numeric : null;
     string name;
@@ -33,10 +34,15 @@ public partial class JsFunction : JsDescriptorObject
     internal override TsObject PropertyPrototype => TryExplicitPrototype(out var prototype) ? prototype : Js.SharedFunctionPrototype;
     public JsFunction(object body, object numeric, string name, int length)
     {
-        this.body = (FunctionBody)body;
+        if (body != null) {
+            functionState = (FunctionBody)body;
+            functionStateKind = FunctionStateKind.Body;
+        }
         if (numeric is Delegate number) {
-            functionState = number;
-            functionStateKind = FunctionStateKind.Numeric;
+            if (functionStateKind == FunctionStateKind.None) {
+                functionState = number;
+                functionStateKind = FunctionStateKind.Numeric;
+            } else EnsureFunctionState().Numeric = number;
         }
         this.name = name;this.length = length;
     }
