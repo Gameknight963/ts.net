@@ -64,8 +64,8 @@ internal static partial class CompilerFunctions
                 int value = b.local(b.type(field.type, c));
                 var assignment = assignments.LastOrDefault(item => same(item.Name, field.name, c));
                 if (assignment.Value != 0) {
-                    il_scalar_constructor_expression(assignment.Value, parameters, c, b);
-                    b.convert(get_node(assignment.Value, c).type, field.type, c);
+                    int assignedType = il_scalar_constructor_expression(assignment.Value, parameters, c, b);
+                    b.convert(assignedType, field.type, c);
                 }
                 else il_as(initializers.Last(item => same(item.Name, field.name, c)).Value, field.type, c, b);
                 b.emit(0xfe0e, value);

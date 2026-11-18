@@ -226,8 +226,8 @@ internal static partial class CompilerFunctions
             foreach (var assignment in assignments)
             {
                 ScalarField storage = fields.First(field => same(field.name, assignment.Name, c));
-                il_scalar_constructor_expression(assignment.Value, parameters, c, b);
-                b.convert(get_node(assignment.Value, c).type, storage.type, c); b.emit(0xfe0e, storage.slot);
+                int assignedType = il_scalar_constructor_expression(assignment.Value, parameters, c, b);
+                b.convert(assignedType, storage.type, c); b.emit(0xfe0e, storage.slot);
             }
         }
     }
