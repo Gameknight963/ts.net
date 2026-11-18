@@ -206,7 +206,9 @@ void il_spread_clone(int type, int klass, int constructor, Compiler c, IlBackend
         int member = get_type(type, c).fields;
         while (member != 0)
         {
-            int token = b.field_token(member); b.emit(0xfe0c, result); b.emit(0xfe09, 0); b.emit(0x7b, token); b.emit(0x7d, token);
+            int token = b.field_token(member); b.emit(0xfe0c, result); b.emit(0xfe09, 0);
+            if (b.lazy_object_methods.ContainsKey(member)) b.load_field(member, c); else b.emit(0x7b, token);
+            b.emit(0x7d, token);
             member = get_field(member, c).next;
         }
         b.emit(0xfe09, 0); b.emit(0xfe0c, result); b.call(RuntimeMember.CopySpreadExtras);

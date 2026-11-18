@@ -775,7 +775,10 @@ internal static partial class CompilerFunctions
             while (property != 0)
             {
                 Node p = get_node(property, c); int member = field(n.type, p.name, c);
-                b.op(0x25); il_as(p.left, get_field(member, c).type, c, b); b.store_field(member, c); property = p.next;
+                b.op(0x25);
+                if (b.lazy_method_values.TryGetValue(p.left, out var lazy) && lazy.Loader != 0) b.emit(0x7e, lazy.Marker);
+                else il_as(p.left, get_field(member, c).type, c, b);
+                b.store_field(member, c); property = p.next;
             }
         }
         else if (n.kind == NodeKind.Property)
@@ -1277,7 +1280,7 @@ internal static partial class CompilerFunctions
         string assemblyName = System.IO.Path.GetFileNameWithoutExtension(path.Decode());
         if (assemblyName.Length == 0) throw new CompilationException("Output filename must include an assembly name");
         int numeric_array = il_numeric_array_type(c);
-        IlBackend b = IlBackend.create(c, assemblyName); il_prove_locals(c, b); il_prove_scalars(c, b); il_prove_var_initializers(c, b); il_prove_reversible_arrays(c, b); il_choose_tagged_arrays(c, b); il_runtime(b); il_prove_bigint_locals(c, b); il_prepare_enumeration(c, b); il_prepare_spreads(c, b); il_prepare_key_layouts(c, b); il_shapes(c, b); il_prepare_raw_property_reads(c, b); il_key_layouts(c, b); il_spread_shapes(c, b); il_prepare_spread_hints(c, b); il_spread_clones(c, b);
+        IlBackend b = IlBackend.create(c, assemblyName); il_prove_locals(c, b); il_prove_scalars(c, b); il_prove_var_initializers(c, b); il_prove_reversible_arrays(c, b); il_choose_tagged_arrays(c, b); il_runtime(b); il_prove_bigint_locals(c, b); il_prepare_enumeration(c, b); il_prepare_spreads(c, b); il_prepare_key_layouts(c, b); il_prepare_lazy_object_methods(c, b); il_shapes(c, b); il_prepare_raw_property_reads(c, b); il_key_layouts(c, b); il_spread_shapes(c, b); il_prepare_spread_hints(c, b); il_spread_clones(c, b);
         int object_type = b.RuntimeToken(RuntimeMember.ObjectType);
         int program = b.plan.type("Program", object_type, 0x181);
         // Keep the constructor allocator with this assembly so its instances
@@ -1402,6 +1405,7 @@ internal static partial class CompilerFunctions
         il_class_field_update_bodies(c, b);
         il_class_field_initializer_bodies(c, b);
         il_class_update_loop_guards(c, b);
+        il_lazy_object_method_bodies(c, b);
         b.plan.finish(entry, path);
     }
 }

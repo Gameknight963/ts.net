@@ -660,6 +660,7 @@ internal static partial class CompilerFunctions
     internal static void il_value_call(int entry, Compiler c, IlBackend b)
     {
         if (il_bigint_literal(entry, c, b)) return;
+        if (il_lazy_object_method_call(entry, c, b)) return;
         Node n = get_node(entry, c); int count = 0; bool numeric = get_type(n.type, c).kind == TypeKind.Number; int argument = n.children;
         while (argument != 0) { Node value = get_node(argument, c); count++; if (get_type(value.type, c).kind != TypeKind.Number && value.kind != NodeKind.Undefined) { numeric = false; } argument = value.next; }
         // The frontend inserts this intrinsic for yield; it is not a user
