@@ -48,6 +48,7 @@ public partial class JsFunction : JsDescriptorObject
     // Class initializers can pass this directly; other functions retain the array fallback.
     public virtual object InvokeReceiver0(object receiver) => InvokeWithReceiver(receiver, Array.Empty<object>());
     public virtual object InvokeReceiverNumber1(object receiver, double? value) => InvokeWithReceiver(receiver, new[] {Js.BoxNumber(value)});
+    public virtual object InvokeReceiverNumber2(object receiver, double? first, double? second) => InvokeWithReceiver(receiver, new[] {Js.BoxNumber(first), Js.BoxNumber(second)});
     public virtual object InvokeReceiverArgument1(object receiver, object value) => InvokeWithReceiver(receiver, new[] {value});
     public virtual object InvokeArgument1(object value) => Invoke(new[] {value});
     public virtual object GetCallProperty() => Get("call");
@@ -82,6 +83,7 @@ public partial class JsFunction : JsDescriptorObject
     public virtual double? InvokeMethodNumber2(object receiver,double? first,double? second)=>InvokeNumber2(first,second);
     public virtual object Construct(object[] arguments) => ConstructOrdinary(arguments);
     public virtual object ConstructNumber1(double? value) => Construct(new[] {Js.BoxNumber(value)});
+    public virtual object ConstructNumber2(double? first, double? second) => Construct(new[] {Js.BoxNumber(first), Js.BoxNumber(second)});
     public virtual object ConstructArgument(object value) => Construct(new[] {value});
     public virtual bool HasInstance(object value) => OrdinaryHasInstance(value);
     internal override bool IsReadOnlyOwnProperty(string key) => key == "name" && !deletedName || key == "length" && !deletedLength || base.IsReadOnlyOwnProperty(key);

@@ -80,6 +80,8 @@ public static partial class Js
         ? function.ConstructArgument(value) : throw new InvalidOperationException("Value is not a constructor");
     public static object ConstructNumberArgument(object target, double? value) => target is JsFunction function
         ? function.ConstructNumber1(value) : throw new InvalidOperationException("Value is not a constructor");
+    public static object ConstructNumberArguments(object target, double? first, double? second) => target is JsFunction function
+        ? function.ConstructNumber2(first, second) : throw new InvalidOperationException("Value is not a constructor");
 
     public static object MarkFunctionPrototype(object value) { var fn = (JsFunction)value; fn.MarkOrdinaryPrototype(); fn.sourceConstructor = true; return value; }
     public static object MarkFunctionPrototype(object value, object factory) { var fn = (JsFunction)value; fn.MarkOrdinaryPrototype(); fn.sourceConstructor = true; fn.constructFactory = (FunctionBody)factory; return value; }

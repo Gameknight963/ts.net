@@ -200,6 +200,7 @@ Runtime performance:
 | Increment fifth numeric property of a parsed object, 100K times | 0.645 ms | 0.120 ms | 1.361 ms (dictionary), 0.258 ms (class) | 0.19x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
+| Construct and traverse 100K class instances whose constructor calls a helper | 10.55 ms | 1.261 ms | 1.507 ms (class) | 0.12x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |

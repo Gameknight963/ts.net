@@ -23,11 +23,15 @@ internal static partial class CompilerFunctions
             function.internal_continuation || function.left == 0) return -1;
         Node receiver = get_node(function.fourth, c);
         if (receiver.name != 0) return -1;
-        if (receiver.next == 0) return 0;
-        Node parameter = get_node(receiver.next, c);
-        return parameter.kind == NodeKind.Variable && parameter.symbol != 0 && !parameter.constant && parameter.next == 0 &&
-            get_type(parameter.type, c).kind != TypeKind.Void && parameter.left == 0 && parameter.right == 0 &&
-            parameter.third == 0 && parameter.fourth == 0 && parameter.children == 0 ? 1 : -1;
+        int count = 0; bool numbers = true;
+        for (int entry = receiver.next; entry != 0; entry = get_node(entry, c).next) {
+            Node parameter = get_node(entry, c);
+            if (++count > 2 || parameter.kind != NodeKind.Variable || parameter.symbol == 0 || parameter.constant ||
+                get_type(parameter.type, c).kind == TypeKind.Void || parameter.left != 0 || parameter.right != 0 ||
+                parameter.third != 0 || parameter.fourth != 0 || parameter.children != 0) return -1;
+            numbers &= get_type(parameter.type, c).kind == TypeKind.Number;
+        }
+        return count == 2 && !numbers ? -1 : count;
     }
 
     internal static void il_add_class_receiver_function(int entry, Compiler c, IlBackend b)
@@ -41,22 +45,28 @@ internal static partial class CompilerFunctions
     internal static void il_class_receiver_argument_methods(int symbol, int count, int type, int context, int environment, Compiler c, IlBackend b)
     {
         Node function = get_node(get_symbol(symbol, c).function, c);
-        // Emit zero-argument, numeric-argument, and object-argument entry points.
-        for (int form = 0; form <= 2; form++)
+        // Extra numeric arguments are ignored only when arguments is unobservable.
+        for (int form = 0; form <= 3; form++)
         {
-            b.begin(form == 0 ? b.plan.method1(5, type, 0xc6, -5, -5, "InvokeReceiver0")
+            int method;
+            if (form == 3) {
+                Vector<int> parameters = new(); parameters.push(-5); parameters.push(-10); parameters.push(-10);
+                method = b.plan.method(5, type, 0xc6, -5, parameters.view(), "InvokeReceiverNumber2");
+            } else method = form == 0 ? b.plan.method1(5, type, 0xc6, -5, -5, "InvokeReceiver0")
                 : form == 1 ? b.plan.method2(5, type, 0xc6, -5, -5, -10, "InvokeReceiverNumber1")
-                : b.plan.method2(5, type, 0xc6, -5, -5, -5, "InvokeReceiverArgument1"));
+                : b.plan.method2(5, type, 0xc6, -5, -5, -5, "InvokeReceiverArgument1");
+            b.begin(method);
             if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment); }
             b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.call(RuntimeMember.PrepareReceiver);
             b.from_object(get_node(function.fourth, c).type, c);
-            if (count != 0)
+            int parameter = get_node(function.fourth, c).next;
+            for (int i = 0; i < count; i++, parameter = get_node(parameter, c).next)
             {
-                int parameterType = get_node(get_node(function.fourth, c).next, c).type;
-                if (form != 0)
+                int parameterType = get_node(parameter, c).type;
+                if (form == 3 || form != 0 && i == 0)
                 {
-                    b.emit(0xfe09, 2);
-                    if (form == 1 && get_type(parameterType, c).kind != TypeKind.Number) {b.call(RuntimeMember.BoxNumber);b.from_object(parameterType,c);}
+                    b.emit(0xfe09, i + 2);
+                    if (form is 1 or 3 && get_type(parameterType, c).kind != TypeKind.Number) {b.call(RuntimeMember.BoxNumber);b.from_object(parameterType,c);}
                     else if(form == 2) b.from_object(parameterType,c);
                 }
                 else b.empty(parameterType, c);

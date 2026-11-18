@@ -141,6 +141,15 @@ public sealed partial class JsClassFunction : JsFunction
         object returned = constructor?.InvokeReceiverArgument1(constructor.ConstructionReceiver(instance, this), value);
         return returned is TsObject ? returned : instance;
     }
+    public override object ConstructNumber2(double? first, double? second)
+    {
+        if (derived) return base.ConstructNumber2(first, second);
+        var instance = Allocate();
+        instance.SetPrototype(ConstructionPrototype(this));
+        InitializeFields(instance);
+        object returned = constructor?.InvokeReceiverNumber2(constructor.ConstructionReceiver(instance, this), first, second);
+        return returned is TsObject ? returned : instance;
+    }
     internal override bool CanInitializeDerived => true;
     internal override object InitializeDerived(object instance, object[] arguments) => Initialize(instance, arguments);
     internal override object InitializeDerived(object instance, object[] arguments, JsFunction newTarget) => Initialize(instance, arguments, newTarget);
