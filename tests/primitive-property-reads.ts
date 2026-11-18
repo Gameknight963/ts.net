@@ -35,3 +35,8 @@ try {
     delete strings.probe; delete numbers.probe; delete booleans.probe;
 }
 console.log('restored', ('abcdef' as any).slice(5));
+
+const convertedKey: any = {[Symbol.toPrimitive](hint: string): string {console.log('key hint', hint); return 'slice';}};
+console.log('converted key', ('abcdef' as any)[convertedKey](5));
+const legacyKey: any = {toString(): string {console.log('key toString'); return 'length';}};
+console.log('converted length', ('abcdef' as any)[legacyKey]);

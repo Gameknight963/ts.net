@@ -210,6 +210,7 @@ Runtime performance:
 | Call a zero-argument void class method through a helper, 100K calls | 0.544 ms | 0.0403 ms | 0.0702 ms (`double` field), 0.0233 ms (`int` field) | 0.07x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | — | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | — | 0.02x |
+| Call `slice(5)` by name on an `any` six-character string, 100K calls | 1.82 ms | 0.0275 ms | 0.354 ms (`Substring`), 0.0707 ms (span length) | 0.015x |
 
 </details>
 

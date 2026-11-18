@@ -10,6 +10,7 @@ public static partial class Js
     public static string PropertyKey(object value)
     {
         if (value is TsObject obj) value = ToPrimitive(obj, "string");
+        if (value is string text) return text;
         if (value is JsSymbol symbol) return SymbolPropertyKey(symbol);
         return value is double number ? NumberKeyString(number) : Text(value);
     }
