@@ -50,6 +50,15 @@ public static partial class Js
         double => RuntimeNamespaces.Number,
         _ => RuntimeNamespaces.Boolean
     }).Get("prototype");
+    static object GetPrimitiveProperty(object receiver, string key)
+    {
+        TsObject prototype = PrimitivePrototype(receiver);
+        // These sealed prototypes store ordinary data values in the common
+        // property store. Accessors, null values, and missing keys keep the
+        // receiver-aware lookup, including the inherited-property path.
+        if (prototype is JsBoxedPrimitive && prototype.OwnDataValue(key) is object value) return value;
+        return prototype.GetWithReceiver(key, receiver);
+    }
     sealed class PrimitiveValueFunction(Type type, bool text) : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Primitive method requires a receiver")), null, text ? "toString" : "valueOf", 0)
     {
         object Execute(object receiver)

@@ -212,7 +212,7 @@ public static partial class Js
     {
         TsObject obj => obj.Get(key),
         string text when key == "length" => (double)text.Length,
-        string or double or bool or JsSymbol or BigInteger => PrimitivePrototype(receiver).GetWithReceiver(key, receiver),
+        string or double or bool or JsSymbol or BigInteger => GetPrimitiveProperty(receiver, key),
         _ => throw new InvalidOperationException("Cannot read property of undefined")
     };
 
