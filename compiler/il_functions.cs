@@ -211,7 +211,10 @@ internal static partial class CompilerFunctions
     }
     internal static bool il_value_callback(int symbol, Compiler c, IlBackend b)
     {
-        if (!b.array_value_callbacks.Contains(symbol)) return false;
+        return b.array_value_callbacks.Contains(symbol) && il_single_value_function(symbol, c);
+    }
+    internal static bool il_single_value_function(int symbol, Compiler c)
+    {
         Node function = get_node(get_symbol(symbol, c).function, c);
         if (function.fourth != 0 || function.right != 0) return false;
         if (function.children == 0) return true;
@@ -299,6 +302,7 @@ internal static partial class CompilerFunctions
         bool source_callback = il_source_array_callback(symbol, c);
         bool continuation = get_node(get_symbol(symbol, c).function, c).internal_continuation;
         bool value_callback = il_value_callback(symbol, c, b);
+        bool single_argument = b.function_values_needed.at(symbol) != 0 && il_single_value_function(symbol, c);
         bool reduce_callback = il_reduce_value_callback(symbol, c, b);
         int value_count = b.function_values_needed.at(symbol) != 0 ? il_numeric_value_function(symbol, c) : -1;
         bool value_pair = value_count == 2;
@@ -307,7 +311,7 @@ internal static partial class CompilerFunctions
         int constructor_parameter = il_constructor_parameter(symbol, c);
         bool constructor_entry = constructor_parameter != 0;
         bool receiver_class = receiver_count >= 0 || receiver_arguments >= 0 || constructor_entry && get_node(get_symbol(symbol,c).function,c).fourth != 0;
-        if (receiver_arguments < 0 && !constructor_entry && count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !reduce_callback && value_count < 0 && receiver_count < 0) return;
+        if (receiver_arguments < 0 && !constructor_entry && count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !single_argument && !reduce_callback && value_count < 0 && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
         int parent = b.RuntimeToken(receiver_class ? RuntimeMember.ReceiverFunctionType : RuntimeMember.FunctionType);
         if (!b.function_class_types.TryGetValue(symbol, out int type)) {
@@ -350,6 +354,19 @@ internal static partial class CompilerFunctions
             b.emit(0x28, b.function_adapters.at(symbol)); b.op(0x2a);
         }
         Node definition = get_node(get_symbol(symbol, c).function, c);
+        if (single_argument)
+        {
+            b.begin(b.plan.method2(5, type, 0xc6, -5, -5, -5, "InvokeReceiverArgument1"));
+            if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
+            if (definition.children != 0)
+            {
+                b.emit(0xfe09, 2); b.from_object(get_node(definition.children, c).type, c);
+            }
+            b.emit(0x28, b.function(symbol));
+            if (get_type(definition.type, c).kind == TypeKind.Void) b.call(RuntimeMember.Undefined);
+            else b.box(definition.type, c);
+            b.op(0x2a);
+        }
         if (value_pair)
         {
             Vector<int> pair = new Vector<int>(); pair.push(-5); pair.push(-5); pair.push(-5);
@@ -701,6 +718,12 @@ internal static partial class CompilerFunctions
         {
             il_expression(n.children, c, b);
             b.call(receiver >= 0 ? RuntimeMember.CallMethodNumberArgument : RuntimeMember.CallFunctionNumberArgument);
+            il_function_result(n.type, c, b); return;
+        }
+        if (count == 1)
+        {
+            il_boxed(n.children, c, b);
+            b.call(receiver >= 0 ? RuntimeMember.CallMethodArgument : RuntimeMember.CallFunctionArgument);
             il_function_result(n.type, c, b); return;
         }
         if (count == 0) { b.call(receiver>=0 ? RuntimeMember.CallMethod0 : RuntimeMember.CallFunction0); il_function_result(n.type, c, b); return; }

@@ -7,6 +7,7 @@ public static partial class Js
         throw new InvalidOperationException("at requires a receiver")), null, "at", 1)
     {
         internal readonly bool Text = text;
+        public override object InvokeReceiverArgument1(object receiver, object value) => AtConverted(receiver, value, Text);
         public override object InvokeWithReceiver(object receiver, object[] arguments) => AtConverted(receiver, FunctionArgument(arguments, 0), Text);
     }
     static class RelativeAtFunctions
@@ -98,6 +99,9 @@ public static partial class Js
         : target is RelativeAtFunction method
         ? AtConverted(receiver, FunctionArgument(arguments, 0), method.Text) : target is StringSearchFunction search
         ? StringSearchArguments(search, receiver, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1)) : InvokeReceiver(target, receiver, arguments);
+    public static object CallMethodArgument(object target, object receiver, object value) => target is JsFunction function
+        ? function.InvokeReceiverArgument1(SuperReceiver(receiver), value)
+        : throw new InvalidOperationException("Value is not callable");
     public static object CallMethodArguments(object target, object receiver, object arguments) => target is StringRangeFunction range
         ? StringRangeConverted(range, receiver, Iteration.Value(arguments, 0), Iteration.Value(arguments, 1))
         : target is CharacterFunction character

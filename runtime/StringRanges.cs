@@ -7,6 +7,7 @@ public static partial class Js
         (FunctionBody)(static _ => throw new InvalidOperationException("String range method requires a receiver")), null, name, 2)
     {
         internal readonly bool Substring = substring;
+        public override object InvokeReceiverArgument1(object receiver, object value) => StringRangeConverted(this, receiver, value, Undefined);
         public override object InvokeWithReceiver(object receiver, object[] arguments) => StringRangeConverted(this, receiver, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1));
     }
     sealed class StringSubstrFunction() : JsFunction(
