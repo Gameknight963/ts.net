@@ -1118,6 +1118,11 @@ internal static partial class CompilerFunctions
             for (int i = 0; i < text_size(location.file, c); i++) file.push(text_byte(location.file, i, c));
             b.plan.source_point(b.method, file.view(), location.line, Math.Clamp(location.column, 1, 65534));
         }
+        if (b.loop_update_statements.TryGetValue(entry, out var update)) {
+            b.emit(0xfe0c, update.Receiver); b.emit(0x28, b.function(update.Function));
+            if (get_type(get_node(get_symbol(update.Function, c).function, c).type, c).kind != TypeKind.Void) b.op(0x26);
+            return;
+        }
         if (n.kind == NodeKind.Debugger) { b.call(RuntimeMember.DebugStatement); }
         else if (n.kind == NodeKind.Break || n.kind == NodeKind.Continue)
         {

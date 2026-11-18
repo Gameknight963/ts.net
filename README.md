@@ -208,11 +208,11 @@ Runtime performance:
 | Construct and traverse 100K class instances whose constructor calls a helper | 6.41 ms | 1.09 ms | 1.41 ms (class) | 0.17x |
 | Call 100K callbacks stored in an array | 0.798 ms | 0.131 ms | 0.254 ms (delegates) | 0.16x |
 | Create and call 100K callbacks stored in an array | 9.81 ms | 1.61 ms | 6.45 ms (fresh delegates) | 0.16x |
+| Call a zero-argument void class method through a helper, 100K calls | 0.253 ms | 0.0398 ms | 0.0702 ms (double field) | 0.16x |
 | Create and traverse 100K retained objects with a numeric field and a method | 21.3 ms | 2.37 ms | 1.62 ms (class/list), 0.300 ms (struct/array) | 0.11x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
-| Call a zero-argument void class method through a helper, 100K calls | 0.544 ms | 0.0403 ms | 0.0702 ms (`double` field), 0.0233 ms (`int` field) | 0.07x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | — | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | — | 0.02x |
 | Call `slice(5)` by name on an `any` six-character string, 100K calls | 1.82 ms | 0.0275 ms | 0.354 ms (`Substring`), 0.0707 ms (span length) | 0.015x |
