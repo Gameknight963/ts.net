@@ -8,6 +8,7 @@ public static partial class Js
     {
         internal readonly bool Substring = substring;
         public override object InvokeReceiver0(object receiver) => StringRangePrimitive(this, receiver, null, null);
+        public override object InvokeReceiverNumber1(object receiver, double? value) => StringRangePrimitive(this, receiver, value, null);
         public override object InvokeReceiverArgument1(object receiver, object value) => StringRangeConverted(this, receiver, value, Undefined);
         public override object InvokeWithReceiver(object receiver, object[] arguments) => StringRangeConverted(this, receiver, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1));
     }

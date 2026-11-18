@@ -9,6 +9,7 @@ public static partial class Js
     {
         internal readonly CharacterKind Kind = kind;
         public override object InvokeReceiver0(object receiver) => CharacterValue(AtString(receiver), 0, Kind);
+        public override object InvokeReceiverNumber1(object receiver, double? value) => CharacterValue(AtString(receiver), value.GetValueOrDefault(), Kind);
         public override object InvokeReceiverArgument1(object receiver, object value) => CharacterConverted(this, receiver, value);
         public override object InvokeWithReceiver(object receiver, object[] arguments) => CharacterConverted(this, receiver, FunctionArgument(arguments, 0));
     }

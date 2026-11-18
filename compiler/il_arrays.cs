@@ -153,9 +153,17 @@ bool il_push_capacity_hint(int entry, Compiler c, IlBackend b)
         b.mark(fallback); b.emit(0xfe0c, target); b.emit(0xfe0c, receiver);
         int count = 0, argument = call.children;
         while (argument != 0) { count++; argument = get_node(argument, c).next; }
-        b.emit(0x20, count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType)); argument = call.children; int index = 0;
-        while (argument != 0) { b.op(0x25); b.emit(0x20, index++); il_boxed(argument, c, b); b.op(0xa2); argument = get_node(argument, c).next; }
-        b.call(RuntimeMember.CallMethod); il_function_result(call.type, c, b); b.mark(done);
+        if (count == 0) b.call(RuntimeMember.CallMethod0);
+        else if (count == 1 && get_node(call.children, c).kind != NodeKind.Spread) {
+            bool numeric = get_type(get_node(call.children, c).type, c).kind == TypeKind.Number;
+            if (numeric) il_expression(call.children, c, b); else il_boxed(call.children, c, b);
+            b.call(numeric ? RuntimeMember.CallMethodNumberArgument : RuntimeMember.CallMethodArgument);
+        } else {
+            b.emit(0x20, count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType)); argument = call.children; int index = 0;
+            while (argument != 0) { b.op(0x25); b.emit(0x20, index++); il_boxed(argument, c, b); b.op(0xa2); argument = get_node(argument, c).next; }
+            b.call(RuntimeMember.CallMethod);
+        }
+        il_function_result(call.type, c, b); b.mark(done);
     }
     internal static void il_emit_array_builtin(int entry, int receiver, Compiler c, IlBackend b)
     {

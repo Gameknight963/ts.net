@@ -180,8 +180,8 @@ public static partial class Js
     public static object CallMethodNumberArgument(object target, object receiver, double? value)
     {
         if (target is INumberArgumentFunction function) return function.InvokeNumberArgument(value);
-        if (target is JsReceiverFunction receiverFunction) return receiverFunction.InvokeReceiverNumber1(SuperReceiver(receiver), value);
-        return CallMethod(target, receiver, new[] { BoxNumber(value) });
+        if (target is JsFunction method) return method.InvokeReceiverNumber1(SuperReceiver(receiver), value);
+        throw new InvalidOperationException("Value is not callable");
     }
     public static object CallFunctionArguments(object target, object arguments)
     {

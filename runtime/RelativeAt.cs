@@ -8,6 +8,7 @@ public static partial class Js
     {
         internal readonly bool Text = text;
         public override object InvokeReceiver0(object receiver) => AtPrimitive(receiver, 0, Text);
+        public override object InvokeReceiverNumber1(object receiver, double? value) => AtPrimitive(receiver, value.GetValueOrDefault(), Text);
         public override object InvokeReceiverArgument1(object receiver, object value) => AtConverted(receiver, value, Text);
         public override object InvokeWithReceiver(object receiver, object[] arguments) => AtConverted(receiver, FunctionArgument(arguments, 0), Text);
     }

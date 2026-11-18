@@ -20,7 +20,11 @@ try
         throw new Exception("A zero-argument method bypassed its native receiver override");
     if (!Equals(Js.CallMethod0(new DirectZeroCalls(), "receiver"), "direct zero"))
         throw new Exception("A zero-argument method bypassed its direct entry point");
-    Console.WriteLine("PASS ordinary function calls, receiver calls, and zero-argument overrides");
+    if (!Equals(Js.CallMethodNumberArgument(new SeparateNumericCalls(), "receiver", 2), "method number"))
+        throw new Exception("A numeric method bypassed its native receiver override");
+    if (!Equals(Js.CallMethodNumberArgument(new DirectNumericCalls(), "receiver", 2), "direct number"))
+        throw new Exception("A numeric method bypassed its direct entry point");
+    Console.WriteLine("PASS ordinary function calls, receiver calls, and zero/numeric argument overrides");
 }
 catch (Exception error)
 {
@@ -53,4 +57,17 @@ sealed class DirectZeroCalls() : JsFunction((FunctionBody)(_ => "delegate"), nul
 {
     public override object InvokeReceiver0(object receiver) => Equals(receiver, "receiver") ? "direct zero"
         : throw new Exception("Direct zero-argument method receiver changed");
+}
+
+sealed class SeparateNumericCalls() : JsFunction((FunctionBody)(_ => "delegate"), null, "separate number", 1)
+{
+    public override object InvokeWithReceiver(object receiver, object[] arguments) =>
+        arguments.Length == 1 && Equals(arguments[0], 2d) && Equals(receiver, "receiver") ? "method number"
+            : throw new Exception("Numeric method receiver or argument changed");
+}
+sealed class DirectNumericCalls() : JsFunction((FunctionBody)(_ => "delegate"), null, "direct number", 1)
+{
+    public override object InvokeReceiverNumber1(object receiver, double? value) =>
+        value == 2 && Equals(receiver, "receiver") ? "direct number"
+            : throw new Exception("Direct numeric method receiver or argument changed");
 }
