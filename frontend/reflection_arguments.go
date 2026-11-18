@@ -370,8 +370,9 @@ func (b *irBuilder) reflectionMapMethod(n *ast.Node, method string) bool {
 	if method == "new" {
 		return n.Kind == ast.KindNewExpression && (name == "MapConstructor" || name == "WeakMapConstructor")
 	}
-	return declaration.Name() != nil && declaration.Name().Text() == method &&
-		(name == "Map" || name == "ReadonlyMap" || name == "WeakMap")
+	member := declaration.Name()
+	return (name == "Map" || name == "ReadonlyMap" || name == "WeakMap") && member != nil &&
+		(member.Kind == ast.KindIdentifier || member.Kind == ast.KindStringLiteral) && member.Text() == method
 }
 
 func (b *irBuilder) reflectionMapValue(n *ast.Node, seen map[*ast.Node]bool, classify func(*ast.Node, map[*ast.Node]bool) int) int {

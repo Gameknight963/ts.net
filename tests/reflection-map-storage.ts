@@ -9,3 +9,5 @@ function work():number {
  return sum;
 }
 console.log(unused===Reflect.deleteProperty,namespace===Reflect,work());
+const entries=methods[Symbol.iterator]();
+console.log(entries.next().value![0],entries.next().done);
