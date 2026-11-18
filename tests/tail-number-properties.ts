@@ -65,3 +65,28 @@ let numericKey: any = -0;
 typedRecord[numericKey] += 2;
 typedRecord['-0'] = 99;
 console.log('typed', typed[0], typed[1]);
+for (const initial of [-0, 0, NaN, Infinity, -Infinity, undefined]) {
+    const updates: {[key: string]: number} = JSON.parse('{"a":0,"b":0,"c":0,"d":0,"e":0,"f":0,"g":0,"h":0}');
+    updates.e = initial as number;
+    const previous = updates.e++;
+    const current = --updates.e;
+    updates.h = initial as number;
+    const added = updates['h'] += 0;
+    const subtracted = updates['h'] -= 1;
+    console.log('operators', String(initial), String(previous), Object.is(previous, -0), String(current), String(added), Object.is(added, -0), String(subtracted));
+}
+let conversions = 0;
+const keyObject = {toString() {conversions++; return 'h';}};
+const keyed: {[key: string]: number} = JSON.parse('{"h":2}');
+console.log('key conversion', keyed[keyObject as any]++, keyed.h, conversions);
+stored = 3;
+events.length = 0;
+function right(): number {events.push('rhs'); accessor.h = 20; return 2;}
+accessor.h += right();
+console.log('rhs order', stored, events.join(','));
+events.length = 0;
+let inheritedValue = 4;
+const inherited: {[key: string]: number} = Object.create({get h() {events.push('get');return inheritedValue;}, set h(value: number) {events.push('set');inheritedValue=value;}});
+console.log('inherited update', inherited.h++, inheritedValue, Object.hasOwn(inherited, 'h'), events.join(','));
+typedRecord['-0']++;
+console.log('typed invalid key', typed[0], typed[1]);

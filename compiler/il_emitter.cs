@@ -229,6 +229,7 @@ internal static partial class CompilerFunctions
     {
         if (il_bigint_mutation(entry, discardBox, c, b)) return;
         if (il_loop_field_write(entry, c, b)) return;
+        if (il_numeric_update(entry, discardBox, c, b)) return;
         Node n = get_node(entry, c); Node target = get_node(n.left, c);
         ScalarField scalar = il_scalar_field(n.left, c, b);
         int receiver = -1;

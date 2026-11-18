@@ -101,8 +101,19 @@ foreach (int position in new[] {4, 7}) {
     Console.WriteLine($"PASS numeric property {position+1}: {allocated} bytes for 100000 writes");
 }
 Console.WriteLine("PASS dynamic property order, overwrites, growth, independent clones, and small-bag allocation");
+var customUpdate = new CustomDynamicAccess();
+customUpdate.DefineOwn("value", 1d);
+if (Js.AddNumberProperty(customUpdate,"value",2,false)!=3 || customUpdate.Reads!=1 || customUpdate.Writes!=1)
+    throw new Exception("Numeric updates bypassed native property overrides");
+Console.WriteLine("PASS combined numeric updates preserve native read and write overrides");
 sealed class Record : TsObject { }
 
 sealed class CustomSetter : JsClassInstance {public int Calls; public override object Set(string key, object value) {Calls++;return base.Set(key,value);}}
 
 sealed class CustomDynamicSetter : JsDynamicObject {public int Calls; public override object Set(string key, object value) {Calls++;return base.Set(key,value);}}
+sealed class CustomDynamicAccess : JsDynamicObject
+{
+    public int Reads, Writes;
+    public override object Get(string key) {Reads++;return base.Get(key);}
+    public override object Set(string key, object value) {Writes++;return base.Set(key,value);}
+}

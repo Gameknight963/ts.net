@@ -12,7 +12,7 @@ class ObjectPropertyState
 
 // Most dynamic records have only a few keys. Keep those entries together and
 // use a dictionary for the tail, preserving insertion order across both.
-sealed class OwnProperties : ObjectPropertyState
+sealed partial class OwnProperties : ObjectPropertyState
 {
     // Low bits remember first writes; this bit remains set after a cell is created.
     const int HasNumberCells = 16;
