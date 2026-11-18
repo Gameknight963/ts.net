@@ -19,17 +19,24 @@ internal static partial class CompilerFunctions
             else if (is_text(callee.name, "apply", c) && get_type(get_node(callee.left, c).type, c).kind is TypeKind.Any or TypeKind.Unknown)
                 b.call(RuntimeMember.GetFunctionApplyProperty);
             else {
-                int slot = il_class_method_slot(get_node(callee.left, c).type, callee.name, c, b);
-                il_text(callee.name,c,b);
-                if (slot >= 0) {
+                int owner = get_node(callee.left, c).type;
+                int member = get_type(owner, c).kind == TypeKind.Shape && get_type(owner, c).name == 0
+                    ? field(owner, callee.name, c) : 0;
+                int slot = il_class_method_slot(owner, callee.name, c, b);
+                if (member != 0 && b.shape_readers.ContainsKey(member)) {
+                    // Use the same guarded property reader as an ordinary read.
+                    // Capture the function now, before evaluating call arguments.
+                    il_shape_read(owner, member, b); b.box(get_field(member, c).type, c);
+                }
+                else if (slot >= 0) {
+                    il_text(callee.name,c,b);
                     b.emit(0x20, slot);
-                    int owner = get_node(callee.left, c).type;
                     if (il_numeric_class_eligible(owner, c, b) &&
                         b.numeric_class_members[owner].All(member => !same(get_field(member, c).name, callee.name, c)))
                         b.emit(0x28, b.plan.specialize(b.RuntimeToken(RuntimeMember.GetTypedClassMethodAt), b.classes.at(owner)));
                     else b.call(RuntimeMember.GetClassMethodAt);
                 }
-                else b.call(RuntimeMember.DynamicGet);
+                else { il_text(callee.name,c,b); b.call(RuntimeMember.DynamicGet); }
             }
         }
         else if (il_direct_index(calleeId, c, b)) { il_integer(callee.right, c, b); b.call(RuntimeMember.ArrayIndexGetAt); }

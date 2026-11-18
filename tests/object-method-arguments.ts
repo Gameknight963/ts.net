@@ -38,3 +38,19 @@ const base = {text(value: string): string {return 'base:' + value;}};
 const derived = {text(value: string): string {return super.text(value) + ':derived';}};
 Object.setPrototypeOf(derived, base);
 console.log('super', derived.text('value'));
+
+let methodReads = 0;
+Object.defineProperty(target, 'add', {get() {
+    methodReads++;
+    return function(this: Target, value: number): void {this.total += value * 2;};
+}, configurable: true});
+send(target, 3);
+console.log('method getter', target.total, methodReads);
+const inherited = Object.create(target) as Target;
+send(inherited, 4);
+console.log('inherited method', inherited.total, target.total, methodReads);
+const forwarded = new Proxy(target, {get(object, key, receiver) {
+    console.log('lookup proxy', String(key)); return Reflect.get(object, key, receiver);
+}});
+send(forwarded, 5);
+console.log('forwarded', target.total, methodReads);
