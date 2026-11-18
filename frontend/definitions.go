@@ -50,7 +50,7 @@ func (b *irBuilder) reflectionDefinitionCallKind(n *ast.Node) int {
 	return 0
 }
 
-// Values are 1 for Object/Reflect, 2 for a defining method, and 3 for an unknown method.
+// Values are 1 for Object/Reflect, 2 for a defining method, and 3 for an unknown reflection value.
 // Merely retaining namespace or method references must not change object layouts.
 func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bool) int {
 	if n == nil || seen[n] {
@@ -127,11 +127,17 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 		}
 		return left
 	case ast.KindPropertyAccessExpression:
+		if b.reflectionDefinitionValue(n.Expression(), maps.Clone(seen)) >= 3 {
+			return 3
+		}
 		if (n.Name().Text() == "defineProperty" || n.Name().Text() == "defineProperties" || n.Name().Text() == "preventExtensions" || n.Name().Text() == "seal" || n.Name().Text() == "freeze") && b.reflectionDefinitionValue(n.Expression(), maps.Clone(seen)) == 1 {
 			return 2
 		}
 		return b.reflectionPropertyValueLimit(n, seen, b.reflectionDefinitionValue, 3)
 	case ast.KindElementAccessExpression:
+		if b.reflectionDefinitionValue(n.Expression(), maps.Clone(seen)) >= 3 {
+			return 3
+		}
 		key := n.AsElementAccessExpression().ArgumentExpression
 		if b.reflectionDefinitionValue(n.Expression(), maps.Clone(seen)) == 1 {
 			if key.Kind == ast.KindStringLiteral {

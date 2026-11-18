@@ -1,15 +1,20 @@
 package main
 
 import (
+	"maps"
 	"strconv"
+	"strings"
 
 	"github.com/microsoft/typescript-go/internal/ast"
+	"github.com/microsoft/typescript-go/internal/checker"
 )
 
 // Retain expressions rather than their current classification: aliases can
 // be reassigned or pass through several functions before reaching an operation.
 func (b *irBuilder) prepareReflectionSources(files []*ast.SourceFile) {
 	b.reflectionSources = map[*ast.Node][]*ast.Node{}
+	b.reflectionMapValues = nil
+	b.reflectionMapEntries = nil
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
 		if n.Kind == ast.KindBinaryExpression {
@@ -33,6 +38,14 @@ func (b *irBuilder) prepareReflectionSources(files []*ast.SourceFile) {
 			}
 		}
 		if n.Kind == ast.KindCallExpression || n.Kind == ast.KindNewExpression {
+			arguments := reflectionLiteralArguments(n.Arguments())
+			if arguments != nil && b.reflectionMapMethod(n, "set") && len(arguments) >= 2 {
+				b.reflectionMapValues = append(b.reflectionMapValues, arguments[1])
+			}
+			if arguments != nil && b.reflectionMapMethod(n, "new") && len(arguments) >= 1 {
+				b.reflectionMapEntries = append(b.reflectionMapEntries, arguments[0])
+			}
+
 			if signature := b.c.GetResolvedSignature(n); signature != nil {
 				declaration := signature.Declaration()
 				if declaration != nil && ast.IsFunctionLike(declaration) && declaration.Body() != nil {
@@ -286,6 +299,10 @@ func (b *irBuilder) reflectionContainerValue(owner *ast.Node, names []string, se
 }
 
 func (b *irBuilder) reflectionReturnedValue(n *ast.Node, seen map[*ast.Node]bool, classify func(*ast.Node, map[*ast.Node]bool) int) int {
+	if b.reflectionMapMethod(n, "get") {
+		return b.reflectionMapValue(n, seen, classify)
+	}
+
 	signature := b.c.GetResolvedSignature(n)
 	if signature == nil {
 		return 0
@@ -324,5 +341,80 @@ func (b *irBuilder) reflectionBodyValue(body *ast.Node, seen map[*ast.Node]bool,
 		return false
 	}
 	visit(body)
+	return result
+}
+
+// Native map calls have no source body to follow. Their library declarations
+// identify the storage operations; user-defined get/set methods keep normal flow.
+func (b *irBuilder) reflectionMapMethod(n *ast.Node, method string) bool {
+	signature := b.c.GetResolvedSignature(n)
+	if signature == nil {
+		return false
+	}
+	if signature.Target() != nil {
+		signature = signature.Target()
+	}
+	declaration := signature.Declaration()
+	if declaration == nil || declaration.Parent == nil {
+		return false
+	}
+	file := ast.GetSourceFileOfNode(declaration)
+	if file == nil || !strings.HasPrefix(file.FileName(), "bundled:///libs/") {
+		return false
+	}
+	owner := declaration.Parent
+	if owner.Kind != ast.KindInterfaceDeclaration || owner.Name() == nil {
+		return false
+	}
+	name := owner.Name().Text()
+	if method == "new" {
+		return n.Kind == ast.KindNewExpression && (name == "MapConstructor" || name == "WeakMapConstructor")
+	}
+	return declaration.Name() != nil && declaration.Name().Text() == method &&
+		(name == "Map" || name == "ReadonlyMap" || name == "WeakMap")
+}
+
+func (b *irBuilder) reflectionMapValue(n *ast.Node, seen map[*ast.Node]bool, classify func(*ast.Node, map[*ast.Node]bool) int) int {
+	resultType := b.c.GetTypeAtLocation(n)
+	var unresolved func(*checker.Type) bool
+	unresolved = func(t *checker.Type) bool {
+		if t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown|checker.TypeFlagsTypeParameter) != 0 {
+			return true
+		}
+		if t.Flags()&(checker.TypeFlagsUnion|checker.TypeFlagsIntersection) != 0 {
+			for _, part := range t.Types() {
+				if unresolved(part) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	classifyCompatible := func(value *ast.Node, active map[*ast.Node]bool) int {
+		// Generic parameters can hide the stored value's actual type.
+		if sourceType := b.c.GetTypeAtLocation(value); !unresolved(sourceType) && !unresolved(resultType) && !b.c.IsTypeAssignableTo(sourceType, resultType) {
+			return 0
+		}
+		return classify(value, active)
+	}
+	result := 0
+	add := func(value int) {
+		// A namespace and a callable cannot be represented by either alone.
+		if result == 1 && value >= 2 || value == 1 && result >= 2 {
+			result = 3
+		} else if value > result {
+			result = value
+		}
+	}
+	// Any key can be selected, and aliases can hide the particular map. Union
+	// the possible stored reflection values, but only when a get result is used.
+	for _, value := range b.reflectionMapValues {
+		add(classifyCompatible(value, maps.Clone(seen)))
+	}
+	for _, entries := range b.reflectionMapEntries {
+		add(b.reflectionContainerValue(entries, nil, maps.Clone(seen), func(pair *ast.Node, active map[*ast.Node]bool) int {
+			return b.reflectionContainerValue(pair, []string{"1"}, active, classifyCompatible)
+		}))
+	}
 	return result
 }

@@ -115,7 +115,7 @@ func (b *irBuilder) reflectionDeletionCallKind(n *ast.Node) int {
 	return 0
 }
 
-// Values are 1 for Reflect, 2 for deleteProperty, and 3 for an unknown Reflect method.
+// Values are 1 for Reflect, 2 for deleteProperty, and 3 for an unknown Reflect value.
 // Recognize namespace and method aliases only at call sites. Merely retaining
 // a reference to Reflect must not change unrelated object layouts.
 func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool) int {
@@ -193,11 +193,17 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 		}
 		return left
 	case ast.KindPropertyAccessExpression:
+		if b.reflectionDeletionValue(n.Expression(), maps.Clone(seen)) >= 3 {
+			return 3
+		}
 		if n.Name().Text() == "deleteProperty" && b.reflectionDeletionValue(n.Expression(), maps.Clone(seen)) == 1 {
 			return 2
 		}
 		return b.reflectionPropertyValueLimit(n, seen, b.reflectionDeletionValue, 3)
 	case ast.KindElementAccessExpression:
+		if b.reflectionDeletionValue(n.Expression(), maps.Clone(seen)) >= 3 {
+			return 3
+		}
 		key := n.AsElementAccessExpression().ArgumentExpression
 		if b.reflectionDeletionValue(n.Expression(), maps.Clone(seen)) == 1 {
 			if key.Kind == ast.KindStringLiteral {

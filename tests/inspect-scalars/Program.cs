@@ -42,7 +42,7 @@ try
         double? sum = work();
         long bytes = GC.GetAllocatedBytesForCurrentThread() - start;
         if (sum != expected || bytes > limit) throw new Exception($"Expected {expected} and at most {limit} allocated bytes, got {sum} and {bytes} bytes");
-        Console.WriteLine(args.Length == 3 ? $"PASS result and allocation limit ({bytes} bytes)" : "PASS unrelated conditional deletion preserves allocation-free local objects");
+        Console.WriteLine(args.Length == 3 ? $"PASS result and allocation limit ({bytes} bytes)" : "PASS local objects allocate zero bytes");
         return;
     }
     var scalar = methods.Single(m => m.Name.EndsWith("_f0", StringComparison.Ordinal));
