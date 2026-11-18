@@ -133,7 +133,8 @@ internal static partial class CompilerFunctions
             int slot = b.local(b.type(type, c)); b.slots.at_mut(target.symbol) = slot; b.empty(type, c); b.store(target.symbol);
         }
         il_boxed(n.right, c, b); b.call(n.kind == NodeKind.ForIn ? RuntimeMember.ForInStart : RuntimeMember.IterationStart); int iterable = b.local(-5); b.emit(0xfe0e, iterable);
-        int packedDone = n.kind == NodeKind.ForOf ? il_packed_for_of(entry, binding, type, iterable, result, c, b) : 0;
+        int packedDone = n.kind == NodeKind.ForOf ? il_filtered_number_sum(entry, binding, type, iterable, c, b) : 0;
+        if (packedDone == 0 && n.kind == NodeKind.ForOf) packedDone = il_packed_for_of(entry, binding, type, iterable, result, c, b);
         int position = b.local(-6); b.emit(0x20, 0); b.emit(0xfe0e, position);
         int value = b.local(b.type(type, c)); int start = b.label(); int done = b.label();
         b.breaks.at_mut(entry) = done; b.continues.at_mut(entry) = start;
