@@ -162,6 +162,7 @@ Runtime performance:
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
 | Call a numeric void method on a record with 16 numeric fields through a helper, 100K calls | 0.477 ms | 0.233 ms | 0.0711 ms (class) | 0.49x |
 | Construct and run a chain of 10K handlers | 0.687 ms | 0.340 ms | 0.665 ms (queued Task continuations) | 0.49x |
+| Create and traverse 100K retained objects with a numeric field and a method | 4.72 ms | 2.33 ms | 1.52 ms (class/list), 15.4 ms (fresh delegates) | 0.49x |
 | Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | — | 0.48x |
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | — | 0.48x |
 | `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | — | 0.46x |
@@ -210,7 +211,6 @@ Runtime performance:
 | Construct and traverse 100K class instances whose constructor calls a helper | 6.41 ms | 1.09 ms | 1.41 ms (class) | 0.17x |
 | Call 100K callbacks stored in an array | 0.798 ms | 0.131 ms | 0.254 ms (delegates) | 0.16x |
 | Create and call 100K callbacks stored in an array | 9.81 ms | 1.61 ms | 6.45 ms (fresh delegates) | 0.16x |
-| Create and traverse 100K retained objects with a numeric field and a method | 21.3 ms | 2.37 ms | 1.62 ms (class/list), 0.300 ms (struct/array) | 0.11x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
