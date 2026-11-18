@@ -313,9 +313,12 @@ public static partial class Js
                 (array.GetType() == typeof(JsArray) || array is NumberArray or ReversibleArray or JsTemplateArray))
                 return array.ElementAt((uint)number);
         }
-        return IndexGetNumberKey(receiver, index);
+        return IndexGetNumberKeyCore(receiver, index);
     }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object IndexGetNumberKey(object receiver, double? index)
+        => ArrayIndexGetNumberKey(receiver, index);
+    static object IndexGetNumberKeyCore(object receiver, double? index)
     {
         if (IsNullish(receiver)) throw new InvalidOperationException("Cannot read property of null or undefined");
         if (receiver is TypedArrayValue typed && index.HasValue) return typed.ReadIndex(index.Value);

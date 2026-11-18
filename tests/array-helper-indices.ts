@@ -1,6 +1,8 @@
 export {};
 
 function read(items: readonly any[], index: number): any {return items[index];}
+function numeric(items: any, index: number): any {return items[index];}
+function dynamic(items: any, index: any): any {return items[index];}
 const values: any[] = [1, 'two', , 4];
 const named: any = values;
 named[-1] = 'negative';
@@ -11,8 +13,10 @@ named[-Infinity] = 'negative infinity';
 named[4294967294] = 'last index';
 named[4294967295] = 'ordinary property';
 named[4294967296] = 'larger property';
-for (const index of [0, -0, 1, 2, -1, 0.5, NaN, Infinity, -Infinity, 4294967294, 4294967295, 4294967296])
+for (const index of [0, -0, 1, 2, -1, 0.5, NaN, Infinity, -Infinity, 4294967294, 4294967295, 4294967296]) {
     console.log('helper index', index, read(values, index));
+    console.log('unknown index', index, numeric(values, index), dynamic(values, index));
+}
 
 let getterCalls = 0;
 Object.defineProperty(values, '1', {get() {getterCalls++; return 'getter';}, configurable: true});
@@ -20,6 +24,10 @@ const prototype = Object.create(Array.prototype);
 Object.defineProperty(prototype, '2', {get() {getterCalls++; return this === values ? 'inherited' : 'wrong receiver';}});
 Object.setPrototypeOf(values, prototype);
 console.log('helper accessors', read(values, 1), read(values, 2), getterCalls);
+console.log('unknown accessors', numeric(values, 1), numeric(values, 2), dynamic(values, 1), dynamic(values, 2), getterCalls);
+const events: string[] = [];
+const key = {[Symbol.toPrimitive](hint: string) {events.push(hint); values[0] = 'coerced'; return 0;}};
+console.log('object key', dynamic(values, key), events.join(','));
 
 const numbers = [3, 4];
 console.log('number array helper', read(numbers, 0), read(numbers, 1), read(numbers, 2));

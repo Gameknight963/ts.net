@@ -230,7 +230,8 @@ public partial class JsArray : TsObject
         else return base.Set(key, value);
         return value;
     }
-    public object GetIndex(object key) => Get(Js.PropertyKey(key));
+    public object GetIndex(object key) => key is double number
+        ? Js.ArrayIndexGetNumberKey(this, number) : Get(Js.PropertyKey(key));
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool TryReadOwnDenseValue(TsObject source, int index, out object value)
     {

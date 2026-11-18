@@ -198,6 +198,30 @@ ordinaryTotal = ReadNumericKeys(numericKeyArray, 100000);
 ordinaryBytes = GC.GetAllocatedBytesForCurrentThread() - ordinaryStart;
 if (ordinaryTotal != 350000 || ordinaryBytes != 0) throw new Exception("Numeric array keys allocated or lost values: " + ordinaryBytes);
 Console.WriteLine("PASS numeric array keys avoid string allocations");
+object firstKey = 1000d, secondKey = 1001d;
+for (int i = 0; i < 10; i++) ReadGenericKeys(numericKeyArray, 1000, firstKey, secondKey);
+ordinaryStart = GC.GetAllocatedBytesForCurrentThread();
+ordinaryTotal = ReadGenericKeys(numericKeyArray, 100000, firstKey, secondKey);
+ordinaryBytes = GC.GetAllocatedBytesForCurrentThread() - ordinaryStart;
+if (ordinaryTotal != 1050000 || ordinaryBytes != 0 ||
+    !Equals(Js.IndexGetNumberKey(new NumericReadOverride(), 0), 99d) ||
+    !Equals(Js.IndexGet(new NumericReadOverride(), 0d), 99d))
+{
+    Console.Error.WriteLine("Generic numeric array reads allocated, lost values, or bypassed a subclass: " + ordinaryBytes);
+    Environment.ExitCode = 1;return;
+}
+Console.WriteLine("PASS generic numeric array keys avoid allocations and preserve subclass getters");
+static double ReadGenericKeys(JsArray source, int count, object first, object second)
+{
+    double sum = 0;
+    for (int i = 0; i < count; i++) {
+        object key = (i & 1) == 0 ? first : second;
+        sum += (double)Js.IndexGetNumberKey(source, 1000 + (i & 1));
+        sum += (double)Js.IndexGet(source, key);
+        sum += (double)source.GetIndex(key);
+    }
+    return sum;
+}
 static double ReadNumericKeys(JsArray source, int count)
 {
     double sum = 0;
