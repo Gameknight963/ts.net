@@ -2,8 +2,11 @@ using System.Collections.Generic;
 
 sealed class ObjectMetadata
 {
+    internal JsClassFunction ClassOwner;
     internal TsObject ParentPrototype;
     internal Dictionary<string, JsDescriptorObject.Descriptor> Descriptors;
+    internal bool HasInstanceProperties => ParentPrototype != null || Descriptors != null;
+    internal ObjectMetadata Copy() => new() {ClassOwner = ClassOwner, ParentPrototype = ParentPrototype, Descriptors = Descriptors};
 }
 
 public abstract partial class TsObject
@@ -12,16 +15,16 @@ public abstract partial class TsObject
     // metadata belonging to a particular instance.
     ObjectPropertyState WritablePropertyState()
     {
-        if (propertyState is SharedClassPropertyState) propertyState = new ObjectPropertyState {ClassOwner = propertyState.ClassOwner};
+        if (propertyState is SharedClassPropertyState) propertyState = new ObjectPropertyState {Metadata = propertyState.Metadata.Copy()};
         return propertyState ??= new ObjectPropertyState();
     }
     ObjectMetadata EnsureMetadata() => WritablePropertyState().Metadata ??= new ObjectMetadata();
     internal JsClassFunction ClassOwner
     {
-        get => propertyState?.ClassOwner;
+        get => propertyState?.Metadata?.ClassOwner;
         set {
             if (propertyState == null || propertyState is SharedClassPropertyState) propertyState = value?.InstanceState;
-            else propertyState.ClassOwner = value;
+            else if (value != null || propertyState.Metadata != null) EnsureMetadata().ClassOwner = value;
         }
     }
     internal TsObject ClassParentPrototype
@@ -38,5 +41,5 @@ public abstract partial class TsObject
 
 sealed class SharedClassPropertyState : ObjectPropertyState
 {
-    internal SharedClassPropertyState(JsClassFunction owner) {ClassOwner = owner;}
+    internal SharedClassPropertyState(JsClassFunction owner) {Metadata = new ObjectMetadata {ClassOwner = owner};}
 }

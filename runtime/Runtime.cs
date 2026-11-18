@@ -20,9 +20,11 @@ public abstract partial class TsObject
         {
             JsAccessors previous = accessors;
             ObjectMetadata metadata = propertyState?.Metadata;
-            JsClassFunction owner = propertyState?.ClassOwner;
-            if (value == null) propertyState = previous == null && metadata == null ? owner?.InstanceState : new ObjectPropertyState {Accessors = previous, Metadata = metadata, ClassOwner = owner};
-            else {value.Accessors = previous; value.Metadata = metadata; value.ClassOwner = owner; propertyState = value;}
+            if (value == null) propertyState = previous == null && metadata?.HasInstanceProperties != true ? metadata?.ClassOwner?.InstanceState : new ObjectPropertyState {Accessors = previous, Metadata = metadata};
+            else {
+                if (propertyState is SharedClassPropertyState) metadata = metadata.Copy();
+                value.Accessors = previous; value.Metadata = metadata; propertyState = value;
+            }
         }
     }
     internal int OwnPropertyVersion => extra?.Version ?? 0;

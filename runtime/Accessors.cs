@@ -72,9 +72,10 @@ public abstract partial class TsObject
         get => propertyState?.Accessors;
         set
         {
+            if (value == null && propertyState is SharedClassPropertyState) return;
             if (propertyState != null) WritablePropertyState().Accessors = value;
             else if (value != null) propertyState = new ObjectPropertyState {Accessors = value};
-            if (value == null && propertyState is not OwnProperties && propertyState?.Metadata == null) propertyState = propertyState?.ClassOwner?.InstanceState;
+            if (value == null && propertyState is not OwnProperties && propertyState?.Metadata?.HasInstanceProperties != true) propertyState = propertyState?.Metadata?.ClassOwner?.InstanceState;
         }
     }
     protected bool StoredExtensionsAllowed => accessors is not NonExtensibleAccessors;
