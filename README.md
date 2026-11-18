@@ -67,10 +67,12 @@ Runtime performance:
 | Alternate between two class methods through a helper, 100K calls | 0.0696 ms | 0.1406 ms | — | 2.02x |
 | String lastIndexOf, 1M searches | 10.07 ms | 19.54 ms | — | 1.94x |
 | Gzip-compress 1 MiB of repeated ASCII A | 3.54 ms | 6.71 ms | — | 1.90x |
+| Float64Array reduce, 10 sums of 10K values | 0.554 ms | 1.044 ms | 0.071 ms (Aggregate) | 1.88x |
 | Numeric array, 100K elements and 100 reversals | 4.37 ms | 7.87 ms | — | 1.80x |
 | Local function, 2M direct calls | 0.461 ms | 0.825 ms | — | 1.79x |
 | Intl.DisplayNames, 6K region-name lookups | 7.64 ms | 13.70 ms | — | 1.79x |
 | String indexOf, 1M searches | 10.21 ms | 17.82 ms | — | 1.75x |
+| Float64Array every/some/findIndex, 10 full scans each of 10K values | 1.657 ms | 2.895 ms | 0.323 ms (array methods) | 1.75x |
 | Numeric `any[]`, 1M iterations | 0.954 ms | 1.66 ms | — | 1.74x |
 | Typed-object loop, 500K iterations | 0.381 ms | 0.650 ms | — | 1.70x |
 | Write and sum a numeric property on `Object.create(null)`, 100K iterations | 0.610 ms | 1.02 ms | 1.43 ms (`Dictionary<string, object>`) | 1.67x |

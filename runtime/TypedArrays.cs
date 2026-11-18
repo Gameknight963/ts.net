@@ -30,6 +30,10 @@ public static partial class Js
         internal override TsObject PropertyPrototype => prototype;
         internal override void SetPrototype(TsObject value) { if (CanSetPrototype(value)) prototype = value; }
         internal object Read(int index) => Buffer.Detached || Buffer.Resizable && (uint)index >= (uint)Count ? Undefined : ReadBinary(Buffer.Bytes.AsSpan(Offset + index * Size, Size), Kind, BitConverter.IsLittleEndian);
+        // The callback loop excludes BigInt views and supplies an integer index.
+        // A previous callback may have detached or resized the buffer.
+        internal double? ReadCallbackNumber(int index) => Buffer.Detached || Buffer.Resizable && (uint)index >= (uint)Count ? null :
+            ReadBinaryNumber(Buffer.Bytes.AsSpan(Offset + index * Size, Size), Kind, BitConverter.IsLittleEndian);
         internal void Write(int index, object value)
         {
             bool bigint = Kind.StartsWith("Big", StringComparison.Ordinal);

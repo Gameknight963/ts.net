@@ -46,7 +46,7 @@ public static partial class Js
         }
         value = 0; return false;
     }
-    enum ArrayCallbackKind { Map, Filter, ForEach, Every, Some, Find, FindIndex, FindLast, FindLastIndex }
+    enum ArrayCallbackKind { Map, Filter, ForEach, Every, Some, Find, FindIndex, FindLast, FindLastIndex, Reduce, ReduceRight }
     // Value-type kinds let the JIT specialize the shared loop for each method.
     interface IArrayCallbackKind { static abstract ArrayCallbackKind Value { get; } }
     readonly struct MapCallbackKind : IArrayCallbackKind { public static ArrayCallbackKind Value => ArrayCallbackKind.Map; }
