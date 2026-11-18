@@ -26,7 +26,10 @@ try
     object negativeZero=-0d;
     if(BitConverter.DoubleToInt64Bits(Js.Cast<double?>(negativeZero,"negative zero").Value)!=long.MinValue)
         throw new Exception("Negative zero conversion changed");
-    for(int i=0;i<1000;i++)if(NullableCasts(Js.Undefined)!=4)throw new Exception("Undefined nullable conversion failed");
+    var warmup = System.Diagnostics.Stopwatch.StartNew();
+    do {
+        for(int i=0;i<1000;i++)if(NullableCasts(Js.Undefined)!=4)throw new Exception("Undefined nullable conversion failed");
+    } while (warmup.ElapsedMilliseconds < 1000);
     long before=GC.GetAllocatedBytesForCurrentThread();
     for(int i=0;i<10000;i++)if(NullableCasts(Js.Undefined)!=4)throw new Exception("Undefined nullable conversion failed");
     long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
