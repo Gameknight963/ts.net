@@ -41,7 +41,10 @@ public partial class JsFunction
     {
         if (!sourceConstructor) throw new InvalidOperationException("Value is not a constructor");
         var instance = constructFactory != null ? (TsObject)constructFactory(Array.Empty<object>()) : new JsDynamicObject();
-        instance.SetPrototype(ReadOrdinaryPrototype() as TsObject ?? Js.DefaultClassObjectPrototype);
+        TsObject prototype = ReadOrdinaryPrototype() as TsObject ?? Js.DefaultClassObjectPrototype;
+        // Compiler-provided factories return fresh objects. Their initial
+        // prototype cannot form a cycle with an existing object.
+        instance.InitializeFreshPrototype(prototype);
         return ConstructionReceiver(instance, this);
     }
     private object ConstructOrdinary(object[] arguments)

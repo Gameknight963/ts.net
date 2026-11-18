@@ -30,6 +30,8 @@ public abstract partial class TsObject
     internal int OwnPropertyVersion => extra?.Version ?? 0;
 
     public virtual bool TrySetNumberProperty(string key, double? value) => false;
+    // Used only by allocation paths, before exposing the object to user code.
+    internal virtual void InitializeFreshPrototype(TsObject value) => SetPrototype(value);
     protected bool TrySetStoredNumber(string key, double? value) => !IsModuleNamespace && this is JsDescriptorObject descriptor && !descriptor.HasPropertyDescriptors &&
         !TryOwnAccessor(key, out _) && extra != null && extra.TrySetNumber(key, value);
 
