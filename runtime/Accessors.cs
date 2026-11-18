@@ -18,7 +18,7 @@ internal sealed class JsAccessor
     internal object Read(object receiver) => Getter is null ? Js.Undefined : Getter.InvokeWithReceiver(receiver, Array.Empty<object>());
     internal double? ReadNumber(object receiver) => Getter is null ? null
         : Getter is JsReceiverFunction function ? function.InvokeMethodNumber0(receiver)
-        : Getter.SupportsNumberResult() ? Getter.InvokeNumber0()
+        : Getter.SupportsNumberResult() ? Getter.InvokeMethodNumber0(receiver)
         : Js.Cast<double?>(Getter.InvokeWithReceiver(receiver, Array.Empty<object>()), "checked conversion failed");
     internal object Write(object receiver, object value)
     {

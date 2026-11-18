@@ -24,6 +24,17 @@ try
         throw new Exception("A numeric method bypassed its native receiver override");
     if (!Equals(Js.CallMethodNumberArgument(new DirectNumericCalls(), "receiver", 2), "direct number"))
         throw new Exception("A numeric method bypassed its direct entry point");
+    var methodReceiver = new JsDynamicObject();
+    var method = new DirectMethod(methodReceiver);
+    if (Js.CallMethodNumber0(method, methodReceiver) != 10 ||
+        Js.CallMethodNumber1(method, methodReceiver, 2) != 12 ||
+        Js.CallMethodNumber2(method, methodReceiver, 2, 3) != 15 ||
+        Js.CallFunctionNumber0(method) != -10 || Js.CallFunctionNumber1(method, 2) != -8 ||
+        Js.CallFunctionNumber2(method, 2, 3) != -5)
+        throw new Exception("Direct method numeric calls lost their receiver or arguments");
+    methodReceiver.DefineAccessor("value", new BoundNumericGetter(methodReceiver), 1);
+    if (Js.GetNumber(methodReceiver, "value") != 42)
+        throw new Exception("A numeric accessor ignored its bound receiver entry point");
     Console.WriteLine("PASS ordinary function calls, receiver calls, and zero/numeric argument overrides");
 }
 catch (Exception error)
@@ -70,4 +81,22 @@ sealed class DirectNumericCalls() : JsFunction((FunctionBody)(_ => "delegate"), 
     public override object InvokeReceiverNumber1(object receiver, double? value) =>
         value == 2 && Equals(receiver, "receiver") ? "direct number"
             : throw new Exception("Direct numeric method receiver or argument changed");
+}
+
+sealed class DirectMethod(object expected) : JsMethodFunction((FunctionBody)(_ => throw new Exception("Legacy method adapter ran")), null, "method", 2)
+{
+    public override object InvokeWithReceiver(object receiver, object[] arguments)
+    {
+        double result = ReferenceEquals(receiver, expected) ? 10 : ReferenceEquals(receiver, Js.GetUndefined()) ? -10
+            : throw new Exception("Direct method receiver changed");
+        foreach (var argument in arguments) result += (double)argument;
+        return result;
+    }
+}
+sealed class BoundNumericGetter(object expected) : JsFunction((FunctionBody)(_ => 0d), null, "get value", 0)
+{
+    public override bool SupportsNumberResult() => true;
+    public override double? InvokeNumber0() => -1;
+    public override double? InvokeMethodNumber0(object receiver) => ReferenceEquals(receiver, expected) ? 42
+        : throw new Exception("Numeric getter receiver changed");
 }

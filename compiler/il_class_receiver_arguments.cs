@@ -57,6 +57,23 @@ internal static partial class CompilerFunctions
         }
     }
 
+    internal static void il_method_array_arguments(int symbol, int type, int context, int environment, Compiler c, IlBackend b)
+    {
+        Node function = get_node(get_symbol(symbol, c).function, c);
+        b.begin(b.plan.method2(5, type, 0xc6, -5, -5, -7, "InvokeWithReceiver"));
+        if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment); }
+        b.emit(0xfe09, 1); b.from_object(get_node(function.fourth, c).type, c);
+        int index = 0;
+        for (int entry = get_node(function.fourth, c).next; entry != 0; entry = get_node(entry, c).next) {
+            b.emit(0xfe09, 2); b.emit(0x20, index++); b.call(RuntimeMember.FunctionArgument);
+            b.from_object(get_node(entry, c).type, c);
+        }
+        b.emit(0x28, b.function(symbol));
+        if (get_type(function.type, c).kind == TypeKind.Void) b.call(RuntimeMember.Undefined);
+        else b.box(function.type, c);
+        b.op(0x2a);
+    }
+
     internal static void il_class_receiver_argument_methods(int symbol, int count, int type, int context, int environment, Compiler c, IlBackend b)
     {
         Node function = get_node(get_symbol(symbol, c).function, c);

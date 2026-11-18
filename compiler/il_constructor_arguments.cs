@@ -55,7 +55,10 @@ internal static partial class CompilerFunctions
         if (context != 0) {b.emit(0xfe09, 0);b.emit(0x7b, environment);}
         if (function.fourth != 0)
         {
-            b.emit(0xfe09, 0); b.emit(0xfe0c, receiver); b.call(RuntimeMember.PrepareReceiver);
+            bool home = b.object_home_functions.Contains(symbol);
+            if (home) b.emit(0xfe09, 0);
+            b.emit(0xfe0c, receiver);
+            if (home) b.call(RuntimeMember.PrepareReceiver);
         }
         b.emit(0xfe09, 1);
         if (!numeric) b.from_object(get_node(parameter, c).type, c);
