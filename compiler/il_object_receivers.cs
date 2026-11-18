@@ -39,7 +39,7 @@ internal static partial class CompilerFunctions
         }
     }
 
-    internal static bool il_object_receiver_number_read(int entry, Compiler c, IlBackend b)
+    internal static bool il_object_receiver_number_read(int entry, Compiler c, IlBackend b, int receiverSlot = -1)
     {
         Node property = get_node(entry, c), receiver = get_node(property.left, c);
         if (get_type(property.type, c).kind != TypeKind.Number || receiver.kind != NodeKind.ResolveThis || receiver.constant) return false;
@@ -47,13 +47,17 @@ internal static partial class CompilerFunctions
         if (name.kind != NodeKind.Name || !b.object_receiver_shapes.TryGetValue(name.symbol, out int owner) || owner == 0) return false;
         int member = field(owner, property.name, c);
         if (member == 0 || get_type(get_field(member, c).type, c).kind != TypeKind.Number || b.getter(member) == 0) return false;
+        void LoadReceiver() {
+            if (receiverSlot >= 0) b.emit(0xfe0c, receiverSlot);
+            else il_boxed(property.left, c, b);
+        }
         if (b.object_receiver_fields.TryGetValue(property.name, out var narrow) && fits(owner, narrow.Owner, c)) {
-            il_boxed(property.left, c, b);
+            LoadReceiver();
             il_shape_read(narrow.Owner, narrow.Member, b);
             return true;
         }
         int fallback = b.label(), done = b.label(), original = b.local(-5), typed = b.local(b.classes.at(owner));
-        il_boxed(property.left, c, b); b.emit(0xfe0e, original);
+        LoadReceiver(); b.emit(0xfe0e, original);
         b.emit(0xfe0c, original); b.emit(0x75, b.classes.at(owner)); b.emit(0xfe0e, typed);
         b.emit(0xfe0c, typed); b.emit(0x39, fallback);
         b.emit(0xfe0c, typed); il_shape_read(owner, member, b); b.emit(0x38, done);

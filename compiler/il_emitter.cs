@@ -188,6 +188,9 @@ internal static partial class CompilerFunctions
                 return;
             }
         }
+        // Compound updates already evaluated the receiver. Reuse it when
+        // reading a known object-method field, including the guarded fallback.
+        if (n.kind == NodeKind.Property && il_object_receiver_number_read(entry, c, b, receiver)) return;
         if (n.kind == NodeKind.Index)
         {
             int packed = il_packed_slot(entry, c, b);

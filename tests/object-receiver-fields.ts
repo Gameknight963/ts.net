@@ -32,3 +32,23 @@ console.log("closure write", next());
 const throwing = { base: 1, read(): number { return this.base; } };
 Object.defineProperty(throwing, "base", { get() { throw "getter"; } });
 try { throwing.read(); } catch (error) { console.log("throw", error); }
+
+const updating = {
+    base: 1,
+    add(amount: number): number {return this.base += amount;},
+    step(): number {return this.base++;}
+};
+const update = updating.add as (this: any, amount: number) => number;
+console.log('updates', updating.add(2), updating.step(), updating.base);
+console.log('borrowed update', update.call({base: 10}, 3));
+let stored = 20, reads = 0, writes = 0;
+const accessor = {get base() {reads++; return stored;}, set base(value: number) {writes++; stored = value;}};
+console.log('accessor update', update.call(accessor, 4), stored, reads, writes);
+Object.defineProperty(updating, 'base', {get() {reads++; return stored;}, set(value: number) {writes++; stored = value;}, configurable: true});
+console.log('changed update', updating.add(5), stored, reads, writes);
+const proxied = new Proxy({base: 30}, {get(target, key, receiver) {
+    console.log('get update', String(key)); return Reflect.get(target, key, receiver);
+}, set(target, key, value, receiver) {
+    console.log('set update', String(key), value); return Reflect.set(target, key, value, receiver);
+}});
+console.log('proxy update', update.call(proxied, 6));
