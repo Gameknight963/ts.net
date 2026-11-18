@@ -18,7 +18,12 @@ internal static partial class CompilerFunctions
                 b.call(RuntimeMember.GetFunctionCallProperty);
             else if (is_text(callee.name, "apply", c) && get_type(get_node(callee.left, c).type, c).kind is TypeKind.Any or TypeKind.Unknown)
                 b.call(RuntimeMember.GetFunctionApplyProperty);
-            else { il_text(callee.name,c,b); b.call(RuntimeMember.DynamicGet); }
+            else {
+                int slot = il_class_method_slot(get_node(callee.left, c).type, callee.name, c, b);
+                il_text(callee.name,c,b);
+                if (slot >= 0) { b.emit(0x20, slot); b.call(RuntimeMember.GetClassMethodAt); }
+                else b.call(RuntimeMember.DynamicGet);
+            }
         }
         else if (il_direct_index(calleeId, c, b)) { il_integer(callee.right, c, b); b.call(RuntimeMember.ArrayIndexGetAt); }
         else { il_boxed(callee.right,c,b); b.call(RuntimeMember.IndexGet); }

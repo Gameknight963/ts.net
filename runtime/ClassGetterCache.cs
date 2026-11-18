@@ -13,6 +13,11 @@ public abstract partial class TsObject
 {
     internal object WatchAccessorStructure() => accessors?.WatchStructure();
     internal object OwnDataValue(string key) => !TryOwnAccessor(key, out _) && extra != null && extra.TryGetValue(key, out var value) ? value : null;
+    internal bool TryOwnDataSlot(string key, int slot, out object value)
+    {
+        value = null;
+        return !TryOwnAccessor(key, out _) && extra is OwnProperties properties && properties.TryReadInlineSlot(key, slot, out value);
+    }
 }
 
 public sealed partial class JsClassFunction
@@ -68,6 +73,13 @@ public sealed partial class JsClassFunction
 
 public static partial class Js
 {
+    public static object GetClassMethodAt(object receiver, string name, int slot)
+    {
+        if (receiver is JsClassInstance value && value.Owner is JsClassFunction owner && owner.Parent == null &&
+            owner.Prototype.GetType() == value.GetType() && ReferenceEquals(value.InheritedPrototype, owner.Prototype) &&
+            !value.HasOwn(name) && owner.Prototype.TryOwnDataSlot(name, slot, out var method)) return method;
+        return Get(receiver, name);
+    }
     public static object GetClassMethodData(object receiver, string name)
     {
         if (receiver is not JsClassInstance value || value.Owner is not JsClassFunction owner || owner.Parent != null ||
