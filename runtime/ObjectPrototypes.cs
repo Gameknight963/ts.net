@@ -17,8 +17,11 @@ public abstract partial class TsObject
         if (ReferenceEquals(PropertyPrototype, value)) return false;
         if (!IsExtensible) throw new InvalidOperationException("Object is not extensible");
         if (IsModuleNamespace || ReferenceEquals(this, Js.DefaultClassObjectPrototype)) throw new InvalidOperationException("Object prototype is immutable");
-        for (var ancestor = value; ancestor != null; ancestor = ancestor.PropertyPrototype)
+        for (var ancestor = value; ancestor != null; ancestor = ancestor.PropertyPrototype) {
             if (ReferenceEquals(ancestor, this)) throw new InvalidOperationException("Cyclic prototype value");
+            // A proxy's getPrototypeOf trap must not run during this check.
+            if (Js.IsProxy(ancestor)) break;
+        }
         return true;
     }
     internal virtual bool TrySetPrototype(TsObject value)
@@ -26,8 +29,10 @@ public abstract partial class TsObject
         if (ReferenceEquals(PropertyPrototype, value)) return true;
         if (!IsExtensible) return false;
         if (IsModuleNamespace || ReferenceEquals(this, Js.DefaultClassObjectPrototype)) return false;
-        for (var ancestor = value; ancestor != null; ancestor = ancestor.PropertyPrototype)
+        for (var ancestor = value; ancestor != null; ancestor = ancestor.PropertyPrototype) {
             if (ReferenceEquals(ancestor, this)) return false;
+            if (Js.IsProxy(ancestor)) break;
+        }
         SetPrototype(value); return true;
     }
     internal virtual void SetPrototype(TsObject value)

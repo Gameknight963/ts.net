@@ -4,6 +4,7 @@ using System.Collections.Generic;
 public static partial class Js
 {
     interface IProxyValue { ProxyState Proxy { get; } }
+    internal static bool IsProxy(object value) => value is IProxyValue;
     sealed partial class ProxyState
     {
         TsObject target, handler;
