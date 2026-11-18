@@ -10,7 +10,8 @@ public sealed class FunctionSourceAttribute(string text) : Attribute
 
 public partial class JsFunction
 {
-    internal virtual string SourceText => Js.SourceOf(body);
+    internal virtual string SourceText => GetSourceText();
+    public virtual string GetSourceText() => Js.SourceOf(body);
 }
 
 public static partial class Js

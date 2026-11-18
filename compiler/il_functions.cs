@@ -8,6 +8,7 @@ internal sealed partial class IlBackend
 {
     internal readonly HashSet<int> array_value_callbacks = [];
     internal readonly HashSet<int> array_reduce_value_callbacks = [];
+    internal readonly HashSet<int> functions_without_body_delegates = [];
 }
 
 internal static partial class CompilerFunctions
@@ -310,8 +311,9 @@ internal static partial class CompilerFunctions
         int receiver_arguments = il_class_receiver_arguments(symbol, c, b);
         int constructor_parameter = il_constructor_parameter(symbol, c);
         bool constructor_entry = constructor_parameter != 0;
+        bool generic_function = b.function_values_needed.at(symbol) != 0 && get_node(get_symbol(symbol, c).function, c).fourth == 0;
         bool receiver_class = receiver_count >= 0 || receiver_arguments >= 0 || constructor_entry && get_node(get_symbol(symbol,c).function,c).fourth != 0;
-        if (receiver_arguments < 0 && !constructor_entry && count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !single_argument && !reduce_callback && value_count < 0 && receiver_count < 0) return;
+        if (receiver_arguments < 0 && !constructor_entry && !generic_function && count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !single_argument && !reduce_callback && value_count < 0 && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
         bool direct_method = receiver_arguments >= 0 &&
             !b.object_home_functions.Contains(symbol) && !b.function_class_types.ContainsKey(symbol);
@@ -330,6 +332,11 @@ internal static partial class CompilerFunctions
             receiver_class ? RuntimeMember.ReceiverFunctionConstructor : RuntimeMember.FunctionConstructor);
         if (context != 0) { b.emit(0xfe09, 0); b.emit(0xfe09, 5); b.emit(0x7d, environment_field); }
         b.op(0x2a);
+        if ((!receiver_class || direct_method) && c.function_sources.TryGetValue(get_symbol(symbol, c).function, out int sourceText)) {
+            b.functions_without_body_delegates.Add(symbol);
+            b.begin(b.plan.method0(5, type, 0xc6, -4, "GetSourceText"));
+            il_text(sourceText, c, b); b.op(0x2a);
+        }
         if (b.function_values_needed.at(symbol) != 0)
         {
             b.begin(b.plan.method0(5, type, 0xc6, -5, "GetCallProperty"));
@@ -576,7 +583,7 @@ internal static partial class CompilerFunctions
     {
         int context = b.function_contexts.at(symbol); int adapter = b.function_adapters.at(symbol);
         int bodyCache = b.function_body_caches.at(symbol);
-        if (get_node(get_symbol(symbol, c).function, c).internal_continuation) b.op(0x14);
+        if (get_node(get_symbol(symbol, c).function, c).internal_continuation || b.functions_without_body_delegates.Contains(symbol)) b.op(0x14);
         else if (bodyCache != 0)
         {
             // Share only the hidden static delegate, never the JavaScript function.

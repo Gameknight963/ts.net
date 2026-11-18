@@ -30,11 +30,12 @@ public class JsReceiverFunction : JsFunction
     public JsReceiverFunction(object body, object numeric, string name, int length)
         : this(new Invocation((FunctionBody)body), numeric, name, length) { }
     JsReceiverFunction(Invocation invocation, object numeric, string name, int length)
-        : base((FunctionBody)(arguments => invocation.Invoke(Js.Undefined, arguments)), numeric, name, length)
+        : base(null, numeric, name, length)
     {
         this.invocation = invocation;
     }
-    internal override string SourceText => invocation.SourceText;
+    public override string GetSourceText() => invocation.SourceText;
+    public override object Invoke(object[] arguments) => invocation.Invoke(Js.Undefined, arguments);
     internal override void SetObjectHome(TsObject home) => invocation.Home = home;
     internal void EnableArguments() => invocation.UsesArguments = true;
     protected object PrepareReceiver(object receiver) => invocation.WrapReceiver(receiver);
