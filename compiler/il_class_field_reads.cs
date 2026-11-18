@@ -11,8 +11,8 @@ internal static partial class CompilerFunctions
     static int il_class_field_reader(int entry, Compiler c, IlBackend b)
     {
         Node property = get_node(entry, c);
-        int owner = get_node(property.left, c).type;
-        if (property.fourth != 0 || !il_numeric_class_eligible(owner, c, b)) return 0;
+        int owner = il_class_field_owner(property.left, c, b);
+        if (property.fourth != 0 || owner == 0) return 0;
         var members = b.numeric_class_members[owner];
         for (int index = 0; index < members.Count; index++) {
             Field field = get_field(members[index], c);

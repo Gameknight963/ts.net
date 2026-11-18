@@ -178,6 +178,16 @@ internal static partial class CompilerFunctions
         if (n.kind == NodeKind.Property && n.fourth != 0) { b.emit(0xfe0c, receiver); il_boxed(n.fourth, c, b); b.call(RuntimeMember.PrivateGet); b.from_object(n.type, c); return; }
         ScalarField scalar = il_scalar_field(entry, c, b);
         if (scalar.slot >= 0) { b.emit(0xfe0c, scalar.slot); b.convert(scalar.type, n.type, c); return; }
+        if (n.kind == NodeKind.Property)
+        {
+            int reader = il_class_field_reader(entry, c, b);
+            if (reader != 0)
+            {
+                b.emit(0xfe0c, receiver); b.emit(0x28, reader);
+                if (get_type(n.type, c).kind != TypeKind.Number) b.from_object(n.type, c);
+                return;
+            }
+        }
         if (n.kind == NodeKind.Index)
         {
             int packed = il_packed_slot(entry, c, b);
