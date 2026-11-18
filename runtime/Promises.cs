@@ -3,12 +3,14 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
-    readonly struct PromiseJob(object target, object value, bool rejected)
+    // A nonnegative index identifies a settled combinator job; ordinary jobs use -1.
+    readonly struct PromiseJob(object target, object value, bool rejected, int index = -1)
     {
         internal void Run()
         {
             if (target is JsPromise native) native.RunReaction(value, rejected);
             else if (target is PromiseReactionBase reaction) reaction.Run(value, rejected);
+            else if (index >= 0) ((PromiseCombinationState)target).RunJob(index, value, rejected);
             else if (target is Action callback) callback();
             else ((JsFunction)target).InvokeWithReceiver(Undefined, Array.Empty<object>());
         }
@@ -20,6 +22,8 @@ public static partial class Js
         (promiseJobs ??= new()).Enqueue(new(callback, null, false));
     static void EnqueuePromiseReaction(IPromiseReaction reaction, object value, bool rejected) =>
         (promiseJobs ??= new()).Enqueue(new(reaction, value, rejected));
+    static void EnqueuePromiseCombination(PromiseCombinationState combination, int index, object value, bool rejected) =>
+        (promiseJobs ??= new()).Enqueue(new(combination, value, rejected, index));
     static void DrainPromiseJobs()
     {
         ClearKeptWeakTargets();
@@ -183,6 +187,15 @@ public static partial class Js
                 else reactions = new List<IPromiseReaction> { (IPromiseReaction)reactions, reaction };
             }
             else EnqueuePromiseReaction(reaction, Result, state == 2);
+        }
+        internal void ThenCombination(PromiseCapability capability, PromiseCombinationState combination, int index)
+        {
+            // Custom species must still complete their discarded result promise.
+            if (capability == null && state > 0) {
+                Handled = true; unhandledPromises?.Remove(this);
+                EnqueuePromiseCombination(combination, index, Result, state == 2);
+            }
+            else Then(new PromiseCombinationReaction(capability, combination, index));
         }
     }
     static PromiseCapability NewPromiseCapability(object constructor)

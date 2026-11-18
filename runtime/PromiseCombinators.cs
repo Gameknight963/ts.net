@@ -35,7 +35,7 @@ public static partial class Js
                         // the result even though the combinator discards it.
                         var species = PromiseSpecies(native);
                         var result = ReferenceEquals(species, RuntimeNamespaces.Promise) ? null : NewPromiseCapability(species);
-                        native.Then(new PromiseCombinationReaction(result, state, index));
+                        native.ThenCombination(result, state, index);
                         continue;
                     }
                     var handlers = state.Handlers(index);
@@ -67,6 +67,12 @@ public static partial class Js
     {
         readonly JsArray values = new(0);
         int remaining = 1;
+        internal void RunJob(int index, object value, bool rejected)
+        {
+            try { Accept(index, value, rejected); }
+            // A discarded intrinsic result must still report rejection.
+            catch (Exception error) { new JsPromise().Settle(CaughtValue(error), true); }
+        }
         internal int Add()
         {
             if (mode == PromiseCombination.Race) return 0;
