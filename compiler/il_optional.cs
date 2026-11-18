@@ -46,7 +46,11 @@ internal static partial class CompilerFunctions
                     b.call(RuntimeMember.DeleteProperty); b.call(RuntimeMember.WrapBoolean); b.box(root.type, c);
                     b.emit(0xfe0e, value); continue;
                 }
-                if (step.kind == NodeKind.ChainProperty) { if (step.left != 0) { il_boxed(step.left, c, b); b.call(RuntimeMember.PrivateGet); } else { il_text(step.name, c, b); b.call(RuntimeMember.DynamicGet); } } else { il_boxed(step.right, c, b); b.call(RuntimeMember.IndexGet); }
+                if (step.kind == NodeKind.ChainProperty) { if (step.left != 0) { il_boxed(step.left, c, b); b.call(RuntimeMember.PrivateGet); } else { il_text(step.name, c, b); b.call(RuntimeMember.DynamicGet); } }
+                else if (get_type(get_node(step.right, c).type, c).kind == TypeKind.Number) {
+                    il_expression(step.right, c, b); b.call(RuntimeMember.ArrayIndexGetNumberKey);
+                }
+                else { il_boxed(step.right, c, b); b.call(RuntimeMember.IndexGet); }
             }
             else
             {
