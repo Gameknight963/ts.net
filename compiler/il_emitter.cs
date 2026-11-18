@@ -1014,6 +1014,13 @@ internal static partial class CompilerFunctions
             }
             else if (il_relational_mode(op, c) >= 0 && (get_type(get_node(n.left, c).type, c).kind != TypeKind.Number || get_type(get_node(n.right, c).type, c).kind != TypeKind.Number))
             {
+                Node right = get_node(n.right, c);
+                if (get_type(get_node(n.left, c).type, c).kind == TypeKind.Number &&
+                    right.kind == NodeKind.Property && get_type(right.type, c).kind == TypeKind.Any &&
+                    is_text(right.name, text_length, c)) {
+                    il_expression(n.left, c, b); il_boxed(right.left, c, b); b.emit(0x20, il_relational_mode(op, c));
+                    b.call(RuntimeMember.NumberLengthRelational); b.call(RuntimeMember.WrapBoolean); return;
+                }
                 il_boxed(n.left, c, b); il_boxed(n.right, c, b); b.emit(0x20, il_relational_mode(op, c));
                 b.call(get_type(get_node(n.left, c).type, c).kind == TypeKind.String && get_type(get_node(n.right, c).type, c).kind == TypeKind.String ? RuntimeMember.StringRelational : RuntimeMember.Relational); b.call(RuntimeMember.WrapBoolean);
             }

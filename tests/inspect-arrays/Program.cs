@@ -1,4 +1,14 @@
 var array = new NumberArray(4);
+foreach (object source in new object[] {new JsArray(4), new NumberArray(4), new TaggedArray(4), new ReversibleArray(4), "text"}) {
+    CheckLengthComparisons(source, 1000);
+    long start = GC.GetAllocatedBytesForCurrentThread();
+    CheckLengthComparisons(source, 100000);
+    if (GC.GetAllocatedBytesForCurrentThread() != start) throw new Exception("Numeric length comparisons allocated");
+}
+var lengthOverride = new LengthReadOverride();
+if (!Js.NumberLengthRelational(2, lengthOverride, 0) || lengthOverride.Reads != 1)
+    throw new Exception("Numeric length comparison bypassed a CLR Get override");
+Console.WriteLine("PASS allocation-free numeric length comparisons and virtual Get fallback");
 var shared = new object();
 var adopted = new JsArray(new object[] { JsArray.HoleValue(), Js.Undefined, null!, shared });
 if (adopted.HasElement(0) || !adopted.HasElement(1) || !adopted.HasElement(2) || adopted.ElementAt(2) != null || !ReferenceEquals(adopted.ElementAt(3), shared)) throw new Exception("Adopted literal changed holes, null, or aliases");
@@ -233,6 +243,21 @@ static double ReadOrdinaryNumbers(JsArray source, int count)
     double sum = 0;
     for (int i = 0; i < count; i++) sum += Js.ArrayGetNumberAt(source, i & 1).GetValueOrDefault();
     return sum;
+}
+static void CheckLengthComparisons(object source, int count)
+{
+    for (int i = 0; i < count; i++) {
+        if (!Js.NumberLengthRelational(3, source, 0) || Js.NumberLengthRelational(3, source, 1) ||
+            !Js.NumberLengthRelational(4, source, 2) || !Js.NumberLengthRelational(4, source, 3) ||
+            Js.NumberLengthRelational(null, source, 0) || Js.NumberLengthRelational(double.NaN, source, 3))
+            throw new Exception("Numeric length comparison changed its result");
+    }
+}
+sealed class LengthReadOverride : JsArray
+{
+    public int Reads;
+    public LengthReadOverride() : base(1) {}
+    public override object Get(string key) {Reads++; return key == "length" ? 3d : base.Get(key);}
 }
 sealed class NumericReadOverride : JsArray
 {
