@@ -16,6 +16,16 @@ public static partial class Js
         }
     }
     internal static TsObject SharedFunctionPrototype => FunctionPrototypeState.Value;
+    // Called after a generated function-type guard; never invokes a getter.
+    public static bool HasBuiltinFunctionCall(object value)
+    {
+        var function = (JsFunction)value;
+        if (function.HasPropertyOverrides) return false;
+        var prototype = FunctionPrototypeState.Prototype;
+        return ReferenceEquals(function.PropertyPrototype, prototype) &&
+            ReferenceEquals(prototype.WatchAccessorStructure(), FunctionPrototypeState.AccessorStructure) &&
+            prototype.TryReadOwnDataSlot("call", out object target) && ReferenceEquals(target, FunctionMethods.Call);
+    }
     public static object GetFunctionCallProperty(object receiver) => receiver is JsFunction function
         ? function.GetCallProperty() : Get(receiver, "call");
     // Called only by generated function classes, which inherit ordinary property lookup.
