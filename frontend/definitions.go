@@ -127,7 +127,7 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 		}
 		return left
 	case ast.KindPropertyAccessExpression:
-		if b.reflectionDefinitionValue(n.Expression(), maps.Clone(seen)) >= 3 {
+		if !reflectionFunctionMember(n) && b.reflectionDefinitionValue(n.Expression(), maps.Clone(seen)) >= 3 {
 			return 3
 		}
 		if (n.Name().Text() == "defineProperty" || n.Name().Text() == "defineProperties" || n.Name().Text() == "preventExtensions" || n.Name().Text() == "seal" || n.Name().Text() == "freeze") && b.reflectionDefinitionValue(n.Expression(), maps.Clone(seen)) == 1 {
@@ -135,7 +135,7 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 		}
 		return b.reflectionPropertyValueLimit(n, seen, b.reflectionDefinitionValue, 3)
 	case ast.KindElementAccessExpression:
-		if b.reflectionDefinitionValue(n.Expression(), maps.Clone(seen)) >= 3 {
+		if !reflectionFunctionMember(n) && b.reflectionDefinitionValue(n.Expression(), maps.Clone(seen)) >= 3 {
 			return 3
 		}
 		key := n.AsElementAccessExpression().ArgumentExpression

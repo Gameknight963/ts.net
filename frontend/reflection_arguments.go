@@ -419,3 +419,10 @@ func (b *irBuilder) reflectionMapValue(n *ast.Node, seen map[*ast.Node]bool, cla
 	}
 	return result
 }
+
+// Binding or borrowing a possible reflection function does not invoke it.
+// Call-site analysis handles call/apply and bound arguments separately.
+func reflectionFunctionMember(n *ast.Node) bool {
+	_, name := deletionAccess(n)
+	return name == "bind" || name == "call" || name == "apply"
+}

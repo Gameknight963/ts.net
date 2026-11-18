@@ -6,7 +6,10 @@ const reflection=Reflect;
 const method:string='deleteProperty';
 const retained=(reflection as any)[method];
 const bound=retained.bind(null);
-console.log(typeof retained,typeof bound);
+const computedBound=retained['bind'](null);
+const borrowedCall=retained.call;
+const borrowedApply=retained['apply'];
+console.log(typeof retained,typeof bound,typeof computedBound,typeof borrowedCall,typeof borrowedApply);
 console.log(reflection.has({},'missing'));
 function work():number {
     let sum=0;

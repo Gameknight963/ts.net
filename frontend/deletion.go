@@ -193,7 +193,7 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 		}
 		return left
 	case ast.KindPropertyAccessExpression:
-		if b.reflectionDeletionValue(n.Expression(), maps.Clone(seen)) >= 3 {
+		if !reflectionFunctionMember(n) && b.reflectionDeletionValue(n.Expression(), maps.Clone(seen)) >= 3 {
 			return 3
 		}
 		if n.Name().Text() == "deleteProperty" && b.reflectionDeletionValue(n.Expression(), maps.Clone(seen)) == 1 {
@@ -201,7 +201,7 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 		}
 		return b.reflectionPropertyValueLimit(n, seen, b.reflectionDeletionValue, 3)
 	case ast.KindElementAccessExpression:
-		if b.reflectionDeletionValue(n.Expression(), maps.Clone(seen)) >= 3 {
+		if !reflectionFunctionMember(n) && b.reflectionDeletionValue(n.Expression(), maps.Clone(seen)) >= 3 {
 			return 3
 		}
 		key := n.AsElementAccessExpression().ArgumentExpression
