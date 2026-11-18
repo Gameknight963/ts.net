@@ -354,13 +354,14 @@ internal static partial class CompilerFunctions
             b.emit(0x28, b.function_adapters.at(symbol)); b.op(0x2a);
         }
         Node definition = get_node(get_symbol(symbol, c).function, c);
-        if (single_argument)
+        for (int bound = 0; single_argument && bound <= 1; bound++)
         {
-            b.begin(b.plan.method2(5, type, 0xc6, -5, -5, -5, "InvokeReceiverArgument1"));
+            b.begin(bound == 0 ? b.plan.method1(5, type, 0xc6, -5, -5, "InvokeArgument1")
+                : b.plan.method2(5, type, 0xc6, -5, -5, -5, "InvokeReceiverArgument1"));
             if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
             if (definition.children != 0)
             {
-                b.emit(0xfe09, 2); b.from_object(get_node(definition.children, c).type, c);
+                b.emit(0xfe09, bound + 1); b.from_object(get_node(definition.children, c).type, c);
             }
             b.emit(0x28, b.function(symbol));
             if (get_type(definition.type, c).kind == TypeKind.Void) b.call(RuntimeMember.Undefined);

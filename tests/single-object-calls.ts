@@ -36,7 +36,10 @@ function work(): number {
     const prefix = '';
     const holder = {echo: (value: string): string => prefix + value};
     let sum = 0;
-    for (let i = 0; i < 100000; i++) sum += holder.echo('hello').length;
+    for (let i = 0; i < 100000; i++) {
+        sum += holder.echo('hello').length;
+        sum += invoke(holder.echo, 'hello').length;
+    }
     return sum;
 }
 console.log(work());

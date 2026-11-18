@@ -49,6 +49,7 @@ public partial class JsFunction : JsDescriptorObject
     public virtual object InvokeReceiver0(object receiver) => InvokeWithReceiver(receiver, Array.Empty<object>());
     public virtual object InvokeReceiverNumber1(object receiver, double? value) => InvokeWithReceiver(receiver, new[] {Js.BoxNumber(value)});
     public virtual object InvokeReceiverArgument1(object receiver, object value) => InvokeWithReceiver(receiver, new[] {value});
+    public virtual object InvokeArgument1(object value) => Invoke(new[] {value});
     public virtual object GetCallProperty() => Get("call");
     public virtual object GetApplyProperty() => Get("apply");
     // Generated continuations and ordinary zero/one-argument functions can
@@ -167,7 +168,7 @@ public static partial class Js
     public static object CallFunction0(object target) => target is JsFunction function ? function.Invoke(Array.Empty<object>()) : throw new InvalidOperationException("Value is not callable");
     public static object CallFunction(object target, object[] arguments) => target is JsFunction function ? function.Invoke(arguments) : throw new InvalidOperationException("Value is not callable");
     public static object CallFunctionArgument(object target, object value) => target is JsFunction function
-        ? function.InvokeReceiverArgument1(Undefined, value) : throw new InvalidOperationException("Value is not callable");
+        ? function.InvokeArgument1(value) : throw new InvalidOperationException("Value is not callable");
     public static object CallFunctionNumberArgument(object target, double? value)
     {
         if (target is INumberArgumentFunction function) return function.InvokeNumberArgument(value);

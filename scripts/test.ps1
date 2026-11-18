@@ -13,6 +13,8 @@ try {
     $utf8 = New-Object System.Text.UTF8Encoding($false)
     & dotnet run --project tests/inspect-reference-casts/Inspect.csproj -c Release --no-launch-profile
     if ($LASTEXITCODE) { throw 'Reference cast checks failed' }
+    & dotnet run --project tests/inspect-function-arguments/Inspect.csproj -c Release --no-launch-profile
+    if ($LASTEXITCODE) { throw 'Single-argument function dispatch checks failed' }
 
     & dotnet run --project tests/inspect-blob-urls/Inspect.csproj -c Release --no-launch-profile
     if ($LASTEXITCODE) { throw 'Blob URL lifetime checks failed' }
@@ -415,7 +417,7 @@ try {
     if ($LASTEXITCODE) { throw 'Stored reflection references changed unrelated object storage' }
     & dotnet tests/inspect-scalars/bin/Release/net10.0/Inspect.dll "$testRoot/reflection-iteration-storage/bin/Release/net10.0/App.dll" 10000000000
     if ($LASTEXITCODE) { throw 'Unused iterated reflection methods changed local object storage' }
-    & dotnet tests/inspect-scalars/bin/Release/net10.0/Inspect.dll "$testRoot/single-object-calls/bin/Release/net10.0/App.dll" 500000 4096
+    & dotnet tests/inspect-scalars/bin/Release/net10.0/Inspect.dll "$testRoot/single-object-calls/bin/Release/net10.0/App.dll" 1000000 4096
     if ($LASTEXITCODE) { throw 'Single-argument calls allocated argument arrays' }
     & dotnet tests/inspect-scalars/bin/Release/net10.0/Inspect.dll "$testRoot/checked-index-helpers/bin/Release/net10.0/App.dll" 49985001 320000
     if ($LASTEXITCODE) { throw 'Checked array helpers allocated per-element number boxes' }
