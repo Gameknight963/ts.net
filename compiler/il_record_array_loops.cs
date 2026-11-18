@@ -17,6 +17,8 @@ internal static partial class CompilerFunctions
             ? b.class_field_tokens[read.Owner][b.numeric_class_members[read.Owner].IndexOf(read.Member)]
             : b.field_token(read.Member);
         b.emit(0x7b, token);
+        if (get_type(get_node(entry, c).type, c).kind != TypeKind.Number)
+            b.from_object(get_node(entry, c).type, c);
         return true;
     }
 
@@ -50,11 +52,20 @@ internal static partial class CompilerFunctions
         bool Pure(int item)
         {
             Node node = get_node(item, c);
-            if (get_type(node.type, c).kind != TypeKind.Number) return false;
-            if (node.kind == NodeKind.Number) return true;
-            if (node.kind == NodeKind.Name) return node.symbol == counter;
+            TypeKind kind = get_type(node.type, c).kind;
+            if (kind is not (TypeKind.Number or TypeKind.String or TypeKind.Boolean)) return false;
+            if (node.kind is NodeKind.Number or NodeKind.String or NodeKind.Boolean) return true;
+            if (node.kind == NodeKind.Name) return kind == TypeKind.Number && node.symbol == counter;
+            if (node.kind == NodeKind.Conditional)
+                return get_type(get_node(node.left, c).type, c).kind == TypeKind.Boolean &&
+                    Pure(node.left) && Pure(node.right) && Pure(node.third);
             if (node.kind == NodeKind.Property && node.fourth == 0)
             {
+                // String length cannot invoke user code. The emitted checked
+                // read still rejects invalid dynamically assigned values.
+                if (kind == TypeKind.Number && is_text(node.name, text_length, c) &&
+                    get_type(get_node(node.left, c).type, c).kind == TypeKind.String)
+                    return Pure(node.left);
                 Node index = get_node(node.left, c);
                 if (index.kind != NodeKind.Index || index.fourth != 0) return false;
                 Node array = get_node(index.left, c), key = get_node(index.right, c);
@@ -63,18 +74,19 @@ internal static partial class CompilerFunctions
                 if (get_type(shape, c).kind != TypeKind.Shape || b.classes.at(shape) == 0 || member == 0 ||
                     get_field(member, c).optional || (owner != 0 && owner != shape)) return false;
                 if (il_numeric_class_eligible(shape, c, b)) {
-                    if (!b.numeric_class_members[shape].Contains(member) || get_type(get_field(member, c).type, c).kind != TypeKind.Number) return false;
+                    if (!b.numeric_class_members[shape].Contains(member) || get_type(get_field(member, c).type, c).kind != kind) return false;
                 }
                 else if (get_type(shape, c).name != 0 || b.spread_types.at(shape) != 0 || b.field_token(member) == 0 ||
-                    il_dynamic_index_field(member, c) || b.field_storage(member, c) != -3) return false;
+                    il_dynamic_index_field(member, c) || kind != TypeKind.Number || b.field_storage(member, c) != -3) return false;
                 owner = shape; reads.Add((item, member)); return true;
             }
-            if (node.kind is not (NodeKind.Binary or NodeKind.Unary)) return false;
+            if (kind != TypeKind.Number || node.kind is not (NodeKind.Binary or NodeKind.Unary)) return false;
             int op = get_token(node.token, c).text;
             bool sign = is_text(op, text_plus, c) || is_text(op, text_minus, c);
+            if (get_type(get_node(node.left, c).type, c).kind != TypeKind.Number) return false;
             if (node.kind == NodeKind.Unary) return sign && Pure(node.left);
             return node.kind == NodeKind.Binary && (sign || is_text(op, text_star, c) || is_text(op, text_slash, c)) &&
-                Pure(node.left) && Pure(node.right);
+                get_type(get_node(node.right, c).type, c).kind == TypeKind.Number && Pure(node.left) && Pure(node.right);
         }
         if (!Pure(assignment.right) || reads.Count == 0) return false;
         int buffer = b.local(-7), bound = b.local(-3), fallback = b.label(), done = b.label();

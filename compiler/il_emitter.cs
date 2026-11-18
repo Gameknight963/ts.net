@@ -548,6 +548,10 @@ internal static partial class CompilerFunctions
         if (il_loop_getter_read(entry, c, b)) { b.call(RuntimeMember.WrapNumber); return; }
         if (il_loop_field_write(entry, c, b)) return;
         if (il_typed_buffer_read(entry, c, b)) { b.call(RuntimeMember.WrapNumber); return; }
+        if (il_record_array_field(entry, c, b)) {
+            if (get_type(get_node(entry, c).type, c).kind == TypeKind.Number) b.call(RuntimeMember.WrapNumber);
+            return;
+        }
         Node n = get_node(entry, c);
         if (n.kind == NodeKind.Undefined)
         {

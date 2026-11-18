@@ -26,3 +26,43 @@ function wide(items:Wide[]):number {let total=0;for(let i=0;i<items.length;i++)t
 console.log("wide mask",wide([new Wide(),new Wide()]));const missingWide=new Wide();(missingWide as any).p=undefined;console.log("wide undefined",wide([missingWide]));
 try{sum([null as any]);}catch(error){console.log("null",(error as Error).name);}
 let uninitialized:Point[];try{sum(uninitialized!);}catch(error){console.log("uninitialized",(error as Error).name);}
+
+class Item {value=0;name='item';enabled=true;constructor(value:number){this.value=value;}}
+function mixed(items:Item[]):number {
+ let total=0;
+ for(let i=0;i<items.length;i++)total+=items[i].value+items[i].name.length+(items[i].enabled?1:0);
+ return total;
+}
+function names(items:Item[]):number {
+ let total=0;
+ for(let i=0;i<items.length;i++)total+=items[i].enabled?items[i].name.length:items[i].value;
+ return total;
+}
+const mixedItems=[new Item(1),new Item(2)];
+console.log('mixed',mixed(mixedItems),names(mixedItems),mixed([]));
+mixedItems[0].name='longer';mixedItems[1].enabled=false;
+console.log('mixed writes',mixed(mixedItems),names(mixedItems));
+const missingFlag=new Item(3);(missingFlag as any).enabled=undefined;
+console.log('missing flag',mixed([missingFlag]),names([missingFlag]));
+const deletedName=new Item(4);delete (deletedName as any).name;
+Object.defineProperty(Item.prototype,'name',{get(){return 'inherited';},configurable:true});
+console.log('inherited name',mixed([deletedName]));delete (Item.prototype as any).name;
+let mixedGets=0;const changingMixed=[new Item(1),new Item(2)];
+Object.defineProperty(changingMixed[0],'name',{get(){
+ mixedGets++;changingMixed[0]=new Item(10);changingMixed.push(new Item(20));return 'old';
+},configurable:true});
+console.log('name getter changes array',mixed(changingMixed),mixedGets,changingMixed.length);
+const flagItems=[new Item(1)];
+Object.defineProperty(flagItems[0],'enabled',{get(){mixedGets++;flagItems.push(new Item(3));return false;},configurable:true});
+console.log('flag getter changes array',mixed(flagItems),mixedGets,flagItems.length);
+let mixedTraps=0;
+const mixedProxy=new Proxy(new Item(5),{get(target,key,receiver){mixedTraps++;return Reflect.get(target,key,receiver);}});
+console.log('mixed proxy',mixed([mixedProxy]),mixedTraps);
+const mixedRecord:Item={value:6,name:'structural',enabled:false};
+console.log('mixed structural',mixed([new Item(7),mixedRecord]));
+const frozenMixed=new Item(8);Object.freeze(frozenMixed);
+console.log('mixed frozen',mixed(Object.freeze([frozenMixed]) as unknown as Item[]));
+const nullName=new Item(9);(nullName as any).name=null;
+try{mixed([nullName]);}catch{console.log('null name throws');}
+const undefinedName=new Item(9);(undefinedName as any).name=undefined;
+try{mixed([undefinedName]);}catch{console.log('undefined name throws');}
