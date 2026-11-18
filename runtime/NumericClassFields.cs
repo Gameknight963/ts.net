@@ -10,6 +10,11 @@ public abstract class JsNumericClassInstance : JsClassInstance
         Owner = (JsClassFunction)owner;
         states = (uint)initialStates;
     }
+    protected void InitializeDirectClassWide(object owner, int lowStates, int highStates)
+    {
+        Owner = (JsClassFunction)owner;
+        states = (uint)lowStates | (ulong)(uint)highStates << 32;
+    }
     // Two bits per field: absent (0), own undefined (1), or own value (3).
     // State 2 is never a field value, so it can mark materialized storage
     // without adding a flag to every instance.

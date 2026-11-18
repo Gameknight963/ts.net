@@ -166,6 +166,7 @@ Runtime performance:
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | — | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | — | 0.45x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 2.28 ms | 0.985 ms | — | 0.43x |
+| Construct and traverse 10K class instances with 17 numeric fields | 0.516 ms | 0.215 ms | 0.199 ms (class) | 0.42x |
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | — | 0.41x |
 | Call a numeric void object-literal method through a helper, 100K calls | 0.571 ms | 0.231 ms | 0.0702 ms (class) | 0.40x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | — | 0.40x |
@@ -197,7 +198,6 @@ Runtime performance:
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
 | Retained class instances with number, string and boolean fields, 100K instances | 6.26 ms | 1.551 ms | 1.832 ms | 0.25x |
-| Construct and traverse 10K class instances with 17 numeric fields | 0.841 ms | 0.209 ms | 0.163 ms (class) | 0.25x |
 | Attach 10K handlers to one pending promise and sum their results | 3.47 ms | 0.835 ms | 1.03 ms (queued Task continuations) | 0.24x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | — | 0.23x |
 | Create 10K resolved promises, collect with all, and sum results | 2.17 ms | 0.479 ms | — | 0.22x |

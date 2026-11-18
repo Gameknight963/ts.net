@@ -76,7 +76,7 @@ internal static partial class CompilerFunctions
     }
 
     internal static List<(int Name, int Value)> scalar_class_fields(int entry, Vector<int> definitions,
-        Vector<int> declarations, Vector<int> parameters, Compiler c, IlBackend b, bool recordPlan = true)
+        Vector<int> declarations, Vector<int> parameters, Compiler c, IlBackend b, bool recordPlan = true, bool heapConstruction = false)
     {
         int definition = known_class_definition(entry, definitions, declarations, parameters, c, b);
         if (definition == 0) return null;
@@ -93,7 +93,8 @@ internal static partial class CompilerFunctions
         for (int member = get_type(construction.type, c).fields; member != 0; member = get_field(member, c).next)
         {
             Field field = get_field(member, c);
-            if (field.optional || get_type(field.type, c).kind is not (TypeKind.Number or TypeKind.String or TypeKind.Boolean) || ++count > 8) return null;
+            if (field.optional || get_type(field.type, c).kind is not (TypeKind.Number or TypeKind.String or TypeKind.Boolean) ||
+                ++count > (heapConstruction ? 32 : 8)) return null;
         }
         if (count == 0) return null;
         var values = new List<(int Name, int Value)>();
@@ -114,19 +115,25 @@ internal static partial class CompilerFunctions
             if (!literal && !emptyUndefined) return null;
             values.Add((field.name, field.right));
         }
-        if (!scalar_constructor(entry, klass.right, values.Select(value => value.Name).ToList(), count, c, b, recordPlan)) return null;
+        if (!scalar_constructor(entry, klass.right, values.Select(value => value.Name).ToList(), count, c, b, recordPlan, heapConstruction)) return null;
         return values;
     }
 
-    internal static bool scalar_constructor(int entry, int constructor, List<int> owned, int count, Compiler c, IlBackend b, bool recordPlan = true)
+    internal static bool scalar_constructor(int entry, int constructor, List<int> owned, int count, Compiler c, IlBackend b, bool recordPlan = true, bool allowEmptyConstructor = false)
     {
         Node construction = get_node(entry, c);
         if (constructor == 0) return construction.children == 0 && owned.Count == count;
         int target = scalar_field_function(constructor, c);
         if (target == 0) return false;
         Node function = get_node(target, c);
-        if (function.left == 0 || function.fourth == 0) return false;
+        if (function.left == 0) return false;
         Node body = get_node(function.left, c);
+        // The frontend omits an unused receiver, including for an empty
+        // implicit constructor. Supplied arguments still require evaluation.
+        if (allowEmptyConstructor && function.fourth == 0 && function.children == 0 &&
+            body.kind == NodeKind.Block && body.children == 0 && construction.children == 0)
+            return owned.Count == count;
+        if (function.fourth == 0) return false;
         Node receiver = get_node(function.fourth, c);
         if (body.kind != NodeKind.Block || function.fourth == 0 || function.children != function.fourth ||
             receiver.kind != NodeKind.Variable || receiver.symbol == 0 || receiver.name != 0 || receiver.constant) return false;

@@ -187,7 +187,9 @@ internal static partial class CompilerFunctions
         b.node_parents = identity(parents);
         for (int i = 1; i <= c.node_store.count(); i++) {
             if (get_node(i, c).kind != NodeKind.Construct || !il_numeric_class_eligible(get_node(i, c).type, c, b)) continue;
-            var fields = scalar_class_fields(i, initializers, declarations, parameters, c, b);
+            // Heap construction keeps the same purity proof without expanding
+            // the separate limit on temporary objects replaced by locals.
+            var fields = scalar_class_fields(i, initializers, declarations, parameters, c, b, heapConstruction: true);
             if (fields != null) b.direct_class_initializers[i] = fields;
         }
 

@@ -96,3 +96,31 @@ class Larger {
 }
 const larger = new Larger();
 console.log('larger fallback', larger.f0, larger.f16, larger.f31, larger.f32, Object.keys(larger).length);
+class PrimitiveFields {
+    f0 = 1; f1 = 2; f2 = 3; f3 = 4;
+    f4 = 5; f5 = 6; f6 = 7; f7 = 8;
+    f8 = 9; f9 = 10; f10 = 11; f11 = 12;
+    f12 = 13; f13 = 14; f14 = 15; f15 = 16;
+    f16 = 17; f17 = 18; f18 = 19; f19 = 20;
+    f20 = 21; f21 = 22; f22 = 23; f23 = 24;
+    f24 = 25; f25 = 26; f26 = 27; f27 = 28;
+    f28 = 29; f29 = 30; text = 'initial'; flag = false;
+    constructor(value: number, text: string, flag: boolean) {this.f16 = value; this.text = text; this.flag = flag;}
+}
+const primitive = new PrimitiveFields(40, 'changed', true);
+console.log('primitive fields', primitive.f0, primitive.f15, primitive.f16, primitive.text, primitive.flag,
+ primitive instanceof PrimitiveFields, Object.getPrototypeOf(primitive) === PrimitiveFields.prototype);
+const undefinedFields = new PrimitiveFields(undefined as any, undefined as any, undefined as any);
+console.log('undefined states', undefinedFields.f0, undefinedFields.f15, undefinedFields.f16,
+ undefinedFields.text, undefinedFields.flag, Object.hasOwn(undefinedFields, 'f16'), Object.hasOwn(undefinedFields, 'flag'));
+console.log('undefined keys', Object.keys(undefinedFields).join(','));
+console.log('after copying states', undefinedFields.f0, undefinedFields.f15, undefinedFields.f16, undefinedFields.flag);
+const nullText = new PrimitiveFields(NaN, null as any, false);
+console.log('nullable states', Number.isNaN(nullText.f16), nullText.text === null, nullText.flag);
+function beforeEmpty(): EmptyLater {return new EmptyLater();}
+try {beforeEmpty();} catch (error) {console.log('empty tdz', (error as Error).name);}
+class EmptyLater {value = 19;}
+console.log('empty later', beforeEmpty().value);
+let argumentEffects = 0;
+const DynamicEmpty: any = EmptyLater;
+console.log('ignored argument', new DynamicEmpty(++argumentEffects).value, argumentEffects);
