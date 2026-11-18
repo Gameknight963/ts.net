@@ -175,6 +175,7 @@ Runtime performance:
 | Class getter returning `this.base * 2 + 1`, 100K reads | 0.0682 ms | 0.0274 ms | — | 0.40x |
 | Class numeric getter, 100K reads | 0.0702 ms | 0.0274 ms | — | 0.39x |
 | Read and sum one numeric element 100K times through a mixed-array helper | 0.0698 ms | 0.0273 ms | 0.0675 ms (`object[]`) | 0.39x |
+| Call `slice(5)` by name on an `any` six-character string, 100K calls | 0.0702 ms | 0.0276 ms | 0.389 ms (`Substring`), 0.0698 ms (span length) | 0.39x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | — | 0.38x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | — | 0.37x |
 | Mixed array, 100K elements and 5 traversals | 3.19 ms | 1.15 ms | — | 0.36x |
@@ -215,7 +216,6 @@ Runtime performance:
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | — | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | — | 0.02x |
-| Call `slice(5)` by name on an `any` six-character string, 100K calls | 1.82 ms | 0.0275 ms | 0.354 ms (`Substring`), 0.0707 ms (span length) | 0.015x |
 
 </details>
 

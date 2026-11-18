@@ -31,6 +31,15 @@ public static partial class Js
         internal static readonly StringRangeFunction Substring = new(true, "substring");
     }
     static object StringRangeTarget(string name) => name == "slice" ? StringRangeFunctions.Slice : StringRangeFunctions.Substring;
+    // Only an own data method on the intrinsic prototype can be reused without
+    // invoking a getter. Primitive indexed characters and length shadow it.
+    public static string TryStringRangeValue(object receiver, object key, double first)
+    {
+        if (receiver is not string text || key is not string name || name == "length" ||
+            JsArray.Index(name, out uint index) && index < text.Length) return null;
+        return PrimitivePrototype(text) is JsBoxedPrimitive prototype && prototype.OwnDataValue(name) is StringRangeFunction method
+            ? StringRange(text, first, text.Length, method.Substring) : null;
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static int StringRangeBound(double value, int length, bool substring)
     {

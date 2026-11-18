@@ -106,6 +106,7 @@ internal static partial class CompilerFunctions
         if (il_checked_array_loop(entry, result, counter, bound, c, b)) return;
         if (il_class_method_loop(entry, result, counter, bound, c, b)) return;
         if (il_class_update_loop(entry, result, counter, bound, c, b)) return;
+        if (il_string_range_loop(entry, result, counter, bound, c, b)) return;
         if (il_borrowed_method_loop(entry, result, counter, bound, c, b)) return;
         if (il_class_getter_loop(entry, result, counter, bound, c, b)) return;
         if (il_integer_counter_loop(entry, result, counter, bound, c, b)) { return; }

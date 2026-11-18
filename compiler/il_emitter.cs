@@ -570,6 +570,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_expression(int entry, Compiler c, IlBackend b)
     {
+        if (b.loop_string_calls.TryGetValue(entry, out int text)) { b.emit(0xfe0c, text); return; }
         if (il_bigint_expression(entry, c, b)) return;
         if (il_loop_getter_read(entry, c, b)) { b.call(RuntimeMember.WrapNumber); return; }
         if (il_loop_field_write(entry, c, b)) return;
