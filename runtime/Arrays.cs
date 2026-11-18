@@ -204,8 +204,16 @@ public partial class JsArray : TsObject
         return value < uint.MaxValue;
     }
     public override bool HasOwn(string key) => key == "length" || (Index(key, out uint index) ? HasElement(index) : base.HasOwn(key));
-    public override object Get(string key) => key == "length" ? (double)Count : Index(key, out uint index) ? Read(index) :
-        base.Get(key);
+    public override object Get(string key)
+    {
+        if (key == "length") return (double)Count;
+        if (Index(key, out uint index)) return Read(index);
+        // A plain array has no named properties or explicit prototype. Read
+        // prototype data directly; accessors still need the original receiver.
+        if (!HasPropertyOverrides && GetType() == typeof(JsArray) &&
+            Js.ArrayPrototype.OwnDataValue(key) is object value) return value;
+        return base.Get(key);
+    }
     public override object SetOwnValue(string key, object value)
     {
         if (TrySetDefinedData(key, value)) return value;
