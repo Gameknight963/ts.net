@@ -47,3 +47,23 @@ try {Object.setPrototypeOf(first, second);} catch {rejected = true;}
 console.log('ordinary cycle throws', rejected);
 const fixed = Object.preventExtensions(Object.create(opaque));
 console.log('fixed prototype', Reflect.setPrototypeOf(fixed, opaque), Reflect.setPrototypeOf(fixed, null), walks);
+
+class Stable {
+    value: number;
+    constructor(first = 1, second = 2) {this.value = first + second;}
+}
+const original = Stable.prototype;
+console.log('class prototype fixed', Reflect.set(Stable, 'prototype', {}),
+    Reflect.defineProperty(Stable, 'prototype', {value: {}}),
+    Reflect.defineProperty(Stable, 'prototype', {get() {throw new Error('unreachable');}}));
+console.log('class prototype unchanged', Stable.prototype === original,
+    Object.getPrototypeOf(new Stable()) === original,
+    Object.getPrototypeOf(new Stable(3)) === original,
+    Object.getPrototypeOf(new Stable(3, 4)) === original);
+console.log('class new target', Object.getPrototypeOf(Reflect.construct(Base, [], Stable)) === original);
+let prototypeReads = 0;
+const observed = new Proxy(Stable, {get(target, key, receiver) {
+    if (key === 'prototype') prototypeReads++;
+    return Reflect.get(target, key, receiver);
+}});
+console.log('proxy new target', Object.getPrototypeOf(new observed(4, 5)) === original, prototypeReads);

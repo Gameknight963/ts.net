@@ -32,6 +32,9 @@ public partial class JsFunction
     }
     internal TsObject ConstructionPrototype(JsFunction newTarget)
     {
+        // Classes have a non-writable, non-configurable prototype property.
+        // A proxy is a different function type and still uses the ordinary Get.
+        if (newTarget is JsClassFunction klass) return klass.Prototype;
         if (newTarget.Get("prototype") is TsObject prototype) return prototype;
         return sourceConstructor || this is JsClassFunction ? Js.DefaultClassObjectPrototype : Get("prototype") as TsObject ?? Js.DefaultClassObjectPrototype;
     }
