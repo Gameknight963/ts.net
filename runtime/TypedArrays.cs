@@ -21,19 +21,26 @@ public static partial class Js
         internal bool OutOfBounds => Buffer.Detached || Buffer.Resizable && (Offset > Buffer.Bytes.Length || !Tracking && FixedCount > (Buffer.Bytes.Length - Offset) / Size);
         internal int Count => !Buffer.Detached && !Buffer.Resizable ? FixedCount : OutOfBounds ? 0 : Tracking ? (Buffer.Bytes.Length - Offset) / Size : FixedCount;
         internal readonly string Name, Kind;
+        readonly TypedArrayNumberKind numberKind;
         internal TypedArrayValue(string name, BinaryBuffer buffer, int offset, int count, bool tracking = false)
         {
             Name = name; Kind = name == "Uint8ClampedArray" ? "Uint8" : name[..^5];
+            numberKind = TypedArrayNumberKindFrom(Kind);
             Size = BinarySize(Kind); Buffer = buffer; Offset = offset; FixedCount = count; Tracking = tracking;
             prototype = (TsObject)GetTypedArrayConstructor(name).Get("prototype");
         }
         internal override TsObject PropertyPrototype => prototype;
         internal override void SetPrototype(TsObject value) { if (CanSetPrototype(value)) prototype = value; }
-        internal object Read(int index) => Buffer.Detached || Buffer.Resizable && (uint)index >= (uint)Count ? Undefined : ReadBinary(Buffer.Bytes.AsSpan(Offset + index * Size, Size), Kind, BitConverter.IsLittleEndian);
+        internal object Read(int index)
+        {
+            if (Buffer.Detached || Buffer.Resizable && (uint)index >= (uint)Count) return Undefined;
+            var bytes = Buffer.Bytes.AsSpan(Offset + index * Size, Size);
+            return numberKind == TypedArrayNumberKind.None ? ReadBinary(bytes, Kind, BitConverter.IsLittleEndian) : ReadTypedArrayNumber(bytes, numberKind);
+        }
         // The callback loop excludes BigInt views and supplies an integer index.
         // A previous callback may have detached or resized the buffer.
         internal double? ReadCallbackNumber(int index) => Buffer.Detached || Buffer.Resizable && (uint)index >= (uint)Count ? null :
-            ReadBinaryNumber(Buffer.Bytes.AsSpan(Offset + index * Size, Size), Kind, BitConverter.IsLittleEndian);
+            ReadTypedArrayNumber(Buffer.Bytes.AsSpan(Offset + index * Size, Size), numberKind);
         internal void Write(int index, object value)
         {
             bool bigint = Kind.StartsWith("Big", StringComparison.Ordinal);
@@ -50,8 +57,8 @@ public static partial class Js
         internal double? ReadNumberIndex(double index)
         {
             if (!Valid(index)) return null;
-            if (Kind.StartsWith("Big", StringComparison.Ordinal)) return Cast<double?>(Read((int)index), "checked conversion failed");
-            return ReadBinaryNumber(Buffer.Bytes.AsSpan(Offset + (int)index * Size, Size), Kind, BitConverter.IsLittleEndian);
+            if (numberKind == TypedArrayNumberKind.None) return Cast<double?>(Read((int)index), "checked conversion failed");
+            return ReadTypedArrayNumber(Buffer.Bytes.AsSpan(Offset + (int)index * Size, Size), numberKind);
         }
         internal object ReadIndex(double index) => Valid(index) ? Read((int)index) : Undefined;
         // Conversion can resize the buffer. Preserve the integer index and let

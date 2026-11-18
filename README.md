@@ -59,20 +59,20 @@ Runtime performance:
 | Cached date formatter, 1K daily UTC dates in 2024, Gregorian calendar | 0.312 ms | 1.22 ms | — | 3.90x |
 | Gzip-decompress 1,052 bytes into 1 MiB of repeated ASCII A | 1.19 ms | 4.38 ms | — | 3.68x |
 | Small integer bases and varying exponents, 1M iterations | 4.07 ms | 13.85 ms | — | 3.41x |
+| Float64Array reduce, 10 sums of 10K values | 0.351 ms | 0.999 ms | 0.067 ms (Aggregate) | 2.85x |
 | String includes, 1M searches | 11.19 ms | 28.84 ms | — | 2.58x |
 | Mixed array, 100K elements and 100 reversals | 3.07 ms | 7.70 ms | — | 2.51x |
+| Float64Array every/some/findIndex, 10 full scans each of 10K values | 1.091 ms | 2.711 ms | 0.314 ms (array methods) | 2.49x |
 | Cached list formatters, 10K three-element lists across four locales and all types/styles | 4.31 ms | 10.40 ms | — | 2.41x |
 | `Object.entries(value)`, 100K calls and reads | 8.09 ms | 16.71 ms | — | 2.07x |
 | Map 100K number/string/undefined values with a default parameter and sum | 0.801 ms | 1.65 ms | — | 2.06x |
 | Alternate between two class methods through a helper, 100K calls | 0.0696 ms | 0.1406 ms | — | 2.02x |
 | String lastIndexOf, 1M searches | 10.07 ms | 19.54 ms | — | 1.94x |
 | Gzip-compress 1 MiB of repeated ASCII A | 3.54 ms | 6.71 ms | — | 1.90x |
-| Float64Array reduce, 10 sums of 10K values | 0.554 ms | 1.044 ms | 0.071 ms (Aggregate) | 1.88x |
 | Numeric array, 100K elements and 100 reversals | 4.37 ms | 7.87 ms | — | 1.80x |
 | Local function, 2M direct calls | 0.461 ms | 0.825 ms | — | 1.79x |
 | Intl.DisplayNames, 6K region-name lookups | 7.64 ms | 13.70 ms | — | 1.79x |
 | String indexOf, 1M searches | 10.21 ms | 17.82 ms | — | 1.75x |
-| Float64Array every/some/findIndex, 10 full scans each of 10K values | 1.657 ms | 2.895 ms | 0.323 ms (array methods) | 1.75x |
 | Numeric `any[]`, 1M iterations | 0.954 ms | 1.66 ms | — | 1.74x |
 | Typed-object loop, 500K iterations | 0.381 ms | 0.650 ms | — | 1.70x |
 | Write and sum a numeric property on `Object.create(null)`, 100K iterations | 0.610 ms | 1.02 ms | 1.43 ms (`Dictionary<string, object>`) | 1.67x |

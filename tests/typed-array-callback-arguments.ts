@@ -53,6 +53,21 @@ for (const Type of [Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16
     const values = new Type([1, 2, 3]);
     console.log(Type.name, values.every((value: number, index: number) => value > index), values.reduce((sum: number, value: number) => sum + value, 0));
 }
+const edges: [any, number[]][] = [
+    [Int8Array, [-128, -1, 0, 127]], [Uint8Array, [0, 127, 128, 255]],
+    [Uint8ClampedArray, [-1, 0.5, 1.5, 254.5, 255.5, NaN]],
+    [Int16Array, [-32768, -1, 0, 32767]], [Uint16Array, [0, 32767, 32768, 65535]],
+    [Int32Array, [-2147483648, -1, 0, 2147483647]], [Uint32Array, [0, 2147483647, 2147483648, 4294967295]],
+    [Float16Array, [-0, -65504, 1 / 3, Infinity, NaN]],
+    [Float32Array, [-0, -3.4e38, 1 / 3, Infinity, NaN]],
+    [Float64Array, [-0, Number.MIN_VALUE, Number.MAX_VALUE, Infinity, NaN]]
+];
+for (const [Type, values] of edges) {
+    const buffer = new ArrayBuffer((values.length + 2) * Type.BYTES_PER_ELEMENT);
+    const view = new Type(buffer, Type.BYTES_PER_ELEMENT, values.length);
+    view.set(values);
+    console.log('edges', Type.name, Array.from(view).join(','), view[1], Object.is(view[0], -0));
+}
 const shared = new SharedArrayBuffer(16, { maxByteLength: 32 });
 const sharedValues = new Float64Array(shared);
 sharedValues.set([1, 2]);
