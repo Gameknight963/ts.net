@@ -7,6 +7,8 @@ internal static partial class CompilerFunctions
         Node update = get_node(entry, c), target = get_node(update.left, c);
         if (target.kind is not (NodeKind.Property or NodeKind.Index) || target.fourth != 0 ||
             get_type(target.type, c).kind != TypeKind.Number) return false;
+        // A scalarized object has no receiver to pass to an object helper.
+        if (il_scalar_field(update.left, c, b).slot >= 0) return false;
         int operation = get_token(update.token, c).text;
         double delta;
         if (update.kind == NodeKind.Update) {

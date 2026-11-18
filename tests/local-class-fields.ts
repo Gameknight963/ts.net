@@ -59,3 +59,28 @@ console.log('namespace rebound', Namespace.read());
 const Anonymous = class {value = 29;};
 function anonymous(): number {const value = new Anonymous(); return value.value;}
 console.log('anonymous', anonymous());
+
+class LocalCounter {value = 0; constructor(value: number) {this.value = value;}}
+function localCounter(count: number, seed: number): number {
+    const value = new LocalCounter(seed);
+    const alias = value;
+    for (let i = 0; i < count; i++) alias.value++;
+    return value.value;
+}
+for (const count of [0, 1, 33]) {
+    for (const seed of [-0, 2, 0.5, NaN, 2147483647]) {
+        const result = localCounter(count, seed);
+        console.log('local counter', count, result, result === 0 ? 1 / result : 0);
+    }
+}
+function mixedLocalUpdates(): number {
+    const value = new LocalCounter(0);
+    const before = value.value++;
+    const after = ++value.value;
+    value.value--;
+    --value.value;
+    value.value += 2;
+    value.value -= 1;
+    return before + after + value.value;
+}
+console.log('local update results', mixedLocalUpdates());
