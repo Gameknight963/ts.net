@@ -157,6 +157,7 @@ Runtime performance:
 | Create a Map, insert and read 10K entries, then delete half | 1.184 ms | 0.658 ms | 0.395 ms (`Dictionary`) | 0.56x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
 | Parse, filter, group, sort and serialize 1K records, 10 passes | 7.86 ms | 4.12 ms | — | 0.52x |
+| Serialize 1,000 records with 16 numeric fields 20 times, without a replacer | 10.55 ms | 5.43 ms | 13.27 ms (JsonElement) | 0.51x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
 | Call a numeric void method on a record with 16 numeric fields through a helper, 100K calls | 0.477 ms | 0.233 ms | 0.0711 ms (class) | 0.49x |
 | Construct and run a chain of 10K handlers | 0.687 ms | 0.340 ms | 0.665 ms (queued Task continuations) | 0.49x |
@@ -172,7 +173,6 @@ Runtime performance:
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | — | 0.40x |
 | Class getter returning `this.base * 2 + 1`, 100K reads | 0.0682 ms | 0.0274 ms | — | 0.40x |
 | Class numeric getter, 100K reads | 0.0702 ms | 0.0274 ms | — | 0.39x |
-| Serialize 1,000 records with 16 numeric fields 20 times, without a replacer | 13.48 ms | 5.28 ms | — | 0.39x |
 | Read and sum one numeric element 100K times through a mixed-array helper | 0.0698 ms | 0.0273 ms | 0.0675 ms (`object[]`) | 0.39x |
 | ReadableStream BYOB, read 1K one-byte chunks into a reused buffer | 4.46 ms | 1.71 ms | — | 0.38x |
 | Response text from 1K four-byte stream chunks | 0.916 ms | 0.343 ms | — | 0.37x |

@@ -75,6 +75,7 @@ public static partial class Js
         HashSet<TsObject> active;
         object[] previousNames;
         KeyValuePair<string, string>[] quotedNames;
+        object[] scalarNames, scalarValues;
         internal JsonWriter(object replacement, object space)
         {
             replacer = replacement as JsFunction;
@@ -200,6 +201,33 @@ public static partial class Js
             output.Append('}');
             return true;
         }
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        bool TryWriteScalarSnapshot(TsObject value)
+        {
+            var status = value.CopyJsonScalars(scalarNames, ref scalarValues);
+            if (status == JsonScalarSnapshotStatus.NonScalar) {scalarNames = null; return false;}
+            if (status == JsonScalarSnapshotStatus.Copied) {WriteScalarSnapshot(scalarNames, scalarValues); return true;}
+            scalarNames = null;
+            return WriteScalarObject(value);
+        }
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        void WriteScalarSnapshot(object[] names, object[] values)
+        {
+            bool written = false;
+            previousNames = names;
+            output.Append('{');
+            for (int position = 0; position < names.Length; position++) {
+                object item = values[position];
+                if (IsUndefined(item)) continue;
+                if (written) output.Append(','); written = true;
+                WritePropertyName((string)names[position], position);
+                if (item == null) output.Append("null");
+                else if (item is string text) QuoteJson(output, text);
+                else if (item is double number) output.Append(double.IsFinite(number) ? NumberKeyString(number) : "null");
+                else output.Append((bool)item ? "true" : "false");
+            }
+            output.Append('}');
+        }
         bool Enter(TsObject value)
         {
             if (active != null) return active.Add(value);
@@ -215,6 +243,17 @@ public static partial class Js
             foreach (ref readonly var frame in CollectionsMarshal.AsSpan(frames)) active.Add(frame.Value);
             return active.Add(value);
         }
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        bool WriteScalarOrSnapshot(TsObject value)
+        {
+            if (scalarNames != null) return TryWriteScalarSnapshot(value);
+            var namesBefore = previousNames;
+            bool scalar = WriteScalarObject(value);
+            // Start copying only after a dictionary-backed schema repeats.
+            if (scalar && ReferenceEquals(namesBefore, previousNames) && previousNames.Length > 4)
+                scalarNames = previousNames;
+            return scalar;
+        }
         void WriteValue(object value)
         {
             if (value is JsRawJson raw) output.Append(raw.Text);
@@ -226,7 +265,7 @@ public static partial class Js
             {
                 if (!Enter(obj)) throw new InvalidOperationException("Cannot serialize a cyclic object");
                 if (obj is NumberArray or TaggedArray && WritePackedNumbers((JsArray)obj)) { active?.Remove(obj); return; }
-                if (WriteScalarObject(obj)) { active?.Remove(obj); return; }
+                if (previousNames is { Length: > 4 } ? WriteScalarOrSnapshot(obj) : WriteScalarObject(obj)) { active?.Remove(obj); return; }
                 var frame = new JsonWriteFrame(obj, propertyList, previousNames);
                 if (frame.Names != null) previousNames = frame.Names;
                 frames.Add(frame); output.Append(frame.Array ? '[' : '{');
