@@ -1,6 +1,10 @@
 try
 {
     var function = new SeparateCalls();
+    var genericNumbers = new GenericNumberCalls();
+    if (Js.CallFunctionNumber0(genericNumbers) != 0 || Js.CallFunctionNumber1(genericNumbers, 1) != 1 ||
+        Js.CallFunctionNumber2(genericNumbers, 1, 2) != 2)
+        throw new Exception("Numeric fallback calls bypassed the ordinary function entry point");
     if (!Equals(Js.CallFunctionArgument(function, "value"), "function"))
         throw new Exception("An ordinary function call used the receiver entry point");
     if (!Equals(Js.CallMethodArgument(function, "receiver", "value"), "method"))
@@ -68,6 +72,11 @@ catch (Exception error)
 {
     Console.Error.WriteLine(error.Message);
     Environment.ExitCode = 1;
+}
+
+sealed class GenericNumberCalls() : JsFunction(null, null, "generic", 2)
+{
+    public override object Invoke(object[] arguments) => (double)arguments.Length;
 }
 
 sealed class SeparateCalls() : JsFunction((FunctionBody)(_ => "delegate"), null, "separate", 1)

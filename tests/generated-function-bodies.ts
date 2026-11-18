@@ -26,3 +26,14 @@ const argumentsCall = function (this: {value: number}, ...values: number[]): str
     return this.value + ':' + arguments.length + ':' + values.join(',');
 };
 console.log('arguments', argumentsCall.call({value: 8}, 1, 2, 3), argumentsCall.apply({value: 9}, [4, 5]));
+
+function capture<T>(value: T): () => T {return () => value;}
+console.log('generic zero arguments', capture(42)(), capture('text')());
+function identity<T>(value: T): T {return value;}
+function getIdentity() {return identity;}
+const selected = getIdentity()<number>;
+console.log('generic one argument', selected(7));
+function choose<T>(first: T, second: T): T {return first;}
+function getChoice() {return choose;}
+const choice = getChoice()<number>;
+console.log('generic two arguments', choice(8, 9));

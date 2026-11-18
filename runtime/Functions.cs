@@ -132,7 +132,7 @@ public partial class JsFunction : JsDescriptorObject
         if (numeric is NumberFunction0 number0) return number0();
         if (numeric is NumberFunction1 number1) return number1(null);
         if (numeric is NumberFunction2 number2) return number2(null, null);
-        return Js.Cast<double?>(body(Array.Empty<object>()), "Function result violates number type");
+        return Js.Cast<double?>(Invoke(Array.Empty<object>()), "Function result violates number type");
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual double? InvokeNumber1(double? first)
@@ -143,7 +143,7 @@ public partial class JsFunction : JsDescriptorObject
         if (numeric is NumberFunction1 number1) return number1(first);
         if (numeric is NumberFunction0 number0) return number0();
         if (numeric is NumberFunction2 number2) return number2(first, null);
-        return Js.Cast<double?>(body(new[] { Js.BoxNumber(first) }), "Function result violates number type");
+        return Js.Cast<double?>(Invoke(new[] { Js.BoxNumber(first) }), "Function result violates number type");
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public virtual double? InvokeNumber2(double? first, double? second)
@@ -154,7 +154,7 @@ public partial class JsFunction : JsDescriptorObject
         if (numeric is NumberFunction2 number2) return number2(first, second);
         if (numeric is NumberFunction1 number1) return number1(first);
         if (numeric is NumberFunction0 number0) return number0();
-        return Js.Cast<double?>(body(new[] { Js.BoxNumber(first), Js.BoxNumber(second) }), "Function result violates number type");
+        return Js.Cast<double?>(Invoke(new[] { Js.BoxNumber(first), Js.BoxNumber(second) }), "Function result violates number type");
     }
     // Generated number-returning functions support nullable numeric results.
     public virtual bool SupportsNumberResult() => false;
