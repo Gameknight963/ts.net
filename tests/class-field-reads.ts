@@ -23,6 +23,12 @@ class Mutable {
     enabled = false;
     post(): number {return this.value++;}
     pre(): number {return ++this.value;}
+    postDown(): number {return this.value--;}
+    preDown(): number {return --this.value;}
+    addLiteral(): number {return this.value += 2;}
+    subtractLiteral(): number {return this.value -= 2;}
+    addZero(): number {return this.value += 0;}
+    subtractZero(): number {return this.value -= 0;}
     add(rhs: () => number): number {return this.value += rhs();}
     append(rhs: () => string): string {return this.text += rhs();}
     choose(rhs: () => boolean): boolean {return this.enabled ||= rhs();}
@@ -56,3 +62,33 @@ try {
 (mutable as any).text = undefined;
 (mutable as any).enabled = undefined;
 console.log('undefined fields', mutable.append(() => 'b'), mutable.choose(() => false));
+console.log('literal updates', mutable.addLiteral(), mutable.subtractLiteral(), mutable.postDown(), mutable.preDown(), mutable.value);
+const special = new Mutable();
+special.value = -0;
+console.log('postfix zero', Object.is(special.post(), -0), special.value);
+special.value = -0;
+console.log('addition zero', Object.is(special.addZero(), 0), Object.is(special.value, 0));
+special.value = -0;
+console.log('subtraction zero', Object.is(special.subtractZero(), -0), Object.is(special.value, -0));
+special.value = NaN;
+console.log('nan update', Number.isNaN(special.post()), Number.isNaN(special.value));
+(special as any).value = undefined;
+console.log('undefined update', Number.isNaN(special.post()), Number.isNaN(special.value));
+special.value = Infinity;
+console.log('infinite update', special.post(), special.value);
+const frozenUpdate = Object.freeze(new Mutable());
+try {frozenUpdate.post();} catch {console.log('frozen update', frozenUpdate.value);}
+const sealedUpdate = Object.seal(new Mutable());
+console.log('sealed update', sealedUpdate.post(), sealedUpdate.value);
+updateEvents.length = 0;
+const updateProxy = new Proxy(new Mutable(), {
+    get(target, key, receiver) {if (key === 'value') updateEvents.push('get'); return Reflect.get(target, key, receiver);},
+    set(target, key, value, receiver) {if (key === 'value') updateEvents.push('set'); return Reflect.set(target, key, value, receiver);}
+});
+console.log('proxy update', updateProxy.post(), updateProxy.value, updateEvents.join(','));
+class StaticUpdates {
+    value = 1;
+    static value = 10;
+    static post(): number {return this.value++;}
+}
+console.log('static update', StaticUpdates.post(), StaticUpdates.value, new StaticUpdates().value);

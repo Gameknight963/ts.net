@@ -1375,6 +1375,7 @@ internal static partial class CompilerFunctions
         il_direct_class_constructor_bodies(c, b);
         il_class_field_reader_bodies(c, b);
         il_class_field_writer_bodies(c, b);
+        il_class_field_update_bodies(c, b);
         il_class_field_initializer_bodies(c, b);
         b.plan.finish(entry, path);
     }
