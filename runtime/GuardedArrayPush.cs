@@ -10,10 +10,11 @@ public abstract partial class TsObject
 public partial class JsArray
 {
     internal void AppendGuarded(object value) => values.Set(values.Length, value);
-    internal object[] ClassElements<T>(int mask) where T : JsNumericClassInstance
+    internal object[] ClassElements<T>(int lowMask, int highMask = 0) where T : JsNumericClassInstance
     {
         if (GetType() != typeof(JsArray) || HasIndexedAccessors || values.Length > (uint)values.Dense.Length) return null;
         object[] elements = values.Dense;
+        ulong mask = (uint)lowMask | (ulong)(uint)highMask << 32;
         for (int i = 0; i < (int)values.Length; i++)
             if (elements[i] is not T item || item.GetType() != typeof(T) || !item.HasDefinedClassFields(mask)) return null;
         return elements;
@@ -34,6 +35,9 @@ public static partial class Js
 {
     public static object[] TryClassArray<T>(object receiver, int mask) where T : JsNumericClassInstance =>
         receiver is JsArray array ? array.ClassElements<T>(mask) : null;
+
+    public static object[] TryClassArrayWide<T>(object receiver, int lowMask, int highMask) where T : JsNumericClassInstance =>
+        receiver is JsArray array ? array.ClassElements<T>(lowMask, highMask) : null;
 
     public static object[] TryPlainRecordArray<T>(object receiver) where T : TsObject =>
         receiver is JsArray array ? array.PlainRecordElements<T>() : null;

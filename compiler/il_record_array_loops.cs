@@ -94,10 +94,15 @@ internal static partial class CompilerFunctions
         // layout and lack of overrides before freezing the length and reads.
         b.load(source.symbol);
         if (il_numeric_class_eligible(owner, c, b)) {
-            int mask = 0;
-            foreach (var read in reads) mask |= 3 << (b.numeric_class_members[owner].IndexOf(read.Member) * 2);
-            b.emit(0x20, mask);
-            b.emit(0x28, b.plan.specialize(b.RuntimeToken(RuntimeMember.TryClassArray), b.classes.at(owner)));
+            int lowMask = 0, highMask = 0;
+            foreach (var read in reads) {
+                int index = b.numeric_class_members[owner].IndexOf(read.Member);
+                if (index < 16) lowMask |= 3 << (index * 2);
+                else highMask |= 3 << ((index - 16) * 2);
+            }
+            b.emit(0x20, lowMask);
+            if (highMask != 0) b.emit(0x20, highMask);
+            b.emit(0x28, b.plan.specialize(b.RuntimeToken(highMask != 0 ? RuntimeMember.TryClassArrayWide : RuntimeMember.TryClassArray), b.classes.at(owner)));
         }
         else b.emit(0x28, b.plan.specialize(b.RuntimeToken(RuntimeMember.TryPlainRecordArray), b.classes.at(owner)));
         b.emit(0xfe0e, buffer); b.emit(0xfe0c, buffer); b.emit(0x39, fallback);

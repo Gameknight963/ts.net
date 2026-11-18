@@ -9,9 +9,11 @@ public abstract class JsNumericClassInstance : JsClassInstance
         Owner = (JsClassFunction)owner;
         states = (uint)initialStates;
     }
-    bool materialized;
     // Two bits per field: absent (0), own undefined (1), or own value (3).
-    uint states;
+    // State 2 is never a field value, so it can mark materialized storage
+    // without adding a flag to every instance.
+    ulong states;
+    bool materialized => states == 2;
     protected abstract int NumericFieldIndex(string key);
     protected abstract double ReadNumericField(int index);
     protected abstract void WriteNumericField(int index, double value);
@@ -24,19 +26,19 @@ public abstract class JsNumericClassInstance : JsClassInstance
     {
         // The property store keeps mutable numeric cells for repeated writes.
         // Do not replace those with a fresh boxed number on every update.
-        if (materialized || index < 0 || value is double || !IsReferenceField(index)) return false;
+        if (materialized || (uint)index >= 32 || value is double || !IsReferenceField(index)) return false;
         int shift = index * 2;
-        uint state = states >> shift & 3;
+        ulong state = states >> shift & 3;
         if (state == 0 && (!create || states >> shift != 0)) return false;
         bool undefined = ReferenceEquals(value, Js.Undefined);
         WriteReferenceField(index, undefined ? null : value);
-        states = states & ~(3u << shift) | (undefined ? 1u : 3u) << shift;
+        states = states & ~(3ul << shift) | (undefined ? 1ul : 3ul) << shift;
         return true;
     }
 
-    internal bool HasDefinedClassFields(int mask) => !materialized && (states & unchecked((uint)mask)) == unchecked((uint)mask);
+    internal bool HasDefinedClassFields(ulong mask) => !materialized && (states & mask) == mask;
 
-    protected int NumericFieldState(int index) => materialized ? -1 : (int)(states >> (index * 2) & 3);
+    protected int NumericFieldState(int index) => materialized || (uint)index >= 32 ? -1 : (int)(states >> (index * 2) & 3);
     protected void CopyNumericField(int index, string key)
     {
         int state = NumericFieldState(index);
@@ -46,13 +48,13 @@ public abstract class JsNumericClassInstance : JsClassInstance
     {
         if (materialized) return;
         CopyNumericFields();
-        materialized = true;
+        states = 2;
     }
     bool StoreNumber(int index, double? value, bool create)
     {
-        if (materialized || index < 0) return false;
+        if (materialized || (uint)index >= 32) return false;
         int shift = index * 2;
-        uint state = states >> shift & 3;
+        ulong state = states >> shift & 3;
         // Copying fields in their compiled order must preserve insertion order.
         // An out-of-order creation uses the ordinary property store instead.
         if (state == 0 && (!create || states >> shift != 0)) return false;
@@ -61,7 +63,7 @@ public abstract class JsNumericClassInstance : JsClassInstance
             WriteReferenceField(index, null);
         }
         else if (value.HasValue) WriteNumericField(index, value.Value);
-        states = states & ~(3u << shift) | (value.HasValue ? 3u : 1u) << shift;
+        states = states & ~(3ul << shift) | (value.HasValue ? 3ul : 1ul) << shift;
         return true;
     }
     protected bool TrySetClassNumber(int index, double? value) => StoreNumber(index, value, false);
@@ -70,11 +72,11 @@ public abstract class JsNumericClassInstance : JsClassInstance
         // Declared string values can still be null or undefined. Keep the
         // general representation for those; actual strings are always defined.
         if (value is not string) return TrySetClassValue(index, value);
-        if (materialized || index < 0 || !IsReferenceField(index)) return false;
+        if (materialized || (uint)index >= 32 || !IsReferenceField(index)) return false;
         int shift = index * 2;
         if ((states >> shift & 3) == 0) return false;
         WriteReferenceField(index, value);
-        states |= 3u << shift;
+        states |= 3ul << shift;
         return true;
     }
     protected bool TrySetClassValue(int index, object value)

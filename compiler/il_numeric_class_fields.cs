@@ -54,7 +54,7 @@ internal static partial class CompilerFunctions
                 {
                     var member=get_field(field,c);
                     if(prototypeNames.Any(name=>same(name,member.name,c))) continue;
-                    if(get_type(member.type,c).kind==TypeKind.Void || members.Count==16) {numeric=false;break;}
+                    if(get_type(member.type,c).kind==TypeKind.Void || members.Count==32) {numeric=false;break;}
                     members.Add(field);
                 }
                 if (numeric && members.Count!=0) {b.numeric_class_types.Add(candidate);b.numeric_class_members[candidate]=members;}
