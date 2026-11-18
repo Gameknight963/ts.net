@@ -21,3 +21,20 @@ main().catch(error=>console.log("failure",String(error)));
 const defaults={__proto__:{value:12},read(value:number=super.value){return value;}};console.log("default",defaults.read(),defaults.read(4));
 const nested={__proto__:{key:"read",Base:class{base=2;}},build(){return class extends super.Base{[super.key](){return 9;}};}};
 const Nested=nested.build();const instance=new Nested();console.log("nested class",instance.base,(instance as any).read());
+
+const numericHome = {
+    __proto__: {base: 3},
+    read(first: number, second: number): number {return super.base + first + second;},
+    write(value: number): void {super.base = value;}
+};
+console.log('numeric home', numericHome.read(1, 2));
+numericHome.write(7);
+console.log('numeric home write', (numericHome as any).base);
+const numericBorrowed = {base: 99};
+numericHome.write.call(numericBorrowed, 13);
+console.log('borrowed home write', numericBorrowed.base);
+Object.setPrototypeOf(numericHome, {base: 11});
+console.log('changed numeric home', numericHome.read(2, 3));
+const detachedRead = numericHome.read;
+console.log('detached numeric home', detachedRead(2, 3));
+console.log('missing numeric home arguments', (numericHome.read as any)(), (numericHome.read as any)(2));

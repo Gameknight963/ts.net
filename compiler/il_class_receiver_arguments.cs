@@ -1,6 +1,10 @@
 namespace Tsnet.Compiler;
 
-internal sealed partial class IlBackend { internal HashSet<int> class_receiver_functions; }
+internal sealed partial class IlBackend
+{
+    internal HashSet<int> class_receiver_functions;
+    internal readonly HashSet<int> object_home_functions = [];
+}
 
 internal static partial class CompilerFunctions
 {
@@ -17,8 +21,12 @@ internal static partial class CompilerFunctions
                     il_add_class_receiver_function(node.left, c, b);
                     il_add_class_receiver_function(node.right, c, b);
                 }
-                for (int member = node.children; member != 0; member = get_node(member, c).next)
-                    il_add_class_receiver_function(get_node(member, c).left, c, b);
+                for (int member = node.children; member != 0; member = get_node(member, c).next) {
+                    Node property = get_node(member, c);
+                    bool home = node.kind == NodeKind.Object && property.fourth != 0 &&
+                        get_node(property.fourth, c).kind != NodeKind.Undefined;
+                    il_add_class_receiver_function(property.left, c, b, home);
+                }
             }
         }
         if (!b.class_receiver_functions.Contains(symbol)) return -1;
@@ -38,12 +46,15 @@ internal static partial class CompilerFunctions
         return count == 2 && !numbers ? -1 : count;
     }
 
-    internal static void il_add_class_receiver_function(int entry, Compiler c, IlBackend b)
+    internal static void il_add_class_receiver_function(int entry, Compiler c, IlBackend b, bool home = false)
     {
         if (entry == 0) return;
         Node value = get_node(entry, c);
         if (value.kind is NodeKind.Function or NodeKind.FunctionValue || value.kind == NodeKind.Name && value.symbol != 0 && get_symbol(value.symbol, c).function != 0)
+        {
             b.class_receiver_functions.Add(value.symbol);
+            if (home) b.object_home_functions.Add(value.symbol);
+        }
     }
 
     internal static void il_class_receiver_argument_methods(int symbol, int count, int type, int context, int environment, Compiler c, IlBackend b)
@@ -61,7 +72,11 @@ internal static partial class CompilerFunctions
                 : b.plan.method2(5, type, 0xc6, -5, -5, -5, "InvokeReceiverArgument1");
             b.begin(method);
             if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment); }
-            b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.call(RuntimeMember.PrepareReceiver);
+            // Only object methods using super receive a home-object wrapper.
+            bool home = b.object_home_functions.Contains(symbol);
+            if (home) b.emit(0xfe09, 0);
+            b.emit(0xfe09, 1);
+            if (home) b.call(RuntimeMember.PrepareReceiver);
             b.from_object(get_node(function.fourth, c).type, c);
             int parameter = get_node(function.fourth, c).next;
             for (int i = 0; i < count; i++, parameter = get_node(parameter, c).next)

@@ -33,9 +33,10 @@ internal static partial class CompilerFunctions
                 string name = bound == 0 ? $"InvokeNumber{arity}" : $"InvokeMethodNumber{arity}";
                 b.begin(b.plan.method(5, type, 0xc6, -10, parameters.view(), name));
                 if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment); }
-                b.emit(0xfe09, 0);
+                bool home = b.object_home_functions.Contains(symbol);
+                if (home) b.emit(0xfe09, 0);
                 if (bound != 0) b.emit(0xfe09, 1); else b.call(RuntimeMember.Undefined);
-                b.call(RuntimeMember.PrepareReceiver);
+                if (home) b.call(RuntimeMember.PrepareReceiver);
                 b.from_object(get_node(get_node(get_symbol(symbol, c).function, c).children, c).type, c);
                 for (int i = 0; i < count; i++)
                 {
