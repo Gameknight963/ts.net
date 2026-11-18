@@ -125,6 +125,7 @@ internal static partial class CompilerFunctions
             if (value == 0) return false;
             Node n = get_node(value, c);
             if (n.kind == NodeKind.Construct) return PureConstruction(value);
+            if (n.kind == NodeKind.Call) return PureFactory(value);
             if (il_key_may_invoke(n, c) || il_coercion_may_invoke(n, c)) return false;
             if (n.kind is NodeKind.Number or NodeKind.String or NodeKind.Boolean or NodeKind.Undefined) return true;
             if (n.kind == NodeKind.Name) return n.symbol != 0 && declarations.ContainsKey(n.symbol) &&
@@ -136,6 +137,49 @@ internal static partial class CompilerFunctions
             if (n.kind == NodeKind.Unary) return (is_text(get_token(n.token, c).text, text_plus, c) ||
                 is_text(get_token(n.token, c).text, text_minus, c) || is_text(get_token(n.token, c).text, text_not, c)) && Pure(n.left);
             return false;
+        }
+        bool PureFactory(int value)
+        {
+            Node call = get_node(value, c), reference = get_node(call.left, c);
+            int symbol = il_direct_function(call.left, c, b);
+            if (symbol == 0 || reference.kind != NodeKind.Name || reference.symbol != symbol ||
+                b.written_symbols.at(symbol) != 0 || b.function_contexts.at(symbol) != 0) return false;
+            Node function = get_node(get_symbol(symbol, c).function, c);
+            if (function.left == 0 || function.fourth != 0 || function.right != 0) return false;
+            var parameters = new HashSet<int>();
+            int argument = call.children;
+            for (int parameter = function.children; parameter != 0; parameter = get_node(parameter, c).next) {
+                Node binding = get_node(parameter, c);
+                if (argument == 0 || binding.kind != NodeKind.Variable || binding.symbol == 0 || binding.constant ||
+                    binding.left != 0 || binding.right != 0 || binding.third != 0 || binding.fourth != 0 || binding.children != 0 ||
+                    get_type(binding.type, c).kind is not (TypeKind.Number or TypeKind.Boolean) || !Pure(argument)) return false;
+                parameters.Add(binding.symbol); argument = get_node(argument, c).next;
+            }
+            if (argument != 0) return false;
+            Node body = get_node(function.left, c);
+            int statement = body.kind == NodeKind.Block ? body.children : function.left;
+            if (statement == 0) return false;
+            Node returned = get_node(statement, c);
+            if (returned.kind != NodeKind.Return || returned.next != 0 || returned.left == 0) return false;
+            Node record = get_node(returned.left, c);
+            if (record.kind != NodeKind.Object || record.constant || record.fourth != 0 || il_object_needs_entries(returned.left, c)) return false;
+            bool Initializer(int entry) {
+                if (entry == 0) return false;
+                Node node = get_node(entry, c);
+                // Allocating a method or closure does not run its body.
+                if (node.kind == NodeKind.FunctionValue) return true;
+                if (il_key_may_invoke(node, c) || il_coercion_may_invoke(node, c)) return false;
+                if (node.kind is NodeKind.Number or NodeKind.Boolean or NodeKind.String or NodeKind.Undefined) return true;
+                if (node.kind == NodeKind.Name) return parameters.Contains(node.symbol) &&
+                    get_type(node.type, c).kind is TypeKind.Number or TypeKind.Boolean;
+                if (node.kind == NodeKind.Binary) return Initializer(node.left) && Initializer(node.right);
+                return node.kind == NodeKind.Unary &&
+                    (is_text(get_token(node.token, c).text, text_plus, c) || is_text(get_token(node.token, c).text, text_minus, c) ||
+                     is_text(get_token(node.token, c).text, text_not, c)) && Initializer(node.left);
+            }
+            for (int item = record.children; item != 0; item = get_node(item, c).next)
+                if (!Initializer(get_node(item, c).left)) return false;
+            return true;
         }
         int push = 0, array = 0, statements = 0;
         for (int statement = firstStatement; statement != 0; statement = get_node(statement, c).next)
@@ -182,7 +226,7 @@ internal static partial class CompilerFunctions
                 for (int item = argument.children; item != 0; item = get_node(item, c).next)
                     if (!Pure(get_node(item, c).left)) return false;
             }
-            else if (argument.kind != NodeKind.Construct || !Pure(expression.children)) return false;
+            else if (argument.kind is not (NodeKind.Construct or NodeKind.Call) || !Pure(expression.children)) return false;
             Node owner = get_node(callee.left, c);
             if (owner.kind != NodeKind.Name || !arrays.Contains(owner.symbol)) return false;
             push = n.left;array = owner.symbol;
