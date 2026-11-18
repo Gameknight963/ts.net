@@ -44,7 +44,21 @@ sealed class OwnProperties : ObjectPropertyState
         if (key == key1) {StoreNumber(ref value1, value, 2);return true;}
         if (key == key2) {StoreNumber(ref value2, value, 4);return true;}
         if (key == key3) {StoreNumber(ref value3, value, 8);return true;}
-        return false;
+        return TrySetTailNumber(key, value);
+    }
+    bool TrySetTailNumber(string key, double? value)
+    {
+        // Tail slots have no history bits; create a cell on the first numeric rewrite.
+        if (tail != null) {
+            if (!tail.TryGetValue(key, out object stored)) return false;
+            if (stored is NumberCell cell && value.HasValue) { cell.Value = value.Value; cell.Boxed = null; }
+            else tail[key] = value.HasValue ? new NumberCell(value.Value) : Js.Undefined;
+            return true;
+        }
+        if (tailOrder is not SingleProperty single || key != single.Key) return false;
+        if (single.Value is NumberCell number && value.HasValue) { number.Value = value.Value; number.Boxed = null; }
+        else single.Value = value.HasValue ? new NumberCell(value.Value) : Js.Undefined;
+        return true;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal bool TryGetNumber(string key, out double? value)
@@ -103,6 +117,12 @@ sealed class OwnProperties : ObjectPropertyState
     }
     bool TailContainsKey(string key) => tail != null ? tail.ContainsKey(key)
         : tailOrder is SingleProperty single && key == single.Key;
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    bool TryGetTailValue(string key, out object value)
+    {
+        if (!TryGetTail(key, out value)) return false;
+        value = Read(value); return true;
+    }
     public OwnProperties() { }
     internal OwnProperties(object iteratorValue, object iteratorDone)
     {
@@ -116,7 +136,10 @@ sealed class OwnProperties : ObjectPropertyState
         // Copies share immutable boxed values, never mutable numeric cells.
         value0=Read(source.value0);value1=Read(source.value1);value2=Read(source.value2);value3=Read(source.value3);
         inlineCount=source.inlineCount;version=source.version;symbolCount=source.symbolCount;
-        if (source.tail != null) tail = new Dictionary<string, object>(source.tail);
+        if (source.tail != null) {
+            tail = new Dictionary<string, object>(source.tail.Count);
+            foreach (var entry in source.tail) tail.Add(entry.Key, Read(entry.Value));
+        }
         if (source.tailOrder is List<string> order) tailOrder = new List<string>(order);
         else if (source.tailOrder is SingleProperty single) tailOrder = new SingleProperty(single.Key, Read(single.Value));
     }
@@ -141,7 +164,7 @@ sealed class OwnProperties : ObjectPropertyState
         if (key==key2) { value=(numericWrites & HasNumberCells)==0 ? value2 : Read(value2);return true; }
         if (key==key3) { value=(numericWrites & HasNumberCells)==0 ? value3 : Read(value3);return true; }
         value=null;
-        return TryGetTail(key, out value);
+        return TryGetTailValue(key, out value);
     }
     public bool ContainsKey(string key)
     {
@@ -186,6 +209,7 @@ sealed class OwnProperties : ObjectPropertyState
     void InlineSet(int index, string key, object value)
     {
         numericWrites &= ~(1 << index);
+        if (value is NumberCell) numericWrites |= HasNumberCells;
         switch (index) {
             case 0: key0=key;value0=value;break;
             case 1: key1=key;value1=value;break;

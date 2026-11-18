@@ -346,6 +346,12 @@ public static partial class Js
         else if (receiver is TypedArrayValue typed && key is double number) typed.WriteIndex(number, value);
         else Set(receiver, PropertyKey(key), value);
     }
+    public static void IndexSetNumberValue(object receiver, object key, double? value)
+    {
+        if (IsNullish(receiver)) throw new InvalidOperationException("Cannot write property of null or undefined");
+        if (receiver is TypedArrayValue typed && key is double number) typed.WriteIndex(number, BoxNumber(value));
+        else SetNumber(receiver, PropertyKey(key), value);
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double ArrayPushOne(object receiver, object value)
     {

@@ -85,6 +85,21 @@ foreach (var entry in mixedExpected) {
     if (!Equals(mixedNumeric.Get(entry.Key),entry.Value)) throw new Exception("Copied numeric inline cells shared state");
 }
 Console.WriteLine("PASS numeric property writes, copied stores, native setter overrides, and zero loop allocations");
+foreach (int position in new[] {4, 7}) {
+    var wide = new JsDynamicObject();
+    for (int i=0;i<8;i++) wide.DefineOwn("key"+i,(double)i);
+    string key="key"+position;
+    for (int i=0;i<10000;i++) Js.SetNumber(wide,key,i);
+    long start=GC.GetAllocatedBytesForCurrentThread();
+    for (int i=0;i<100000;i++) Js.SetNumber(wide,key,i);
+    long allocated=GC.GetAllocatedBytesForCurrentThread()-start;
+    if(allocated>4096 || wide.GetNumberProperty(key)!=99999 || wide.Get(key) is not double)
+        throw new Exception($"Later numeric property writes regressed: {position}, {allocated}");
+    var detached=new JsDynamicObject();wide.CopySpreadExtras(detached);
+    Js.SetNumber(wide,key,123);
+    if(detached.GetNumberProperty(key)!=99999)throw new Exception("Copied later numeric cells shared state");
+    Console.WriteLine($"PASS numeric property {position+1}: {allocated} bytes for 100000 writes");
+}
 Console.WriteLine("PASS dynamic property order, overwrites, growth, independent clones, and small-bag allocation");
 sealed class Record : TsObject { }
 
