@@ -52,3 +52,13 @@ const proxied = new Proxy({base: 30}, {get(target, key, receiver) {
     console.log('set update', String(key), value); return Reflect.set(target, key, value, receiver);
 }});
 console.log('proxy update', update.call(proxied, 6));
+
+const assignments = {base: 0, write(value: number): void {this.base = value;}};
+assignments.write(-0);
+console.log('assigned zero', Object.is(assignments.base, -0));
+assignments.write(undefined as unknown as number);
+console.log('assigned undefined', assignments.base);
+Object.freeze(assignments);
+try {assignments.write(1);} catch {console.log('frozen method write', assignments.base);}
+Object.defineProperty(updating, 'base', {value: 50, writable: false, configurable: true});
+try {updating.add(1);} catch {console.log('readonly method update', updating.base);}

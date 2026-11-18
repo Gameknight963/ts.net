@@ -157,6 +157,7 @@ Runtime performance:
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
 | Parse, filter, group, sort and serialize 1K records, 10 passes | 7.86 ms | 4.12 ms | — | 0.52x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
+| Call a numeric void method on a record with 16 numeric fields through a helper, 100K calls | 0.477 ms | 0.233 ms | 0.0711 ms (class) | 0.49x |
 | Construct and run a chain of 10K handlers | 0.687 ms | 0.340 ms | 0.665 ms (queued Task continuations) | 0.49x |
 | Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | — | 0.48x |
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | — | 0.48x |

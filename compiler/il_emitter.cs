@@ -438,6 +438,8 @@ internal static partial class CompilerFunctions
             {
                 bool stringValue = n.kind == NodeKind.Assign && is_text(op, text_assign, c) && get_type(get_node(n.right, c).type, c).kind == TypeKind.String;
                 int writer = il_class_field_writer(n.left, value_type, stringValue, c, b);
+                if (writer == 0 && get_type(value_type, c).kind == TypeKind.Number)
+                    writer = il_object_receiver_number_writer(n.left, c, b);
                 if (writer != 0) {
                     b.emit(0xfe0c, value);
                     if (get_type(value_type, c).kind != TypeKind.Number) b.box(value_type, c);

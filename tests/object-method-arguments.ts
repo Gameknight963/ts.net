@@ -54,3 +54,16 @@ const forwarded = new Proxy(target, {get(object, key, receiver) {
 }});
 send(forwarded, 5);
 console.log('forwarded', target.total, methodReads);
+
+const wide = {
+    p0: 0, p1: 1, p2: 2, p3: 3, p4: 4, p5: 5, p6: 6, p7: 7,
+    p8: 8, p9: 9, p10: 10, p11: 11, p12: 12, p13: 13, p14: 14,
+    total: 0,
+    add(value: number): void {this.total += value;}
+};
+function wideSend(target: {add(value: number): void}, value: number): void {target.add(value);}
+for (let i = 0; i < 64; i++) wideSend(wide, i);
+console.log('wide method', wide.total, wide.p0, wide.p14);
+const wideBorrowed = {total: 10};
+wide.add.call(wideBorrowed as any, 5);
+console.log('wide borrowed', wideBorrowed.total);

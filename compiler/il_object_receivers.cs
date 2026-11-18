@@ -39,14 +39,33 @@ internal static partial class CompilerFunctions
         }
     }
 
+    static (int Owner, int Member) il_object_receiver_number_field(int entry, Compiler c, IlBackend b)
+    {
+        Node property = get_node(entry, c);
+        if (property.kind != NodeKind.Property || property.fourth != 0 || get_type(property.type, c).kind != TypeKind.Number) return default;
+        Node receiver = get_node(property.left, c);
+        if (receiver.kind != NodeKind.ResolveThis || receiver.constant) return default;
+        Node name = get_node(receiver.left, c);
+        if (name.kind != NodeKind.Name || !b.object_receiver_shapes.TryGetValue(name.symbol, out int owner) || owner == 0) return default;
+        int member = field(owner, property.name, c);
+        if (member == 0 || get_type(get_field(member, c).type, c).kind != TypeKind.Number || b.getter(member) == 0) return default;
+        return (owner, member);
+    }
+
+    internal static int il_object_receiver_number_writer(int entry, Compiler c, IlBackend b)
+    {
+        var (owner, member) = il_object_receiver_number_field(entry, c, b);
+        if (member == 0) return 0;
+        int name = get_field(member, c).name;
+        if (b.object_receiver_fields.TryGetValue(name, out var narrow) && fits(owner, narrow.Owner, c)) member = narrow.Member;
+        return b.shape_writers.TryGetValue(member, out int writer) ? writer : 0;
+    }
+
     internal static bool il_object_receiver_number_read(int entry, Compiler c, IlBackend b, int receiverSlot = -1)
     {
-        Node property = get_node(entry, c), receiver = get_node(property.left, c);
-        if (get_type(property.type, c).kind != TypeKind.Number || receiver.kind != NodeKind.ResolveThis || receiver.constant) return false;
-        Node name = get_node(receiver.left, c);
-        if (name.kind != NodeKind.Name || !b.object_receiver_shapes.TryGetValue(name.symbol, out int owner) || owner == 0) return false;
-        int member = field(owner, property.name, c);
-        if (member == 0 || get_type(get_field(member, c).type, c).kind != TypeKind.Number || b.getter(member) == 0) return false;
+        Node property = get_node(entry, c);
+        var (owner, member) = il_object_receiver_number_field(entry, c, b);
+        if (member == 0) return false;
         void LoadReceiver() {
             if (receiverSlot >= 0) b.emit(0xfe0c, receiverSlot);
             else il_boxed(property.left, c, b);
