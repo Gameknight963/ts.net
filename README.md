@@ -124,6 +124,7 @@ Runtime performance:
 | Class method through a helper, 100K calls | 0.0703 ms | 0.0619 ms | — | 0.88x |
 | Object literal method through a helper, 100K calls | 0.0715 ms | 0.0630 ms | 0.0710 ms | 0.88x |
 | Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | — | 0.83x |
+| Construct and traverse 10K class instances with 17 numeric fields | 0.257 ms | 0.213 ms | 0.163 ms (class) | 0.83x |
 | Object valueOf, 1M numeric conversions | 27.57 ms | 22.64 ms | — | 0.82x |
 | Call a callback with an object and a number, 100K calls | 0.0776 ms | 0.0621 ms | 0.0698 ms (delegate) | 0.80x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | — | 0.77x |
@@ -151,7 +152,6 @@ Runtime performance:
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | — | 0.60x |
 | Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | — | 0.60x |
 | Cached date formatter, 1K daily UTC dates in year 10000, Gregorian calendar | 2.10 ms | 1.25 ms | — | 0.59x |
-| Construct and traverse 10K class instances with 17 numeric fields | 0.368 ms | 0.216 ms | 0.168 ms (class) | 0.59x |
 | Sum 100K values in a loop, awaiting only on the final iteration | 0.717 ms | 0.415 ms | — | 0.58x |
 | Read varying string keys through an `any` helper from a Float64Array, 100K reads | 1.23 ms | 0.713 ms | — | 0.58x |
 | Create a Map, insert and read 10K entries, then delete half | 1.184 ms | 0.658 ms | 0.395 ms (`Dictionary`) | 0.56x |

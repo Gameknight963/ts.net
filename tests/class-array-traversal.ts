@@ -26,6 +26,35 @@ function wide(items:Wide[]):number {let total=0;for(let i=0;i<items.length;i++)t
 console.log("wide mask",wide([new Wide(),new Wide()]));const missingWide=new Wide();(missingWide as any).p=undefined;console.log("wide undefined",wide([missingWide]));
 try{sum([null as any]);}catch(error){console.log("null",(error as Error).name);}
 let uninitialized:Point[];try{sum(uninitialized!);}catch(error){console.log("uninitialized",(error as Error).name);}
+function asserted(items:Point[]):number {let total=0;for(let i=0;i<items.length;i++)total+=items[i]!.x+items[i]!.y;return total;}
+function narrowed(items:(Point|undefined)[]):number {let total=0;for(let i=0;i<items.length;i++)total+=items[i]!.x+items[i]!.y;return total;}
+function casted(items:any[]):number {let total=0;for(let i=0;i<items.length;i++)total+=(items[i] as Point).x+(items[i] as Point).y;return total;}
+for(const read of [asserted,narrowed,casted]) {
+ console.log('asserted values',read([new Point(1,2),new Point(3,4)]),read([]));
+ console.log('asserted structural',read([{x:5,y:6}]));
+ for(const value of [undefined,null])try{read([value as any]);}catch(error){console.log('asserted missing',(error as Error).name);}
+ const missing=new Point(1,2);(missing as any).x=undefined;
+ console.log('asserted field undefined',Number.isNaN(read([missing])));
+ const values=[new Point(1,2),new Point(3,4)];let changes=0;
+ Object.defineProperty(values[0],'x',{get(){changes++;values[0]=new Point(10,20);values.push(new Point(30,40));return 1;},configurable:true});
+ console.log('asserted getter',read(values),changes,values.length);
+ let elementGets=0;
+ const proxied=new Proxy(new Point(7,8),{get(target,key,receiver){elementGets++;return Reflect.get(target,key,receiver);}});
+ console.log('asserted proxy',read([proxied]),elementGets);
+ let arrayGets=0;
+ const proxiedArray=new Proxy([new Point(9,10)],{get(target,key,receiver){arrayGets++;return Reflect.get(target,key,receiver);}});
+ console.log('asserted array proxy',read(proxiedArray),arrayGets);
+}
+class OtherView {x=11;y=12;extra():number{return 13;}}
+function checkedView(items:OtherView[]):number {let total=0;for(let i=0;i<items.length;i++)total+=(items[i] as Point).x+(items[i] as Point).y;return total;}
+console.log('different checked view',checkedView([new OtherView()]));
+class TextPoint {name='item';enabled=true;value=2;}
+function assertedProjection(items:TextPoint[]):number {let total=0;for(let i=0;i<items.length;i++)total+=items[i]!.value+items[i]!.name.length+(items[i]!.enabled?1:0);return total;}
+const textPoint=new TextPoint();
+console.log('asserted projection',assertedProjection([textPoint]));
+textPoint.enabled=false;
+console.log('asserted false projection',assertedProjection([textPoint]));
+console.log('asserted projection keys',Object.keys(textPoint).join(','),assertedProjection([textPoint]));
 
 class Item {value=0;name='item';enabled=true;constructor(value:number){this.value=value;}}
 function mixed(items:Item[]):number {

@@ -67,10 +67,20 @@ internal static partial class CompilerFunctions
                     get_type(get_node(node.left, c).type, c).kind == TypeKind.String)
                     return Pure(node.left);
                 Node index = get_node(node.left, c);
+                int shape = index.type;
+                // A single assertion is redundant when the exact-layout probe
+                // succeeds. Keep its target type and leave fallback checks intact.
+                if (index.kind == NodeKind.Assert && index.left != 0) {
+                    Node operand = get_node(index.left, c);
+                    // An element already typed differently may have its own
+                    // checked conversion, which the target-layout probe cannot prove.
+                    if (operand.type != shape && get_type(operand.type, c).kind is not (TypeKind.Any or TypeKind.Unknown)) return false;
+                    index = operand;
+                }
                 if (index.kind != NodeKind.Index || index.fourth != 0) return false;
                 Node array = get_node(index.left, c), key = get_node(index.right, c);
                 if (array.kind != NodeKind.Name || array.symbol != source.symbol || key.kind != NodeKind.Name || key.symbol != counter) return false;
-                int shape = index.type, member = field(shape, node.name, c);
+                int member = field(shape, node.name, c);
                 if (get_type(shape, c).kind != TypeKind.Shape || b.classes.at(shape) == 0 || member == 0 ||
                     get_field(member, c).optional || (owner != 0 && owner != shape)) return false;
                 if (il_numeric_class_eligible(shape, c, b)) {
