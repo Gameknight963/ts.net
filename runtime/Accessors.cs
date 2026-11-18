@@ -72,9 +72,9 @@ public abstract partial class TsObject
         get => propertyState?.Accessors;
         set
         {
-            if (propertyState != null) propertyState.Accessors = value;
+            if (propertyState != null) WritablePropertyState().Accessors = value;
             else if (value != null) propertyState = new ObjectPropertyState {Accessors = value};
-            if (value == null && propertyState is not OwnProperties) propertyState = null;
+            if (value == null && propertyState is not OwnProperties && propertyState?.Metadata == null) propertyState = propertyState?.ClassOwner?.InstanceState;
         }
     }
     protected bool StoredExtensionsAllowed => accessors is not NonExtensibleAccessors;
@@ -95,7 +95,7 @@ public abstract partial class TsObject
     internal bool HasIndexedAccessors => accessors is {IndexedCount: > 0};
     internal bool HasOwnAccessors => accessors is {Count: > 0};
     internal IEnumerable<string> OwnAccessorKeys => accessors is { } own ? own.Keys : Array.Empty<string>();
-    internal bool HasPropertyOverrides => propertyState != null;
+    internal bool HasPropertyOverrides => propertyState != null && propertyState is not SharedClassPropertyState;
     internal bool TryOwnAccessor(string key, out JsAccessor accessor)
     {
         JsAccessors own = accessors;

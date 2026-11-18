@@ -19,8 +19,10 @@ public abstract partial class TsObject
         set
         {
             JsAccessors previous = accessors;
-            if (value == null) propertyState = previous == null ? null : new ObjectPropertyState {Accessors = previous};
-            else {value.Accessors = previous; propertyState = value;}
+            ObjectMetadata metadata = propertyState?.Metadata;
+            JsClassFunction owner = propertyState?.ClassOwner;
+            if (value == null) propertyState = previous == null && metadata == null ? owner?.InstanceState : new ObjectPropertyState {Accessors = previous, Metadata = metadata, ClassOwner = owner};
+            else {value.Accessors = previous; value.Metadata = metadata; value.ClassOwner = owner; propertyState = value;}
         }
     }
     internal int OwnPropertyVersion => extra?.Version ?? 0;

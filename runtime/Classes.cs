@@ -3,8 +3,8 @@ using System.Collections.Generic;
 
 public class JsClassInstance : JsDescriptorObject
 {
-    internal JsClassFunction Owner;
-    internal TsObject ParentPrototype;
+    internal JsClassFunction Owner { get => ClassOwner; set => ClassOwner = value; }
+    internal TsObject ParentPrototype { get => ClassParentPrototype; set => ClassParentPrototype = value; }
     internal TsObject InheritedPrototype => TryExplicitPrototype(out var value) ? value : Owner is null ? ParentPrototype : Owner.Prototype;
     internal override TsObject PropertyPrototype => InheritedPrototype;
     internal override bool HasInProperty(string key) => HasOwn(key) || InheritedPrototype is not null && InheritedPrototype.HasInProperty(key);
@@ -35,6 +35,7 @@ public class JsClassInstance : JsDescriptorObject
 }
 public sealed partial class JsClassFunction : JsFunction
 {
+    internal readonly ObjectPropertyState InstanceState;
     readonly FunctionBody factory;
     internal override string SourceText => Js.SourceOf(factory);
     readonly JsFunction fields;
@@ -49,6 +50,7 @@ public sealed partial class JsClassFunction : JsFunction
     public JsClassFunction(string name, object factory, object fields, object constructor, object parent, bool derived)
         : base((FunctionBody)(static _ => throw new InvalidOperationException("Class constructor requires new")), null, name, constructor is JsFunction fn ? Convert.ToInt32(fn.Get("length")) : 0)
     {
+        InstanceState = new SharedClassPropertyState(this);
         this.derived = derived;
         Parent = parent as JsFunction;
         if (derived && parent is not null && (Parent is null || !Parent.CanInitializeDerived)) throw Js.MakeThrown(new JsCaughtError("TypeError", "Base class must be a supported constructor"));

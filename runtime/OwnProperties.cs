@@ -7,6 +7,8 @@ using System.Runtime.InteropServices;
 class ObjectPropertyState
 {
     internal JsAccessors Accessors;
+    internal ObjectMetadata Metadata;
+    internal JsClassFunction ClassOwner;
 }
 
 // Most dynamic records have only a few keys. Keep those entries together and

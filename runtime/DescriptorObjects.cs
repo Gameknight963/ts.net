@@ -21,7 +21,7 @@ public abstract class JsDescriptorObject : TsObject
         if (descriptors is not NonExtensibleProperties)
             descriptors = descriptors == null ? new NonExtensibleProperties() : new NonExtensibleProperties(descriptors);
     }
-    Dictionary<string, Descriptor> descriptors;
+    Dictionary<string, Descriptor> descriptors { get => PropertyDescriptors; set => PropertyDescriptors = value; }
     internal bool HasPropertyDescriptors => descriptors != null;
     internal void DefineMethod(string key, object value, bool writable = true) => Define(new(key, value, null, null, false, writable, false, true));
     internal virtual void Define(Descriptor descriptor)
