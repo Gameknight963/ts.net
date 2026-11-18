@@ -107,7 +107,7 @@ internal static partial class CompilerFunctions
         if (il_class_method_loop(entry, result, counter, bound, c, b)) return;
         if (il_borrowed_method_loop(entry, result, counter, bound, c, b)) return;
         if (il_class_getter_loop(entry, result, counter, bound, c, b)) return;
-        if (il_integer_call_loop(entry, result, counter, bound, c, b)) { return; }
+        if (il_integer_counter_loop(entry, result, counter, bound, c, b)) { return; }
         if (il_guarded_push_loop(entry, result, counter, bound, c, b)) return;
         if (counter != 0)
         {
