@@ -73,6 +73,15 @@ public sealed partial class JsClassFunction
 
 public static partial class Js
 {
+    // Emitted only for a sealed generated class and a prototype method name
+    // absent from its field layout. Overrides and explicit prototypes use Get.
+    public static object GetTypedClassMethodAt<T>(object receiver, string name, int slot) where T : JsNumericClassInstance
+    {
+        if (receiver is T value && !value.HasPropertyOverrides && value.Owner is JsClassFunction owner &&
+            owner.Parent == null && owner.Prototype.GetType() == typeof(T) &&
+            owner.Prototype.TryOwnDataSlot(name, slot, out var method)) return method;
+        return GetClassMethodAt(receiver, name, slot);
+    }
     public static object GetClassMethodAt(object receiver, string name, int slot)
     {
         if (receiver is JsClassInstance value && value.Owner is JsClassFunction owner && owner.Parent == null &&

@@ -21,7 +21,14 @@ internal static partial class CompilerFunctions
             else {
                 int slot = il_class_method_slot(get_node(callee.left, c).type, callee.name, c, b);
                 il_text(callee.name,c,b);
-                if (slot >= 0) { b.emit(0x20, slot); b.call(RuntimeMember.GetClassMethodAt); }
+                if (slot >= 0) {
+                    b.emit(0x20, slot);
+                    int owner = get_node(callee.left, c).type;
+                    if (il_numeric_class_eligible(owner, c, b) &&
+                        b.numeric_class_members[owner].All(member => !same(get_field(member, c).name, callee.name, c)))
+                        b.emit(0x28, b.plan.specialize(b.RuntimeToken(RuntimeMember.GetTypedClassMethodAt), b.classes.at(owner)));
+                    else b.call(RuntimeMember.GetClassMethodAt);
+                }
                 else b.call(RuntimeMember.DynamicGet);
             }
         }
