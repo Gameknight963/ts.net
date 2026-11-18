@@ -50,13 +50,20 @@ internal static partial class CompilerFunctions
             ignored = call.children; ignoredType = first.type; parameter = second.symbol; helperFirst = first.symbol;
             call = forwarded; callee = get_node(call.left, c);
         }
-        if (callee.kind != NodeKind.Property || callee.fourth != 0 || !is_text(callee.name, "call", c)) return false;
+        if (callee.kind != NodeKind.Property || callee.fourth != 0) return false;
+        bool apply = is_text(callee.name, "apply", c);
+        if (!apply && !is_text(callee.name, "call", c)) return false;
         Node functionName = get_node(callee.left, c);
         if (functionName.kind != NodeKind.Name || functionName.symbol == 0 || functionName.symbol == counter || functionName.symbol == total.symbol || functionName.symbol == helperFirst) return false;
         if (call.children == 0) return false;
         Node receiver = get_node(call.children, c);
         if (receiver.next == 0) return false;
         Node argument = get_node(receiver.next, c);
+        if (apply) {
+            // Other array-like inputs can have observable element getters.
+            if (argument.kind != NodeKind.Array || argument.next != 0 || argument.children == 0) return false;
+            argument = get_node(argument.children, c);
+        }
         int receiverEntry = call.children;
         if (receiver.kind == NodeKind.Assert && get_type(receiver.type, c).kind == TypeKind.Any)
         {
@@ -140,7 +147,7 @@ internal static partial class CompilerFunctions
         il_buffer_binding_guard(functionName.symbol, ordinary, b);
         il_boxed(callee.left, c, b); b.emit(0xfe0e, functionSlot);
         b.emit(0xfe0c, functionSlot); b.emit(0x75, functionType); b.emit(0x39, ordinary);
-        b.emit(0xfe0c, functionSlot); b.call(RuntimeMember.HasBuiltinFunctionCall); b.emit(0x39, ordinary);
+        b.emit(0xfe0c, functionSlot); b.call(apply ? RuntimeMember.HasBuiltinFunctionApply : RuntimeMember.HasBuiltinFunctionCall); b.emit(0x39, ordinary);
         il_buffer_binding_guard(receiver.symbol, ordinary, b);
         il_boxed(receiverEntry, c, b); b.emit(0x75, b.classes.at(owner)); b.emit(0xfe0e, instance);
         b.emit(0xfe0c, instance); b.emit(0x28, b.plan.specialize(b.RuntimeToken(RuntimeMember.IsPlainDataRecord), b.classes.at(owner))); b.emit(0x39, ordinary);

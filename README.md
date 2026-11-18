@@ -116,6 +116,7 @@ Runtime performance:
 | Update a class field and read its getter, 100K iterations | 0.0675 ms | 0.0624 ms | — | 0.92x |
 | Local class field update and read, 100K instances | 0.0694 ms | 0.0631 ms | — | 0.91x |
 | Borrow an object method with call, 100K calls | 0.0719 ms | 0.0651 ms | 0.217 ms (delegate) | 0.91x |
+| Borrow an object method with apply and a one-number array, 100K calls | 0.0720 ms | 0.0652 ms | 0.220 ms (delegate) | 0.91x |
 | Update a sealed class field and read its getter, 100K iterations | 0.0698 ms | 0.0629 ms | — | 0.90x |
 | Assign numbers or undefined and check the type, 1M iterations | 1.02 ms | 0.919 ms | — | 0.90x |
 | Serialize a 1 MiB ASCII string 10 times | 6.94 ms | 6.19 ms | — | 0.89x |
@@ -201,7 +202,6 @@ Runtime performance:
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
-| Borrow an object method with apply and a one-number array, 100K calls | 0.697 ms | 0.0624 ms | 0.208 ms (delegate) | 0.09x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | — | 0.04x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | — | 0.02x |
 
