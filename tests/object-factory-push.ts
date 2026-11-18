@@ -83,3 +83,19 @@ function withReplacement(): void {
     console.log('replaced factory', calls, values.map(value => value.value).join(','));
 }
 withReplacement();
+
+function callback(value: number): () => number {return () => value;}
+function withCallbacks(): void {
+    const values: (() => number)[] = [];
+    for (let i = 0; i < 5; i++) values.push(callback(i));
+    console.log('callback factory', values.map(value => value()).join(','));
+    const inline: (() => number)[] = [];
+    for (let i = 0; i < 5; i++) inline.push(() => i);
+    console.log('inline callbacks', inline.map(value => value()).join(','));
+    const custom: (() => number)[] = [];
+    let gets = 0;
+    Object.defineProperty(custom, 'push', {get() {gets++; return original;}});
+    for (let i = 0; i < 3; i++) custom.push(() => 42);
+    console.log('callback getter', gets, custom.map(value => value()).join(','));
+}
+withCallbacks();

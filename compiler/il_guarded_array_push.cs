@@ -34,7 +34,7 @@ internal static partial class CompilerFunctions
         if (method.kind != NodeKind.Property || method.left == 0 || !is_text(method.name, text_push, c)) return false;
         Node target = get_node(method.left, c);
         if (target.kind != NodeKind.Name || get_type(target.type, c).kind != TypeKind.Array ||
-            get_type(get_type(target.type, c).element, c).kind != TypeKind.Shape) return false;
+            get_type(get_type(target.type, c).element, c).kind is not (TypeKind.Shape or TypeKind.Any)) return false;
         var declarations = new Dictionary<int, int>();
         for (int i = 1; i <= c.node_store.count(); i++)
         {
@@ -77,7 +77,7 @@ internal static partial class CompilerFunctions
             if (n.kind != NodeKind.Variable || n.left == 0 || !Stable(n.symbol)) continue;
             Node value = get_node(n.left, c);
             if (value.kind == NodeKind.Array && value.children == 0 && get_type(n.type, c).kind == TypeKind.Array &&
-                get_type(get_type(n.type, c).element, c).kind == TypeKind.Shape) arrays.Add(n.symbol);
+                get_type(get_type(n.type, c).element, c).kind is TypeKind.Shape or TypeKind.Any) arrays.Add(n.symbol);
             if (Plain(n.left) && b.scalar_roots.at(n.symbol) == 0) {records[n.symbol] = n.left;prefixes.Add(n.symbol);}
         }
         if (!reached || arrays.Count == 0) return false;
@@ -124,6 +124,7 @@ internal static partial class CompilerFunctions
         {
             if (value == 0) return false;
             Node n = get_node(value, c);
+            if (n.kind == NodeKind.FunctionValue) return true;
             if (n.kind == NodeKind.Construct) return PureConstruction(value);
             if (n.kind == NodeKind.Call) return PureFactory(value);
             if (il_key_may_invoke(n, c) || il_coercion_may_invoke(n, c)) return false;
@@ -162,6 +163,7 @@ internal static partial class CompilerFunctions
             Node returned = get_node(statement, c);
             if (returned.kind != NodeKind.Return || returned.next != 0 || returned.left == 0) return false;
             Node record = get_node(returned.left, c);
+            if (record.kind == NodeKind.FunctionValue) return true;
             if (record.kind != NodeKind.Object || record.constant || record.fourth != 0 || il_object_needs_entries(returned.left, c)) return false;
             bool Initializer(int entry) {
                 if (entry == 0) return false;
@@ -226,7 +228,7 @@ internal static partial class CompilerFunctions
                 for (int item = argument.children; item != 0; item = get_node(item, c).next)
                     if (!Pure(get_node(item, c).left)) return false;
             }
-            else if (argument.kind is not (NodeKind.Construct or NodeKind.Call) || !Pure(expression.children)) return false;
+            else if (argument.kind is not (NodeKind.Construct or NodeKind.Call or NodeKind.FunctionValue) || !Pure(expression.children)) return false;
             Node owner = get_node(callee.left, c);
             if (owner.kind != NodeKind.Name || !arrays.Contains(owner.symbol)) return false;
             push = n.left;array = owner.symbol;
