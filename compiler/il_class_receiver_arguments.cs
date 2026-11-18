@@ -15,6 +15,8 @@ internal static partial class CompilerFunctions
                 if (node.kind != NodeKind.ClassValue) continue;
                 il_add_class_receiver_function(node.left, c, b);
                 il_add_class_receiver_function(node.right, c, b);
+                for (int member = node.children; member != 0; member = get_node(member, c).next)
+                    il_add_class_receiver_function(get_node(member, c).left, c, b);
             }
         }
         if (!b.class_receiver_functions.Contains(symbol)) return -1;

@@ -45,7 +45,7 @@ public partial class JsFunction : JsDescriptorObject
     }
     internal virtual void SetObjectHome(TsObject home) { }
     public virtual object InvokeWithReceiver(object receiver,object[] arguments)=>Invoke(arguments);
-    // Class initializers can pass this directly; other functions retain the array fallback.
+    // Typed callers can pass the receiver directly; other functions retain the array fallback.
     public virtual object InvokeReceiver0(object receiver) => InvokeWithReceiver(receiver, Array.Empty<object>());
     public virtual object InvokeReceiverNumber1(object receiver, double? value) => InvokeWithReceiver(receiver, new[] {Js.BoxNumber(value)});
     public virtual object InvokeReceiverNumber2(object receiver, double? first, double? second) => InvokeWithReceiver(receiver, new[] {Js.BoxNumber(first), Js.BoxNumber(second)});
@@ -180,7 +180,7 @@ public static partial class Js
     public static object CallMethodNumberArgument(object target, object receiver, double? value)
     {
         if (target is INumberArgumentFunction function) return function.InvokeNumberArgument(value);
-        if (target is JsReceiverFunction receiverFunction) return receiverFunction.InvokeNumberArgument(SuperReceiver(receiver), value);
+        if (target is JsReceiverFunction receiverFunction) return receiverFunction.InvokeReceiverNumber1(SuperReceiver(receiver), value);
         return CallMethod(target, receiver, new[] { BoxNumber(value) });
     }
     public static object CallFunctionArguments(object target, object arguments)
