@@ -191,6 +191,7 @@ Runtime performance:
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | — | 0.28x |
 | Construct objects with a numeric argument and sum their field, 100K instances | 7.84 ms | 2.16 ms | 0.278 ms (class) | 0.28x |
 | Retained class instances with number, string and boolean fields, 100K instances; one server GC heap for both .NET builds | 4.08 ms | 1.125 ms | 1.100 ms | 0.28x |
+| Call a numeric void object-literal method through a helper, 100K calls | 0.830 ms | 0.228 ms | 0.0702 ms (class) | 0.27x |
 | Retained numeric class instances and field traversal, 100K instances | 4.50 ms | 1.165 ms | 1.012 ms | 0.26x |
 | Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |

@@ -12,9 +12,11 @@ internal static partial class CompilerFunctions
             for (int i = 1; i <= c.node_store.count(); i++)
             {
                 Node node = get_node(i, c);
-                if (node.kind != NodeKind.ClassValue) continue;
-                il_add_class_receiver_function(node.left, c, b);
-                il_add_class_receiver_function(node.right, c, b);
+                if (node.kind is not (NodeKind.ClassValue or NodeKind.Object)) continue;
+                if (node.kind == NodeKind.ClassValue) {
+                    il_add_class_receiver_function(node.left, c, b);
+                    il_add_class_receiver_function(node.right, c, b);
+                }
                 for (int member = node.children; member != 0; member = get_node(member, c).next)
                     il_add_class_receiver_function(get_node(member, c).left, c, b);
             }
