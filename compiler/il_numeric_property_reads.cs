@@ -23,6 +23,23 @@ internal static partial class CompilerFunctions
             if (eligible(member)) number = get_field(member, c).type;
         if (number == 0) return;
 
+        // Plain records have every generated field as an own property. Spread
+        // records can omit fields, so their presence checks retain the old path.
+        if (b.spread_types.at(type) == 0) {
+            b.begin(b.plan.method2(5, klass, 0xc6, -2, -4, -10, "TrySetNumberProperty"));
+            int fallback = b.label();
+            b.emit(0xfe09, 0); b.call(RuntimeMember.CanWriteGeneratedFields); b.emit(0x39, fallback);
+            for (int member = get_type(type, c).fields; member != 0; member = get_field(member, c).next) {
+                if (!eligible(member)) continue;
+                int next = b.label();
+                b.emit(0xfe09, 1); il_text(get_field(member, c).name, c, b);
+                b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
+                b.emit(0xfe09, 0); b.emit(0xfe09, 2); b.store_field(member, c);
+                b.emit(0x20, 1); b.op(0x2a); b.mark(next);
+            }
+            b.mark(fallback); b.emit(0x20, 0); b.op(0x2a);
+        }
+
         b.begin(b.plan.method1(5, klass, 0xc6, -10, -4, "GetNumberProperty"));
         il_missing_spread_property(type, 0, number, c, b);
         if (!il_field_lookup(type, c, b, member => {
