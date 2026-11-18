@@ -40,6 +40,11 @@ internal static partial class CompilerFunctions
             }
         }
         else if (il_direct_index(calleeId, c, b)) { il_integer(callee.right, c, b); b.call(RuntimeMember.ArrayIndexGetAt); }
+        else if (get_type(get_node(callee.right, c).type, c).kind == TypeKind.Number) {
+            il_expression(callee.right, c, b);
+            b.call(get_node(callee.left, c).kind == NodeKind.Arguments ? RuntimeMember.ArgumentsIndexGetNumberKey :
+                get_type(get_node(callee.left, c).type, c).kind == TypeKind.Array ? RuntimeMember.ArrayIndexGetNumberKey : RuntimeMember.IndexGetNumberKey);
+        }
         else { il_boxed(callee.right,c,b); b.call(RuntimeMember.IndexGet); }
         return receiver;
     }
