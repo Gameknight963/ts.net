@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 
 public abstract class JsNumericClassInstance : JsClassInstance
 {
@@ -87,6 +88,18 @@ public abstract class JsNumericClassInstance : JsClassInstance
     }
     // Creating a field retains the same ordering checks as definition by name.
     protected bool TryDefineClassNumber(int index, double? value) => StoreNumber(index, value, true);
+    // Generated helpers know the numeric slot and write it directly after this
+    // succeeds. Keep insertion order and materialized descriptors guarded.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected bool TryDefineClassNumberState(int index, double? value)
+    {
+        if (materialized || (uint)index >= 32) return false;
+        int shift = index * 2;
+        ulong state = states >> shift & 3;
+        if (state == 0 && states >> shift != 0) return false;
+        states = states & ~(3ul << shift) | (value.HasValue ? 3ul : 1ul) << shift;
+        return true;
+    }
     protected bool TryDefineClassValue(int index, object value)
     {
         if (StoreReference(index, value, true)) return true;

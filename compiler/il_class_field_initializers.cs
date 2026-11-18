@@ -43,11 +43,19 @@ internal static partial class CompilerFunctions
             int instance = b.local(klass), fallback = b.label();
             b.emit(0xfe09, 0); b.emit(0x75, klass); b.emit(0xfe0e, instance);
             b.emit(0xfe0c, instance); b.emit(0x39, fallback);
-            // Creation still uses the runtime's insertion-order and layout
-            // guards. A descriptor change must use ordinary field definition.
-            b.emit(0xfe0c, instance); b.emit(0x20, index); b.emit(0xfe09, 1);
-            b.call(numeric ? RuntimeMember.TryDefineClassNumber : RuntimeMember.TryDefineClassValue);
-            b.emit(0x39, fallback); b.op(0x2a);
+            if (numeric && get_type(get_field(b.numeric_class_members[type][index], c).type, c).kind == TypeKind.Number) {
+                b.emit(0xfe0c, instance); b.emit(0x20, index); b.emit(0xfe09, 1);
+                b.call(RuntimeMember.TryDefineClassNumberState); b.emit(0x39, fallback);
+                b.emit(0xfe0c, instance); b.emit(0xfe09, 1); b.call(RuntimeMember.NumberValue);
+                b.emit(0x7d, b.class_field_tokens[type][index]);
+            }
+            else {
+                // Reference slots retain runtime handling of numeric values.
+                b.emit(0xfe0c, instance); b.emit(0x20, index); b.emit(0xfe09, 1);
+                b.call(numeric ? RuntimeMember.TryDefineClassNumber : RuntimeMember.TryDefineClassValue);
+                b.emit(0x39, fallback);
+            }
+            b.op(0x2a);
             b.mark(fallback); b.emit(0xfe09, 0); il_text(name, c, b); b.emit(0xfe09, 1);
             b.call(numeric ? RuntimeMember.DefineClassNumberField : RuntimeMember.DefineClassField);
             b.op(0x2a);

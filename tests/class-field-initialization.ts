@@ -48,3 +48,15 @@ delete (Object.prototype as any).locked;
 class UnknownFields { value: unknown = 4; text: unknown = "text"; enabled: unknown = true; }
 const unknownFields = new UnknownFields();
 console.log(unknownFields.value, unknownFields.text, unknownFields.enabled, Object.keys(unknownFields).join(","));
+function numericInitializer(value: number): number {events.push('number'); return value;}
+class NumericValues {
+ missing = numericInitializer(undefined as any);
+ nan = numericInitializer(NaN);
+ negativeZero = numericInitializer(-0);
+ infinity = numericInitializer(Infinity);
+}
+const numbers = new NumericValues();
+console.log('numeric values', numbers.missing === undefined, Object.hasOwn(numbers, 'missing'),
+ Number.isNaN(numbers.nan), Object.is(numbers.negativeZero, -0), numbers.infinity);
+console.log('numeric descriptors', Object.keys(numbers).join(','), Object.getOwnPropertyDescriptor(numbers, 'missing')!.value === undefined);
+console.log('materialized numeric values', numbers.missing === undefined, Number.isNaN(numbers.nan), Object.is(numbers.negativeZero, -0));
