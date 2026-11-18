@@ -44,3 +44,26 @@ function closure(prefix: string): (value: string) => string {
     return value => target.text(value);
 }
 console.log('closure', closure('captured:')('value'));
+
+class ZeroCounter {
+    total = 0;
+    step(): void {this.total++;}
+    label(): string {return this.total === 0 ? 'empty' : 'active';}
+    observed(): string {return 'args:' + arguments.length;}
+    captured(): () => string {return () => 'args:' + arguments.length;}
+}
+function tick(target: ZeroCounter): void {target.step(); target.label();}
+export function zeroWork(count: number): number {
+    const target = new ZeroCounter();
+    for (let i = 0; i < count; i++) tick(target);
+    return target.total;
+}
+const zero = new ZeroCounter();
+console.log('zero arguments', zero.step(), zero.label(), zero.observed(), zero.captured()(), zeroWork(10));
+console.log('zero fallbacks', writer.defaults(), writer.rest());
+class ZeroDerived extends ZeroCounter {label(): string {return super.label() + ':derived';}}
+console.log('zero super', new ZeroDerived().label());
+const zeroProxy = new Proxy(zero, {get(target, key, receiver) {
+    console.log('zero proxy', String(key)); return Reflect.get(target, key, receiver);
+}});
+console.log(zeroProxy.label());

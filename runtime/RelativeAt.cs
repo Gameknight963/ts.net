@@ -91,7 +91,9 @@ public static partial class Js
         ? CharacterValue(AtString(receiver), 0, character.Kind)
         : target is RelativeAtFunction method
         ? AtPrimitive(receiver, 0, method.Text) : target is StringSearchFunction search
-        ? StringSearchResult(search.Kind, StringSearchPrimitive(search, receiver, Undefined, null)) : InvokeReceiver(target, receiver, Array.Empty<object>());
+        ? StringSearchResult(search.Kind, StringSearchPrimitive(search, receiver, Undefined, null))
+        : target is JsFunction function ? function.InvokeReceiver0(SuperReceiver(receiver))
+        : throw new InvalidOperationException("Value is not callable");
     public static object CallMethod(object target, object receiver, object[] arguments) => target is StringRangeFunction range
         ? StringRangeConverted(range, receiver, FunctionArgument(arguments, 0), FunctionArgument(arguments, 1))
         : target is CharacterFunction character
