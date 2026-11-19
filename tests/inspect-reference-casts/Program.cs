@@ -35,6 +35,17 @@ try
     long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
     if(bytes!=0)throw new Exception($"Undefined casts allocated {bytes} bytes");
     Console.WriteLine("PASS nullable values, undefined casts, and zero repeated cast allocations");
+    foreach(int integer in new[]{int.MinValue,-1,0,1,255,256,int.MaxValue})
+        if(IntegerBox(integer) is not double number || number!=integer)throw new Exception("Integer boxing changed numeric values");
+    if(BitConverter.DoubleToInt64Bits((double)Js.BoxNumber(-0d))!=long.MinValue ||
+        !ReferenceEquals(Js.BoxNumber(null),Js.Undefined))throw new Exception("Ordinary number boxing changed");
+    for(int i=0;i<1000;i++)IntegerBox(i&255);
+    before=GC.GetAllocatedBytesForCurrentThread();
+    double total=0;
+    for(int i=0;i<10000;i++)total+=(double)IntegerBox(i&255);
+    bytes=GC.GetAllocatedBytesForCurrentThread()-before;
+    if(bytes!=0 || total!=1273080)throw new Exception($"Cached integer boxing changed: {bytes} bytes, {total}");
+    Console.WriteLine("PASS integer boxing values, negative zero, undefined and zero cached allocations");
 
 }
 catch (Exception error) {Console.Error.WriteLine(error); Environment.ExitCode = 1;}
@@ -45,3 +56,6 @@ static int NullableCasts(object value) =>
     (Js.Cast<bool?>(value,"boolean").HasValue ? 0 : 1) +
     (Js.Cast<int?>(value,"integer").HasValue ? 0 : 1) +
     (Js.Cast<decimal?>(value,"decimal").HasValue ? 0 : 1);
+
+[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+static object IntegerBox(int value) => Js.BoxInteger(value);

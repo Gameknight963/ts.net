@@ -9,6 +9,7 @@ internal static partial class CompilerFunctions
     internal static void il_as(int entry, int target, Compiler c, IlBackend b)
     {
         Node value = get_node(entry, c);
+        if (get_type(target, c).kind is TypeKind.Any or TypeKind.Unknown && il_box_integer(entry, c, b)) return;
         if (value.kind == NodeKind.Undefined && value.left == 0 && get_type(target, c).kind == TypeKind.Number) { b.empty(target, c); return; }
         if (value.kind == NodeKind.Conditional && get_type(target, c).kind == TypeKind.Number &&
             (get_type(value.type, c).kind == TypeKind.Any || get_type(value.type, c).kind == TypeKind.Unknown) &&
@@ -61,6 +62,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_boxed(int entry, Compiler c, IlBackend b)
     {
+        if (il_box_integer(entry, c, b)) return;
         il_expression(entry, c, b);
         if (get_type(get_node(entry, c).type, c).kind == TypeKind.Void) { b.call(RuntimeMember.Undefined); } else { b.box(get_node(entry, c).type, c); }
     }
