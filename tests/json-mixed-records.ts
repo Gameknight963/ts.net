@@ -74,3 +74,19 @@ for (const text of ['[{"a":"text"},{"a":tru}]', '[{"a":null},{"a":false,}]']) {
  function read(item:Item):string{return item.label+':'+item.code;}
  console.log('typed JSON dictionary',read(mapped.a),read(mapped.b));
 }
+
+{
+ type Value={value:number|undefined};
+ const rows=JSON.parse('[{"value":1000.5,"other":2},{"value":2000.5,"other":3}]') as Value[];
+ const untyped:any[]=rows;
+ function read(index:number):number|undefined{return rows[index].value;}
+ console.log('single field',read(0),read(1));
+ untyped[0].value=undefined;console.log('single undefined',read(0)===undefined,read(1));
+ delete untyped[0].value;Object.setPrototypeOf(untyped[0],{value:7});
+ console.log('single inherited',read(0),read(1));
+ let gets=0;Object.defineProperty(untyped[1],'value',{get(){gets++;return 11;}});
+ console.log('single accessor',read(1),gets);
+ const key=['v','a','l','u','e'].join('');
+ const raw:any=JSON.parse('{"value":17,"other":19}');
+ console.log('equal key',raw.value,raw[key],raw.other,raw[key]);
+}

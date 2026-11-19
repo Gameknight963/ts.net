@@ -41,7 +41,17 @@ public static partial class Js
             for (int i = 0; i < names.Length; i++) result.Add(names[i], i);
             return result;
         }
-        internal int Index(string key) => indices.TryGetValue(key, out int index) ? index : -1;
+        // One successful key per immutable shared layout. Other keys still use
+        // the dictionary; this never retains record values or grows with reads.
+        int firstReadIndex = -1;
+        internal int Index(string key)
+        {
+            int index = firstReadIndex;
+            if (index >= 0 && Names[index] == key) return index;
+            if (!indices.TryGetValue(key, out index)) return -1;
+            if (firstReadIndex < 0) firstReadIndex = index;
+            return index;
+        }
     }
 
     class JsonNumericRecord : JsNumericClassInstance

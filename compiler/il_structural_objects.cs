@@ -51,7 +51,7 @@ internal static partial class CompilerFunctions
                 var names = new List<int>();
                 for (int member = get_type(check.Type, c).fields; member != 0; member = get_field(member, c).next)
                     if (!get_field(member, c).optional) names.Add(get_field(member, c).name);
-                if (names.Count >= 2) {
+                if (names.Count >= 1) {
                     int owner = b.interface_type(check.Type);
                     requiredFields = b.plan.field(owner, 0x31, -7, "requiredFields");
                     b.begin(b.plan.method0(5, owner, 0x1891, -1, ".cctor"));
