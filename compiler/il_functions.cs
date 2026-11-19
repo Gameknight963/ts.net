@@ -479,6 +479,10 @@ internal static partial class CompilerFunctions
         }
         if (callback >= 0 || source_callback)
         {
+            if (callback >= 0 && il_pure_numeric_callback(symbol, c, b)) {
+                b.begin(b.plan.method0(5, type, 0xc6, -2, "HasPureNumericBody"));
+                b.emit(0x20, 1); b.op(0x2a);
+            }
             int supported = b.plan.method0(5, type, 0xc6, -2, source_callback ? "SupportsArrayNumberSource" : "SupportsArrayNumber");
             b.begin(supported); b.emit(0x20, 1); b.op(0x2a);
             Vector<int> args = new Vector<int>(); args.push(-5); args.push(-3); args.push(-3); args.push(-5);

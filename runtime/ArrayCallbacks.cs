@@ -34,10 +34,11 @@ public static partial class Js
         }
         return source.Get(index.ToString(CultureInfo.InvariantCulture));
     }
-    // Recheck each slot: callbacks may replace storage or install getters.
+    // Recheck each slot unless a callback proof keeps the guarded buffer stable.
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    static bool TryCallbackNumber(TsObject source, long index, out double value)
+    static bool TryCallbackNumber(TsObject source, long index, double[] stableNumbers, out double value)
     {
+        if (stableNumbers != null) { value = stableNumbers[(int)index]; return true; }
         if (source is NumberArray numbers && !numbers.HasIndexedAccessors && numbers.TryPacked(index + 1) is { } packed) {
             value = packed[(int)index]; return true;
         }
@@ -98,13 +99,20 @@ public static partial class Js
             }
             TaggedArray numericMap = kind == ArrayCallbackKind.Map && privateResult ? result as TaggedArray : null;
             TaggedArray numericFilter = kind == ArrayCallbackKind.Filter && privateResult ? result as TaggedArray : null;
+            // Species construction runs first because it can execute user code.
+            // Only proved arithmetic callbacks keep this guarded buffer stable.
+            double[] stableNumbers = numericCallback && callback.HasPureNumericBody() ? source switch {
+                NumberArray numbers when !numbers.HasIndexedAccessors => numbers.TryPacked(length),
+                TaggedArray tagged => tagged.TryPackedNumbers(length),
+                _ => null
+            } : null;
             bool testResult = kind is not ArrayCallbackKind.Map and not ArrayCallbackKind.ForEach;
             long selected = 0;
             for (long i = backwards ? length - 1 : 0; i >= 0 && i < length; i += backwards ? -1 : 1)
             {
-                // Callbacks can replace storage, remove elements, or install
-                // getters. Recheck the current element on every iteration.
-                if (numericCallback && TryCallbackNumber(source, i, out double numberValue))
+                // Effectful callbacks can replace storage, remove elements, or install
+                // getters. Their current element is checked on every iteration.
+                if (numericCallback && TryCallbackNumber(source, i, stableNumbers, out double numberValue))
                 {
                     object numericMapped;
                     bool truth;
