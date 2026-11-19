@@ -108,6 +108,7 @@ Runtime performance:
 | Sum 100K local two-number array literals by fixed index | 0.0679 ms | 0.0689 ms | — | 1.01x |
 | Literal squares, 2M iterations | 1.40 ms | 1.41 ms | — | 1.00x |
 | `any` property loop, 350K iterations | 0.3 ms | 0.3 ms | — | 1.00x |
+| Float64Array traversal through `any`, 10 passes over 10K elements with a fixed bound | 0.0727 ms | 0.0730 ms | 0.0724 ms (double[]) | 1.00x |
 | Numeric array `.at(-1)`, 1M calls | 3.84 ms | 3.82 ms | — | 0.99x |
 | Numeric loop, 20M iterations | 19 ms | 19 ms | — | 0.99x |
 | Serialize 10K numbers from 0-255, 20 times | 1.73 ms | 1.71 ms | — | 0.99x |
@@ -173,6 +174,7 @@ Runtime performance:
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | — | 0.45x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 2.28 ms | 0.985 ms | — | 0.43x |
 | Create 10K resolved promises, collect with all, and sum results | 1.20 ms | 0.514 ms | 0.196 ms (Task.WhenAll) | 0.43x |
+| Uint8Array traversal through `any`, 10 passes over 10K elements with a fixed bound | 0.0721 ms | 0.0312 ms | 0.0719 ms (byte[]) | 0.43x |
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | — | 0.41x |
 | Call a numeric void object-literal method through a helper, 100K calls | 0.571 ms | 0.231 ms | 0.0702 ms (class) | 0.40x |
 | Numeric string index and comparison, 1M reads | 4.86 ms | 1.93 ms | — | 0.40x |
