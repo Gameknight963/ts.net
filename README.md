@@ -110,6 +110,7 @@ Runtime performance:
 | Create/read a two-field object in a 100K-iteration loop, with conditional-key deletion elsewhere | 0.0679 ms | 0.0698 ms | 0.0704 ms (struct) | 1.03x |
 | Create/read a two-field object in a 100K-iteration loop, with a read-only Reflect alias in the program | 0.0706 ms | 0.0717 ms | — | 1.02x |
 | Create/read a two-field object in a 100K-iteration loop, with a constant-key deletion elsewhere in the program | 0.0706 ms | 0.0720 ms | — | 1.02x |
+| Create/read a two-field object in a 100K-iteration loop, with a property defined on a function | 0.0711 ms | 0.0725 ms | 0.363 ms (class), 0.0737 ms (struct) | 1.02x |
 | Masked integer remainder, 1M iterations | 1.10 ms | 1.11 ms | — | 1.01x |
 | Sum 100K local two-number array literals by fixed index | 0.0679 ms | 0.0689 ms | — | 1.01x |
 | Float32Array traversal through `any`, 10 passes over 10K elements with a fixed bound | 0.0714 ms | 0.0719 ms | 0.0707 ms (float[]) | 1.01x |
