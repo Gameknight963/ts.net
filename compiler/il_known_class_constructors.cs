@@ -5,6 +5,7 @@ internal sealed partial class IlBackend
     internal Vector<int> constructor_definitions, constructor_declarations, constructor_parameters;
     internal bool constructor_bindings_ready;
     internal readonly Dictionary<int, (int Method, int Fields, int Constructor, int Count)> known_class_constructors = [];
+    internal readonly Dictionary<int, List<int>> known_class_literal_fields = [];
 }
 
 internal static partial class CompilerFunctions
@@ -50,6 +51,8 @@ internal static partial class CompilerFunctions
             int method = b.plan.method(5, b.classes.at(construction.type), 0x16, -5, signature, "Construct_body");
             plan = (method, fields, constructor, count);
             b.known_class_constructors.Add(construction.type, plan);
+            var literals = il_class_literal_fields(fields, construction.type, c, b);
+            if (literals != null) b.known_class_literal_fields[construction.type] = literals;
         }
         // Read the class binding before evaluating arguments. The source bodies
         // still initialize fields and execute the constructor in their original order.
@@ -90,6 +93,33 @@ internal static partial class CompilerFunctions
         }
     }
 
+    // No source code can observe these stores before the header is installed.
+    // Require every field, in layout order, and only effect-free literal values.
+    static List<int> il_class_literal_fields(int symbol, int type, Compiler c, IlBackend b)
+    {
+        Node function = get_node(get_symbol(symbol, c).function, c);
+        if (function.fourth == 0 || function.children != function.fourth || function.left == 0) return null;
+        Node receiver = get_node(function.fourth, c), body = get_node(function.left, c);
+        if (receiver.next != 0 || body.kind != NodeKind.Block) return null;
+        var members = b.numeric_class_members[type];
+        var values = new List<int>();
+        for (int statement = body.children; statement != 0; statement = get_node(statement, c).next) {
+            Node field = get_node(statement, c);
+            if (values.Count >= members.Count || field.kind != NodeKind.ClassField || field.name == 0 ||
+                field.left == 0 || field.right == 0 || field.third != 0 || field.fourth != 0 ||
+                get_node(field.left, c).kind != NodeKind.Name || get_node(field.left, c).symbol != receiver.symbol) return null;
+            Field member = get_field(members[values.Count], c);
+            TypeKind kind = get_type(member.type, c).kind;
+            if (!same(field.name, member.name, c) || kind is not (TypeKind.Number or TypeKind.String or TypeKind.Boolean)) return null;
+            Node value = get_node(field.right, c);
+            bool empty = value.kind == NodeKind.Undefined && !value.constant && value.left == 0 && value.right == 0 &&
+                value.third == 0 && value.fourth == 0 && value.children == 0;
+            if (!empty && !scalar_class_literal(field.right, kind, c)) return null;
+            values.Add(field.right);
+        }
+        return values.Count == members.Count ? values : null;
+    }
+
     static void il_known_class_constructor_bodies(Compiler c, IlBackend b)
     {
         foreach (var entry in b.known_class_constructors) {
@@ -98,8 +128,25 @@ internal static partial class CompilerFunctions
             b.begin(plan.Method);
             int instance = b.local(b.classes.at(type));
             b.emit(0x73, b.constructors.at(type)); b.emit(0xfe0e, instance);
-            b.emit(0xfe0c, instance); b.emit(0xfe09, 0); b.emit(0x20, 0); b.call(RuntimeMember.InitializeDirectClass);
-            Call(plan.Fields, false);
+            if (b.known_class_literal_fields.TryGetValue(type, out var literals)) {
+                ulong states = 0;
+                var members = b.numeric_class_members[type];
+                for (int i = 0; i < literals.Count; i++) {
+                    int fieldType = get_field(members[i], c).type;
+                    b.emit(0xfe0c, instance); il_as(literals[i], fieldType, c, b);
+                    if (get_type(fieldType, c).kind == TypeKind.Number) b.call(RuntimeMember.NumberValue);
+                    else b.box(fieldType, c);
+                    b.emit(0x7d, b.class_field_tokens[type][i]);
+                    states |= (get_node(literals[i], c).kind == NodeKind.Undefined ? 1ul : 3ul) << (i * 2);
+                }
+                b.emit(0xfe0c, instance); b.emit(0xfe09, 0); b.emit(0x20, unchecked((int)states));
+                if (members.Count > 16) { b.emit(0x20, unchecked((int)(states >> 32))); b.call(RuntimeMember.InitializeDirectClassWide); }
+                else b.call(RuntimeMember.InitializeDirectClass);
+            }
+            else {
+                b.emit(0xfe0c, instance); b.emit(0xfe09, 0); b.emit(0x20, 0); b.call(RuntimeMember.InitializeDirectClass);
+                Call(plan.Fields, false);
+            }
             if (plan.Constructor != 0) {
                 Node function = get_node(get_symbol(plan.Constructor, c).function, c);
                 Call(plan.Constructor, true);

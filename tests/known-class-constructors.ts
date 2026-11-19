@@ -117,3 +117,71 @@ class MixedDefault {
     constructor(label: string, enabled = true) {this.value = `${label}:${enabled}`;}
 }
 console.log('mixed default fallback', new MixedDefault('item').value, new MixedDefault('item', false).value);
+
+function inspectLiteralFields(value: any): number {
+ const descriptor=Object.getOwnPropertyDescriptor(value,'value')!;
+ console.log('literal fields before body',Object.keys(value).join(','),value.value,value.label,value.enabled,descriptor.writable,descriptor.enumerable,descriptor.configurable);
+ return 7;
+}
+class LiteralFields {
+ value=0; label='ready'; enabled=false;
+ constructor(){this.value=inspectLiteralFields(this);}
+}
+const literalFields=new LiteralFields();
+console.log('literal fields after body',literalFields.value,literalFields.label,literalFields.enabled,literalFields instanceof LiteralFields);
+function inspectUndefinedFields(value: any): number {
+ console.log('literal undefined',Object.keys(value).join(','),value.value===undefined,value.label===undefined,value.enabled===undefined);
+ return 1;
+}
+class UndefinedFields {
+ value: number; label: string; enabled: boolean;
+ constructor(){inspectUndefinedFields(this);this.value=3;this.label='set';this.enabled=true;}
+}
+const undefinedFields=new UndefinedFields();
+console.log('undefined fields assigned',undefinedFields.value,undefinedFields.label,undefinedFields.enabled);
+let literalVoidEffects=0;
+class EffectfulUndefinedFields {
+ value=void(literalVoidEffects++);
+ constructor(){inspectUndefinedFields(this);}
+}
+new EffectfulUndefinedFields();
+console.log('void initializer effects',literalVoidEffects);
+
+function inspectWideFields(value: any): number {console.log('wide literal fields',Object.keys(value).join(','),value.f0,value.f15,value.f16===undefined,value.f31);return 42;}
+class WideLiteralFields {
+ f0=0;
+ f1=1;
+ f2=2;
+ f3=3;
+ f4=4;
+ f5=5;
+ f6=6;
+ f7=7;
+ f8=8;
+ f9=9;
+ f10=10;
+ f11=11;
+ f12=12;
+ f13=13;
+ f14=14;
+ f15=15;
+ f16!: number;
+ f17=17;
+ f18=18;
+ f19=19;
+ f20=20;
+ f21=21;
+ f22=22;
+ f23=23;
+ f24=24;
+ f25=25;
+ f26=26;
+ f27=27;
+ f28=28;
+ f29=29;
+ f30=30;
+ f31=31;
+ constructor(){this.f0=inspectWideFields(this);}
+}
+const wideLiteralFields=new WideLiteralFields();
+console.log('wide literal result',wideLiteralFields.f0,wideLiteralFields.f15,wideLiteralFields.f16===undefined,wideLiteralFields.f31);
