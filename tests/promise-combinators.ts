@@ -85,3 +85,15 @@ Promise.allSettled([Promise.resolve(31),Promise.reject("reason")]).then(values=>
   console.log("settled own element",i,d.value.status,d.writable,d.enumerable,d.configurable);
  }
 });
+
+Promise.all([Promise.resolve(1), 2, 3]).then(values => {
+ const alias: any[] = values;
+ alias[0] = 'changed'; delete alias[1]; alias.push({value: 4});
+ console.log('all mutable result', Array.isArray(values), Object.getPrototypeOf(values) === Array.prototype,
+  values === alias, alias[0], Object.hasOwn(alias, 1), alias[2], alias[3].value);
+});
+const objectResult = {value: 7};
+Promise.all([objectResult, undefined, -0, NaN, 4n]).then(values => {
+ console.log('all mixed identities', values[0] === objectResult, values[1] === undefined,
+  Object.is(values[2], -0), Number.isNaN(values[3]), values[4] === 4n);
+});

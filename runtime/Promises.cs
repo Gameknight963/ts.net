@@ -325,13 +325,14 @@ public static partial class Js
         catch (Exception error) { pair.RejectError(error); }
         return promise;
     }
+    static object PromiseSpeciesReceiver(object receiver, object[] arguments) => receiver;
     sealed class PromiseConstructorFunction : NativeNamespaceFunction
     {
         internal PromiseConstructorFunction() : base("Promise", static _ => throw new InvalidOperationException("Promise requires new"), 1)
         {
             string speciesKey = PropertyKey(SpeciesSymbol);
             Member(speciesKey, Undefined);
-            var speciesGetter = new CollectionMethod("get [Symbol.species]", 0, static (receiver, _) => receiver);
+            var speciesGetter = new CollectionMethod("get [Symbol.species]", 0, PromiseSpeciesReceiver);
             DefineAccessor(speciesKey, speciesGetter, 1);
             speciesGetter.InferPropertyName("get [Symbol.species]");
             var prototype = new JsCreatedObject(); UseObjectPrototype(prototype);

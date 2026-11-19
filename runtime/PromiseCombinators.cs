@@ -20,6 +20,10 @@ public static partial class Js
                 bool intrinsicResolve = ReferenceEquals(receiver, RuntimeNamespaces.Promise) && resolve is PromiseStaticFunction { IsResolve: true };
                 input = Iteration.Start(FunctionArgument(arguments, 0));
                 var state = new PromiseCombinationState(mode, capability);
+                if (intrinsicResolve && TryRegisterPromiseArray(input, state, ref position, ref closeable)) {
+                    state.Finish();
+                    return capability.Promise;
+                }
                 while (true)
                 {
                     closeable = false;
@@ -46,6 +50,31 @@ public static partial class Js
             catch (Exception error) { if (closeable) CloseIterationAt(input, position, true); capability.Complete(CaughtValue(error), true); }
             return capability.Promise;
         }
+    }
+    static bool TryRegisterPromiseArray(object input, PromiseCombinationState state, ref int position, ref bool closeable)
+    {
+        if (input is not JsArray array || array.GetType() != typeof(JsArray) || array.HasIndexedAccessors ||
+            array.DenseRange(array.Length()) is not object[] slots) return false;
+        int count = (int)array.Length();
+        if (count == 0) return false;
+        var constructor = (PromiseConstructorFunction)RuntimeNamespaces.Promise;
+        if (constructor.Get("prototype") is not TsObject prototype ||
+            prototype.GetType() != typeof(JsCreatedObject) ||
+            !ReferenceEquals(prototype.OwnDataValue("constructor"), constructor) ||
+            prototype.OwnDataValue("then") is not PromiseThenFunction ||
+            !constructor.TryOwnAccessor(PropertyKey(SpeciesSymbol), out var species) ||
+            species.Getter is not CollectionMethod getter || !getter.HasAction(PromiseSpeciesReceiver)) return false;
+        // Validate the entire input before registering anything. These promises
+        // have no own properties or custom prototypes, and the guarded built-in
+        // lookups cannot execute user code while this loop runs.
+        for (int i = 0; i < count; i++)
+            if (slots[i] is not JsPromise promise || promise.HasPropertyOverrides) return false;
+        for (int i = 0; i < count; i++) {
+            position = i + 1; closeable = true;
+            ((JsPromise)slots[i]).ThenCombination(null, state, state.Add());
+        }
+        closeable = false;
+        return true;
     }
     sealed class PromiseCombinationReaction(PromiseCapability capability, PromiseCombinationState state, int index)
         : PromiseReactionBase

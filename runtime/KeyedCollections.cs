@@ -278,6 +278,7 @@ public static partial class Js
     sealed class CollectionMethod(string name, int length, Func<object, object[], object> action)
         : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Collection method requires a receiver")), null, name, length)
     {
+        internal bool HasAction(Func<object, object[], object> expected) => action == expected;
         public override object InvokeWithReceiver(object receiver, object[] arguments) => action(receiver, arguments);
         public override double? InvokeMethodNumber0(object receiver) => Cast<double?>(action(receiver, Array.Empty<object>()), "Collection result violates number type");
         public override double? InvokeMethodNumber1(object receiver, double? first) => Cast<double?>(action(receiver, new[] { BoxNumber(first) }), "Collection result violates number type");
