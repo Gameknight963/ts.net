@@ -168,6 +168,7 @@ Runtime performance:
 | Create a Map, insert and read 10K entries, then delete half | 1.184 ms | 0.658 ms | 0.395 ms (`Dictionary`) | 0.56x |
 | Parse ten JSON arrays of 10K integers from -5000 to 4999 | 1.587 ms | 0.866 ms | 4.25 ms (`JsonSerializer`) | 0.55x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
+| Run 1K async calls with two awaits each, collect with all, and sum results | 0.288 ms | 0.153 ms | 0.102 ms (queued tasks) | 0.53x |
 | Serialize 1,000 records with 16 numeric fields 20 times, without a replacer | 10.55 ms | 5.43 ms | 13.27 ms (JsonElement) | 0.51x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
 | Call a numeric void method on a record with 16 numeric fields through a helper, 100K calls | 0.477 ms | 0.233 ms | 0.0711 ms (class) | 0.49x |
@@ -218,7 +219,6 @@ Runtime performance:
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Construct and traverse 100K zero-argument class instances with a field initializer and method | 5.68 ms | 0.984 ms | 0.864 ms (class) | 0.17x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
-| Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | — | 0.04x |
