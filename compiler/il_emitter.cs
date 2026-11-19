@@ -36,6 +36,7 @@ internal static partial class CompilerFunctions
             value.kind == NodeKind.Binary && is_text(get_token(value.token, c).text, text_plus, c))
         {
             if (get_type(get_node(value.right, c).type, c).kind == TypeKind.Number) {
+                if (il_checked_property_addition(value.left, value.right, c, b)) return;
                 il_boxed(value.left, c, b); il_expression(value.right, c, b); b.call(RuntimeMember.AddNumberRightChecked); return;
             }
             if (get_type(get_node(value.left, c).type, c).kind == TypeKind.Number) {

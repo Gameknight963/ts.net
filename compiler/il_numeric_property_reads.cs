@@ -23,6 +23,23 @@ internal static partial class CompilerFunctions
             if (eligible(member)) number = get_field(member, c).type;
         if (number == 0) return;
 
+        // Only sealed records provide this probe: a CLR subclass could override
+        // Get independently. Spread records also retain their presence checks.
+        if (b.spread_types.at(type) == 0 && b.layout_needed.at(type) == 0) {
+            b.begin(b.plan.method1(5, klass, 0xc6, -10, -4, "TryReadOwnNumber"));
+            int fallback = b.label();
+            b.emit(0xfe09, 0); b.call(RuntimeMember.CanWriteGeneratedFields); b.emit(0x39, fallback);
+            for (int member = get_type(type, c).fields; member != 0; member = get_field(member, c).next) {
+                if (!eligible(member)) continue;
+                int next = b.label();
+                b.emit(0xfe09, 1); il_text(get_field(member, c).name, c, b);
+                b.call(RuntimeMember.StringEqual); b.emit(0x39, next);
+                b.emit(0xfe09, 0); b.load_field(member, c); b.op(0x2a);
+                b.mark(next);
+            }
+            b.mark(fallback); b.call(RuntimeMember.EmptyNumber); b.op(0x2a);
+        }
+
         // Plain records have every generated field as an own property. Spread
         // records can omit fields, so their presence checks retain the old path.
         if (b.spread_types.at(type) == 0) {
