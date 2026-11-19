@@ -144,6 +144,7 @@ Runtime performance:
 | ReadableStream, create and drain 1K numbers | 0.281 ms | 0.189 ms | — | 0.67x |
 | map, filter and sum, 10 passes over 10K integers from 0-255 | 0.814 ms | 0.534 ms | 0.266 ms (array methods) | 0.66x |
 | Numeric getter on an Object.create object, 100K reads | 1.95 ms | 1.27 ms | — | 0.65x |
+| Construct and traverse 100K class instances whose constructor calls a helper | 2.07 ms | 1.32 ms | 1.18 ms (class) | 0.64x |
 | String `codePointAt(index)`, 1M calls | 3.00 ms | 1.90 ms | — | 0.63x |
 | Intl.Segmenter, 100 word-segmentation calls and full traversal | 4.14 ms | 2.59 ms | — | 0.63x |
 | BigInt64Array toSorted and Number conversion, 10 copies of 10K values | 7.99 ms | 5.00 ms | — | 0.63x |
@@ -211,7 +212,6 @@ Runtime performance:
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Construct and traverse 100K zero-argument class instances with a field initializer and method | 5.68 ms | 0.984 ms | 0.864 ms (class) | 0.17x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
-| Construct and traverse 100K class instances whose constructor calls a helper | 6.41 ms | 1.09 ms | 1.41 ms (class) | 0.17x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
