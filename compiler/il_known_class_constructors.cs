@@ -37,14 +37,16 @@ internal static partial class CompilerFunctions
         Node klass = get_node(definition, c);
         int fields = Function(klass.left), constructor = klass.right == 0 ? 0 : Function(klass.right);
         if (fields == 0 || (klass.right != 0 && constructor == 0) || Count(fields) != 0) return false;
+        int[] parameters = Parameters(constructor).ToArray();
         int count = 0;
         for (int argument = construction.children; argument != 0; argument = get_node(argument, c).next) {
-            if (++count > 2 || get_node(argument, c).kind == NodeKind.Spread ||
-                get_type(get_node(argument, c).type, c).kind != TypeKind.Number) return false;
+            if (get_node(argument, c).kind == NodeKind.Spread || count >= parameters.Length ||
+                b.type(get_node(argument, c).type, c) != b.type(get_node(parameters[count], c).type, c)) return false;
+            count++;
         }
         if (constructor == 0 ? count != 0 : Count(constructor) != count) return false;
         if (!b.known_class_constructors.TryGetValue(construction.type, out var plan)) {
-            int[] signature = new[] {-5}.Concat(Enumerable.Repeat(-10, count)).ToArray();
+            int[] signature = new[] {-5}.Concat(parameters.Select(parameter => b.type(get_node(parameter, c).type, c))).ToArray();
             int method = b.plan.method(5, b.classes.at(construction.type), 0x16, -5, signature, "Construct_body");
             plan = (method, fields, constructor, count);
             b.known_class_constructors.Add(construction.type, plan);
@@ -60,21 +62,29 @@ internal static partial class CompilerFunctions
             int function = scalar_field_function(value, c);
             if (function == 0) return 0;
             Node node = get_node(function, c);
-            if (node.symbol == 0 || node.left == 0 || (node.fourth != 0 && get_node(node.fourth, c).constant) ||
+            if (node.symbol == 0 || node.left == 0 || node.right != 0 || node.internal_continuation || (node.fourth != 0 && get_node(node.fourth, c).constant) ||
                 b.function_contexts.at(node.symbol) != 0) return 0;
             return node.symbol;
+        }
+
+        IEnumerable<int> Parameters(int symbol) {
+            if (symbol == 0) yield break;
+            Node function = get_node(get_symbol(symbol, c).function, c);
+            for (int parameter = function.fourth == 0 ? function.children : get_node(function.fourth, c).next;
+                parameter != 0; parameter = get_node(parameter, c).next) yield return parameter;
         }
 
         int Count(int symbol) {
             Node function = get_node(get_symbol(symbol, c).function, c);
             int count = 0;
-            if (function.fourth != 0 && (count = il_class_receiver_arguments(symbol, c, b)) < 0) return -1;
+            if (function.fourth != 0 && get_node(function.fourth, c).name != 0) return -1;
             int parameter = function.fourth == 0 ? function.children : get_node(function.fourth, c).next;
             for (; parameter != 0; parameter = get_node(parameter, c).next) {
                 Node value = get_node(parameter, c);
-                if ((function.fourth == 0 && ++count > 2) || value.kind != NodeKind.Variable || value.symbol == 0 ||
+                if (value.kind != NodeKind.Variable || value.symbol == 0 ||
                     value.constant || value.left != 0 || value.right != 0 || value.third != 0 || value.fourth != 0 ||
-                    value.children != 0 || get_type(value.type, c).kind != TypeKind.Number) return -1;
+                    value.children != 0 || get_type(value.type, c).kind == TypeKind.Void) return -1;
+                count++;
             }
             return count;
         }
@@ -105,7 +115,16 @@ internal static partial class CompilerFunctions
             void Call(int symbol, bool arguments) {
                 Node function = get_node(get_symbol(symbol, c).function, c);
                 if (function.fourth != 0) b.emit(0xfe0c, instance);
-                if (arguments) for (int i = 0; i < plan.Count; i++) b.emit(0xfe09, i + 1);
+                if (arguments) {
+                    int parameter = function.fourth == 0 ? function.children : get_node(function.fourth, c).next;
+                    for (int i = 0; i < plan.Count; i++, parameter = get_node(parameter, c).next) {
+                        b.emit(0xfe09, i + 1);
+                        // Reference checks belong after field initialization, as in
+                        // the ordinary constructor adapter, and after all arguments run.
+                        int parameterType = get_node(parameter, c).type;
+                        if (b.type(parameterType, c) == -5) b.from_object(parameterType, c);
+                    }
+                }
                 b.emit(0x28, b.function(symbol));
                 if (!arguments && get_type(function.type, c).kind != TypeKind.Void) b.op(0x26);
             }

@@ -73,3 +73,47 @@ try {early();} catch (error) {console.log('early binding', (error as Error).name
 class Late {value = 0; constructor(value: number) {this.value = initial() + value;}}
 console.log('late binding', new Late(1).value);
 console.log('effects', events.join(','));
+
+class MixedArguments {
+    value = initial();
+    label = '';
+    enabled = false;
+    constructor(value: number, label: string, enabled: boolean) {
+        events.push(`mixed:${label}:${enabled}`);
+        this.value += value; this.label = label; this.enabled = enabled;
+    }
+}
+function textArgument(): string {events.push('text argument'); return 'item';}
+function booleanArgument(): boolean {events.push('boolean argument'); return true;}
+events.length = 0;
+const mixed = new MixedArguments(argument(4), textArgument(), booleanArgument());
+console.log('mixed arguments', mixed.value, mixed.label, mixed.enabled, events.join(','), mixed instanceof MixedArguments);
+class ReferenceArguments {
+    value: any;
+    constructor(value: {id: number}, values: number[], callback: (value: number) => number) {
+        this.value = [value, values, callback(value.id)];
+    }
+}
+const record = {id: 7}, values = [2, 3];
+const references = new ReferenceArguments(record, values, value => value + 1);
+console.log('reference arguments', references.value[0] === record, references.value[1] === values, references.value[2]);
+class ManyArguments {
+    value: number;
+    constructor(a: number, b: number, c: number, d: number) {this.value = a + b + c + d;}
+}
+console.log('four arguments', new ManyArguments(1, 2, 3, 4).value);
+class MixedReplacement {
+    value = 0;
+    constructor(label: string, enabled: boolean, value: number) {return {value: enabled ? value : label.length};}
+}
+console.log('mixed replacement', new MixedReplacement('word', false, 9).value, new MixedReplacement('word', true, 9) instanceof MixedReplacement);
+class MixedObserved {
+    value = '';
+    constructor(label: string, enabled: boolean, value: number) {this.value = `${label}:${enabled}:${value}:${arguments.length}`;}
+}
+console.log('mixed arguments fallback', new MixedObserved('item', true, 3).value);
+class MixedDefault {
+    value: string;
+    constructor(label: string, enabled = true) {this.value = `${label}:${enabled}`;}
+}
+console.log('mixed default fallback', new MixedDefault('item').value, new MixedDefault('item', false).value);
