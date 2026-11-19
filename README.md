@@ -101,6 +101,7 @@ Runtime performance:
 | Map.forEach numeric sum, 10 passes over 10K entries | 0.579 ms | 0.626 ms | — | 1.08x |
 | Reduce 100K number/string/undefined values with a default parameter | 0.596 ms | 0.640 ms | — | 1.08x |
 | Mixed numeric strings, 1M conversions | 28.60 ms | 30.37 ms | — | 1.06x |
+| Parse, filter, group, sort and serialize 1K records, 10 passes | 3.63 ms | 3.83 ms | 4.07 ms (`JsonSerializer`) | 1.06x |
 | Set.forEach numeric sum, 10 passes over 10K values | 0.580 ms | 0.608 ms | — | 1.05x |
 | Create/read a two-field object in a 100K-iteration loop, with conditional-key deletion elsewhere | 0.0679 ms | 0.0698 ms | 0.0704 ms (struct) | 1.03x |
 | Create/read a two-field object in a 100K-iteration loop, with a read-only Reflect alias in the program | 0.0706 ms | 0.0717 ms | — | 1.02x |
@@ -142,7 +143,6 @@ Runtime performance:
 | String `charCodeAt(index)`, 1M calls | 2.27 ms | 1.66 ms | — | 0.73x |
 | Read varying keys through an `any` helper from a 64-field object, 100K reads | 2.04 ms | 1.49 ms | — | 0.73x |
 | `Object.keys` on 3 string fields plus a symbol, 100K calls and a key read | 1.403 ms | 1.026 ms | 6.434 ms (filtered dictionary) | 0.73x |
-| Parse, filter, group, sort and serialize 1K records, 10 passes | 5.06 ms | 3.70 ms | 3.95 ms (`JsonSerializer`) | 0.73x |
 | Create, retain, and sum 100K two-number objects | 1.62 ms | 1.15 ms | 1.71 ms (`List<Point>`) | 0.71x |
 | Float64Array toSorted and traversal, 10 copies of 10K values | 11.56 ms | 8.06 ms | — | 0.70x |
 | Int32Array toSorted and traversal, 10 copies of 10K values | 5.74 ms | 4.03 ms | — | 0.70x |
