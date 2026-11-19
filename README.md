@@ -98,6 +98,7 @@ Runtime performance:
 | Sum 1K values in a loop, awaiting each value | 0.0430 ms | 0.0491 ms | 0.0248 ms (queued) | 1.14x |
 | BigInt add/subtract loop, 100K iterations | 0.440 ms | 0.494 ms | 0.435 ms (`BigInteger`) | 1.12x |
 | 100K numeric writes to a four-element mapped array | 0.0378 ms | 0.0419 ms | 0.0377 ms (`double[]`) | 1.11x |
+| Sum eight weighted boolean fields on 100K retained class instances | 0.714 ms | 0.778 ms | 0.512 ms (0.584 ms with `double` weights) | 1.09x |
 | Map.forEach numeric sum, 10 passes over 10K entries | 0.579 ms | 0.626 ms | — | 1.08x |
 | Reduce 100K number/string/undefined values with a default parameter | 0.596 ms | 0.640 ms | — | 1.08x |
 | Mixed numeric strings, 1M conversions | 28.60 ms | 30.37 ms | — | 1.06x |
@@ -117,7 +118,6 @@ Runtime performance:
 | Serialize 10K numbers from 0-255, 20 times | 1.73 ms | 1.71 ms | — | 0.99x |
 | Captured numeric callback, 2M calls | 5.24 ms | 5.07 ms | — | 0.97x |
 | String ordering, 2M comparisons | 8.98 ms | 8.75 ms | — | 0.97x |
-| Sum eight weighted boolean fields on 100K retained class instances | 0.835 ms | 0.773 ms | 0.524 ms (0.608 ms with `double` weights) | 0.93x |
 | Float64Array traversal, 10K elements and 100 passes | 0.784 ms | 0.718 ms | — | 0.92x |
 | Local class constructor parameters and field read, 100K instances | 0.0687 ms | 0.0633 ms | — | 0.92x |
 | Update a class field and read its getter, 100K iterations | 0.0675 ms | 0.0624 ms | — | 0.92x |
