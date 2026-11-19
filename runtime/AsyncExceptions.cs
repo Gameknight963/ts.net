@@ -5,9 +5,13 @@ public static partial class Js
 {
     enum CompletionKind { Normal, Return, Throw, Transfer }
     sealed record AsyncCompletion(CompletionKind Kind, object Value);
+    static class NormalAsyncCompletion
+    {
+        internal static readonly AsyncCompletion Value = new(CompletionKind.Normal, Undefined);
+    }
     sealed record AsyncTryRecord(JsFunction Body, JsFunction Catch, JsFunction Finally, JsFunction Next, int Region, bool IteratorClose = false);
     sealed record AsyncTryEndRecord(int Region);
-    sealed class AsyncTryFrame(AsyncTryRecord region)
+    struct AsyncTryFrame(AsyncTryRecord region)
     {
         internal readonly AsyncTryRecord Region = region;
         internal int Phase; // 0: try, 1: catch, 2: finally
@@ -58,7 +62,7 @@ public static partial class Js
                             else result = current.Pending;
                             continue;
                         }
-                        result = new AsyncCompletion(CompletionKind.Normal, Undefined);
+                        result = NormalAsyncCompletion.Value;
                     }
                     var completion = result as AsyncCompletion ?? new AsyncCompletion(CompletionKind.Return, result);
                     if (frames.Count == 0)
@@ -81,6 +85,7 @@ public static partial class Js
                     if (completion.Kind == CompletionKind.Throw && frame.Phase == 0 && frame.Region.Catch != null)
                     {
                         frame.Phase = 1;
+                        frames.Pop(); frames.Push(frame);
                         result = frame.Region.Catch.InvokeContinuation(CaughtValue((Exception)completion.Value));
                         continue;
                     }
@@ -88,6 +93,7 @@ public static partial class Js
                     {
                         frame.Phase = 2;
                         frame.Pending = completion;
+                        frames.Pop(); frames.Push(frame);
                         result = Invoke(frame.Region.Finally);
                         continue;
                     }

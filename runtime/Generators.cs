@@ -136,7 +136,7 @@ public static partial class Js
                             result = current.Pending.Kind == CompletionKind.Normal ? Invoke(current.Region.Next) : current.Pending;
                             continue;
                         }
-                        result = new AsyncCompletion(CompletionKind.Normal, Undefined);
+                        result = NormalAsyncCompletion.Value;
                     }
                     var completion = result as AsyncCompletion ?? new AsyncCompletion(CompletionKind.Return, result);
                     if (frames.Count == 0)
@@ -153,12 +153,14 @@ public static partial class Js
                     if (completion.Kind == CompletionKind.Throw && frame.Phase == 0 && frame.Region.Catch != null)
                     {
                         frame.Phase = 1;
+                        frames.Pop(); frames.Push(frame);
                         result = frame.Region.Catch.InvokeContinuation(CaughtValue((Exception)completion.Value));
                         continue;
                     }
                     if (frame.Phase != 2 && frame.Region.Finally != null)
                     {
                         frame.Phase = 2; frame.Pending = completion;
+                        frames.Pop(); frames.Push(frame);
                         result = Invoke(frame.Region.Finally); continue;
                     }
                     if (frame.Phase == 2 && frame.Region.IteratorClose && frame.Pending.Kind == CompletionKind.Throw && completion.Kind == CompletionKind.Throw)
