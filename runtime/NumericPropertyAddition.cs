@@ -9,12 +9,23 @@ public abstract partial class TsObject
     {
         value = null;
         // Unknown CLR overrides and descriptor-backed properties retain Get.
-        if (this is not JsCreatedObject && GetType() != typeof(JsDynamicObject)) return false;
+        if (this is not JsCreatedObject && GetType() != typeof(JsDynamicObject)) {
+            value = TryReadOwnNumber(key);
+            return value.HasValue;
+        }
         if (((JsDescriptorObject)this).HasPropertyDescriptors) return false;
         OwnProperties properties = extra;
         if (properties == null || properties.Accessors is { } accessors && accessors.ContainsKey(key)) return false;
         return properties.TryReadNumber(key, out value);
     }
+}
+
+public partial class JsArray
+{
+    // An array's length is non-configurable. Unknown CLR Get overrides keep
+    // ordinary lookup; the two specialized array representations are sealed.
+    public override double? TryReadOwnNumber(string key) => key == "length" &&
+        (GetType() == typeof(JsArray) || this is NumberArray or TaggedArray) ? Length() : null;
 }
 
 public static partial class Js

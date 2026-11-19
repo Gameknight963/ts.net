@@ -62,6 +62,12 @@ public static partial class Js
             return state != 2 && (state & Shape.PresenceMask) == Shape.PresenceMask && Shape.MatchesFields(names);
         }
         internal string[] JsonNames => Shape.Names;
+        public override double? TryReadOwnNumber(string key)
+        {
+            if (ClassFieldStates == 2) return null;
+            int index = Shape.Index(key);
+            return index >= 0 && !IsReferenceField(index) && NumericFieldState(index) == 3 ? values[index] : null;
+        }
         internal bool JsonReferenceField(int index) => IsReferenceField(index);
         internal object JsonReferenceValue(int index) => ReadReferenceField(index);
         internal double JsonNumberValue(int index) => values[index];

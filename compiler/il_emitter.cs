@@ -40,6 +40,11 @@ internal static partial class CompilerFunctions
                 il_boxed(value.left, c, b); il_expression(value.right, c, b); b.call(RuntimeMember.AddNumberRightChecked); return;
             }
             if (get_type(get_node(value.left, c).type, c).kind == TypeKind.Number) {
+                Node property = get_node(value.right, c);
+                if (property.kind == NodeKind.Property && property.fourth == 0) {
+                    il_expression(value.left, c, b); il_boxed(property.left, c, b); il_text(property.name, c, b);
+                    b.call(RuntimeMember.AddPropertyToNumber); return;
+                }
                 il_expression(value.left, c, b); il_boxed(value.right, c, b); b.call(RuntimeMember.AddNumberLeftChecked); return;
             }
         }
