@@ -192,6 +192,7 @@ Runtime performance:
 | Regional number formatting, 1K new formatters with one call each | 90.24 ms | 31.25 ms | — | 0.35x |
 | Numeric callback reading `arguments.length`, 100K calls | 1.26 ms | 0.435 ms | — | 0.35x |
 | Currency names, 10K cached calls across German, French, Russian and British English | 28.24 ms | 9.55 ms | — | 0.34x |
+| Reduce 10K number/string values to a numeric sum, 20 passes | 0.526 ms | 0.179 ms | 0.184 ms (`Aggregate`) | 0.34x |
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | — | 0.33x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | — | 0.32x |
 | Map 10K number/string values to numbers and sum, 20 passes | 1.69 ms | 0.540 ms | — | 0.32x |
@@ -206,7 +207,6 @@ Runtime performance:
 | Retained class instances with number, string and boolean fields, 100K instances; one server GC heap for both .NET builds | 4.08 ms | 1.125 ms | 1.100 ms | 0.28x |
 | Retained numeric class instances and field traversal, 100K instances | 4.50 ms | 1.165 ms | 1.012 ms | 0.26x |
 | Create and call 100K callbacks stored in an array | 5.33 ms | 1.37 ms | 6.47 ms (fresh delegates) | 0.26x |
-| Reduce 10K number/string values to a numeric sum, 20 passes | 0.730 ms | 0.179 ms | — | 0.25x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
 | Retained class instances with number, string and boolean fields, 100K instances | 6.26 ms | 1.551 ms | 1.832 ms | 0.25x |
 | Attach 10K handlers to one pending promise and sum their results | 3.47 ms | 0.835 ms | 1.03 ms (queued Task continuations) | 0.24x |
