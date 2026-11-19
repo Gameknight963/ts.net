@@ -142,6 +142,7 @@ Runtime performance:
 | String `charCodeAt(index)`, 1M calls | 2.27 ms | 1.66 ms | — | 0.73x |
 | Read varying keys through an `any` helper from a 64-field object, 100K reads | 2.04 ms | 1.49 ms | — | 0.73x |
 | `Object.keys` on 3 string fields plus a symbol, 100K calls and a key read | 1.403 ms | 1.026 ms | 6.434 ms (filtered dictionary) | 0.73x |
+| Parse, filter, group, sort and serialize 1K records, 10 passes | 5.06 ms | 3.70 ms | 3.95 ms (`JsonSerializer`) | 0.73x |
 | Create, retain, and sum 100K two-number objects | 1.62 ms | 1.15 ms | 1.71 ms (`List<Point>`) | 0.71x |
 | Float64Array toSorted and traversal, 10 copies of 10K values | 11.56 ms | 8.06 ms | — | 0.70x |
 | Int32Array toSorted and traversal, 10 copies of 10K values | 5.74 ms | 4.03 ms | — | 0.70x |
@@ -167,7 +168,6 @@ Runtime performance:
 | Create a Map, insert and read 10K entries, then delete half | 1.184 ms | 0.658 ms | 0.395 ms (`Dictionary`) | 0.56x |
 | Parse ten JSON arrays of 10K integers from -5000 to 4999 | 1.587 ms | 0.866 ms | 4.25 ms (`JsonSerializer`) | 0.55x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
-| Parse, filter, group, sort and serialize 1K records, 10 passes | 7.86 ms | 4.12 ms | — | 0.52x |
 | Serialize 1,000 records with 16 numeric fields 20 times, without a replacer | 10.55 ms | 5.43 ms | 13.27 ms (JsonElement) | 0.51x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
 | Call a numeric void method on a record with 16 numeric fields through a helper, 100K calls | 0.477 ms | 0.233 ms | 0.0711 ms (class) | 0.49x |
