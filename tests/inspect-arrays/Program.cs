@@ -1,9 +1,18 @@
 var array = new NumberArray(4);
-foreach (object source in new object[] {new JsArray(4), new NumberArray(4), new TaggedArray(4), new ReversibleArray(4), "text"}) {
-    CheckLengthComparisons(source, 1000);
+object[] lengthSources = {new JsArray(4), new NumberArray(4), new TaggedArray(4), new ReversibleArray(4), "text"};
+// Let initialization and tiered compilation settle before counting allocations.
+var lengthWarmup = System.Diagnostics.Stopwatch.StartNew();
+do { foreach (object source in lengthSources) CheckLengthComparisons(source, 1000); }
+while (lengthWarmup.ElapsedMilliseconds < 1000);
+foreach (object source in lengthSources) {
     long start = GC.GetAllocatedBytesForCurrentThread();
     CheckLengthComparisons(source, 100000);
-    if (GC.GetAllocatedBytesForCurrentThread() != start) throw new Exception("Numeric length comparisons allocated");
+    long lengthBytes = GC.GetAllocatedBytesForCurrentThread() - start;
+    if (lengthBytes != 0) {
+        Console.Error.WriteLine($"Numeric length comparisons allocated: {source.GetType().Name}, {lengthBytes} bytes");
+        Environment.ExitCode = 1;
+        return;
+    }
 }
 var lengthOverride = new LengthReadOverride();
 if (!Js.NumberLengthRelational(2, lengthOverride, 0) || lengthOverride.Reads != 1)
