@@ -95,6 +95,7 @@ Runtime performance:
 | toSorted with numeric comparator and traversal, 10 copies of 10K integers | 10.31 ms | 12.78 ms | — | 1.24x |
 | Write and sum a numeric field on a function-constructed object, 100K iterations | 0.574 ms | 0.703 ms | 0.0702 ms (class) | 1.23x |
 | 100K numeric writes to a two-element mixed array, after reading its numeric element | 0.0282 ms | 0.0344 ms | 0.414 ms (`object[]`) | 1.22x |
+| Sum 1K values in a loop, awaiting each value | 0.0430 ms | 0.0491 ms | 0.0248 ms (queued) | 1.14x |
 | BigInt add/subtract loop, 100K iterations | 0.440 ms | 0.494 ms | 0.435 ms (`BigInteger`) | 1.12x |
 | 100K numeric writes to a four-element mapped array | 0.0378 ms | 0.0419 ms | 0.0377 ms (`double[]`) | 1.11x |
 | Map.forEach numeric sum, 10 passes over 10K entries | 0.579 ms | 0.626 ms | — | 1.08x |
@@ -136,7 +137,6 @@ Runtime performance:
 | `== null` on nullable arrays, 1M comparisons | 1.51 ms | 1.15 ms | — | 0.76x |
 | Numeric class property increments, 2M updates | 5.908 ms | 4.505 ms | 1.348 ms | 0.76x |
 | String substring and first-character read, 1M calls | 14.27 ms | 10.75 ms | — | 0.75x |
-| Sum 1K values in a loop, awaiting each value | 0.0563 ms | 0.0423 ms | — | 0.75x |
 | Read varying `keyof` keys through a typed helper from a 64-field object, 100K reads | 1.97 ms | 1.48 ms | — | 0.75x |
 | String `charCodeAt(index)`, 1M calls | 2.27 ms | 1.66 ms | — | 0.73x |
 | Read varying keys through an `any` helper from a 64-field object, 100K reads | 2.04 ms | 1.49 ms | — | 0.73x |
@@ -170,6 +170,7 @@ Runtime performance:
 | Call a numeric void method on a record with 16 numeric fields through a helper, 100K calls | 0.477 ms | 0.233 ms | 0.0711 ms (class) | 0.49x |
 | Construct and run a chain of 10K handlers | 0.687 ms | 0.340 ms | 0.665 ms (queued Task continuations) | 0.49x |
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | — | 0.48x |
+| Sum 1K values with an await in try and an increment in finally each iteration | 0.0994 ms | 0.0477 ms | 0.0266 ms (queued) | 0.48x |
 | `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | — | 0.46x |
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | — | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | — | 0.46x |
@@ -192,7 +193,6 @@ Runtime performance:
 | Currency names, 10K cached calls across German, French, Russian and British English | 28.24 ms | 9.55 ms | — | 0.34x |
 | Cached compact number formatters, 10K calls across four locales | 39.01 ms | 13.04 ms | — | 0.33x |
 | from, 20 copies of 10K packed numbers | 1 ms | 0 ms | — | 0.32x |
-| Sum 1K values with an await in try and an increment in finally each iteration | 0.146 ms | 0.0470 ms | — | 0.32x |
 | Map 10K number/string values to numbers and sum, 20 passes | 1.69 ms | 0.540 ms | — | 0.32x |
 | Call a numeric void class method through a helper, 100K calls | 0.722 ms | 0.228 ms | 0.0702 ms (class) | 0.32x |
 | Count string values in a mixed array, 500K type checks | 1.38 ms | 0.429 ms | — | 0.31x |
