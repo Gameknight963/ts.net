@@ -33,6 +33,56 @@ function mixedLengthSum(input:(number|string)[]):number {
     return result;
 }
 console.log(mixedLengthSum([1,'two',3]),mixedLengthSum([1,'two',3].map(value=>value)));
+function inlineMixedSum(input:(number|string)[]):number {
+    let result=0;
+    for(let i=0;i<input.length;i++) {
+        const value=input[i];
+        if(typeof value==='number')result+=value;
+    }
+    return result;
+}
+console.log(inlineMixedSum([1,'two',3]),inlineMixedSum([1,,3] as (number|string)[]));
+const invalidating:any[]=[{valueOf(){invalidating.length=1;return 8;}},2,3];
+let invalidated=0;for(let i=0;i<invalidating.length;i++){const value=invalidating[i];invalidated+=value;}
+console.log(invalidated,invalidating.length);
+function guardedSums(input:(number|string)[]):number {
+    let result=0;
+    for(let i=0;i<input.length;i++) {
+        const value=input[i];
+        if('number'===typeof value)result+=value;
+        if(typeof value!=='number')result+=0;else result+=value;
+        if(typeof value=='number')result+=value;
+    }
+    return result;
+}
+console.log(guardedSums([1,'two',3]));
+let coercions=0;let changed:any=1;let changedSum=0;
+if(typeof changed==='number'){changed={valueOf(){coercions++;return 7;}};changedSum+=changed;}
+console.log(changedSum,coercions);
+function capturedGuard():number {
+    let value:any=1;
+    const change=()=>{value={valueOf(){return 9;}};};
+    let result=0;if(typeof value==='number'){change();result+=value;}
+    return result;
+}
+console.log(capturedGuard());
+const nonnumeric:any={valueOf(){return 11;}};let objectSum=0;
+if(typeof nonnumeric==='object')objectSum+=nonnumeric;
+console.log(objectSum);
+function redeclaredGuard():number {
+    var value:any=1;let result=0;
+    if(typeof value==='number'){var value:any={valueOf(){return 12;}};result+=value;}
+    return result;
+}
+function shadowedGuard():number {
+    const value:any=1;let result=0;
+    if(typeof value==='number'){const value:any={valueOf(){return 13;}};result+=value;}
+    return result;
+}
+console.log(redeclaredGuard(),shadowedGuard());
+const deleted=[1,2,3];let deletedSum=0;
+for(let i=0;i<deleted.length;i++){delete deleted[i];deletedSum+=deleted[i];}
+console.log(deletedSum,Object.keys(deleted).join(','));
 let lengthReads=0;
 const mixedProxy=new Proxy([1,'two',3],{get(target,key,receiver){if(key==='length')lengthReads++;return Reflect.get(target,key,receiver);}});
 console.log(mixedLengthSum(mixedProxy),lengthReads);

@@ -79,12 +79,13 @@ internal static partial class CompilerFunctions
         foreach (int i in b.LoopNodes(loop.fourth, c))
         {
             Node n = get_node(i, c);
-            if (il_key_may_invoke(n, c) || il_coercion_may_invoke(n, c)) return false;
+            if (il_key_may_invoke(n, c) || il_loop_coercion_may_invoke(n, c, b) ||
+                n.kind == NodeKind.Unary && is_text(get_token(n.token, c).text, text_delete, c)) return false;
             if (n.kind == NodeKind.Call) {
                 if (!il_pure_numeric_call(i, c, b)) return false;
                 continue;
             }
-            if (n.kind is not (NodeKind.Block or NodeKind.Expression or NodeKind.If or NodeKind.Variable or NodeKind.Name or NodeKind.Number or NodeKind.Boolean or
+            if (n.kind is not (NodeKind.Block or NodeKind.Expression or NodeKind.If or NodeKind.Variable or NodeKind.Name or NodeKind.Number or NodeKind.Boolean or NodeKind.String or NodeKind.Null or NodeKind.Undefined or NodeKind.TypeOf or
                 NodeKind.Index or NodeKind.Binary or NodeKind.Unary or NodeKind.Conditional or NodeKind.Sequence or NodeKind.Assign or NodeKind.Update or NodeKind.Assert)) return false;
             if (n.kind == NodeKind.Assert && (get_type(n.type, c).kind != TypeKind.Number || get_node(n.left, c).kind != NodeKind.Index)) return false;
             if (n.kind == NodeKind.Index)
@@ -99,7 +100,8 @@ internal static partial class CompilerFunctions
                 }
                 reads++;
             }
-            if (n.kind == NodeKind.Variable && (n.symbol == array || n.symbol == counter || get_type(n.type, c).kind is not (TypeKind.Number or TypeKind.Boolean))) return false;
+            if (n.kind == NodeKind.Variable && (n.symbol == array || n.symbol == counter ||
+                get_type(n.type, c).kind is not (TypeKind.Number or TypeKind.Boolean or TypeKind.String or TypeKind.Any or TypeKind.Unknown))) return false;
             if (n.kind is NodeKind.Assign or NodeKind.Update)
             {
                 Node target = get_node(n.left, c);

@@ -333,6 +333,14 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Assign && is_text(op, text_add_assign, c) &&
             get_type(target.type, c).kind == TypeKind.Number && get_type(value_type, c).kind == TypeKind.Number &&
+            get_type(get_node(n.right, c).type, c).kind is TypeKind.Any or TypeKind.Unknown && il_guarded_local_number(n.right, c, b))
+        {
+            il_load_target(n.left, receiver, index, c, b); b.call(RuntimeMember.NumberValue);
+            il_boxed(n.right, c, b); b.emit(0xa5, b.RuntimeToken(RuntimeMember.DoubleType));
+            b.op(0x58); b.call(RuntimeMember.WrapNumber);
+        }
+        else if (n.kind == NodeKind.Assign && is_text(op, text_add_assign, c) &&
+            get_type(target.type, c).kind == TypeKind.Number && get_type(value_type, c).kind == TypeKind.Number &&
             get_type(get_node(n.right, c).type, c).kind == TypeKind.Any)
         {
             il_load_target(n.left, receiver, index, c, b);
