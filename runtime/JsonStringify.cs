@@ -241,6 +241,28 @@ public static partial class Js
             output.Append('}');
             return true;
         }
+        bool WriteParsedRecord(JsonNumericRecord record)
+        {
+            if (replacer != null || propertyList != null || gap.Length != 0 || !record.CanWriteJsonScalars()) return false;
+            output.Append('{');
+            var names = record.JsonNames;
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (i != 0) output.Append(',');
+                WritePropertyName(names[i], i);
+                if (!record.JsonReferenceField(i)) AppendJsonNumber(output, record.JsonNumberValue(i));
+                else
+                {
+                    object item = record.JsonReferenceValue(i);
+                    if (item == null) output.Append("null");
+                    else if (item is string text) QuoteJson(output, text);
+                    else if (item is double number) AppendJsonNumber(output, number);
+                    else output.Append((bool)item ? "true" : "false");
+                }
+            }
+            output.Append('}');
+            return true;
+        }
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         bool TryWriteScalarSnapshot(TsObject value)
         {
@@ -304,6 +326,7 @@ public static partial class Js
             else if (value is TsObject obj)
             {
                 if (!Enter(obj)) throw new InvalidOperationException("Cannot serialize a cyclic object");
+                if (obj is JsonNumericRecord record && WriteParsedRecord(record)) { active?.Remove(obj); return; }
                 if (obj is NumberArray or TaggedArray && WritePackedNumbers((JsArray)obj)) { active?.Remove(obj); return; }
                 if (previousNames is { Length: > 4 } ? WriteScalarOrSnapshot(obj) : WriteScalarObject(obj)) { active?.Remove(obj); return; }
                 var frame = new JsonWriteFrame(obj, propertyList, previousNames);

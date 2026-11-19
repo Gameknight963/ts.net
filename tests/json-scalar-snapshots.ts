@@ -31,3 +31,37 @@ Object.defineProperty(Object.prototype,'toJSON',{get(){hooks++;return undefined;
 let inherited='';
 try {inherited=JSON.stringify(seeded(row(),row()));} finally {delete (Object.prototype as any).toJSON;}
 console.log('inherited hook',inherited,hooks);
+for (let count = 1; count <= 4; count++) {
+    function small(): any {
+        const value: any = JSON.parse('{}');
+        for (let i = 0; i < count; i++) value['p' + i] = i + 1;
+        return value;
+    }
+    const last = small();
+    last.p0 = undefined;
+    console.log('small undefined', count, JSON.stringify([small(), small(), last]));
+    delete last.p0; last.p0 = 17;
+    console.log('small reordered', count, JSON.stringify([small(), small(), last]));
+    const nested = small(), later = small();
+    nested.p0 = {toJSON() { later.p0 = 29; later.extra = true; return 'child'; }};
+    console.log('small hook', count, JSON.stringify([small(), small(), nested, later]));
+    const accessor = small(); let reads = 0;
+    Object.defineProperty(accessor, 'p0', {get() {reads++; return 31;}, enumerable: true});
+    console.log('small getter', count, JSON.stringify([small(), small(), accessor]), reads);
+    const symbol = small(); symbol[Symbol('hidden')] = symbol;
+    console.log('small symbol', count, JSON.stringify([small(), small(), symbol]));
+}
+for (const count of [16, 31, 32]) {
+    const fields = Array.from({length: count}, (_, i) => '"p' + i + '":' + i).join(',');
+    const rows = JSON.parse('[{' + fields + '},{' + fields + '}]');
+    console.log('compact wide', count, JSON.stringify(rows));
+    rows[0]['p' + (count - 1)] = undefined;
+    rows[1]['p' + (count - 1)] = NaN;
+    console.log('compact wide changes', count, JSON.stringify(rows));
+    const mixedFields = fields.slice(0, fields.lastIndexOf(':') + 1) + '"tail"';
+    const mixed = JSON.parse('[{' + mixedFields + '},{' + mixedFields + '}]');
+    console.log('compact wide mixed', count, JSON.stringify(mixed));
+    mixed[0]['p' + (count - 1)] = null;
+    mixed[1]['p' + (count - 1)] = false;
+    console.log('compact wide references', count, JSON.stringify(mixed));
+}

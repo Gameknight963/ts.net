@@ -12,6 +12,7 @@ public static partial class Js
         internal readonly string[] Names = names;
         internal readonly TsObject Prototype = prototype;
         internal readonly uint References = references;
+        internal readonly bool JsonTextKeys = Array.TrueForAll(names, static name => !JsArray.Index(name, out _));
         internal readonly ObjectPropertyState FieldState = new SharedClassPropertyState(null,
             names.Length == 32 ? ulong.MaxValue : (1ul << (names.Length * 2)) - 1);
         internal readonly ulong PresenceMask = (names.Length == 32 ? ulong.MaxValue : (1ul << (names.Length * 2)) - 1) / 3;
@@ -59,6 +60,17 @@ public static partial class Js
             // values still have an own property, represented by the low state bit.
             ulong state = ClassFieldStates;
             return state != 2 && (state & Shape.PresenceMask) == Shape.PresenceMask && Shape.MatchesFields(names);
+        }
+        internal string[] JsonNames => Shape.Names;
+        internal bool JsonReferenceField(int index) => IsReferenceField(index);
+        internal object JsonReferenceValue(int index) => ReadReferenceField(index);
+        internal double JsonNumberValue(int index) => values[index];
+        internal bool CanWriteJsonScalars()
+        {
+            if (HasPropertyOverrides || ClassFieldStates != Shape.PresenceMask * 3 || !Shape.JsonTextKeys) return false;
+            for (int i = 0; i < values.Length; i++)
+                if (IsReferenceField(i) && ReadReferenceField(i) is not (null or string or bool or double)) return false;
+            return true;
         }
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : Shape.Prototype;
         internal override bool HasInProperty(string key) => HasOwn(key) || PropertyPrototype != null && PropertyPrototype.HasInProperty(key);
