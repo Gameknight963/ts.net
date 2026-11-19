@@ -34,3 +34,15 @@ JSON.parse(source, (key: string, value: any, context?: any): any => {
     console.log('source', context.source, value);
     return value;
 });
+
+for (const text of ['[1,2,3]', '[1,2,null,3,"x",4,{"v":5},6,[7,8],9]',
+    '[[1,2],[3,4],[],[5]]', '[1 \t,\r\n2, 3 ]', '[' + tokens.join(',') + ']']) {
+    console.log('numeric runs', JSON.stringify(JSON.parse(text)));
+}
+for (const text of ['[1,]', '[1,,2]', '[1 2]', '[1,2x]', '[1,2', '[1,2,]',
+    '[1,\n]', '[[1,2],3,]', '[1,+2]', '[1,01]']) {
+    let invalid = false;
+    try { JSON.parse(text); }
+    catch (error) { invalid = (error as Error).name === 'SyntaxError'; }
+    if (!invalid) throw new Error('Invalid numeric array accepted: ' + text);
+}

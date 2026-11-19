@@ -272,8 +272,15 @@ public static partial class Js
                     if (frame.State == 1) { Expect(','); frame.State = 2; continue; }
                     if (array is TaggedArray packed && position < text.Length &&
                         (text[position] == '-' || char.IsAsciiDigit(text[position]))) {
-                        packed.AppendUnexposedNumber(ReadNumber());
-                        frame.State = 1;
+                        // Consume adjacent numeric elements together instead of
+                        // dispatching the frame again for each comma and value.
+                        do {
+                            packed.AppendUnexposedNumber(ReadNumber());
+                            Space(); frame.State = 1;
+                            if (!Consume(',')) break;
+                            Space(); frame.State = 2;
+                        } while (position < text.Length &&
+                            (text[position] == '-' || char.IsAsciiDigit(text[position])));
                         continue;
                     }
                     string key = remember ? array.Length().ToString(CultureInfo.InvariantCulture) : null;
