@@ -53,6 +53,8 @@ public abstract class JsNumericClassInstance : JsClassInstance
         ulong current = states;
         return current != 2 && (current & mask) == mask;
     }
+    protected bool HasDefinedClassFields(int lowMask, int highMask) =>
+        HasDefinedClassFields((uint)lowMask | (ulong)(uint)highMask << 32);
 
     protected int NumericFieldState(int index)
     {

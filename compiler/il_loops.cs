@@ -51,12 +51,12 @@ internal static partial class CompilerFunctions
         }
         return binding.symbol;
     }
-    internal static void il_loop_code(int entry, int result, int counter, int bound, Compiler c, IlBackend b)
+    internal static void il_loop_code(int entry, int result, int counter, int bound, Compiler c, IlBackend b, bool initialize = true)
     {
         Node n = get_node(entry, c);
         int start = b.label(); int next = b.label(); int done = b.label();
         b.breaks.at_mut(entry) = done; b.continues.at_mut(entry) = n.kind == NodeKind.While ? start : next;
-        if (n.kind == NodeKind.For && n.left != 0) { il_statement(n.left, result, c, b); }
+        if (initialize && n.kind == NodeKind.For && n.left != 0) { il_statement(n.left, result, c, b); }
         if (n.kind == NodeKind.For) { il_context_clone(entry, c, b); }
         int stop = -1;
         if (counter != 0) { stop = b.local(-6); b.emit(0xfe0c, bound); b.call(RuntimeMember.LoopLimit); b.emit(0xfe0e, stop); }
@@ -69,6 +69,7 @@ internal static partial class CompilerFunctions
             int condition = n.kind == NodeKind.While ? n.left : n.right;
             if (condition != 0) { il_condition(condition, c, b); b.emit(0x39, done); }
         }
+        il_record_array_iteration(entry, b);
         il_statement(n.kind == NodeKind.For ? n.fourth : n.right, result, c, b); b.mark(next);
         if (n.kind == NodeKind.Do) { il_condition(n.left, c, b); b.emit(0x39, done); }
         if (n.kind == NodeKind.For) { il_context_clone(entry, c, b); }
