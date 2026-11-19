@@ -198,6 +198,8 @@ public static partial class Js
             bool unboxed = false;
             double? numberAccumulator = null;
             object accumulator = FunctionArgument(arguments, 1);
+            if (valueNumberResult && initialized && accumulator is double initial)
+                return ReduceValues(source, length, callback, initial, backwards);
             long step = backwards ? -1 : 1;
             for (long i = backwards ? length - 1 : 0; i >= 0 && i < length; i += step)
             {
@@ -244,6 +246,21 @@ public static partial class Js
             }
             if (!initialized) throw new InvalidOperationException("Reduce of empty array with no initial value");
             return unboxed ? BoxNumber(numberAccumulator) : accumulator;
+        }
+        static object ReduceValues(TsObject source, long length, JsFunction callback, double initial, bool backwards)
+        {
+            double? accumulator = initial;
+            long step = backwards ? -1 : 1;
+            for (long i = backwards ? length - 1 : 0; i >= 0 && i < length; i += step)
+            {
+                object value = null;
+                // Callbacks can mutate storage or install accessors. Recheck the
+                // current element, preserving holes and inherited properties.
+                if (!(i <= int.MaxValue && JsArray.TryReadOwnDenseValue(source, (int)i, out value)) &&
+                    !TryIndexedValue(source, i, out value)) continue;
+                accumulator = callback.InvokeArrayReduceValueNumber(accumulator, value);
+            }
+            return BoxNumber(accumulator);
         }
         public override object InvokeWithReceiver(object receiver, object[] arguments) => Execute(receiver, arguments);
         public override double? InvokeMethodNumber0(object receiver) => Cast<double?>(Execute(receiver, Array.Empty<object>()), "Reduce result violates number type");

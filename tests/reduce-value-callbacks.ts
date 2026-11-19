@@ -30,3 +30,24 @@ let initialDefaults = 0, valueDefaults = 0;
 console.log('both defaults', [undefined, 'a', undefined].reduce<number>((sum = (++initialDefaults, 5), value: any = (++valueDefaults, 'xx')): number => sum + value.length, undefined as any), initialDefaults, valueDefaults);
 console.log('default accumulator', ['a', 'bc'].reduce<number>((sum = 5, value: string): number => sum + value.length, undefined as any));
 console.log('optional reducer', [undefined, 'abc'].reduce<number>((sum: number, value?: string): number => sum + (value?.length ?? 7), 0));
+
+function optionalResult(sum: number, value: any): number {
+    if (value === 'skip') return undefined as any;
+    return (sum ?? 0) + Number(value);
+}
+console.log('optional result', [1, 'skip', 3].reduce(optionalResult, 0), [1, 'skip', 3].reduceRight(optionalResult, 0));
+console.log('final missing', [1, 'skip'].reduce(optionalResult, 0) === undefined);
+console.log('empty signed zero', Object.is(([] as any[]).reduce(reducer, -0), -0));
+for (const backwards of [false, true]) {
+    const changing: any[] = [1, 'two', 3];
+    const visits: string[] = [];
+    const combine = (sum: number, value: any): number => {
+        visits.push(String(value));
+        if (visits.length === 1) {
+            Object.defineProperty(changing, '1', {get(){return 'later';}, configurable: true});
+            changing.push(100);
+        }
+        return sum + (typeof value === 'number' ? value : value.length);
+    };
+    console.log('direction mutation', backwards, backwards ? changing.reduceRight(combine, 0) : changing.reduce(combine, 0), visits.join(','));
+}
