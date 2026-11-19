@@ -3,6 +3,10 @@ using System.Collections.Generic;
 
 public static partial class Js
 {
+    // These vectors are private, immutable compiler constants, never JS arrays.
+    public static bool JsonRecordHasFields(object value, object[] names) =>
+        value is JsonNumericRecord record && record.MatchesFields(names);
+
     sealed class JsonRecordShape(string[] names, TsObject prototype, uint references = 0)
     {
         internal readonly string[] Names = names;
@@ -10,7 +14,26 @@ public static partial class Js
         internal readonly uint References = references;
         internal readonly ObjectPropertyState FieldState = new SharedClassPropertyState(null,
             names.Length == 32 ? ulong.MaxValue : (1ul << (names.Length * 2)) - 1);
+        internal readonly ulong PresenceMask = (names.Length == 32 ? ulong.MaxValue : (1ul << (names.Length * 2)) - 1) / 3;
+        sealed class FieldCheck(object[] names, bool matches)
+        {
+            internal readonly object[] Names = names;
+            internal readonly bool Matches = matches;
+        }
+        FieldCheck checkedFields;
         readonly Dictionary<string, int> indices = CreateIndices(names);
+        internal bool MatchesFields(object[] required)
+        {
+            var cached = checkedFields;
+            if (cached != null && ReferenceEquals(cached.Names, required)) return cached.Matches;
+            bool matches = true;
+            foreach (object name in required)
+                if (name is not string key || !indices.ContainsKey(key)) { matches = false; break; }
+            // One immutable entry per shared layout. Other field sets are
+            // checked without growing a cache or retaining record values.
+            if (cached == null) checkedFields = new(required, matches);
+            return matches;
+        }
         static Dictionary<string, int> CreateIndices(string[] names)
         {
             var result = new Dictionary<string, int>(names.Length, StringComparer.Ordinal);
@@ -29,6 +52,13 @@ public static partial class Js
             Shape = shape;
             this.values = values;
             InitializeFreshClassState(shape.FieldState);
+        }
+        internal bool MatchesFields(object[] names)
+        {
+            // Deletion and descriptor changes materialize the record. Undefined
+            // values still have an own property, represented by the low state bit.
+            ulong state = ClassFieldStates;
+            return state != 2 && (state & Shape.PresenceMask) == Shape.PresenceMask && Shape.MatchesFields(names);
         }
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : Shape.Prototype;
         internal override bool HasInProperty(string key) => HasOwn(key) || PropertyPrototype != null && PropertyPrototype.HasInProperty(key);

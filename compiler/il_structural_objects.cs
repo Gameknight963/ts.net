@@ -13,6 +13,27 @@ internal static partial class CompilerFunctions
 {
     internal static void il_structural_objects(Compiler c, IlBackend b)
     {
+        // Typed JSON conversions select candidates. The runtime guard still
+        // verifies each record; this is not a proof based on TypeScript types.
+        var jsonTypes = new HashSet<int>();
+        for (int entry = 1; entry <= c.node_store.count(); entry++) {
+            Node node = get_node(entry, c);
+            if (node.kind is not (NodeKind.Assert or NodeKind.Variable or NodeKind.Binding) || node.left == 0) continue;
+            Node value = get_node(node.left, c);
+            while (value.kind == NodeKind.Assert) value = get_node(value.left, c);
+            if (value.kind != NodeKind.Call || value.left == 0) continue;
+            Node method = get_node(value.left, c);
+            if (method.kind != NodeKind.Property || !is_text(method.name, "parse", c) || method.left == 0) continue;
+            Node owner = get_node(method.left, c);
+            if (owner.kind == NodeKind.BuiltinNamespace && is_text(get_token(owner.token, c).text, "JSON", c)) MarkJsonType(node.type);
+        }
+        void MarkJsonType(int type) {
+            if (type == 0 || !jsonTypes.Add(type)) return;
+            Type value = get_type(type, c);
+            if (value.kind is TypeKind.Array or TypeKind.Shape) MarkJsonType(value.element);
+            if (value.kind == TypeKind.Shape)
+                for (int member = value.fields; member != 0; member = get_field(member, c).next) MarkJsonType(get_field(member, c).type);
+        }
         var checks = new List<(int Type, int Method, int Nominal)>();
         for (int type = c.types; type != 0; type = get_type(type, c).next)
         {
@@ -25,10 +46,29 @@ internal static partial class CompilerFunctions
         }
         foreach (var check in checks)
         {
+            int requiredFields = 0;
+            if (get_type(check.Type, c).name == 0 && jsonTypes.Contains(check.Type)) {
+                var names = new List<int>();
+                for (int member = get_type(check.Type, c).fields; member != 0; member = get_field(member, c).next)
+                    if (!get_field(member, c).optional) names.Add(get_field(member, c).name);
+                if (names.Count >= 2) {
+                    int owner = b.interface_type(check.Type);
+                    requiredFields = b.plan.field(owner, 0x31, -7, "requiredFields");
+                    b.begin(b.plan.method0(5, owner, 0x1891, -1, ".cctor"));
+                    b.emit(0x20, names.Count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType));
+                    for (int i = 0; i < names.Count; i++) {
+                        b.op(0x25); b.emit(0x20, i); il_text(names[i], c, b); b.op(0xa2);
+                    }
+                    b.emit(0x80, requiredFields); b.op(0x2a);
+                }
+            }
             b.begin(check.Method);
             int good = b.label(), bad = b.label();
             int fastType = get_type(check.Type, c).name != 0 ? b.RuntimeToken(RuntimeMember.TsObjectType) : b.interface_type(check.Type);
             b.emit(0xfe09, 0); b.emit(0x75, fastType); b.emit(0x3a, good);
+            if (requiredFields != 0) {
+                b.emit(0xfe09, 0); b.emit(0x7e, requiredFields); b.call(RuntimeMember.JsonRecordHasFields); b.emit(0x3a, good);
+            }
             b.emit(0xfe09, 0); b.emit(0x28, b.plan.specialize(b.RuntimeToken(RuntimeMember.ProxyMatchesType), fastType)); b.emit(0x3a, good);
             for (int member = get_type(check.Type, c).fields; member != 0; member = get_field(member, c).next)
             {
