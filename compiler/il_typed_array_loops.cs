@@ -1,10 +1,34 @@
 namespace Tsnet.Compiler;
 using static Tsnet.Compiler.CompilerFunctions;
 
-internal sealed partial class IlBackend { internal readonly Dictionary<int, (int Load, RuntimeMember Reader)> buffer_readers = []; }
+internal sealed partial class IlBackend
+{
+    internal readonly Dictionary<int, (int Load, RuntimeMember Reader)> buffer_readers = [];
+    internal HashSet<int> literal_array_bindings;
+}
 
 internal static partial class CompilerFunctions
 {
+    static bool il_literal_array_binding(int symbol, Compiler c, IlBackend b)
+    {
+        if (b.literal_array_bindings == null) {
+            var parameters = new HashSet<int>();
+            for (int i = 1; i <= c.node_store.count(); i++) {
+                Node function = get_node(i, c);
+                if (function.kind != NodeKind.Function) continue;
+                for (int parameter = function.children; parameter != 0; parameter = get_node(parameter, c).next)
+                    parameters.Add(get_node(parameter, c).symbol);
+            }
+            b.literal_array_bindings = [];
+            for (int i = 1; i <= c.node_store.count(); i++) {
+                Node binding = get_node(i, c);
+                if (binding.kind == NodeKind.Variable && binding.symbol != 0 && binding.left != 0 &&
+                    get_node(binding.left, c).kind == NodeKind.Array && b.written_symbols.at(binding.symbol) == 0 &&
+                    !parameters.Contains(binding.symbol)) b.literal_array_bindings.Add(binding.symbol);
+            }
+        }
+        return b.literal_array_bindings.Contains(symbol);
+    }
     internal static bool il_typed_buffer_read(int entry, Compiler c, IlBackend b)
     {
         Node n = get_node(entry, c);
@@ -109,15 +133,19 @@ internal static partial class CompilerFunctions
         }
         b.mark(ordinary);
 
-        EmitBuffer("Float64", 8, 0, RuntimeMember.ReadFloat64Buffer);
-        EmitBuffer("Uint8", 1, 0x91, default);
-        EmitBuffer("Int8", 1, 0x90, default);
-        EmitBuffer("Float32", 4, 0, RuntimeMember.ReadFloat32Buffer);
-        EmitBuffer("Uint32", 4, 0, RuntimeMember.ReadUint32Buffer);
-        EmitBuffer("Int32", 4, 0, RuntimeMember.ReadInt32Buffer);
-        EmitBuffer("Uint16", 2, 0, RuntimeMember.ReadUint16Buffer);
-        EmitBuffer("Int16", 2, 0, RuntimeMember.ReadInt16Buffer);
-        EmitBuffer("Float16", 2, 0, RuntimeMember.ReadFloat16Buffer);
+        // A stable literal keeps its CLR array identity even when its contents
+        // or prototype change. Its packed and ordinary array paths are sufficient.
+        if (!il_literal_array_binding(array, c, b)) {
+            EmitBuffer("Float64", 8, 0, RuntimeMember.ReadFloat64Buffer);
+            EmitBuffer("Uint8", 1, 0x91, default);
+            EmitBuffer("Int8", 1, 0x90, default);
+            EmitBuffer("Float32", 4, 0, RuntimeMember.ReadFloat32Buffer);
+            EmitBuffer("Uint32", 4, 0, RuntimeMember.ReadUint32Buffer);
+            EmitBuffer("Int32", 4, 0, RuntimeMember.ReadInt32Buffer);
+            EmitBuffer("Uint16", 2, 0, RuntimeMember.ReadUint16Buffer);
+            EmitBuffer("Int16", 2, 0, RuntimeMember.ReadInt16Buffer);
+            EmitBuffer("Float16", 2, 0, RuntimeMember.ReadFloat16Buffer);
+        }
         b.mark(slowPath);
         il_loop_body(entry, result, 0, -1, c, b);
         b.mark(packedDone);
