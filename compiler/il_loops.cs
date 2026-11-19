@@ -189,6 +189,7 @@ internal static partial class CompilerFunctions
     }
     internal static void il_loop_inner(int entry, int result, Compiler c, IlBackend b)
     {
+        if (il_string_code_loop(entry, result, c, b)) return;
         if (il_record_array_loop(entry, result, c, b)) return;
         if (il_typed_length_loop(entry, result, c, b)) return;
         int counter = il_counted_loop(entry, c, b);

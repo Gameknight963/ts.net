@@ -22,6 +22,12 @@ public static partial class Js
         internal static readonly CharacterFunction CharCodeAt = new(CharacterKind.CharCodeAt, "charCodeAt");
         internal static readonly CharacterFunction CodePointAt = new(CharacterKind.CodePointAt, "codePointAt");
     }
+    public static string TryStringCodeUnitLoop(object receiver) =>
+        receiver is string text && PrimitivePrototype(text) is JsBoxedPrimitive prototype &&
+        ReferenceEquals(prototype.OwnDataValue("charCodeAt"), CharacterFunctions.CharCodeAt) ? text : null;
+    // The compiler proves this index is within the guarded string's length.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double ReadStringCodeUnit(string text, int index) => text[index];
     static object CharacterTarget(string name) => name switch {
         "charAt" => CharacterFunctions.CharAt,
         "charCodeAt" => CharacterFunctions.CharCodeAt,
