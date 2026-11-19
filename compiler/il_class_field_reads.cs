@@ -45,6 +45,7 @@ internal static partial class CompilerFunctions
             b.emit(0x20, 3); b.op(0xfe01); b.emit(0x39, fallback);
             b.emit(0xfe0c, instance); b.emit(0x7b, b.class_field_tokens[type][index]);
             if (numeric) b.call(RuntimeMember.WrapNumber);
+            else if (get_type(field.type, c).kind == TypeKind.Boolean) {b.call(RuntimeMember.WrapBoolean); b.call(RuntimeMember.BoxBoolean);}
             b.op(0x2a);
             b.mark(fallback); b.emit(0xfe09, 0); il_text(field.name, c, b);
             b.call(numeric ? RuntimeMember.GetNumber : RuntimeMember.DynamicGet); b.op(0x2a);

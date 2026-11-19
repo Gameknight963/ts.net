@@ -83,6 +83,7 @@ internal static partial class CompilerFunctions
                 b.emit(0xfe0e, value);
                 b.emit(0xfe0c, instance); b.emit(0xfe0c, value);
                 if (get_type(field.type, c).kind == TypeKind.Number) b.call(RuntimeMember.NumberValue);
+                else if (get_type(field.type, c).kind == TypeKind.Boolean) b.call(RuntimeMember.BooleanValue);
                 else b.box(field.type, c);
                 b.emit(0x7d, b.class_field_tokens[type][i]);
                 if (assignment.Value == 0) {

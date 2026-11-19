@@ -65,12 +65,13 @@ internal static partial class CompilerFunctions
     }
     static void il_numeric_class_fields(int type,int klass,Compiler c,IlBackend b)
     {
-        var fields=new List<(int Name,int Token,bool Numeric)>();
+        var fields=new List<(int Name,int Token,bool Numeric,bool Boolean)>();
         foreach(int member in b.numeric_class_members[type])
         {
-            bool numeric=get_type(get_field(member,c).type,c).kind==TypeKind.Number;
+            TypeKind kind=get_type(get_field(member,c).type,c).kind;
+            bool numeric=kind==TypeKind.Number, boolean=kind==TypeKind.Boolean;
             // Guarded loops in this assembly can load these slots directly.
-            fields.Add((get_field(member,c).name,b.plan.field(klass,3,numeric ? -3 : -5,"field_"+fields.Count),numeric));
+            fields.Add((get_field(member,c).name,b.plan.field(klass,3,numeric ? -3 : boolean ? -2 : -5,"field_"+fields.Count),numeric,boolean));
         }
         b.class_field_tokens[type] = fields.Select(field => field.Token).ToList();
         b.begin(b.plan.method1(5,klass,0xc4,-6,-4,"NumericFieldIndex"));
@@ -107,22 +108,39 @@ internal static partial class CompilerFunctions
             b.begin(b.plan.method1(5,klass,0xc4,-5,-6,"ReadReferenceField"));
             for(int i=0;i<fields.Count;i++) if(!fields[i].Numeric) {
                 int next=b.label();b.emit(0xfe09,1);b.emit(0x20,i);b.op(0xfe01);b.emit(0x39,next);
-                b.emit(0xfe09,0);b.emit(0x7b,fields[i].Token);b.op(0x2a);b.mark(next);
+                b.emit(0xfe09,0);b.emit(0x7b,fields[i].Token);
+                if(fields[i].Boolean) {b.call(RuntimeMember.WrapBoolean);b.call(RuntimeMember.BoxBoolean);}
+                b.op(0x2a);b.mark(next);
             }
             b.op(0x14);b.op(0x2a);
-            b.begin(b.plan.method2(5,klass,0xc4,-1,-6,-5,"WriteReferenceField"));
+            b.begin(b.plan.method2(5,klass,0xc4,-2,-6,-5,"TryWriteReferenceField"));
             for(int i=0;i<fields.Count;i++) if(!fields[i].Numeric) {
                 int next=b.label();b.emit(0xfe09,1);b.emit(0x20,i);b.op(0xfe01);b.emit(0x39,next);
-                b.emit(0xfe09,0);b.emit(0xfe09,2);b.emit(0x7d,fields[i].Token);b.op(0x2a);b.mark(next);
+                if(fields[i].Boolean) {
+                    // Undefined uses the existing field-state bits; incompatible
+                    // values must move to the ordinary property store.
+                    int defined=b.label(), rejected=b.label();
+                    b.emit(0xfe09,2);b.call(RuntimeMember.IsUndefined);b.emit(0x39,defined);
+                    b.emit(0xfe09,0);b.emit(0x20,0);b.emit(0x7d,fields[i].Token);b.emit(0x20,1);b.op(0x2a);
+                    b.mark(defined);b.emit(0xfe09,2);b.emit(0x75,b.RuntimeToken(RuntimeMember.BooleanType));b.emit(0x39,rejected);
+                    b.emit(0xfe09,0);b.emit(0xfe09,2);b.emit(0xa5,b.RuntimeToken(RuntimeMember.BooleanType));b.emit(0x7d,fields[i].Token);
+                    b.emit(0x20,1);b.op(0x2a);b.mark(rejected);b.emit(0x20,0);b.op(0x2a);
+                }
+                else {
+                    int store=b.label();b.emit(0xfe09,0);b.emit(0xfe09,2);b.op(0x25);
+                    b.call(RuntimeMember.IsUndefined);b.emit(0x39,store);b.op(0x26);b.op(0x14);
+                    b.mark(store);b.emit(0x7d,fields[i].Token);b.emit(0x20,1);b.op(0x2a);
+                }
+                b.mark(next);
             }
-            b.op(0x2a);
+            b.emit(0x20,0);b.op(0x2a);
         }
         b.begin(b.plan.method0(5,klass,0xc4,-1,"CopyNumericFields"));
         for(int i=0;i<fields.Count;i++)
         {b.emit(0xfe09,0);b.emit(0x20,i);il_text(fields[i].Name,c,b);b.call(RuntimeMember.NumericClassCopy);}
         // Once copied, references belong to the property store. Do not keep
         // deleted or replaced values alive through stale CLR fields.
-        foreach(var field in fields) if(!field.Numeric) {b.emit(0xfe09,0);b.op(0x14);b.emit(0x7d,field.Token);}
+        foreach(var field in fields) if(!field.Numeric) {b.emit(0xfe09,0);if(field.Boolean)b.emit(0x20,0);else b.op(0x14);b.emit(0x7d,field.Token);}
         b.op(0x2a);
     }
 }

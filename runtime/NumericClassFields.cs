@@ -22,9 +22,15 @@ public abstract class JsNumericClassInstance : JsClassInstance
     protected abstract double ReadNumericField(int index);
     protected abstract void WriteNumericField(int index, double value);
     protected abstract void CopyNumericFields();
+    // Object accessors also serve non-numeric fields backed by CLR value types.
     protected virtual bool IsReferenceField(int index) => false;
     protected virtual object ReadReferenceField(int index) => throw new InvalidOperationException("Reference field reader is missing");
     protected virtual void WriteReferenceField(int index, object value) => throw new InvalidOperationException("Reference field writer is missing");
+    protected virtual bool TryWriteReferenceField(int index, object value)
+    {
+        WriteReferenceField(index, ReferenceEquals(value, Js.Undefined) ? null : value);
+        return true;
+    }
     object ReadFieldValue(int index) => IsReferenceField(index) ? ReadReferenceField(index) : ReadNumericField(index);
     bool StoreReference(int index, object value, bool create)
     {
@@ -36,7 +42,7 @@ public abstract class JsNumericClassInstance : JsClassInstance
         ulong state = current >> shift & 3;
         if (state == 0 && (!create || current >> shift != 0)) return false;
         bool undefined = ReferenceEquals(value, Js.Undefined);
-        WriteReferenceField(index, undefined ? null : value);
+        if (!TryWriteReferenceField(index, value)) return false;
         ulong next = undefined ? 1ul : 3ul;
         if (state != next) states = states & ~(3ul << shift) | next << shift;
         return true;
@@ -92,7 +98,7 @@ public abstract class JsNumericClassInstance : JsClassInstance
         if (state == 0 && (!create || current >> shift != 0)) return false;
         if (IsReferenceField(index)) {
             if (value.HasValue) return false;
-            WriteReferenceField(index, null);
+            if (!TryWriteReferenceField(index, Js.Undefined)) return false;
         }
         else if (value.HasValue) WriteNumericField(index, value.Value);
         ulong next = value.HasValue ? 3ul : 1ul;
@@ -110,7 +116,7 @@ public abstract class JsNumericClassInstance : JsClassInstance
         int shift = index * 2;
         ulong state = current >> shift & 3;
         if (state == 0) return false;
-        WriteReferenceField(index, value);
+        if (!TryWriteReferenceField(index, value)) return false;
         if (state != 3) states |= 3ul << shift;
         return true;
     }

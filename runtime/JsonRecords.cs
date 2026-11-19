@@ -79,7 +79,11 @@ public static partial class Js
     {
         protected override bool IsReferenceField(int index) => (Shape.References & (1u << index)) != 0;
         protected override object ReadReferenceField(int index) => references[index];
-        protected override void WriteReferenceField(int index, object value) => references[index] = value;
+        protected override bool TryWriteReferenceField(int index, object value)
+        {
+            references[index] = ReferenceEquals(value, Undefined) ? null : value;
+            return true;
+        }
         protected override void CopyNumericFields()
         {
             base.CopyNumericFields();

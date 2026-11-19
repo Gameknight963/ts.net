@@ -40,6 +40,11 @@ class Program {
  static void Main(string[] args) {
   _=typeof(Js).Assembly;
   var assembly=Assembly.LoadFile(Path.GetFullPath(args[0]));
+  if(!assembly.GetTypes().Where(type=>type.BaseType==typeof(JsNumericClassInstance))
+      .SelectMany(type=>type.GetFields(BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.DeclaredOnly))
+      .Any(field=>field.FieldType==typeof(bool)))
+   throw new Exception("Class boolean fields are not stored as CLR booleans");
+  Console.WriteLine("PASS class boolean fields use CLR boolean storage");
   var original=Console.Out;
   try {Console.SetOut(TextWriter.Null);assembly.EntryPoint!.Invoke(null,null);}
   finally {Console.SetOut(original);}

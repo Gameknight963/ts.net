@@ -135,6 +135,7 @@ internal static partial class CompilerFunctions
                     int fieldType = get_field(members[i], c).type;
                     b.emit(0xfe0c, instance); il_as(literals[i], fieldType, c, b);
                     if (get_type(fieldType, c).kind == TypeKind.Number) b.call(RuntimeMember.NumberValue);
+                    else if (get_type(fieldType, c).kind == TypeKind.Boolean) b.call(RuntimeMember.BooleanValue);
                     else b.box(fieldType, c);
                     b.emit(0x7d, b.class_field_tokens[type][i]);
                     states |= (get_node(literals[i], c).kind == NodeKind.Undefined ? 1ul : 3ul) << (i * 2);

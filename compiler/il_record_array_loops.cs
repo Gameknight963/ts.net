@@ -18,7 +18,9 @@ internal static partial class CompilerFunctions
             ? b.class_field_tokens[read.Owner][b.numeric_class_members[read.Owner].IndexOf(read.Member)]
             : b.field_token(read.Member);
         b.emit(0x7b, token);
-        if (get_type(get_node(entry, c).type, c).kind != TypeKind.Number)
+        if (get_type(get_node(entry, c).type, c).kind == TypeKind.Boolean && il_numeric_class_eligible(read.Owner, c, b))
+            b.call(RuntimeMember.WrapBoolean);
+        else if (get_type(get_node(entry, c).type, c).kind != TypeKind.Number)
             b.from_object(get_node(entry, c).type, c);
         return true;
     }

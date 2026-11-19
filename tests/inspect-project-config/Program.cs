@@ -203,6 +203,21 @@ static void Run()
         }
         const replaced = new Replaced();
         console.log('replacement', replaced === replacement, JSON.stringify(replaced));
+        class PlainBooleans {
+          active = true;
+          optional!: boolean;
+          constructor(public parameter: boolean = false) {}
+        }
+        Object.defineProperty(PlainBooleans.prototype, 'active', {
+          get() {events.push('boolean getter'); return false;},
+          set(value: boolean) {events.push('boolean setter:' + value);}, configurable: true
+        });
+        events.length = 0;
+        const booleans = new PlainBooleans();
+        console.log('booleans', events.join(','), booleans.active, booleans.optional, booleans.parameter);
+        console.log('boolean keys', Object.keys(booleans).join(','));
+        booleans.optional = false; booleans.parameter = true;
+        console.log('boolean writes', booleans.optional, booleans.parameter, JSON.stringify(booleans));
         """;
     foreach (bool define in new[] {false, true}) {
         string directory = define ? "define fields" : "assign fields";
