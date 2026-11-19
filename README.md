@@ -174,6 +174,7 @@ Runtime performance:
 | `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | — | 0.46x |
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | — | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | — | 0.46x |
+| Parse ten JSON arrays of 10K integers from -5000 to 4999 | 1.86 ms | 0.857 ms | 4.34 ms (`JsonSerializer`) | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | — | 0.45x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 2.28 ms | 0.985 ms | — | 0.43x |
 | Create 10K resolved promises, collect with all, and sum results | 1.20 ms | 0.514 ms | 0.196 ms (Task.WhenAll) | 0.43x |
@@ -196,7 +197,6 @@ Runtime performance:
 | Map 10K number/string values to numbers and sum, 20 passes | 1.69 ms | 0.540 ms | — | 0.32x |
 | Call a numeric void class method through a helper, 100K calls | 0.722 ms | 0.228 ms | 0.0702 ms (class) | 0.32x |
 | Count string values in a mixed array, 500K type checks | 1.38 ms | 0.429 ms | — | 0.31x |
-| Parse ten JSON arrays of 10K integers from -5000 to 4999 | 2.90 ms | 0.885 ms | 4.19 ms (`JsonSerializer`) | 0.31x |
 | Object spread, 100K copies stored in an array | 5.51 ms | 1.66 ms | — | 0.30x |
 | Add an `any` value to a number, 200K additions | 0.185 ms | 0.0548 ms | — | 0.30x |
 | Serialize 10K numbers divided by 7, 20 times | 21.81 ms | 6.30 ms | — | 0.29x |
