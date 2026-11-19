@@ -42,3 +42,17 @@ for(let i=0;i<8;i++) {
     mixed.text=i%3===0 ? undefined as unknown as string : i%3===1 ? null as unknown as string : "changed";
     console.log(mixed.number,mixed.flag,mixed.text,Object.hasOwn(mixed,"number"),untouched.number,untouched.flag,untouched.text);
 }
+for(const source of ['{"number":1,"flag":true,"text":"initial"}','{"number":1,"other":2}']) {
+    const parsed=JSON.parse("["+source+","+source+"]");
+    parsed[0].number=undefined;
+    parsed[1].number=9;
+    console.log(parsed[0].number,parsed[1].number,Object.hasOwn(parsed[0],"number"),JSON.stringify(parsed));
+    delete parsed[0].number;
+    Object.defineProperty(parsed[1],"number",{get(){return 12;},configurable:true,enumerable:true});
+    console.log(Object.hasOwn(parsed[0],"number"),parsed[1].number,JSON.stringify(parsed));
+}
+const wideSource="{"+Array.from({length:32},(_,i)=>'"field'+i+'":'+i).join(",")+"}";
+const wide=JSON.parse("["+wideSource+","+wideSource+"]");
+wide[0].field31=undefined;
+wide[1].field31=50;
+console.log(wide[0].field31,wide[1].field31,wide[0].field30,wide[1].field30,Object.keys(wide[0]).length);

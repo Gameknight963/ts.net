@@ -25,14 +25,15 @@ public abstract partial class TsObject
         get => propertyState is SharedClassPropertyState shared ? shared.States : propertyState?.Metadata?.ClassFieldStates ?? 0;
         set {
             if (ClassFieldStates == value) return;
-            if (propertyState is SharedClassPropertyState shared)
-                propertyState = shared.Metadata.ClassOwner.NumericInstanceState(value);
+            if (propertyState is SharedClassPropertyState shared && shared.Metadata.ClassOwner is JsClassFunction owner)
+                propertyState = owner.NumericInstanceState(value);
             else EnsureMetadata().ClassFieldStates = value;
         }
     }
     // Called only for fresh instances, before any source code can observe them.
     protected void InitializeFreshClassState(JsClassFunction owner, ulong states) =>
-        propertyState = owner.NumericInstanceState(states);
+        propertyState = owner != null ? owner.NumericInstanceState(states) : new SharedClassPropertyState(null, states);
+    internal void InitializeFreshClassState(ObjectPropertyState header) => propertyState = header;
 
     internal JsClassFunction ClassOwner
     {

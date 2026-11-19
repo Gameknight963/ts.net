@@ -8,6 +8,8 @@ public static partial class Js
         internal readonly string[] Names = names;
         internal readonly TsObject Prototype = prototype;
         internal readonly uint References = references;
+        internal readonly ObjectPropertyState FieldState = new SharedClassPropertyState(null,
+            names.Length == 32 ? ulong.MaxValue : (1ul << (names.Length * 2)) - 1);
         readonly Dictionary<string, int> indices = CreateIndices(names);
         static Dictionary<string, int> CreateIndices(string[] names)
         {
@@ -26,8 +28,7 @@ public static partial class Js
         {
             Shape = shape;
             this.values = values;
-            ulong mask = values.Length == 32 ? ulong.MaxValue : (1ul << (values.Length * 2)) - 1;
-            InitializeDirectClassWide(null, (int)mask, (int)(mask >> 32));
+            InitializeFreshClassState(shape.FieldState);
         }
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : Shape.Prototype;
         internal override bool HasInProperty(string key) => HasOwn(key) || PropertyPrototype != null && PropertyPrototype.HasInProperty(key);
