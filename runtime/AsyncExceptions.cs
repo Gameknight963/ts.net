@@ -16,7 +16,7 @@ public static partial class Js
 
     // One execution owns its protected regions across intrinsic await reactions.
     // It is allocated only when an async function actually enters an async try.
-    sealed class AsyncExecution(JsPromise promise, PromiseResolvingFunctions pair)
+    sealed class AsyncExecution(PromiseResolvingFunctions pair)
     {
         readonly Stack<AsyncTryFrame> frames = new();
         static object Invoke(JsFunction function) => function.InvokeWithReceiver(Undefined, Array.Empty<object>());
@@ -35,7 +35,7 @@ public static partial class Js
                     }
                     if (result is AsyncAwaitRecord awaiting)
                     {
-                        awaiting.Attach(promise, pair, this);
+                        awaiting.Attach(pair, this);
                         return;
                     }
                     if (result is AsyncResumeRecord resume)

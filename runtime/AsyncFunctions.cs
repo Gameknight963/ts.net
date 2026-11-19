@@ -9,10 +9,10 @@ public static partial class Js
         object result;
         try { result = function.InvokeWithReceiver(receiver, arguments); }
         catch (Exception error) { pair.RejectError(error); return promise; }
-        CompleteAsyncResult(result, promise, pair);
+        CompleteAsyncResult(result, pair);
         return promise;
     }
-    static void CompleteAsyncResult(object result, JsPromise promise, PromiseResolvingFunctions pair)
+    static void CompleteAsyncResult(object result, PromiseResolvingFunctions pair)
     {
         // Internal synchronous transfers unwind generated functions without
         // adding Promise jobs or growing the stack across case fallthrough.
@@ -22,8 +22,8 @@ public static partial class Js
                 result = resume.Continuation.InvokeWithReceiver(Undefined, Array.Empty<object>());
         }
         catch (Exception error) { pair.RejectError(error); return; }
-        if (result is AsyncTryRecord) new AsyncExecution(promise, pair).Run(result);
-        else if (result is AsyncAwaitRecord awaiting) awaiting.Attach(promise, pair);
+        if (result is AsyncTryRecord) new AsyncExecution(pair).Run(result);
+        else if (result is AsyncAwaitRecord awaiting) awaiting.Attach(pair);
         else pair.ResolveValue(result);
     }
     sealed class AsyncResumeRecord(JsFunction continuation, int region = 0)
@@ -33,47 +33,41 @@ public static partial class Js
     }
     public static object AsyncResume(object continuation) => new AsyncResumeRecord((JsFunction)continuation);
     public static object AsyncResumeRegion(object continuation, int region) => new AsyncResumeRecord((JsFunction)continuation, region);
-    sealed class AsyncAwaitRecord(object awaited, JsFunction continuation = null)
+    sealed class AsyncAwaitRecord(object awaited, JsFunction continuation = null) : PromiseReactionBase
     {
-        void Then(PromiseReactionBase reaction)
+        // Before attachment this holds the operand; afterwards it holds the
+        // destination. The same record becomes the queued await reaction.
+        object destination = awaited;
+        AsyncExecution execution;
+
+        void AttachDestination(object next)
         {
-            if (awaited is JsPromise promise) promise.Then(reaction);
-            else reaction.Enqueue(awaited, false);
+            var operand = destination;
+            destination = next;
+            if (operand is JsPromise promise) promise.Then(this);
+            else Enqueue(operand, false);
         }
-        internal void AttachGenerator(Action<object> run)
+        internal void AttachGenerator(Action<object> run) => AttachDestination(run);
+        internal void Attach(PromiseResolvingFunctions pair, AsyncExecution execution = null)
         {
-            Then(new PromiseContinuationReaction((value, rejected) =>
-            {
-                object result;
-                try { result = rejected ? new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)) : continuation == null ? value : continuation.InvokeContinuation(value); }
-                catch (Exception error) { result = new AsyncCompletion(CompletionKind.Throw, error); }
-                run(result);
-            }));
+            this.execution = execution;
+            // Intrinsic reactions preserve the asynchronous ordering even for
+            // fulfilled operands, without invoking public then or species.
+            AttachDestination(pair);
         }
-        internal void Attach(JsPromise target, PromiseResolvingFunctions pair, AsyncExecution execution = null)
+        internal override void Run(object value, bool rejected)
         {
-            // Await uses intrinsic reactions, bypassing public then and species.
-            // Even an already fulfilled value resumes through a queued job.
-            if (continuation == null && execution == null)
+            var next = destination;
+            destination = null;
+            if (next is Action<object> run)
             {
-                Then(new AwaitForwardReaction(pair)); return;
+                object completion;
+                try { completion = rejected ? new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)) : continuation == null ? value : continuation.InvokeContinuation(value); }
+                catch (Exception error) { completion = new AsyncCompletion(CompletionKind.Throw, error); }
+                run(completion);
+                return;
             }
-            Then(new AwaitContinuationReaction(continuation, target, pair, execution));
-        }
-    }
-    sealed class AwaitForwardReaction(PromiseResolvingFunctions pair) : PromiseReactionBase
-    {
-        internal override void Run(object value, bool rejected)
-        {
-            if (rejected) pair.RejectValue(value);
-            else pair.ResolveValue(value);
-        }
-    }
-    sealed class AwaitContinuationReaction(JsFunction continuation, JsPromise target,
-        PromiseResolvingFunctions pair, AsyncExecution execution) : PromiseReactionBase
-    {
-        internal override void Run(object value, bool rejected)
-        {
+            var pair = (PromiseResolvingFunctions)next;
             if (rejected)
             {
                 if (execution != null) execution.Run(new AsyncCompletion(CompletionKind.Throw, MakeThrown(value)));
@@ -89,7 +83,7 @@ public static partial class Js
                 return;
             }
             if (execution != null) execution.Run(result);
-            else CompleteAsyncResult(result, target, pair);
+            else CompleteAsyncResult(result, pair);
         }
     }
     // Primitive resolution cannot invoke user code. Queue its reaction directly,
