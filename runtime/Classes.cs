@@ -36,6 +36,20 @@ public class JsClassInstance : JsDescriptorObject
 public sealed partial class JsClassFunction : JsFunction
 {
     internal readonly ObjectPropertyState InstanceState;
+    SharedClassPropertyState lastNumericState;
+    Dictionary<ulong, SharedClassPropertyState> numericStates;
+    internal ObjectPropertyState NumericInstanceState(ulong states)
+    {
+        if (states == 0) return InstanceState;
+        if (lastNumericState?.States == states) return lastNumericState;
+        numericStates ??= new();
+        if (numericStates.TryGetValue(states, out var state)) return lastNumericState = state;
+        // Bound the cache; uncommon states can still have an ordinary private header.
+        state = new SharedClassPropertyState(this, states);
+        if (numericStates.Count < 64) numericStates.Add(states, state);
+        return lastNumericState = state;
+    }
+
     readonly FunctionBody factory;
     internal override string SourceText => Js.SourceOf(factory);
     readonly JsFunction fields;

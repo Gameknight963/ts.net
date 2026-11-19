@@ -7,18 +7,16 @@ public abstract class JsNumericClassInstance : JsClassInstance
     // have been proved to consist entirely of direct field definitions.
     protected void InitializeDirectClass(object owner, int initialStates)
     {
-        Owner = (JsClassFunction)owner;
-        states = (uint)initialStates;
+        InitializeFreshClassState((JsClassFunction)owner, (uint)initialStates);
     }
     protected void InitializeDirectClassWide(object owner, int lowStates, int highStates)
     {
-        Owner = (JsClassFunction)owner;
-        states = (uint)lowStates | (ulong)(uint)highStates << 32;
+        InitializeFreshClassState((JsClassFunction)owner, (uint)lowStates | (ulong)(uint)highStates << 32);
     }
     // Two bits per field: absent (0), own undefined (1), or own value (3).
     // State 2 is never a field value, so it can mark materialized storage
     // without adding a flag to every instance.
-    ulong states;
+    ulong states { get => ClassFieldStates; set => ClassFieldStates = value; }
     bool materialized => states == 2;
     protected abstract int NumericFieldIndex(string key);
     protected abstract double ReadNumericField(int index);
