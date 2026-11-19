@@ -4,7 +4,7 @@ const cases: any[] = [
     new Uint8ClampedArray([-1, 0.5, 1.5, 300]), new Int16Array([-32768, -1, 255, 32767]),
     new Uint16Array([0, 255, 256, 65535]), new Int32Array([-2147483648, -1, 255, 2147483647]),
     new Uint32Array([0, 255, 256, 2147483648, 4294967295]),
-    new Float16Array([-0, 0.25, NaN, Infinity]),
+    new (globalThis as any).Float16Array([-0, 0.25, NaN, Infinity]),
     new Float32Array([-0, 0.25, NaN, Infinity]), new Float64Array([-0, 0.25, NaN, Infinity]),
     new BigInt64Array([-1n, 0n, 255n]), new BigUint64Array([0n, 255n, 18446744073709551615n])
 ];
