@@ -45,6 +45,9 @@ func errorReport(message string) string { return encode(map[string]string{"error
 
 func load(path string) (*session, string, int) { return loadWithOptions(path, false) }
 func loadWithOptions(path string, legacy bool) (*session, string, int) {
+	return loadProject(path, legacy, "")
+}
+func loadProject(path string, legacy bool, project string) (*session, string, int) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return nil, errorReport(err.Error()), invalidArgument
@@ -61,14 +64,63 @@ func loadWithOptions(path string, legacy bool) (*session, string, int) {
 		ResolveJsonModule:   core.TSTrue,
 		SkipDefaultLibCheck: core.TSTrue,
 	}
-	if legacy {
-		options.ExperimentalDecorators = core.TSTrue
-	}
 	config := &tsoptions.ParsedCommandLine{ParsedConfig: &core.ParsedOptions{
 		FileNames: []string{absolute}, CompilerOptions: options,
 	}}
-	host := compiler.NewCompilerHost(tspath.GetDirectoryPath(absolute),
+	directory := tspath.GetDirectoryPath(absolute)
+	if project != "" {
+		project, err = filepath.Abs(project)
+		if err != nil {
+			return nil, errorReport(err.Error()), invalidArgument
+		}
+		if info, statErr := os.Stat(project); statErr == nil && info.IsDir() {
+			project = filepath.Join(project, "tsconfig.json")
+		}
+		project = tspath.NormalizeSlashes(project)
+		directory = tspath.GetDirectoryPath(project)
+	}
+	host := compiler.NewCompilerHost(directory,
 		bundled.WrapFS(osvfs.FS()), bundled.LibPath(), nil, nil)
+	if project != "" {
+		var diagnostics []*ast.Diagnostic
+		config, diagnostics = tsoptions.GetParsedCommandLineOfConfigFile(project, nil, nil, host, nil)
+		if len(diagnostics) != 0 {
+			return nil, diagnosticReport(diagnostics), compilerFailure
+		}
+		if len(config.Errors) != 0 {
+			return nil, diagnosticReport(config.Errors), compilerFailure
+		}
+		options = config.CompilerOptions()
+		// Keep the standalone compiler's defaults for unspecified settings.
+		// Explicit config options, including inherited paths and type roots,
+		// belong to Microsoft's parser and resolver.
+		if options.Strict == core.TSUnknown {
+			options.Strict = core.TSTrue
+		}
+		if options.Target == core.ScriptTargetNone {
+			options.Target = core.ScriptTargetESNext
+		}
+		if options.Module == core.ModuleKindNone {
+			options.Module = core.ModuleKindPreserve
+			if options.ModuleResolution == core.ModuleResolutionKindUnknown {
+				options.ModuleResolution = core.ModuleResolutionKindBundler
+			}
+		}
+		if options.Types == nil {
+			options.Types = []string{}
+		}
+		if options.ResolveJsonModule == core.TSUnknown {
+			options.ResolveJsonModule = core.TSTrue
+		}
+		if options.SkipDefaultLibCheck == core.TSUnknown {
+			options.SkipDefaultLibCheck = core.TSTrue
+		}
+	}
+	// The frontend checks source; assembly output is owned by the IL backend.
+	options.NoEmit = core.TSTrue
+	if legacy {
+		options.ExperimentalDecorators = core.TSTrue
+	}
 	program := compiler.NewProgram(compiler.ProgramOptions{
 		Host: host, Config: config, SingleThreaded: core.TSTrue,
 	})
@@ -77,30 +129,39 @@ func loadWithOptions(path string, legacy bool) (*session, string, int) {
 		return nil, errorReport("frontend did not load the input file"), compilerFailure
 	}
 	ctx := context.Background()
-	diagnostics := append(program.GetSyntacticDiagnostics(ctx, nil), program.GetGlobalDiagnostics(ctx)...)
+	diagnostics := program.GetConfigFileParsingDiagnostics()
+	if project != "" {
+		diagnostics = append(diagnostics, program.GetProgramDiagnostics()...)
+	}
+	diagnostics = append(diagnostics, program.GetSyntacticDiagnostics(ctx, nil)...)
+	diagnostics = append(diagnostics, program.GetGlobalDiagnostics(ctx)...)
 	diagnostics = append(diagnostics, program.GetSemanticDiagnostics(ctx, nil)...)
 	if len(diagnostics) != 0 {
-		type diagnostic struct {
-			Code       int32  `json:"code"`
-			File       string `json:"file,omitempty"`
-			ByteOffset int    `json:"byteOffset"`
-			Message    string `json:"message"`
-		}
-		entries := make([]diagnostic, 0, len(diagnostics))
-		for _, item := range diagnostics {
-			var message strings.Builder
-			diagnosticwriter.WriteFlattenedASTDiagnosticMessage(&message, item, "\n", locale.Default)
-			entry := diagnostic{Code: item.Code(), ByteOffset: item.Pos(), Message: message.String()}
-			if item.File() != nil {
-				entry.File = item.File().FileName()
-			}
-			entries = append(entries, entry)
-		}
-		return nil, encode(map[string]any{"diagnostics": entries}), compilerFailure
+		return nil, diagnosticReport(diagnostics), compilerFailure
 	}
-	return &session{program: program, file: file, legacyDecorators: legacy}, encode(map[string]any{
+	return &session{program: program, file: file, legacyDecorators: options.ExperimentalDecorators.IsTrue()}, encode(map[string]any{
 		"file": absolute, "sourceFiles": len(program.GetSourceFiles()), "diagnostics": []any{},
 	}), ok
+}
+
+func diagnosticReport(diagnostics []*ast.Diagnostic) string {
+	type diagnostic struct {
+		Code       int32  `json:"code"`
+		File       string `json:"file,omitempty"`
+		ByteOffset int    `json:"byteOffset"`
+		Message    string `json:"message"`
+	}
+	entries := make([]diagnostic, 0, len(diagnostics))
+	for _, item := range diagnostics {
+		var message strings.Builder
+		diagnosticwriter.WriteFlattenedASTDiagnosticMessage(&message, item, "\n", locale.Default)
+		entry := diagnostic{Code: item.Code(), ByteOffset: item.Pos(), Message: message.String()}
+		if item.File() != nil {
+			entry.File = item.File().FileName()
+		}
+		entries = append(entries, entry)
+	}
+	return encode(map[string]any{"diagnostics": entries})
 }
 
 func inspect(s *session, name string) (string, int) {

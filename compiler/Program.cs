@@ -3,7 +3,7 @@ namespace Tsnet.Compiler;
 
 internal static class NativeFrontend
 {
-    internal static byte[] Read(string path, bool experimentalDecorators = false)
+    internal static byte[] Read(string path, bool experimentalDecorators = false, string project = null)
     {
         string executable = Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "tsnet-frontend.exe" : "tsnet-frontend");
         var start = new System.Diagnostics.ProcessStartInfo(executable)
@@ -14,6 +14,7 @@ internal static class NativeFrontend
             CreateNoWindow = true
         };
         if (experimentalDecorators) start.ArgumentList.Add("--experimentalDecorators");
+        if (project != null) { start.ArgumentList.Add("--project"); start.ArgumentList.Add(project); }
         start.ArgumentList.Add(path);
         using var process = System.Diagnostics.Process.Start(start) ?? throw new CompilationException("Cannot start TypeScript frontend");
         var errors = process.StandardError.ReadToEndAsync();
@@ -33,9 +34,22 @@ internal static class Program
         {
             bool experimentalDecorators = args.Contains("--experimentalDecorators");
             args = args.Where(arg => arg != "--experimentalDecorators").ToArray();
-            if (args.Length != 2) { Console.Error.WriteLine("Usage: tsnetc [--experimentalDecorators] INPUT.ts OUTPUT.dll"); return 2; }
+            string project = null;
+            var positional = new List<string>();
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (args[i] is "--project" or "-p")
+                {
+                    if (project != null || ++i == args.Length || args[i].Length == 0 || args[i].StartsWith('-'))
+                        throw new CompilationException("--project requires one config file or directory");
+                    project = args[i];
+                }
+                else positional.Add(args[i]);
+            }
+            args = positional.ToArray();
+            if (args.Length != 2) { Console.Error.WriteLine("Usage: tsnetc [--project TSCONFIG] [--experimentalDecorators] INPUT.ts OUTPUT.dll"); return 2; }
             var compiler = Compiler.create(args[0]);
-            CompilerFunctions.import_frontend(args[0], compiler, experimentalDecorators);
+            CompilerFunctions.import_frontend(args[0], compiler, experimentalDecorators, project);
             CompilerFunctions.emit_assembly(args[1], compiler);
             return 0;
         }

@@ -5,6 +5,7 @@ param(
     [switch]$ServerGC,
     [ValidateRange(0, 1024)][int]$GCHeapCount = 0,
     [switch]$ExperimentalDecorators,
+    [string]$Project,
     [switch]$SkipCompilerBuild,
     [switch]$SkipRuntimeBuild,
     [switch]$LinkRuntime,
@@ -45,6 +46,7 @@ try {
     }
     $compilerOptions = @()
     if ($ExperimentalDecorators) { $compilerOptions += '--experimentalDecorators' }
+    if ($Project) { $compilerOptions += '--project'; $compilerOptions += (Resolve-Path -LiteralPath $Project).Path }
     & dotnet $compilerPath @compilerOptions $inputPath "$applicationPath/App.dll"
     if ($LASTEXITCODE) { throw 'TypeScript compilation failed' }
     # Build the shared runtime incrementally; generated applications go directly

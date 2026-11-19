@@ -730,6 +730,9 @@ try {
     Write-Host "PASS $index frontend rejection and output-preservation checks"
     & "$PSScriptRoot/test-compiler-storage.ps1"
 
+    & dotnet run --project tests/inspect-project-config/Inspect.csproj -c Release --no-launch-profile
+    if ($LASTEXITCODE) { throw 'Project configuration checks failed' }
+
     & dotnet build tests/inspect-writer/Inspect.csproj -c Release --configfile artifacts/metadata-writer/NuGet.Config --nologo -v quiet
     if ($LASTEXITCODE) { throw 'Assembly writer inspector build failed' }
     & dotnet tests/inspect-writer/bin/Release/net10.0/Inspect.dll
