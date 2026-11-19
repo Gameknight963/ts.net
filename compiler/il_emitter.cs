@@ -240,11 +240,11 @@ internal static partial class CompilerFunctions
             }
         }
     }
-    internal static void il_mutation(int entry, Compiler c, IlBackend b, bool discardBox = false)
+    internal static void il_mutation(int entry, Compiler c, IlBackend b, bool discardResult = false)
     {
-        if (il_bigint_mutation(entry, discardBox, c, b)) return;
+        if (il_bigint_mutation(entry, discardResult, c, b)) return;
         if (il_loop_field_write(entry, c, b)) return;
-        if (il_numeric_update(entry, discardBox, c, b)) return;
+        if (il_numeric_update(entry, discardResult, c, b)) return;
         Node n = get_node(entry, c); Node target = get_node(n.left, c);
         ScalarField scalar = il_scalar_field(n.left, c, b);
         int receiver = -1;
@@ -461,12 +461,11 @@ internal static partial class CompilerFunctions
         if (previous >= 0 && !n.constant) { b.emit(0xfe0c, previous); }
         else {
             b.emit(0xfe0c, value);
-            // An expression statement discards this value immediately. Keep a
-            // numeric result unboxed instead of allocating an unused object.
-            bool unusedBox = discardBox && get_type(value_type, c).kind == TypeKind.Number && get_type(n.type, c).kind == TypeKind.Any;
-            if (!logical && !unusedBox) { b.convert(value_type, n.type, c); }
+            // The store already performed its required conversion. A discarded
+            // expression result needs neither boxing nor a second checked cast.
+            if (!logical && !discardResult) { b.convert(value_type, n.type, c); }
         }
-        if (logical) { b.mark(logical_done); b.convert(value_type, n.type, c); }
+        if (logical) { b.mark(logical_done); if (!discardResult) b.convert(value_type, n.type, c); }
     }
     internal static bool il_type_test(int entry, bool wrap, Compiler c, IlBackend b)
     {
@@ -1261,7 +1260,7 @@ internal static partial class CompilerFunctions
         {
             if (il_tagged_store(n.left, c, b)) { return; }
             Node expression = get_node(n.left, c);
-            if (expression.kind is NodeKind.Assign or NodeKind.Update) { il_mutation(n.left, c, b, discardBox: true); }
+            if (expression.kind is NodeKind.Assign or NodeKind.Update) { il_mutation(n.left, c, b, discardResult: true); }
             else { il_expression(n.left, c, b); }
             if (get_type(expression.type, c).kind != TypeKind.Void) { b.op(0x26); }
         }

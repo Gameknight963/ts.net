@@ -19,3 +19,23 @@ type Marked = number[] & { [marker]?: string };
 const marked = [1,2] as Marked;
 marked[marker] = 'label';
 console.log('symbol', marked[marker], marked[0], marked.length);
+
+const assignmentEvents: string[]=[];
+class AssignmentSetters {
+ set text(value: string){assignmentEvents.push(`text:${value}`);}
+ set flag(value: boolean){assignmentEvents.push(`flag:${value}`);}
+}
+function assignmentText(): string {assignmentEvents.push('text RHS');return 'label';}
+function assignmentFlag(): boolean {assignmentEvents.push('flag RHS');return false;}
+const assignmentSetters=new AssignmentSetters();
+assignmentSetters.text=assignmentText();
+assignmentSetters.flag=assignmentFlag();
+console.log('discarded setter results',assignmentEvents.join(','));
+console.log('used setter results',assignmentSetters.text='result',assignmentSetters.flag=true,assignmentEvents.join(','));
+let discardedText: string | undefined;
+let discardedFlag: boolean | undefined;
+discardedText??=assignmentText();
+discardedText||=assignmentText();
+discardedFlag??=assignmentFlag();
+discardedFlag&&=assignmentFlag();
+console.log('discarded logical results',discardedText,discardedFlag,assignmentEvents.join(','));
