@@ -64,6 +64,23 @@ public abstract class JsNumericClassInstance : JsClassInstance
         CopyNumericFields();
         states = 2;
     }
+    internal bool TryAddNumberField(string key, double delta, bool postfix, out double result)
+    {
+        result = 0;
+        ulong current = states;
+        if (current == 2) return false;
+        int index = NumericFieldIndex(key);
+        if ((uint)index >= 32 || IsReferenceField(index)) return false;
+        int shift = index * 2;
+        ulong state = current >> shift & 3;
+        if (state == 0) return false;
+        double previous = state == 1 ? double.NaN : ReadNumericField(index);
+        double next = previous + delta;
+        WriteNumericField(index, next);
+        if (state != 3) states |= 3ul << shift;
+        result = postfix ? previous : next;
+        return true;
+    }
     bool StoreNumber(int index, double? value, bool create)
     {
         ulong current = states;

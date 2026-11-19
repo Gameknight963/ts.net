@@ -45,7 +45,8 @@ public abstract partial class TsObject
     internal bool TryAddStoredNumber(string key, double delta, bool postfix, out double result)
     {
         result = 0;
-        if (GetType() != typeof(JsDynamicObject) && GetType() != typeof(JsClassInstance) && this is not JsCreatedObject) return false;
+        if (GetType() != typeof(JsDynamicObject) && GetType() != typeof(JsClassInstance) && this is not JsCreatedObject)
+            return this is JsNumericClassInstance numeric && numeric.TryAddNumberField(key, delta, postfix, out result);
         return !IsModuleNamespace && !((JsDescriptorObject)this).HasPropertyDescriptors &&
             !TryOwnAccessor(key, out _) && extra != null && extra.TryAddNumber(key, delta, postfix, out result);
     }
