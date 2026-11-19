@@ -208,7 +208,7 @@ Runtime performance:
 | Object spread, 100K copies stored in an array | 5.51 ms | 1.66 ms | — | 0.30x |
 | Add an `any` value to a number, 200K additions | 0.185 ms | 0.0548 ms | — | 0.30x |
 | Call 100K callbacks stored in an array | 0.420 ms | 0.126 ms | 0.245 ms (delegates) | 0.30x |
-| Serialize 10K numbers divided by 7, 20 times | 21.81 ms | 6.30 ms | — | 0.29x |
+| Serialize 10K numbers divided by 7, 20 times | 23.89 ms | 6.95 ms | 23.22 ms (JsonSerializer) | 0.29x |
 | Self-returning function, 2M calls | 1.97 ms | 0.572 ms | 1.51 ms (delegate) | 0.29x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | — | 0.28x |
 | Construct objects with a numeric argument and sum their field, 100K instances | 7.84 ms | 2.16 ms | 0.278 ms (class) | 0.28x |
