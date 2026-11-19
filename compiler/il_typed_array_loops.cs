@@ -75,7 +75,7 @@ internal static partial class CompilerFunctions
             }
             if (array == 0 || array == counter) return false;
         }
-        bool assertedReads = false;
+        bool assertedReads = false, mixedReads = false;
         foreach (int i in b.LoopNodes(loop.fourth, c))
         {
             Node n = get_node(i, c);
@@ -93,8 +93,9 @@ internal static partial class CompilerFunctions
                 if (source.kind != NodeKind.Name || source.symbol != array || index.kind != NodeKind.Name || index.symbol != counter) return false;
                 if (get_type(n.type, c).kind != TypeKind.Number) {
                     Node parent = get_node(b.node_parents.at(i), c);
-                    if (parent.kind != NodeKind.Assert || parent.left != i || get_type(parent.type, c).kind != TypeKind.Number) return false;
-                    assertedReads = true;
+                    if (parent.kind == NodeKind.Assert && parent.left == i && get_type(parent.type, c).kind == TypeKind.Number) assertedReads = true;
+                    else if (get_type(source.type, c).kind == TypeKind.Array) mixedReads = true;
+                    else return false;
                 }
                 reads++;
             }
@@ -122,6 +123,24 @@ internal static partial class CompilerFunctions
             } else if (b.global_fields.at(array) != 0 && b.global_vars.at(array) == 0) {
                 b.emit(0x7e, b.global_flags.at(array)); b.emit(0x39, slowPath);
             }
+        }
+        if (mixedReads) {
+            int values = b.local(-7), bound = b.local(-3), done = b.label();
+            // Reject proxies and accessor-backed arrays before reading length.
+            // Their length read must occur only in the original condition.
+            b.load(array); b.plan.number(b.method, lengthBound ? 0 : fixedBound); b.call(RuntimeMember.ArrayTryDense); b.emit(0xfe0e, values);
+            b.emit(0xfe0c, values); b.emit(0x39, slowPath);
+            if (lengthBound) {
+                b.load(array); b.call(RuntimeMember.ArrayLength); b.emit(0xfe0e, bound);
+                b.emit(0xfe0c, values); b.op(0x8e); b.op(0x69); b.op(0x6c);
+                b.emit(0xfe0c, bound); b.op(0xfe04); b.emit(0x3a, slowPath);
+            } else { b.plan.number(b.method, fixedBound); b.emit(0xfe0e, bound); }
+            int previous = b.raw_slot(counter), nonnegative = b.nonnegative_ints.at(counter), dense = b.dense_arrays.at(array);
+            b.raw_slots.at_mut(counter) = -6; b.nonnegative_ints.at_mut(counter) = 1; b.dense_arrays.at_mut(array) = values + 1;
+            il_loop_code(entry, result, counter, bound, c, b);
+            b.raw_slots.at_mut(counter) = previous; b.nonnegative_ints.at_mut(counter) = nonnegative; b.dense_arrays.at_mut(array) = dense;
+            b.emit(0x38, done); b.mark(slowPath); il_loop_body(entry, result, 0, -1, c, b); b.mark(done);
+            return true;
         }
         int packed = b.local(-12), packedBound = b.local(-3), ordinary = b.label(), packedDone = b.label();
         if (!assertedReads) {
