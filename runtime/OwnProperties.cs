@@ -16,6 +16,37 @@ sealed partial class OwnProperties : ObjectPropertyState
 {
     // Low bits remember first writes; this bit remains set after a cell is created.
     const int HasNumberCells = 16;
+    const int PossibleIndexKeys = 32;
+    internal bool MayHaveIndexKeys => (numericWrites & PossibleIndexKeys) != 0;
+    internal bool HasSymbolKeys => symbolCount != 0;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    void AddedKey(string key)
+    {
+        if (Js.IsSymbolKey(key)) symbolCount++;
+        // Keep this conservative after deletion: a false flag proves that
+        // insertion order is already the required order for string keys.
+        if (key.Length != 0 && key[0] is >= '0' and <= '9') numericWrites |= PossibleIndexKeys;
+        version++;
+    }
+    // Insertion order only; callers guard numeric-key ordering.
+    internal object[] CopyStringKeyNames()
+    {
+        if (StringCount == 0) return Array.Empty<object>();
+        var names = new object[StringCount];
+        int index = 0;
+        if (symbolCount != 0) {
+            foreach (string key in Keys) if (!Js.IsSymbolKey(key)) names[index++] = key;
+            return names;
+        }
+        if (inlineCount > 0) names[index++] = key0;
+        if (inlineCount > 1) names[index++] = key1;
+        if (inlineCount > 2) names[index++] = key2;
+        if (inlineCount > 3) names[index++] = key3;
+        if (tailOrder is SingleProperty single) names[index] = single.Key;
+        else if (tailOrder is List<string> order) foreach (string key in order) names[index++] = key;
+        else if (tail != null) ((System.Collections.ICollection)tail.Keys).CopyTo(names, index);
+        return names;
+    }
     sealed class NumberCell(double value)
     {
         internal double Value = value;
@@ -136,6 +167,7 @@ sealed partial class OwnProperties : ObjectPropertyState
         // Copies share immutable boxed values, never mutable numeric cells.
         value0=Read(source.value0);value1=Read(source.value1);value2=Read(source.value2);value3=Read(source.value3);
         inlineCount=source.inlineCount;version=source.version;symbolCount=source.symbolCount;
+        numericWrites = source.numericWrites & PossibleIndexKeys;
         if (source.tail != null) {
             tail = new Dictionary<string, object>(source.tail.Count);
             foreach (var entry in source.tail) tail.Add(entry.Key, Read(entry.Value));
@@ -186,8 +218,7 @@ sealed partial class OwnProperties : ObjectPropertyState
                     case 2: key2=key;value2=value;break;
                     default: key3=key;value3=value;break;
                 }
-                if (Js.IsSymbolKey(key)) symbolCount++;
-                version++;
+                AddedKey(key);
             } else {
                 if (tail == null) {
                     if (tailOrder is SingleProperty single) {
@@ -196,13 +227,12 @@ sealed partial class OwnProperties : ObjectPropertyState
                         tailOrder = null;
                     } else {
                         tailOrder = new SingleProperty(key, value);
-                        if (Js.IsSymbolKey(key)) symbolCount++;
-                        version++; return;
+                        AddedKey(key); return;
                     }
                 }
                 ref object slot = ref CollectionsMarshal.GetValueRefOrAddDefault(tail, key, out bool present);
                 slot=value;
-                if (!present) { if (Js.IsSymbolKey(key)) symbolCount++; (tailOrder as List<string>)?.Add(key); version++; }
+                if (!present) { AddedKey(key); (tailOrder as List<string>)?.Add(key); }
             }
         }
     }

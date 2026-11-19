@@ -18,12 +18,18 @@ public abstract partial class TsObject
     // Generated fixed names are non-index string keys. Symbol-only extras do
     // not affect Object.keys, so no merged or filtered snapshot is needed.
     public object StringKeysFromTextFields(object[] names) => extra == null || extra.StringCount == 0
-        ? new JsArray(names) : Js.StringPropertyKeys(KeysFromFixed(names));
+        ? new JsArray(names) : StringKeysWithStoredExtras(names);
+    object StringKeysWithStoredExtras(object[] names)
+    {
+        if (names.Length == 0 && !extra.MayHaveIndexKeys) return new JsArray(extra.CopyStringKeyNames());
+        return Js.StringPropertyKeys(KeysFromFixed(names));
+    }
     public object StringKeysFromFixed(object[] names) => Js.StringPropertyKeys(KeysFromFixed(names));
     public object KeysFromFixed(object[] names) => new JsArray(KeyNamesFromFixed(names));
     object[] KeyNamesFromFixed(object[] names)
     {
         if (extra == null || extra.Count == 0) return Js.OrderOwnKeyNames(names);
+        if (names.Length == 0 && !extra.MayHaveIndexKeys && !extra.HasSymbolKeys) return extra.CopyStringKeyNames();
         var all = new object[names.Length + extra.Count];
         Array.Copy(names, all, names.Length);
         // With no fixed fields, every key comes from the unique property store.

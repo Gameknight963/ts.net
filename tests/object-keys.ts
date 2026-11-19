@@ -45,3 +45,21 @@ function mark(value: number): number { trace += value; return value; }
 const loose: any = Object.keys;
 console.log(loose({a: mark(1)}, mark(2))[0], trace);
 console.log(loose(...[{x: 3}])[0]);
+
+{
+    const record: any = {};
+    for (let i = 0; i < 16; i++) record['field' + i] = i;
+    delete record.field1; delete record.field5;
+    record.field1 = 17;
+    const copy = {...record};
+    console.log('stored key order', Object.keys(record).join(','), Object.keys(copy).join(','));
+    record['12'] = 12; record['2'] = 2;
+    record['-1'] = 1; record['01'] = 1; record['3x'] = 3; record['4294967295'] = 4;
+    console.log('stored numeric order', Object.keys(record).join(','));
+    console.log('stored cloned numeric order', Object.keys({...record}).join(','), Object.keys(Object.assign({}, record)).join(','));
+    delete record['12']; delete record['2'];
+    record[Symbol('extra')] = 9;
+    console.log('stored deleted numeric order', Object.keys(record).join(','));
+    Object.defineProperty(record, 'field0', {enumerable: false});
+    console.log('stored descriptor order', Object.keys(record).join(','));
+}
