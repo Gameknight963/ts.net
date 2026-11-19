@@ -79,6 +79,7 @@ Runtime performance:
 | Typed-object loop, 500K iterations | 0.381 ms | 0.650 ms | — | 1.70x |
 | Write and sum a numeric property on `Object.create(null)`, 100K iterations | 0.610 ms | 1.02 ms | 1.43 ms (`Dictionary<string, object>`) | 1.67x |
 | Parse 20 JSON arrays of 1K records with 16 numeric fields (3 processes) | 7.98 ms | 13.26 ms | 42.09 ms (dictionaries), 11.08 ms (read-only JsonDocument) | 1.66x |
+| Numeric class property increments, 2M updates | 1.418 ms | 2.342 ms | 1.415 ms | 1.65x |
 | `any` property loop, 350K iterations | 0.266 ms | 0.435 ms | — | 1.64x |
 | Update typed fields and sum through a helper, 2M iterations | 1.42 ms | 2.33 ms | 1.39 ms | 1.64x |
 | Map 10K number/string values to numbers or undefined and reduce, 20 passes | 1.76 ms | 2.80 ms | — | 1.59x |
@@ -141,7 +142,6 @@ Runtime performance:
 | Call a callback with an object and a number, 100K calls | 0.0776 ms | 0.0621 ms | 0.0698 ms (delegate) | 0.80x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | — | 0.77x |
 | `== null` on nullable arrays, 1M comparisons | 1.51 ms | 1.15 ms | — | 0.76x |
-| Numeric class property increments, 2M updates | 5.908 ms | 4.505 ms | 1.348 ms | 0.76x |
 | String substring and first-character read, 1M calls | 14.27 ms | 10.75 ms | — | 0.75x |
 | Read varying `keyof` keys through a typed helper from a 64-field object, 100K reads | 1.97 ms | 1.48 ms | — | 0.75x |
 | String `charCodeAt(index)`, 1M calls | 2.27 ms | 1.66 ms | — | 0.73x |
