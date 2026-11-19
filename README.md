@@ -139,6 +139,7 @@ Runtime performance:
 | Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | — | 0.83x |
 | Construct and traverse 10K class instances with 17 numeric fields | 0.257 ms | 0.213 ms | 0.163 ms (class) | 0.83x |
 | Object valueOf, 1M numeric conversions | 27.57 ms | 22.64 ms | — | 0.82x |
+| Serialize 1,000 records with 16 numeric fields 20 times, without a replacer | 6.748 ms | 5.471 ms | 11.84 ms (JsonElement) | 0.81x |
 | Call a callback with an object and a number, 100K calls | 0.0776 ms | 0.0621 ms | 0.0698 ms (delegate) | 0.80x |
 | Regional number formatting, 10K cached calls across four locales | 9.85 ms | 7.54 ms | — | 0.77x |
 | `== null` on nullable arrays, 1M comparisons | 1.51 ms | 1.15 ms | — | 0.76x |
@@ -174,16 +175,15 @@ Runtime performance:
 | Create a Map, insert and read 10K entries, then delete half | 1.184 ms | 0.658 ms | 0.395 ms (`Dictionary`) | 0.56x |
 | Parse ten JSON arrays of 10K integers from -5000 to 4999 | 1.587 ms | 0.866 ms | 4.25 ms (`JsonSerializer`) | 0.55x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
-| Serialize 1,000 records with 16 numeric fields 20 times, without a replacer | 10.55 ms | 5.43 ms | 13.27 ms (JsonElement) | 0.51x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
 | Call a numeric void method on a record with 16 numeric fields through a helper, 100K calls | 0.477 ms | 0.233 ms | 0.0711 ms (class) | 0.49x |
 | Construct and run a chain of 10K handlers | 0.687 ms | 0.340 ms | 0.665 ms (queued Task continuations) | 0.49x |
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | — | 0.48x |
 | Sum 1K values with an await in try and an increment in finally each iteration | 0.0994 ms | 0.0477 ms | 0.0266 ms (queued) | 0.48x |
+| Serialize 1,000 three-field records 20 times, without a replacer | 2.063 ms | 0.988 ms | 2.762 ms (`JsonSerializer`) | 0.48x |
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | — | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | — | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | — | 0.45x |
-| Serialize 1,000 three-field records 20 times, without a replacer | 2.28 ms | 0.985 ms | — | 0.43x |
 | Create 10K resolved promises, collect with all, and sum results | 1.20 ms | 0.514 ms | 0.196 ms (Task.WhenAll) | 0.43x |
 | Uint8Array traversal through `any`, 10 passes over 10K elements with a fixed bound | 0.0721 ms | 0.0312 ms | 0.0719 ms (byte[]) | 0.43x |
 | map and sum, 20 passes over 10K integers from 0-9999 | 1.01 ms | 0.413 ms | — | 0.41x |
