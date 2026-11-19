@@ -118,6 +118,7 @@ Runtime performance:
 | Serialize 10K numbers from 0-255, 20 times | 1.73 ms | 1.71 ms | — | 0.99x |
 | Captured numeric callback, 2M calls | 5.24 ms | 5.07 ms | — | 0.97x |
 | String ordering, 2M comparisons | 8.98 ms | 8.75 ms | — | 0.97x |
+| Sum mapped numbers and skip strings through a helper, 20 scans of 10,001 values | 0.143 ms | 0.134 ms | 0.143 ms (`object[]`) | 0.94x |
 | Float64Array traversal, 10K elements and 100 passes | 0.784 ms | 0.718 ms | — | 0.92x |
 | Local class constructor parameters and field read, 100K instances | 0.0687 ms | 0.0633 ms | — | 0.92x |
 | Update a class field and read its getter, 100K iterations | 0.0675 ms | 0.0624 ms | — | 0.92x |
