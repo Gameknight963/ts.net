@@ -80,6 +80,10 @@ internal static partial class CompilerFunctions
         {
             Node n = get_node(i, c);
             if (il_key_may_invoke(n, c) || il_coercion_may_invoke(n, c)) return false;
+            if (n.kind == NodeKind.Call) {
+                if (!il_pure_numeric_call(i, c, b)) return false;
+                continue;
+            }
             if (n.kind is not (NodeKind.Block or NodeKind.Expression or NodeKind.If or NodeKind.Variable or NodeKind.Name or NodeKind.Number or NodeKind.Boolean or
                 NodeKind.Index or NodeKind.Binary or NodeKind.Unary or NodeKind.Conditional or NodeKind.Sequence or NodeKind.Assign or NodeKind.Update or NodeKind.Assert)) return false;
             if (n.kind == NodeKind.Assert && (get_type(n.type, c).kind != TypeKind.Number || get_node(n.left, c).kind != NodeKind.Index)) return false;
