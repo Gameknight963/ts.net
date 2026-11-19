@@ -972,6 +972,7 @@ internal static partial class CompilerFunctions
         }
         else if (n.kind == NodeKind.Binary)
         {
+            if (il_arithmetic_chain(entry, c, b)) return;
             if (il_type_test(entry, true, c, b) || il_loose_equality(n, c, b)) { return; }
             int op = get_token(n.token, c).text;
             if(is_text(op,"instanceof",c)){il_boxed(n.left,c,b);il_boxed(n.right,c,b);b.call(RuntimeMember.InstanceOf);b.call(RuntimeMember.WrapBoolean);return;}

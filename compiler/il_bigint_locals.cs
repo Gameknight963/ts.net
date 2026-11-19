@@ -36,16 +36,27 @@ internal static partial class CompilerFunctions
     }
     static bool il_known_bigint(int entry, Compiler c, Func<int, bool> name)
     {
-        if (entry == 0) return false;
-        if (il_bigint_literal_text(entry, c) != 0) return true;
-        Node n = get_node(entry, c);
-        if (n.kind == NodeKind.Name) return name(n.symbol);
-        if (n.kind is not (NodeKind.Binary or NodeKind.Unary)) return false;
-        int op = get_token(n.token, c).text;
-        if (n.kind == NodeKind.Unary && (is_text(op, "-", c) || is_text(op, "~", c)))
-            return il_known_bigint(n.left, c, name);
-        return n.kind == NodeKind.Binary && il_bigint_operator(op, false, c) != null &&
-            il_known_bigint(n.left, c, name) && il_known_bigint(n.right, c, name);
+        Stack<int> pending = null;
+        while (true)
+        {
+            if (entry == 0) return false;
+            Node n = get_node(entry, c);
+            if (il_bigint_literal_text(entry, c) != 0 || n.kind == NodeKind.Name && name(n.symbol))
+            {
+                if (pending == null || pending.Count == 0) return true;
+                entry = pending.Pop();
+                continue;
+            }
+            if (n.kind is not (NodeKind.Binary or NodeKind.Unary)) return false;
+            int op = get_token(n.token, c).text;
+            if (n.kind == NodeKind.Binary && il_bigint_operator(op, false, c) != null)
+                (pending ??= new()).Push(n.right);
+            else if (n.kind != NodeKind.Unary || !(is_text(op, "-", c) || is_text(op, "~", c)))
+                return false;
+            // Match the recursive walk's left-first short circuit and name
+            // callback order without consuming stack for long expressions.
+            entry = n.left;
+        }
     }
     internal static void il_prove_bigint_locals(Compiler c, IlBackend b)
     {
