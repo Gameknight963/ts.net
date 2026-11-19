@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 namespace Tsnet.Compiler;
 
 internal static class NativeFrontend
@@ -22,8 +23,21 @@ internal static class NativeFrontend
         process.StandardOutput.BaseStream.CopyTo(data);
         process.WaitForExit();
         string report = errors.GetAwaiter().GetResult();
-        if (process.ExitCode != 0) throw new CompilationException(report.Trim());
+        if (process.ExitCode != 0) throw new CompilationException(FormatReport(report.Trim()));
         return data.ToArray();
+    }
+    static string FormatReport(string report)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(report);
+            if (document.RootElement.ValueKind != JsonValueKind.Object) return report;
+            foreach (string key in new[] { "formatted", "error" })
+                if (document.RootElement.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String &&
+                    value.GetString() is string text && !string.IsNullOrWhiteSpace(text)) return text.TrimEnd();
+        }
+        catch (JsonException) { }
+        return report;
     }
 }
 internal static class Program

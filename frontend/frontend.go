@@ -128,7 +128,17 @@ func diagnosticReport(diagnostics []*ast.Diagnostic) string {
 		Message    string `json:"message"`
 	}
 	entries := make([]diagnostic, 0, len(diagnostics))
+	var formatted strings.Builder
+	directory, _ := os.Getwd()
+	format := &diagnosticwriter.FormattingOptions{
+		Locale: locale.Default, NewLine: "\n",
+		ComparePathsOptions: tspath.ComparePathsOptions{
+			CurrentDirectory:          tspath.NormalizeSlashes(directory),
+			UseCaseSensitiveFileNames: osvfs.FS().UseCaseSensitiveFileNames(),
+		},
+	}
 	for _, item := range diagnostics {
+		diagnosticwriter.WriteFormatDiagnostic(&formatted, diagnosticwriter.WrapASTDiagnostic(item), format)
 		var message strings.Builder
 		diagnosticwriter.WriteFlattenedASTDiagnosticMessage(&message, item, "\n", locale.Default)
 		entry := diagnostic{Code: item.Code(), ByteOffset: item.Pos(), Message: message.String()}
@@ -137,7 +147,7 @@ func diagnosticReport(diagnostics []*ast.Diagnostic) string {
 		}
 		entries = append(entries, entry)
 	}
-	return encode(map[string]any{"diagnostics": entries})
+	return encode(map[string]any{"diagnostics": entries, "formatted": formatted.String()})
 }
 
 func inspect(s *session, name string) (string, int) {

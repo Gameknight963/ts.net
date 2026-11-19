@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 
 try { Run(); return 0; }
 catch (Exception error) { Console.Error.WriteLine(error.Message); return 1; }
@@ -78,7 +79,7 @@ static void Run()
     }
     Reject("missing config", "5083", "--project", Path.Combine(fixture, "absent.json"));
     Write("bad.json", "{broken");
-    Reject("invalid JSON", "diagnostics", "--project", Path.Combine(fixture, "bad.json"));
+    Reject("invalid JSON", "error TS", "--project", Path.Combine(fixture, "bad.json"));
     Write("bad-option.json", "{\"compilerOptions\":{\"notARealOption\":true}}");
     Reject("invalid option", "5023", "--project", Path.Combine(fixture, "bad-option.json"));
     Write("bad-extends.json", "{\"extends\":\"./missing-base.json\"}");
@@ -95,6 +96,28 @@ static void Run()
     var missing = Execute(root, "dotnet", compiler, "--project");
     if (missing.Code == 0 || !missing.Error.Contains("--project requires")) throw new Exception("Missing project argument accepted");
     Console.WriteLine("PASS project diagnostics and output preservation");
+
+    string unicodeFile = Path.Combine(fixture, "app/src/雪😀.ts");
+    const string prefix = "const emoji = '😀'; const ";
+    Write("app/src/雪😀.ts", "// heading\r\n" + prefix + "wrong: number = 'bad';\r\nconst other: boolean = 123;\r\n");
+    try {
+        Write("App.dll", "sentinel");
+        var errors = Execute(root, "dotnet", Compile("--project", config));
+        string location = $"雪😀.ts(2,{prefix.Length + 1}): error TS2322:";
+        if (errors.Code == 0 || !errors.Error.Contains(location) || !errors.Error.Contains("雪😀.ts(3,7): error TS2322:") ||
+            errors.Error.Contains("\"diagnostics\"")) throw new Exception("Unreadable or misplaced diagnostics: " + errors.Error);
+        if (File.ReadAllText(app) != "sentinel") throw new Exception("Diagnostic failure overwrote output");
+        var machine = Execute(root, frontend, "--inspect", "--project", config, entry);
+        if (machine.Code == 0) throw new Exception("Frontend inspection accepted invalid project");
+        using var report = JsonDocument.Parse(machine.Error);
+        var first = report.RootElement.GetProperty("diagnostics")[0];
+        if (first.GetProperty("code").GetInt32() != 2322 ||
+            first.GetProperty("byteOffset").GetInt32() != System.Text.Encoding.UTF8.GetByteCount("// heading\r\n" + prefix) ||
+            !report.RootElement.GetProperty("formatted").GetString()!.Contains(location))
+            throw new Exception("Machine diagnostics or UTF-16 columns changed");
+    }
+    finally { File.Delete(unicodeFile); }
+    Console.WriteLine("PASS readable compiler errors, Unicode filenames, UTF-16 columns, CRLF lines and machine diagnostics");
 
     string CheckProject(string directory)
     {
