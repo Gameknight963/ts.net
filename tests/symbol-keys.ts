@@ -40,3 +40,23 @@ console.log("count cloned", Object.keys(clone).length, Object.getOwnPropertySymb
 class Keyed { [first] = 42; [second]() { return this[first]; } }
 const keyed: any = new Keyed();
 console.log("class", keyed[first], keyed[second](), Object.getOwnPropertySymbols(keyed).length);
+
+{
+    const hidden = Symbol('keys');
+    const source: any = {alpha: 1, beta: 2};
+    source[hidden] = 3;
+    const first = Object.keys(source);
+    first[0] = 'changed'; first.push('extra');
+    console.log('independent filtered keys', Object.keys(source).join(','), Reflect.ownKeys(source).map(key => typeof key).join(','));
+    Object.defineProperty(source, 'alpha', {value: 4, enumerable: false, configurable: true});
+    console.log('mixed key descriptors', Object.keys(source).join(','));
+    Object.defineProperty(source, 'alpha', {value: 5, enumerable: true, configurable: true});
+    console.log('restored key descriptors', Object.keys(source).join(','));
+    delete source[hidden];
+    console.log('removed symbol', Object.keys(source).join(','));
+    const onlySymbols = {[Symbol('first')]: 1, [Symbol('second')]: 2};
+    const empty = Object.keys(onlySymbols); empty.push('local');
+    console.log('empty filtered keys', Object.keys(onlySymbols).length, Reflect.ownKeys(onlySymbols).length);
+    source['\0symbol:ordinary'] = 6;
+    console.log('ordinary nul key', Object.keys(source).includes('\0symbol:ordinary'));
+}

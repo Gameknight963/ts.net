@@ -42,6 +42,27 @@ public static partial class Js
     {
         var keys = (JsArray)names;
         if (!haveSymbolKeys) return keys;
+        if (keys.GetType() == typeof(JsArray) && !keys.HasIndexedAccessors &&
+            keys.DenseRange(keys.Length()) is object[] items)
+        {
+            int count = (int)keys.Length(), used = 0;
+            object[] filtered = null;
+            for (int i = 0; i < count; i++) {
+                // Holes and unusual key collections retain ordinary reads,
+                // including any inherited element getters.
+                if (items[i] is not string key) goto Ordinary;
+                if (IsSymbolKey(key)) {
+                    if (filtered == null) {
+                        filtered = new object[count - 1];
+                        Array.Copy(items, filtered, i); used = i;
+                    }
+                } else if (filtered != null) filtered[used++] = key;
+            }
+            if (filtered == null) return keys;
+            if (used != filtered.Length) Array.Resize(ref filtered, used);
+            return new JsArray(filtered);
+        }
+    Ordinary:
         JsArray result = null;
         for (uint i = 0; i < keys.Length(); i++) {
             string key = (string)keys.ElementAt(i);

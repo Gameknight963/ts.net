@@ -21,8 +21,12 @@ public abstract partial class TsObject
         var all = new object[names.Length + extra.Count];
         Array.Copy(names, all, names.Length);
         // With no fixed fields, every key comes from the unique property store.
-        var seen = names.Length == 0 ? null : new HashSet<string>();
-        foreach (string name in names) seen.Add(name);
+        // Symbol-only extras cannot duplicate fixed string names.
+        bool disjoint = extra.StringCount == 0;
+        if (disjoint)
+            foreach (string name in names) if (Js.IsSymbolKey(name)) { disjoint = false; break; }
+        var seen = names.Length == 0 || disjoint ? null : new HashSet<string>();
+        if (seen != null) foreach (string name in names) seen.Add(name);
         int count = names.Length;
         foreach (string name in extra.Keys) if (seen == null || seen.Add(name)) all[count++] = name;
         if (count != all.Length) Array.Resize(ref all, count);
