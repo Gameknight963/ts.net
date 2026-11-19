@@ -8,6 +8,16 @@ internal sealed partial class IlBackend
 
 internal static partial class CompilerFunctions
 {
+    static int il_class_update_guard(int type, int field, IlBackend b)
+    {
+        var key = (type, field);
+        if (!b.loop_update_guards.TryGetValue(key, out int guard)) {
+            guard = b.plan.method1(5, b.classes.at(type), 0x16, -2, b.classes.at(type), "Can_update_field_" + field);
+            b.loop_update_guards.Add(key, guard);
+        }
+        return guard;
+    }
+
     // No user code may run between the guards and the final field store. Keep
     // each floating-point operation, but hold the unobservable updates locally.
     static bool il_class_update_loop(int entry, int result, int counter, int bound, Compiler c, IlBackend b)
@@ -106,11 +116,7 @@ internal static partial class CompilerFunctions
         double initial = number(get_token(get_node(get_node(il_loop_binding(entry, c), c).left, c).token, c).text, c);
         Node limit = get_node(get_node(loop.right, c).right, c);
         if (limit.kind == NodeKind.Number && number(get_token(limit.token, c).text, c) <= initial + 31) return false;
-        var guardKey = (receiver.type, fieldIndex);
-        if (!b.loop_update_guards.TryGetValue(guardKey, out int guard)) {
-            guard = b.plan.method1(5, b.classes.at(receiver.type), 0x16, -2, b.classes.at(receiver.type), "Can_update_field_" + fieldIndex);
-            b.loop_update_guards.Add(guardKey, guard);
-        }
+        int guard = il_class_update_guard(receiver.type, fieldIndex, b);
 
         int fallback = b.label(), done = b.label(), instance = b.local(b.classes.at(receiver.type));
         b.emit(0xfe0c, bound); b.plan.number(b.method, initial + 31); b.op(0xfe02); b.emit(0x39, fallback);

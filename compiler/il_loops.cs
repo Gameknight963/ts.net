@@ -117,6 +117,7 @@ internal static partial class CompilerFunctions
     internal static void il_loop_body_inner(int entry, int result, int counter, int bound, Compiler c, IlBackend b)
     {
         if (il_checked_array_loop(entry, result, counter, bound, c, b)) return;
+        if (il_direct_field_loop(entry, result, counter, bound, c, b)) return;
         if (il_class_method_loop(entry, result, counter, bound, c, b)) return;
         if (il_class_update_loop(entry, result, counter, bound, c, b)) return;
         if (il_string_range_loop(entry, result, counter, bound, c, b)) return;
