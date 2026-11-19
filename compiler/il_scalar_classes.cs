@@ -199,7 +199,7 @@ internal static partial class CompilerFunctions
             if (member == 0) return false;
             int remaining = 32;
             if (!scalar_constructor_expression(expressionValue, get_type(get_field(member, c).type, c).kind,
-                arguments, ref remaining, c)) return false;
+                arguments, ref remaining, c, b)) return false;
             if (assignments.Count == 32) return false;
             assignments.Add((name, expressionValue));
         }
