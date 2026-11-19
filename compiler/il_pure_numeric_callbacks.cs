@@ -15,15 +15,8 @@ internal static partial class CompilerFunctions
                 get_type(binding.type, c).kind != TypeKind.Number || parameters.Count == 2) return false;
             parameters.Add((0, binding.type, binding.symbol));
         }
-        // Reading typed numeric bindings, including captures, cannot execute
-        // accessors or change the source. Keep property reads excluded.
-        var names = new HashSet<int>(parameters.Select(parameter => parameter.Symbol));
-        foreach (int entry in b.FunctionNodes(get_symbol(symbol, c).function, c)) {
-            Node reference = get_node(entry, c);
-            if (reference.kind == NodeKind.Name && reference.symbol != 0 &&
-                get_type(reference.type, c).kind == TypeKind.Number && names.Add(reference.symbol))
-                parameters.Add((0, reference.type, reference.symbol));
-        }
+        // Numeric binding reads, including captures, cannot execute accessors.
+        // Check them as part of the bounded expression walk; exclude properties.
         Node body = get_node(function.left, c);
         int statement = body.kind == NodeKind.Block ? body.children : function.left;
         if (statement == 0) return false;
@@ -32,7 +25,7 @@ internal static partial class CompilerFunctions
         Node value = get_node(returned.left, c);
         int remaining = 32;
         if (get_type(value.type, c).kind == TypeKind.Number)
-            return scalar_constructor_expression(returned.left, TypeKind.Number, parameters, ref remaining, c, b);
+            return scalar_constructor_expression(returned.left, TypeKind.Number, parameters, ref remaining, c, b, readNumericBindings: true);
         if (get_type(value.type, c).kind != TypeKind.Boolean || value.kind != NodeKind.Binary ||
             value.third != 0 || value.fourth != 0 || value.children != 0) return false;
         int operation = get_token(value.token, c).text;
@@ -40,7 +33,7 @@ internal static partial class CompilerFunctions
             is_text(operation, text_greater, c) || is_text(operation, text_greater_equal, c) ||
             is_text(operation, text_strict_equal, c) || is_text(operation, text_strict_not_equal, c) ||
             is_text(operation, text_loose_equal, c) || is_text(operation, text_loose_not_equal, c);
-        return comparison && scalar_constructor_expression(value.left, TypeKind.Number, parameters, ref remaining, c, b) &&
-            scalar_constructor_expression(value.right, TypeKind.Number, parameters, ref remaining, c, b);
+        return comparison && scalar_constructor_expression(value.left, TypeKind.Number, parameters, ref remaining, c, b, readNumericBindings: true) &&
+            scalar_constructor_expression(value.right, TypeKind.Number, parameters, ref remaining, c, b, readNumericBindings: true);
     }
 }

@@ -5,14 +5,16 @@ internal static partial class CompilerFunctions
     // These expressions have no observable effects or reads of earlier fields,
     // so direct construction may compute each final field independently.
     static bool scalar_constructor_expression(int entry, TypeKind kind,
-        List<(int Argument, int Type, int Symbol)> parameters, ref int remaining, Compiler c, IlBackend b)
+        List<(int Argument, int Type, int Symbol)> parameters, ref int remaining, Compiler c, IlBackend b, bool readNumericBindings = false)
     {
         if (--remaining < 0 || entry == 0) return false;
         Node value = get_node(entry, c);
         // Omitted defaults can use narrower argument storage than the name's
         // IR type. The parameter plan supplies both the proof and emitted type.
         if (value.kind == NodeKind.Name)
-            return parameters.Any(parameter => parameter.Symbol == value.symbol && get_type(parameter.Type, c).kind == kind);
+            return parameters.Any(parameter => parameter.Symbol == value.symbol && get_type(parameter.Type, c).kind == kind) ||
+                readNumericBindings && kind == TypeKind.Number && value.symbol != 0 &&
+                get_type(value.type, c).kind == TypeKind.Number;
         if (value.type == 0 || get_type(value.type, c).kind != kind) return false;
         if (kind != TypeKind.Number) return false;
         if (scalar_class_literal(entry, kind, c)) return true;
@@ -27,7 +29,7 @@ internal static partial class CompilerFunctions
                 if (argument == 0 || binding.kind != NodeKind.Variable || binding.symbol == 0 || binding.constant ||
                     binding.left != 0 || binding.right != 0 || binding.third != 0 || binding.fourth != 0 || binding.children != 0 ||
                     get_type(binding.type, c).kind != TypeKind.Number ||
-                    !scalar_constructor_expression(argument, TypeKind.Number, parameters, ref remaining, c, b)) return false;
+                    !scalar_constructor_expression(argument, TypeKind.Number, parameters, ref remaining, c, b, readNumericBindings)) return false;
                 bindings.Add((argument, binding.type, binding.symbol));
                 argument = get_node(argument, c).next;
             }
@@ -44,10 +46,10 @@ internal static partial class CompilerFunctions
         int operation = get_token(value.token, c).text;
         bool sign = is_text(operation, text_plus, c) || is_text(operation, text_minus, c);
         if (value.kind == NodeKind.Unary)
-            return sign && value.right == 0 && scalar_constructor_expression(value.left, kind, parameters, ref remaining, c, b);
+            return sign && value.right == 0 && scalar_constructor_expression(value.left, kind, parameters, ref remaining, c, b, readNumericBindings);
         return (sign || is_text(operation, text_star, c) || is_text(operation, text_slash, c)) &&
-            scalar_constructor_expression(value.left, kind, parameters, ref remaining, c, b) &&
-            scalar_constructor_expression(value.right, kind, parameters, ref remaining, c, b);
+            scalar_constructor_expression(value.left, kind, parameters, ref remaining, c, b, readNumericBindings) &&
+            scalar_constructor_expression(value.right, kind, parameters, ref remaining, c, b, readNumericBindings);
     }
 
     // Only stable, uncaptured numeric helpers with a single arithmetic return
