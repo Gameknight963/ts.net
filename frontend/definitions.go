@@ -4,6 +4,7 @@ import (
 	"maps"
 
 	"github.com/microsoft/typescript-go/internal/ast"
+	"github.com/microsoft/typescript-go/internal/checker"
 )
 
 func (b *irBuilder) reflectionDefinitionArguments(n *ast.Node) []*ast.Node {
@@ -183,11 +184,33 @@ func (b *irBuilder) prepareDefinition(n *ast.Node) {
 		}
 		arguments = bound[1:]
 	}
-	properties := b.c.GetPropertiesOfType(b.c.GetTypeAtLocation(arguments[0]))
+	targetType := b.c.GetTypeAtLocation(arguments[0])
+	// Functions and constructors already use descriptor-backed runtime objects.
+	// Changing their properties cannot change an anonymous record's CLR layout.
+	if b.definitionTargetUsesFunctionStorage(targetType) {
+		return
+	}
+	properties := b.c.GetPropertiesOfType(targetType)
 	if len(properties) == 0 {
 		b.deleteAnyName = true
 	}
 	for _, property := range properties {
 		b.deletedNames[ast.SymbolName(property)] = true
 	}
+}
+
+func (b *irBuilder) definitionTargetUsesFunctionStorage(t *checker.Type) bool {
+	if t == nil || t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0 {
+		return false
+	}
+	if t.Flags()&checker.TypeFlagsUnion != 0 {
+		for _, part := range t.Types() {
+			if !b.definitionTargetUsesFunctionStorage(part) {
+				return false
+			}
+		}
+		return true
+	}
+	return len(b.c.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 ||
+		len(b.c.GetSignaturesOfType(t, checker.SignatureKindConstruct)) != 0
 }
