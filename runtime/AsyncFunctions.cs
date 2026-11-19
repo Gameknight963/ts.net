@@ -92,7 +92,7 @@ public static partial class Js
         new(value is TsObject ? PromiseResolve(RuntimeNamespaces.Promise, value) : value, continuation);
     public static object AsyncAwait(object value) => AwaitRecord(value);
     public static object AsyncAwaitContinue(object value, object continuation) => AwaitRecord(value, (JsFunction)continuation);
-    sealed class AsyncFunctionObject : JsFunction
+    class AsyncFunctionObject : JsFunction
     {
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : AsyncFunctionFamily.Value.Prototype;
         readonly JsFunction function;
@@ -101,5 +101,20 @@ public static partial class Js
         internal AsyncFunctionObject(JsFunction function) : base((FunctionBody)(args => InvokeAsyncFunction(function, Undefined, args)), null, (string)function.Get("name"), (int)(double)function.Get("length")) { this.function = function; }
         public override object InvokeWithReceiver(object receiver, object[] arguments) => InvokeAsyncFunction(function, receiver, arguments);
     }
-    public static object AsyncFunction(object value) => new AsyncFunctionObject((JsFunction)value);
+    sealed class AsyncNumberArgumentFunction(JsFunction function, INumberArgumentFunction numeric)
+        : AsyncFunctionObject(function), INumberArgumentFunction
+    {
+        public object InvokeNumberArgument(double? value)
+        {
+            var promise = new JsPromise();
+            var pair = new PromiseResolvingFunctions(promise);
+            object result;
+            try { result = numeric.InvokeNumberArgument(value); }
+            catch (Exception error) { pair.RejectError(error); return promise; }
+            CompleteAsyncResult(result, pair);
+            return promise;
+        }
+    }
+    public static object AsyncFunction(object value) => value is INumberArgumentFunction numeric
+        ? new AsyncNumberArgumentFunction((JsFunction)value, numeric) : new AsyncFunctionObject((JsFunction)value);
 }

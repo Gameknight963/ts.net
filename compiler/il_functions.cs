@@ -133,9 +133,13 @@ internal static partial class CompilerFunctions
     // The frontend has checked these types. A receiver slot also carries
     // arguments/new.target bookkeeping, so those functions retain generic calls.
     internal static int il_numeric_array_callback(int symbol, Compiler c)
+        => il_numeric_parameters(symbol, false, c);
+    internal static int il_numeric_parameters(int symbol, bool allowAsync, Compiler c)
     {
         Node f = get_node(get_symbol(symbol, c).function, c);
-        if (f.fourth != 0 || f.right != 0) return -1;
+        if (f.fourth != 0) return -1;
+        if (f.right != 0 && (!allowAsync || is_text(get_node(f.right, c).name, "generator", c) ||
+            is_text(get_node(f.right, c).name, "async generator", c))) return -1;
         int count = 0;
         for (int parameter = f.children; parameter != 0; parameter = get_node(parameter, c).next)
         {
@@ -299,6 +303,7 @@ internal static partial class CompilerFunctions
     {
         int count = il_numeric_function(symbol, c);
         int callback = il_numeric_array_callback(symbol, c);
+        int numeric_arguments = il_numeric_parameters(symbol, true, c);
         bool source_callback = il_source_array_callback(symbol, c);
         bool continuation = get_node(get_symbol(symbol, c).function, c).internal_continuation;
         bool value_callback = il_value_callback(symbol, c, b);
@@ -312,7 +317,7 @@ internal static partial class CompilerFunctions
         bool constructor_entry = constructor_parameter != 0;
         bool generic_function = b.function_values_needed.at(symbol) != 0 && get_node(get_symbol(symbol, c).function, c).fourth == 0;
         bool receiver_class = receiver_count >= 0 || receiver_arguments >= 0 || constructor_entry && get_node(get_symbol(symbol,c).function,c).fourth != 0;
-        if (receiver_arguments < 0 && !constructor_entry && !generic_function && count < 0 && callback < 0 && !source_callback && !continuation && !value_callback && !single_argument && !reduce_callback && value_count < 0 && receiver_count < 0) return;
+        if (receiver_arguments < 0 && !constructor_entry && !generic_function && count < 0 && numeric_arguments < 0 && !source_callback && !continuation && !value_callback && !single_argument && !reduce_callback && value_count < 0 && receiver_count < 0) return;
         Vector<byte> name = numbered_name('F', get_symbol(symbol, c).id);
         bool direct_method = receiver_arguments >= 0 &&
             !b.object_home_functions.Contains(symbol) && !b.function_class_types.ContainsKey(symbol);
@@ -537,7 +542,7 @@ internal static partial class CompilerFunctions
                 b.op(0x2a);
             }
         }
-        if (callback >= 0)
+        if (numeric_arguments >= 0)
         {
             // The same proof as array callbacks excludes observable this/arguments.
             b.plan.implements(type, b.RuntimeToken(RuntimeMember.NumberArgumentFunctionType));
@@ -545,7 +550,7 @@ internal static partial class CompilerFunctions
             b.begin(method);
             int raw = b.raw_functions.at(symbol);
             if (context != 0) { b.emit(0xfe09, 0); b.emit(0x7b, environment_field); }
-            for (int i = 0; i < callback; i++)
+            for (int i = 0; i < numeric_arguments; i++)
             {
                 if (i == 0) b.emit(0xfe09, 1);
                 else b.call(RuntimeMember.EmptyNumber);
