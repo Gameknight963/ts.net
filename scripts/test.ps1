@@ -681,24 +681,24 @@ try {
     [IO.File]::WriteAllText("$testRoot/bad-declarations.d.ts", 'declare let value: MissingDeclaredType; export {};', $utf8)
     [IO.File]::WriteAllText("$testRoot/bad-augmentation.d.ts", 'interface Array<T> {length: string;}', $utf8)
     $rejects = @(
-        @{ Source = 'import type {} from "./bad-declarations"; console.log(1);'; Error = '"code":2304' },
-        @{ Source = 'import "./bad-augmentation"; console.log([1].length);'; Error = '"code":2717' },
-        @{ Source = 'const n: number = "wrong";'; Error = '"code":2322' },
-        @{ Source = 'const n = 1; n = 2;'; Error = '"code":2588' },
-        @{ Source = 'const n: unknown = 1; console.log(n + 1);'; Error = '"code":18046' },
-        @{ Source = 'function f(): number { const x = 1; }'; Error = '"code":2355' },
-        @{ Source = 'function f(n: number): number { return n; } f("bad");'; Error = '"code":2345' },
-        @{ Source = 'function f(n: number): number { return n; } f();'; Error = '"code":2554' },
-        @{ Source = 'function f(n: number): number { return n; } f(1, 2);'; Error = '"code":2554' },
-        @{ Source = 'const p = { x: 1 }; console.log(p.y);'; Error = '"code":2339' },
+        @{ Source = 'import type {} from "./bad-declarations"; console.log(1);'; Error = 'error TS2304:' },
+        @{ Source = 'import "./bad-augmentation"; console.log([1].length);'; Error = 'error TS2717:' },
+        @{ Source = 'const n: number = "wrong";'; Error = 'error TS2322:' },
+        @{ Source = 'const n = 1; n = 2;'; Error = 'error TS2588:' },
+        @{ Source = 'const n: unknown = 1; console.log(n + 1);'; Error = 'error TS18046:' },
+        @{ Source = 'function f(): number { const x = 1; }'; Error = 'error TS2355:' },
+        @{ Source = 'function f(n: number): number { return n; } f("bad");'; Error = 'error TS2345:' },
+        @{ Source = 'function f(n: number): number { return n; } f();'; Error = 'error TS2554:' },
+        @{ Source = 'function f(n: number): number { return n; } f(1, 2);'; Error = 'error TS2554:' },
+        @{ Source = 'const p = { x: 1 }; console.log(p.y);'; Error = 'error TS2339:' },
         @{ Source = 'NaN = 1;'; Error = 'unsupported lowering' },
         @{ Source = 'Infinity++;'; Error = 'unsupported lowering' },
         @{ Source = '(Infinity) += 1;'; Error = 'unsupported lowering' },
-        @{ Source = 'const s = "unterminated'; Error = '"code":1002' },
-        @{ Source = '/* unterminated'; Error = '"code":1010' },
-        @{ Source = 'let x = 1; let x = 2;'; Error = '"code":2451' },
-        @{ Source = 'console.log(missing);'; Error = '"code":2304' },
-        @{ Source = 'type A = { x: number }; type B = { x: string }; const a: A = { x: 1 }; const b: B = a;'; Error = '"code":2322' }
+        @{ Source = 'const s = "unterminated'; Error = 'error TS1002:' },
+        @{ Source = '/* unterminated'; Error = 'error TS1010:' },
+        @{ Source = 'let x = 1; let x = 2;'; Error = 'error TS2451:' },
+        @{ Source = 'console.log(missing);'; Error = 'error TS2304:' },
+        @{ Source = 'type A = { x: number }; type B = { x: string }; const a: A = { x: 1 }; const b: B = a;'; Error = 'error TS2322:' }
     )
     $index = 0
     foreach ($case in $rejects) {
