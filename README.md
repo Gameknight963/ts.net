@@ -206,6 +206,7 @@ Runtime performance:
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | — | 0.28x |
 | Construct objects with a numeric argument and sum their field, 100K instances | 7.84 ms | 2.16 ms | 0.278 ms (class) | 0.28x |
 | Retained class instances with number, string and boolean fields, 100K instances; one server GC heap for both .NET builds | 4.08 ms | 1.125 ms | 1.100 ms | 0.28x |
+| `Object.keys` on 16 fields added in a loop, 100K calls and a key read | 6.452 ms | 1.836 ms | 4.585 ms (dictionary) | 0.28x |
 | Retained numeric class instances and field traversal, 100K instances | 4.50 ms | 1.165 ms | 1.012 ms | 0.26x |
 | Create and call 100K callbacks stored in an array | 5.33 ms | 1.37 ms | 6.47 ms (fresh delegates) | 0.26x |
 | Sum 1K values from a generator | 0.0461 ms | 0.0115 ms | — | 0.25x |
