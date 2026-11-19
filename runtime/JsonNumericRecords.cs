@@ -1,0 +1,42 @@
+using System;
+using System.Collections.Generic;
+
+public static partial class Js
+{
+    sealed class JsonNumericShape(string[] names, TsObject prototype)
+    {
+        internal readonly string[] Names = names;
+        internal readonly TsObject Prototype = prototype;
+        readonly Dictionary<string, int> indices = CreateIndices(names);
+        static Dictionary<string, int> CreateIndices(string[] names)
+        {
+            var result = new Dictionary<string, int>(names.Length, StringComparer.Ordinal);
+            for (int i = 0; i < names.Length; i++) result.Add(names[i], i);
+            return result;
+        }
+        internal int Index(string key) => indices.TryGetValue(key, out int index) ? index : -1;
+    }
+
+    sealed class JsonNumericRecord : JsNumericClassInstance
+    {
+        readonly JsonNumericShape shape;
+        readonly double[] values;
+        internal JsonNumericRecord(JsonNumericShape shape, double[] values)
+        {
+            this.shape = shape;
+            this.values = values;
+            ulong mask = values.Length == 32 ? ulong.MaxValue : (1ul << (values.Length * 2)) - 1;
+            InitializeDirectClassWide(null, (int)mask, (int)(mask >> 32));
+        }
+        internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : shape.Prototype;
+        internal override bool HasInProperty(string key) => HasOwn(key) || PropertyPrototype != null && PropertyPrototype.HasInProperty(key);
+        public override bool HasProperty(string key) => HasOwn(key) || PropertyPrototype != null && PropertyPrototype.HasProperty(key);
+        protected override int NumericFieldIndex(string key) => shape.Index(key);
+        protected override double ReadNumericField(int index) => values[index];
+        protected override void WriteNumericField(int index, double value) => values[index] = value;
+        protected override void CopyNumericFields()
+        {
+            for (int i = 0; i < values.Length; i++) CopyNumericField(i, shape.Names[i]);
+        }
+    }
+}

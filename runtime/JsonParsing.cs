@@ -65,6 +65,8 @@ public static partial class Js
             "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\u0009\u000a\u000b\u000c\u000d\u000e\u000f" +
             "\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f\"\\");
         int position;
+        JsonNumericShape numericShape;
+        bool numericShapeAttempted;
         readonly Stack<JsonParseFrame> frames = new();
         Exception Invalid() => MakeThrown(new JsCaughtError("SyntaxError", "Invalid JSON at position " + position.ToString(CultureInfo.InvariantCulture)));
         void Space() { while (position < text.Length && text[position] is ' ' or '\t' or '\r' or '\n') position++; }
@@ -136,6 +138,66 @@ public static partial class Js
             else if (!double.TryParse(text.AsSpan(start, position - start), NumberStyles.Float, CultureInfo.InvariantCulture, out number)) throw Invalid();
             return number;
         }
+        bool TryReadNumericRecord(out object value)
+        {
+            value = null;
+            if (remember || numericShapeAttempted && numericShape == null) return false;
+            int saved = position;
+            position++; Space();
+            if (numericShape == null)
+            {
+                numericShapeAttempted = true;
+                var names = new List<string>();
+                var numbers = new List<double>();
+                while (names.Count < 32 && position < text.Length && text[position] == '"')
+                {
+                    string key = ReadString(); Space();
+                    // Subsequent records compare unescaped source text. Keys
+                    // requiring JSON escaping keep the ordinary parser.
+                    bool simple = true;
+                    foreach (char character in key) if (character < 32 || character is '"' or '\\') { simple = false; break; }
+                    if (!simple) break;
+                    if (!Consume(':')) break;
+                    Space();
+                    if (position == text.Length || !(text[position] == '-' || char.IsAsciiDigit(text[position])) || names.Contains(key)) break;
+                    double number = ReadNumber(); names.Add(key); numbers.Add(number); Space();
+                    if (Consume('}'))
+                    {
+                        numericShape = new(names.ToArray(), DefaultClassObjectPrototype);
+                        value = new JsonNumericRecord(numericShape, numbers.ToArray());
+                        return true;
+                    }
+                    if (!Consume(',')) break;
+                    Space();
+                }
+            }
+            else
+            {
+                double[] numbers = new double[numericShape.Names.Length];
+                for (int i = 0; i < numbers.Length; i++)
+                {
+                    string key = numericShape.Names[i];
+                    if (!Consume('"')) break;
+                    if (!text.AsSpan(position).StartsWith(key, StringComparison.Ordinal)) break;
+                    position += key.Length;
+                    if (!Consume('"')) break;
+                    Space(); if (!Consume(':')) break;
+                    Space();
+                    if (position == text.Length || !(text[position] == '-' || char.IsAsciiDigit(text[position]))) break;
+                    numbers[i] = ReadNumber(); Space();
+                    if (i == numbers.Length - 1)
+                    {
+                        if (!Consume('}')) break;
+                        value = new JsonNumericRecord(numericShape, numbers);
+                        return true;
+                    }
+                    if (!Consume(',')) break;
+                    Space();
+                }
+            }
+            position = saved;
+            return false;
+        }
         object ReadValue(out JsonValue record)
         {
             record = null;
@@ -144,6 +206,7 @@ public static partial class Js
             char ch = text[position]; object value;
             if (ch is '{' or '[')
             {
+                if (ch == '{' && frames.Count != 0 && frames.Peek().Value is JsArray && TryReadNumericRecord(out value)) return value;
                 position++;
                 if (ch == '[' && !remember) Space();
                 bool packed = ch == '[' && !remember && position < text.Length &&
