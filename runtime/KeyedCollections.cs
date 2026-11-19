@@ -231,6 +231,11 @@ public static partial class Js
             object key = FunctionArgument(arguments, 0);
             return BoxBoolean(remove ? collection.Remove(key) : collection.Contains(key));
         }
+        public override object InvokeReceiverArgument1(object receiver, object value)
+        {
+            var collection = CollectionReceiver(receiver, set);
+            return BoxBoolean(remove ? collection.Remove(value) : collection.Contains(value));
+        }
         public object InvokeNumberKey(object receiver, double? key)
         {
             var collection = CollectionReceiver(receiver, set);
@@ -263,6 +268,7 @@ public static partial class Js
     sealed class MapGetFunction() : JsFunction((FunctionBody)(static _ => throw new InvalidOperationException("Map.get requires a receiver")), null, "get", 1), ICollectionNumberKeyMethod
     {
         public override object InvokeWithReceiver(object receiver, object[] arguments) => CollectionReceiver(receiver, false).Read(FunctionArgument(arguments, 0));
+        public override object InvokeReceiverArgument1(object receiver, object value) => CollectionReceiver(receiver, false).Read(value);
         public object InvokeNumberKey(object receiver, double? first)
         {
             var map = CollectionReceiver(receiver, false);

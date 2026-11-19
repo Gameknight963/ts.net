@@ -187,3 +187,18 @@ Promise.all(new Set([Promise.resolve(1),Promise.resolve(2)])).then(values=>conso
     optional.forEach((value, key) => {missing += key + ':' + String(value) + ',';});
     console.log('numeric callback undefined', missing);
 }
+{
+ const key={id:1};const symbol=Symbol('collection key');
+ const keyed=new Map<any,string>([['text','text value'],[key,'object value'],[symbol,'symbol value'],[undefined,'undefined value']]);
+ const members=new Set<any>(['text',key,symbol,undefined]);
+ for(const value of ['text',key,symbol,undefined,'missing']) {
+  console.log('reference key',keyed.get(value),keyed.has(value),members.has(value),keyed.delete(value),members.delete(value),keyed.has(value),members.has(value));
+ }
+ const captured=new Map<string,string>([['key','original']]);
+ const originalGet=captured.get;let effects='';
+ function replaceGet():string {effects+='argument|';captured.get=function(key:string):string{effects+='replacement|';return key;};return 'key';}
+ console.log('captured string get',captured.get(replaceGet()),effects);
+ console.log('replaced string get',captured.get('key'),effects);
+ console.log('borrowed string get',originalGet.call(captured,'key'));
+ try{originalGet.call(new Set(),'key');}catch(error){console.log('wrong string receiver',(error as Error).name);}
+}
