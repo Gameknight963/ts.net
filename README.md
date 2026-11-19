@@ -128,6 +128,7 @@ Runtime performance:
 | Local constructor parameter property and field read, 100K instances | 0.0698 ms | 0.0617 ms | — | 0.88x |
 | Class method through a helper, 100K calls | 0.0703 ms | 0.0619 ms | — | 0.88x |
 | Object literal method through a helper, 100K calls | 0.0715 ms | 0.0630 ms | 0.0710 ms | 0.88x |
+| `Object.keys(value)`, 100K calls and key reads | 1.281 ms | 1.121 ms | 0.942 ms (dictionary) | 0.88x |
 | Uint32Array traversal through `any`, 10 passes over 10K elements with a fixed bound | 0.0721 ms | 0.0619 ms | 0.0712 ms (uint[]) | 0.86x |
 | Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | — | 0.83x |
 | Construct and traverse 10K class instances with 17 numeric fields | 0.257 ms | 0.213 ms | 0.163 ms (class) | 0.83x |
@@ -140,6 +141,7 @@ Runtime performance:
 | Read varying `keyof` keys through a typed helper from a 64-field object, 100K reads | 1.97 ms | 1.48 ms | — | 0.75x |
 | String `charCodeAt(index)`, 1M calls | 2.27 ms | 1.66 ms | — | 0.73x |
 | Read varying keys through an `any` helper from a 64-field object, 100K reads | 2.04 ms | 1.49 ms | — | 0.73x |
+| `Object.keys` on 3 string fields plus a symbol, 100K calls and a key read | 1.403 ms | 1.026 ms | 6.434 ms (filtered dictionary) | 0.73x |
 | Create, retain, and sum 100K two-number objects | 1.62 ms | 1.15 ms | 1.71 ms (`List<Point>`) | 0.71x |
 | Float64Array toSorted and traversal, 10 copies of 10K values | 11.56 ms | 8.06 ms | — | 0.70x |
 | Int32Array toSorted and traversal, 10 copies of 10K values | 5.74 ms | 4.03 ms | — | 0.70x |
@@ -172,7 +174,6 @@ Runtime performance:
 | Construct and run a chain of 10K handlers | 0.687 ms | 0.340 ms | 0.665 ms (queued Task continuations) | 0.49x |
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | — | 0.48x |
 | Sum 1K values with an await in try and an increment in finally each iteration | 0.0994 ms | 0.0477 ms | 0.0266 ms (queued) | 0.48x |
-| `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | — | 0.46x |
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | — | 0.46x |
 | forEach with source-array reads, 10 passes over 10K integers from 0-255 | 0.538 ms | 0.248 ms | — | 0.46x |
 | Object.assign, 1K copies of a three-number record | 0.125 ms | 0.0563 ms | — | 0.45x |
