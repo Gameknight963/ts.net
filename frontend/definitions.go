@@ -58,6 +58,8 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 	}
 	seen[n] = true
 	switch n.Kind {
+	case ast.KindAwaitExpression:
+		return b.reflectionAwaitedValue(n.Expression(), seen, b.reflectionDefinitionValue)
 	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
 		return b.reflectionDefinitionValue(n.Expression(), seen)
 	case ast.KindIdentifier:

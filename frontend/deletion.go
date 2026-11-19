@@ -124,6 +124,8 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 	}
 	seen[n] = true
 	switch n.Kind {
+	case ast.KindAwaitExpression:
+		return b.reflectionAwaitedValue(n.Expression(), seen, b.reflectionDeletionValue)
 	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
 		return b.reflectionDeletionValue(n.Expression(), seen)
 	case ast.KindIdentifier:
