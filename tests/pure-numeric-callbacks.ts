@@ -42,3 +42,25 @@ let replaceable = (value: number): number => value * 2;
 console.log(input.map(value => replaceable(value)).join(','));
 replaceable = value => { input[1] = 50; return value * 3; };
 console.log(input.map(value => replaceable(value)).join(','));
+
+function scale(factor: number, threshold: number): number[] {
+    return input.map(value => value * factor).filter(value => value > threshold);
+}
+console.log('captures', scale(2, 3).join(','), scale(3, 5).join(','));
+function capturedMutation(): number[] {
+    const values = [1, 2, 3];
+    let factor = 2;
+    return values.map(value => { factor++; values[1] = 20; return value * factor; });
+}
+console.log('effectful capture', capturedMutation().join(','));
+
+function capturedGetter(): number[] {
+    const values = [1, 2, 3];
+    let first = true;
+    const state = { get factor(): number {
+        if (first) { first = false; for (let i = 0; i < 100; i++) values.push(i); values[1] = 20; }
+        return 2;
+    } };
+    return values.map(value => value * state.factor);
+}
+console.log('captured getter', capturedGetter().join(','));

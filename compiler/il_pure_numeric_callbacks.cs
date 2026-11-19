@@ -5,7 +5,6 @@ internal static partial class CompilerFunctions
     // A single arithmetic return cannot change array storage or prototypes.
     static bool il_pure_numeric_callback(int symbol, Compiler c, IlBackend b)
     {
-        if (b.function_contexts.at(symbol) != 0) return false;
         Node function = get_node(get_symbol(symbol, c).function, c);
         if (function.left == 0 || function.right != 0 || function.fourth != 0) return false;
         var parameters = new List<(int Argument, int Type, int Symbol)>();
@@ -15,6 +14,15 @@ internal static partial class CompilerFunctions
                 binding.right != 0 || binding.third != 0 || binding.fourth != 0 || binding.children != 0 ||
                 get_type(binding.type, c).kind != TypeKind.Number || parameters.Count == 2) return false;
             parameters.Add((0, binding.type, binding.symbol));
+        }
+        // Reading typed numeric bindings, including captures, cannot execute
+        // accessors or change the source. Keep property reads excluded.
+        var names = new HashSet<int>(parameters.Select(parameter => parameter.Symbol));
+        foreach (int entry in b.FunctionNodes(get_symbol(symbol, c).function, c)) {
+            Node reference = get_node(entry, c);
+            if (reference.kind == NodeKind.Name && reference.symbol != 0 &&
+                get_type(reference.type, c).kind == TypeKind.Number && names.Add(reference.symbol))
+                parameters.Add((0, reference.type, reference.symbol));
         }
         Node body = get_node(function.left, c);
         int statement = body.kind == NodeKind.Block ? body.children : function.left;
