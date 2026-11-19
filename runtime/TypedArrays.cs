@@ -109,12 +109,18 @@ public static partial class Js
     static bool TryTypedArrayGetter(TsObject prototype, string key, out TypedArrayGetter getter)
     {
         for (var current = prototype; current != null; current = current.PropertyPrototype) {
+            if (IsProxy(current)) { getter = null; return false; }
             if (!current.HasOwn(key)) continue;
             getter = current.TryOwnAccessor(key, out var accessor) ? accessor.Getter as TypedArrayGetter : null;
             return getter != null;
         }
         getter = null;
         return false;
+    }
+    public static byte[] TryUint8Buffer(object value)
+    {
+        if (value is not TypedArrayValue array || array.Kind is not ("Uint8" or "Uint8Clamped") || array.Offset != 0 || array.Buffer.Detached || array.Buffer.Resizable || array.FixedCount != array.Buffer.Bytes.Length || array.HasOwn("length")) return null;
+        return TryTypedArrayGetter(array.PropertyPrototype, "length", out var getter) && getter.IsLength ? array.Buffer.Bytes : null;
     }
     public static int Float64BufferLength(byte[] bytes) => bytes.Length / 8;
     public static byte[] TryFloat64Buffer(object value)
