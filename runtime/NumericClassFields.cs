@@ -40,9 +40,17 @@ public abstract class JsNumericClassInstance : JsClassInstance
         return true;
     }
 
-    internal bool HasDefinedClassFields(ulong mask) => !materialized && (states & mask) == mask;
+    internal bool HasDefinedClassFields(ulong mask)
+    {
+        ulong current = states;
+        return current != 2 && (current & mask) == mask;
+    }
 
-    protected int NumericFieldState(int index) => materialized || (uint)index >= 32 ? -1 : (int)(states >> (index * 2) & 3);
+    protected int NumericFieldState(int index)
+    {
+        ulong current = states;
+        return current == 2 || (uint)index >= 32 ? -1 : (int)(current >> (index * 2) & 3);
+    }
     protected void CopyNumericField(int index, string key)
     {
         int state = NumericFieldState(index);
@@ -76,11 +84,13 @@ public abstract class JsNumericClassInstance : JsClassInstance
         // Declared string values can still be null or undefined. Keep the
         // general representation for those; actual strings are always defined.
         if (value is not string) return TrySetClassValue(index, value);
-        if (materialized || (uint)index >= 32 || !IsReferenceField(index)) return false;
+        ulong current = states;
+        if (current == 2 || (uint)index >= 32 || !IsReferenceField(index)) return false;
         int shift = index * 2;
-        if ((states >> shift & 3) == 0) return false;
+        ulong state = current >> shift & 3;
+        if (state == 0) return false;
         WriteReferenceField(index, value);
-        states |= 3ul << shift;
+        if (state != 3) states |= 3ul << shift;
         return true;
     }
     protected bool TrySetClassValue(int index, object value)
