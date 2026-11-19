@@ -1027,7 +1027,7 @@ internal static partial class CompilerFunctions
                 Node right = get_node(n.right, c);
                 if (get_type(get_node(n.left, c).type, c).kind == TypeKind.Number &&
                     right.kind == NodeKind.Property && get_type(right.type, c).kind == TypeKind.Any &&
-                    is_text(right.name, text_length, c)) {
+                    is_text(right.name, text_length, c) && il_scalar_field(n.right, c, b).slot < 0) {
                     il_expression(n.left, c, b); il_boxed(right.left, c, b); b.emit(0x20, il_relational_mode(op, c));
                     b.call(RuntimeMember.NumberLengthRelational); b.call(RuntimeMember.WrapBoolean); return;
                 }
