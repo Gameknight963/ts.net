@@ -13,7 +13,7 @@ internal enum RuntimeMember
     Log, Now, Length, StringEqual, PropertyKeyHash, Concat, ActionType, ActionConstructor, Run, Truthy, Undefined, TypeOf, IsNumber, IsUndefined, IsNullish, EqualNumbers, EqualBooleans,
     CheckedNumberValue, WrapNumber, WrapBoolean, EmptyNumber, EmptyBoolean, BoxNumber, BoxInteger, BoxBoolean, NumberValue, BooleanValue, NumberMissing, BooleanMissing, NumberTruthy, StringRelational, Relational, Power, Remainder, ToInt32,
     ArrayType, NumberArrayType, ArrayConstructor, NumberArrayConstructor, InitializeLiteralNumber, AppendLiteralNumber, InitializeTaggedLiteralNumber, InitializeTaggedLiteralElement, IndexGet, IndexSet, NumberIndexGet, NumberIndexSet, NumberIndexGetAt, NumberIndexSetAt, ArrayLength, ArraySetLength, ArrayPushOneReserved, ArrayPushOne, GuardPrivateArrayPush, ArrayPushGuarded, IsPlainDataRecord, TryPlainRecordArray, TryClassArray, ArrayPush, ArrayPop, NumberPush, NumberPop, ArrayTryPacked, ArrayTryPackedRead, ArrayReservePushes, CanonicalNumber,
-    ForInStart, ForInNext, ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, IsArrayBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionType, FunctionConstructor, ReceiverFunctionType, ReceiverFunctionConstructor, PrepareReceiver, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction0, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CallValuePairNumber, CallValueNumber, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, BuiltinNamespaceById, CallCollectionNumberKey, CallCollectionNumberPair, NumberArgumentFunctionType, CallFunctionNumberArgument, CallMethodNumberArgument, CallPromiseStaticNumber, CallPromiseThen, CanReusePromiseHandler, FunctionBodyType, YieldGenerator, HasOwnNumberData, CanWriteOwnNumberData, GetClassMethodData, TrySumNumericArray, CallMethodArgument, CallFunctionArgument, GetClassMethodAt, HasBuiltinFunctionCall, HasBuiltinFunctionApply, IndexSetNumberValue, AddNumberProperty, AddNumberIndex, ConstructNumberArguments, GetTypedClassMethodAt, MethodFunctionType, MethodFunctionConstructor, Construct0, NumberLengthRelational, TryClassArrayWide, TryDefineClassNumberState, InitializeDirectClassWide, Count
+    ForInStart, ForInNext, ForOfLength, ForOfValue, ForOfNumber, ForOfStep, ArrayAppend, ArrayHole, ArraySpread, RequireObject, LoopLimit, ArrayIndexSetAt, ArrayIndexGetAt, ArrayTryDense, ArrayDecode, ArrayReserveCapacity, LogArguments, PushArguments, CallRest, ArrayBufferConstructor, ArrayHoleValue, Slice, ArraySearch, ArraySearchNumber, ArrayReverse, ArrayReverseBuiltin, IsArrayBuiltin, ReversibleConstructor, ReversibleBufferConstructor, FunctionBodyConstructor, FunctionType, FunctionConstructor, ReceiverFunctionType, ReceiverFunctionConstructor, PrepareReceiver, NumberFunction0Constructor, NumberFunction1Constructor, NumberFunction2Constructor, RawNumberFunction0Constructor, RawNumberFunction1Constructor, RawNumberFunction2Constructor, FunctionArgument, FunctionRest, CallFunction0, CallFunction, CallFunctionArguments, CallFunctionNumber0, CallFunctionNumber1, CallFunctionNumber2, CallValuePairNumber, CallValueNumber, CheckInitialized, TaggedConstructor, TaggedBufferConstructor, ArrayTryTags, ArrayIsNumberAt, ArraySetTaggedNumberAt, ArraySetTaggedReferenceAt, NumberPredicate, NumberPredicateNumber, NumberPredicateFunction, BuiltinNamespaceById, CallCollectionNumberKey, CallCollectionNumberPair, NumberArgumentFunctionType, CallFunctionNumberArgument, CallMethodNumberArgument, CallPromiseStaticNumber, CallPromiseThen, CanReusePromiseHandler, FunctionBodyType, YieldGenerator, HasOwnNumberData, CanWriteOwnNumberData, GetClassMethodData, TrySumNumericArray, CallMethodArgument, CallFunctionArgument, GetClassMethodAt, HasBuiltinFunctionCall, HasBuiltinFunctionApply, IndexSetNumberValue, AddNumberProperty, AddNumberIndex, ConstructNumberArguments, GetTypedClassMethodAt, MethodFunctionType, MethodFunctionConstructor, Construct0, NumberLengthRelational, TryClassArrayWide, TryDefineClassNumberState, InitializeDirectClassWide, OwnStringKeysBase, StringKeysFromTextFields, StringKeysFromFixed, Count
 }
 
 internal struct ScalarField
@@ -640,6 +640,9 @@ bool il_logical_assignment(int op, Compiler c)
         b.ref_set(RuntimeMember.ObjectKeysFunction, b.plan.method0(6, js, 0, -5, "GetObjectKeysFunction"));
         b.ref_set(RuntimeMember.KeysFromFixed, b.plan.method1(6, obj, 1, -5, -7, "KeysFromFixed"));
         b.ref_set(RuntimeMember.KeysFromTextFields, b.plan.method1(6, obj, 1, -5, -7, "KeysFromTextFields"));
+        b.ref_set(RuntimeMember.OwnStringKeysBase, b.plan.method0(6, obj, 1, -5, "OwnStringKeys"));
+        b.ref_set(RuntimeMember.StringKeysFromFixed, b.plan.method1(6, obj, 1, -5, -7, "StringKeysFromFixed"));
+        b.ref_set(RuntimeMember.StringKeysFromTextFields, b.plan.method1(6, obj, 1, -5, -7, "StringKeysFromTextFields"));
         int[] integer_loop_parameters = { -10, -3, -6, -6 };
         b.ref_set(RuntimeMember.GuardIntegerLoop, b.plan.method(6, js, 0, -2, integer_loop_parameters, "GuardIntegerLoop"));
         b.ref_set(RuntimeMember.NumberPredicate, b.plan.method2(6, js, 0, -2, -5, -6, "NumberPredicate"));
@@ -1120,12 +1123,16 @@ bool il_logical_assignment(int op, Compiler c)
                     b.op(0x2a);
                     member = record.next;
                 }
-                b.begin(b.plan.method0(5, klass, 0xc6, -5, "OwnKeys"));
-                b.emit(0xfe09, 0); int key_count = 0; bool text_keys = true; member = get_type(type, c).fields;
+                int key_count = 0; bool text_keys = true; member = get_type(type, c).fields;
                 while (member != 0) { if(!il_has_dynamic_indices(type,c)){key_count++; int nameLocal = get_field(member, c).name; if (text_size(nameLocal, c) > 0 && text_byte(nameLocal, 0, c) >= '0' && text_byte(nameLocal, 0, c) <= '9') { text_keys = false; }} member = get_field(member, c).next; }
-                b.emit(0x20, key_count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType)); member = get_type(type, c).fields; int key_index = 0;
-                while (member != 0) { if(!il_has_dynamic_indices(type,c)){b.op(0x25); b.emit(0x20, key_index++); il_text(get_field(member, c).name, c, b); b.op(0xa2);} member = get_field(member, c).next; }
-                b.call(text_keys ? RuntimeMember.KeysFromTextFields : RuntimeMember.KeysFromFixed); b.op(0x2a);
+                foreach (bool stringsOnly in new[] {false, true}) {
+                    b.begin(b.plan.method0(5, klass, 0xc6, -5, stringsOnly ? "OwnStringKeys" : "OwnKeys"));
+                    b.emit(0xfe09, 0);
+                    b.emit(0x20, key_count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType)); member = get_type(type, c).fields; int key_index = 0;
+                    while (member != 0) { if(!il_has_dynamic_indices(type,c)){b.op(0x25); b.emit(0x20, key_index++); il_text(get_field(member, c).name, c, b); b.op(0xa2);} member = get_field(member, c).next; }
+                    b.call(stringsOnly ? (text_keys ? RuntimeMember.StringKeysFromTextFields : RuntimeMember.StringKeysFromFixed)
+                        : (text_keys ? RuntimeMember.KeysFromTextFields : RuntimeMember.KeysFromFixed)); b.op(0x2a);
+                }
                 b.begin(b.plan.method0(5, klass, 0xc6, -3, "OwnKeyCount"));
                 b.emit(0xfe09, 0); b.emit(0x20, key_count); b.call(RuntimeMember.KeyCountWithFixed); b.op(0x2a);
                 b.begin(b.plan.method1(5, klass, 0xc6, -2, -4, "HasOwn"));

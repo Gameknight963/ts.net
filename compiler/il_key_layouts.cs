@@ -48,11 +48,15 @@ void il_prepare_key_layouts(Compiler c, IlBackend b)
                 for(int property=n.children;property!=0;property=get_node(property,c).next){b.emit(0xfe09,0);il_text(get_node(property,c).name,c,b);b.call(RuntimeMember.Undefined);b.call(RuntimeMember.DefineOwn);}
             }
             b.op(0x2a);
-            b.begin(b.plan.method0(5, type, 0xc6, -5, "OwnKeys")); b.emit(0xfe09, 0);
             int count = 0; bool text_keys = true; int child = n.children; while (child != 0) { int nameLocal = get_node(child,c).name;if(il_has_dynamic_indices(n.type,c)){child=get_node(child,c).next;continue;} count++; if (text_size(nameLocal, c) > 0 && text_byte(nameLocal, 0, c) >= '0' && text_byte(nameLocal, 0, c) <= '9') { text_keys = false; } child = get_node(child, c).next; }
-            b.emit(0x20, count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType)); int index = 0; child = n.children;
-            while (child != 0) { Node p = get_node(child, c);if(il_has_dynamic_indices(n.type,c)){child=p.next;continue;} b.op(0x25); b.emit(0x20, index++); il_text(p.name, c, b); b.op(0xa2); child = p.next; }
-            b.call(text_keys ? RuntimeMember.KeysFromTextFields : RuntimeMember.KeysFromFixed); b.op(0x2a); il_enumeration_shape(n.type, type, i, c, b);
+            foreach (bool stringsOnly in new[] {false, true}) {
+                b.begin(b.plan.method0(5, type, 0xc6, -5, stringsOnly ? "OwnStringKeys" : "OwnKeys")); b.emit(0xfe09, 0);
+                b.emit(0x20, count); b.emit(0x8d, b.RuntimeToken(RuntimeMember.ObjectType)); int index = 0; child = n.children;
+                while (child != 0) { Node p = get_node(child, c);if(il_has_dynamic_indices(n.type,c)){child=p.next;continue;} b.op(0x25); b.emit(0x20, index++); il_text(p.name, c, b); b.op(0xa2); child = p.next; }
+                b.call(stringsOnly ? (text_keys ? RuntimeMember.StringKeysFromTextFields : RuntimeMember.StringKeysFromFixed)
+                    : (text_keys ? RuntimeMember.KeysFromTextFields : RuntimeMember.KeysFromFixed)); b.op(0x2a);
+            }
+            il_enumeration_shape(n.type, type, i, c, b);
         }
     }
     internal static void il_object_keys_call(int entry, bool count, Compiler c, IlBackend b)

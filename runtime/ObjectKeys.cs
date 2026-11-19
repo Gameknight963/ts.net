@@ -4,6 +4,7 @@ using System.Globalization;
 
 public abstract partial class TsObject
 {
+    public virtual object OwnStringKeys() => Js.StringPropertyKeys(OwnKeys());
     public virtual object OwnKeys() => IsModuleNamespace ? ModuleNamespaceKeys() : KeysFromFixed(Array.Empty<object>());
     protected double ExtraKeyCount => extra?.StringCount ?? 0;
     // Unknown subclasses retain their enumeration behavior; generated shapes
@@ -14,6 +15,11 @@ public abstract partial class TsObject
     // Extras may introduce indices, so they still need the general ordering path.
     public object KeysFromTextFields(object[] names) => extra == null || extra.Count == 0
         ? new JsArray(names) : KeysFromFixed(names);
+    // Generated fixed names are non-index string keys. Symbol-only extras do
+    // not affect Object.keys, so no merged or filtered snapshot is needed.
+    public object StringKeysFromTextFields(object[] names) => extra == null || extra.StringCount == 0
+        ? new JsArray(names) : Js.StringPropertyKeys(KeysFromFixed(names));
+    public object StringKeysFromFixed(object[] names) => Js.StringPropertyKeys(KeysFromFixed(names));
     public object KeysFromFixed(object[] names) => new JsArray(KeyNamesFromFixed(names));
     object[] KeyNamesFromFixed(object[] names)
     {
@@ -182,7 +188,7 @@ public static partial class Js
     public static object ObjectKeys(object source)
     {
         if (source == null || ReferenceEquals(source, Undefined)) throw new InvalidOperationException("Cannot convert null or undefined to object");
-        if (source is TsObject value) return StringPropertyKeys(value.OwnKeys());
+        if (source is TsObject value) return value.OwnStringKeys();
         if (source is string text) {
             var names = new object[text.Length];
             for (int i = 0; i < names.Length; i++) names[i] = i.ToString(CultureInfo.InvariantCulture);

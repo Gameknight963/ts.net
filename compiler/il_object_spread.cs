@@ -90,6 +90,8 @@ void il_spread_shapes(Compiler c, IlBackend b)
             b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.call(RuntimeMember.HasOwnBase); b.op(0x2a);
             b.begin(b.plan.method0(5, klassLocal, 0xc6, -5, "OwnKeys"));
             b.emit(0xfe09, 0); b.call(RuntimeMember.OwnKeysBase); b.op(0x2a);
+            b.begin(b.plan.method0(5, klassLocal, 0xc6, -5, "OwnStringKeys"));
+            b.emit(0xfe09, 0); b.call(RuntimeMember.OwnStringKeysBase); b.op(0x2a);
             il_spread_count(klassLocal, b);
             b.begin(b.plan.method1(5, klassLocal, 0xc6, -1, -4, "MarkPresent"));
             b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.call(RuntimeMember.Undefined); b.call(RuntimeMember.DefineOwn); b.op(0x2a);
