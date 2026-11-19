@@ -302,8 +302,8 @@ public static partial class Js
     {
         double number = index.GetValueOrDefault();
         int position = (int)number;
-        if (index.HasValue && number == position && position >= 0 && receiver is JsArray array &&
-            JsArray.TryReadOwnDenseValue(array, position, out object value)) return value;
+        if (index.HasValue && number == position && position >= 0 &&
+            JsArray.TryReadOwnDenseValue(receiver, position, out object value)) return value;
         return ArrayIndexGetNumberKeyCore(receiver, index);
     }
     static object ArrayIndexGetNumberKeyCore(object receiver, double? index)
@@ -439,7 +439,7 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object ArrayGetAt(object receiver, int index)
     {
-        if (receiver is JsArray array && JsArray.TryReadOwnDenseValue(array, index, out object value)) return value;
+        if (JsArray.TryReadOwnDenseValue(receiver, index, out object value)) return value;
         return ArrayGetAtCore(receiver, index);
     }
     [MethodImpl(MethodImplOptions.NoInlining)]

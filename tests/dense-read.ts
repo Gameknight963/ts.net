@@ -74,3 +74,12 @@ visit(changing, 4, (value, index) => {
     if (index === 0) changing.length = 1;
     if (index === 1) changing[2] = 'restored';
 });
+
+function dynamicLength(values: any[]) {
+    let count = 0;
+    for (let i = 0; i < values.length; i++) { console.log('length value', i, values[i]); count++; }
+    return count;
+}
+const resizeDuringRead: any[] = [1, 2, 3];
+Object.defineProperty(resizeDuringRead, '0', { get() { resizeDuringRead.length = 1; return 'shrunk'; } });
+console.log('live length', dynamicLength(resizeDuringRead));

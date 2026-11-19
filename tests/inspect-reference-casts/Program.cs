@@ -21,6 +21,12 @@ try
     if (!ReferenceEquals(Js.ArrayGetAt(denseArray, 4), Js.Undefined) ||
         (string)Js.ArrayGetAt(new CustomReadArray(), 0) != "custom")
         throw new Exception("Integer array read bypassed its fallback");
+    if ((string)Js.IndexGetNumberKey(new CustomReadArray(), 0) != "custom" ||
+        (string)Js.IndexGetNumberKey("text", 1) != "e")
+        throw new Exception("Numeric array read bypassed a subclass or string fallback");
+    denseArray.SetOwnValue("undefined", "named");
+    if ((string)Js.IndexGetNumberKey(denseArray, null) != "named")
+        throw new Exception("Undefined array index changed its property lookup");
     for (int i = 0; i < 10000; i++) Js.ArrayGetAt(denseArray, i & 3);
     long denseBefore = GC.GetAllocatedBytesForCurrentThread();
     for (int i = 0; i < 10000; i++) Js.ArrayGetAt(denseArray, i & 3);

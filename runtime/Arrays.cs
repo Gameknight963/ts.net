@@ -233,10 +233,10 @@ public partial class JsArray : TsObject
     public object GetIndex(object key) => key is double number
         ? Js.ArrayIndexGetNumberKey(this, number) : Get(Js.PropertyKey(key));
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool TryReadOwnDenseValue(TsObject source, int index, out object value)
+    internal static bool TryReadOwnDenseValue(object source, int index, out object value)
     {
         value = null;
-        if (source.GetType() != typeof(JsArray)) return false;
+        if (source == null || source.GetType() != typeof(JsArray)) return false;
         var array = (JsArray)source;
         if (array.HasIndexedAccessors) return false;
         object[] slots = array.values.Dense;
