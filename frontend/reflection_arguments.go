@@ -230,9 +230,13 @@ func (b *irBuilder) reflectionPropertyValueLimit(n *ast.Node, seen map[*ast.Node
 			names = append(names, ast.SymbolName(property))
 		}
 	}
+	return b.reflectionReadProperties(n.Expression(), names, unknown, seen, classify, maximum)
+}
+
+func (b *irBuilder) reflectionReadProperties(owner *ast.Node, names []string, unknown bool, seen map[*ast.Node]bool, classify func(*ast.Node, map[*ast.Node]bool) int, maximum int) int {
 	result := 0
 	for _, name := range names {
-		property := b.c.GetPropertyOfType(b.c.GetTypeAtLocation(n.Expression()), name)
+		property := b.c.GetPropertyOfType(b.c.GetTypeAtLocation(owner), name)
 		if property == nil || property.ValueDeclaration == nil {
 			continue
 		}
@@ -245,7 +249,7 @@ func (b *irBuilder) reflectionPropertyValueLimit(n *ast.Node, seen map[*ast.Node
 		if unknown {
 			selected = nil
 		}
-		if value := b.reflectionContainerValue(n.Expression(), selected, seen, classify); value > result {
+		if value := b.reflectionContainerValue(owner, selected, seen, classify); value > result {
 			result = value
 		}
 	}

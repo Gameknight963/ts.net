@@ -1,0 +1,17 @@
+export {};
+const keys = Reflect.get(Object, 'keys');
+const retained = Reflect.get(Object, 'defineProperty');
+console.log(typeof retained);
+function make(value: number) {return {value, label: 'item'};}
+console.log(keys(make(7)).join(','));
+const get = Reflect.get;
+const names = get(Object, 'getOwnPropertyNames');
+console.log(names(make(8)).join(','));
+const unrelated = {get(value: {value: number}, _key: string) {return value.value;}};
+console.log(unrelated.get(make(9), 'value'));
+const getAny: any = Reflect.get;
+const values = getAny(Object, 'values');
+console.log(values(make(10)).join(','));
+const shadowed: any = {get(_owner: unknown, _key: string) {return Object.keys;}};
+const selected = shadowed.get(Object, 'freeze');
+console.log(selected(make(11)).join(','));

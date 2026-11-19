@@ -1,0 +1,12 @@
+export {};
+const remove = Reflect.get(Reflect, 'deleteProperty');
+const target = {value: 1, keep: 2};
+console.log(remove(target, 'value'), target.value, Object.keys(target).join(','));
+const get = Reflect.get;
+const removeAgain = get(Reflect, 'deleteProperty');
+const second = {secondValue: 3};
+console.log(removeAgain(second, 'secondValue'), second.secondValue, Object.hasOwn(second, 'secondValue'));
+const operations = {selected: Reflect.deleteProperty};
+const chosen = Reflect.get(operations, 'selected');
+const third = {thirdValue: 4};
+console.log(chosen(third, 'thirdValue'), third.thirdValue);

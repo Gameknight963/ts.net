@@ -98,6 +98,9 @@ func (b *irBuilder) reflectionDefinitionValue(n *ast.Node, seen map[*ast.Node]bo
 			return b.reflectionBindingValue(declaration, seen, b.reflectionDefinitionValue)
 		}
 	case ast.KindCallExpression:
+		if value, resolved := b.reflectionGetValue(n, seen, b.reflectionDefinitionValue, "defineProperty", "defineProperties", "preventExtensions", "seal", "freeze"); resolved {
+			return value
+		}
 		owner, method := deletionAccess(n.Expression())
 		if method == "bind" && len(n.AsCallExpression().Arguments.Nodes) <= 1 {
 			if kind := b.reflectionDefinitionValue(owner, seen); kind >= 2 {

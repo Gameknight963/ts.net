@@ -164,6 +164,9 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 			return b.reflectionBindingValue(declaration, seen, b.reflectionDeletionValue)
 		}
 	case ast.KindCallExpression:
+		if value, resolved := b.reflectionGetValue(n, seen, b.reflectionDeletionValue, "deleteProperty"); resolved {
+			return value
+		}
 		owner, method := deletionAccess(n.Expression())
 		if method == "bind" && len(n.AsCallExpression().Arguments.Nodes) <= 1 {
 			if kind := b.reflectionDeletionValue(owner, seen); kind >= 2 {

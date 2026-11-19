@@ -1,0 +1,24 @@
+export {};
+const define = Reflect.get(Object, 'defineProperty');
+const target = {value: 1};
+define(target, 'value', {value: 7, writable: false, enumerable: false});
+console.log(target.value, Object.keys(target).join(','));
+try {target.value = 9;} catch {console.log('readonly');}
+console.log(target.value);
+const get = Reflect.get;
+const freeze = get(Object, 'freeze');
+const frozen = {frozenValue: 3};
+console.log(freeze(frozen) === frozen, Object.isFrozen(frozen));
+const operations = {define: Object.defineProperty};
+const selected = Reflect.get(operations, 'define');
+const other = {otherValue: 4};
+selected(other, 'otherValue', {get() {return 11;}});
+console.log(other.otherValue);
+const dynamicGet: any = Reflect.get;
+const seal = dynamicGet(Object, 'seal');
+const sealed = {sealedValue: 5};
+console.log(seal(sealed) === sealed, Object.isSealed(sealed));
+const boundGet: any = Reflect.get.bind(Reflect);
+const prevent = boundGet(Object, 'preventExtensions');
+const closed = {closedValue: 6};
+console.log(prevent(closed) === closed, Object.isExtensible(closed));
