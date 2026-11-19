@@ -25,9 +25,19 @@ public static partial class Js
     public static string TryStringCodeUnitLoop(object receiver) =>
         receiver is string text && PrimitivePrototype(text) is JsBoxedPrimitive prototype &&
         ReferenceEquals(prototype.OwnDataValue("charCodeAt"), CharacterFunctions.CharCodeAt) ? text : null;
-    // The compiler proves this index is within the guarded string's length.
+    public static string TryStringCodePointLoop(object receiver) =>
+        receiver is string text && PrimitivePrototype(text) is JsBoxedPrimitive prototype &&
+        ReferenceEquals(prototype.OwnDataValue("codePointAt"), CharacterFunctions.CodePointAt) ? text : null;
+    // Both readers require an index within the guarded string's length.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double ReadStringCodeUnit(string text, int index) => text[index];
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double ReadStringCodePoint(string text, int index)
+    {
+        char first = text[index];
+        return char.IsHighSurrogate(first) && index + 1 < text.Length && char.IsLowSurrogate(text[index + 1])
+            ? char.ConvertToUtf32(first, text[index + 1]) : first;
+    }
     static object CharacterTarget(string name) => name switch {
         "charAt" => CharacterFunctions.CharAt,
         "charCodeAt" => CharacterFunctions.CharCodeAt,
