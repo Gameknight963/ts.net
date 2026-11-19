@@ -1021,6 +1021,7 @@ bool il_logical_assignment(int op, Compiler c)
     internal static void il_shapes(Compiler c, IlBackend b)
     {
         il_choose_number_field_storage(c, b);
+        int booleanCast = b.plan.method2(6, b.RuntimeToken(RuntimeMember.JsType), 0, -11, -5, -4, "CastBoolean");
         int type = c.types;
         while (type != 0)
         {
@@ -1065,7 +1066,7 @@ bool il_logical_assignment(int op, Compiler c)
                     if (kind == TypeKind.Shape && shape.fields == 0)
                         signature_type = b.RuntimeToken(RuntimeMember.ObjectType);
                 }
-                b.casts.at_mut(type) = b.plan.specialize(cast, signature_type);
+                b.casts.at_mut(type) = kind == TypeKind.Boolean ? booleanCast : b.plan.specialize(cast, signature_type);
             }
             type = get_type(type, c).next;
         }

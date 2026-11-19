@@ -13,6 +13,18 @@ try
     Reject(() => Js.Cast<bool>(1d, "boolean"));
     Reject(() => Js.Check<string>(1d, "string"));
     Console.WriteLine("PASS null reference casts and invalid value conversions");
+    foreach (object value in new object[] {true, false, Js.Undefined, null, 0d, 1, "true", new JsDynamicObject()})
+    {
+        bool? expected = null, actual = null;
+        string expectedError = null, actualError = null;
+        try {expected = Js.Cast<bool?>(value!, "boolean conversion");}
+        catch (InvalidCastException error) {expectedError = error.Message;}
+        try {actual = Js.CastBoolean(value!, "boolean conversion");}
+        catch (InvalidCastException error) {actualError = error.Message;}
+        if (actual != expected || actualError != expectedError)
+            throw new Exception("Boolean conversion differs from nullable casts");
+    }
+    Console.WriteLine("PASS boolean conversions preserve values, undefined, null rejection and error messages");
     Reject(() => Js.Cast<string>(Js.Undefined, "string"));
     Reject(() => Js.Cast<double>(Js.Undefined, "number"));
     Reject(() => Js.Cast<bool>(Js.Undefined, "boolean"));
@@ -28,10 +40,10 @@ try
         throw new Exception("Negative zero conversion changed");
     var warmup = System.Diagnostics.Stopwatch.StartNew();
     do {
-        for(int i=0;i<1000;i++)if(NullableCasts(Js.Undefined)!=4)throw new Exception("Undefined nullable conversion failed");
+        for(int i=0;i<1000;i++)if(NullableCasts(Js.Undefined)!=5)throw new Exception("Undefined nullable conversion failed");
     } while (warmup.ElapsedMilliseconds < 1000);
     long before=GC.GetAllocatedBytesForCurrentThread();
-    for(int i=0;i<10000;i++)if(NullableCasts(Js.Undefined)!=4)throw new Exception("Undefined nullable conversion failed");
+    for(int i=0;i<10000;i++)if(NullableCasts(Js.Undefined)!=5)throw new Exception("Undefined nullable conversion failed");
     long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
     if(bytes!=0)throw new Exception($"Undefined casts allocated {bytes} bytes");
     Console.WriteLine("PASS nullable values, undefined casts, and zero repeated cast allocations");
@@ -64,6 +76,7 @@ catch (Exception error) {Console.Error.WriteLine(error); Environment.ExitCode = 
 static int NullableCasts(object value) =>
     (Js.Cast<double?>(value,"double").HasValue ? 0 : 1) +
     (Js.Cast<bool?>(value,"boolean").HasValue ? 0 : 1) +
+    (Js.CastBoolean(value,"boolean").HasValue ? 0 : 1) +
     (Js.Cast<int?>(value,"integer").HasValue ? 0 : 1) +
     (Js.Cast<decimal?>(value,"decimal").HasValue ? 0 : 1);
 

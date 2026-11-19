@@ -147,6 +147,14 @@ public static partial class Js
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool? CastBoolean(object value, string message)
+    {
+        if (value is bool boolean) return boolean;
+        if (ReferenceEquals(value, Undefined)) return null;
+        throw new InvalidCastException(message);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double CheckedNumberValue(object value)
     {
         if (value is double number) return number;
