@@ -160,6 +160,7 @@ Runtime performance:
 | String slice and first-character read, 1M calls | 14.55 ms | 8.98 ms | — | 0.62x |
 | Add a 32-digit BigInt literal 10K times | 0.212 ms | 0.132 ms | 0.221 ms (`BigInteger`) | 0.62x |
 | Create and traverse 100K retained objects with a numeric field and a method | 3.77 ms | 2.35 ms | 2.10 ms (class/list), 18.29 ms (fresh delegates) | 0.62x |
+| Read and sum 200K numeric array elements through a helper | 0.140 ms | 0.0870 ms | 0.141 ms | 0.62x |
 | Sum 10K mapped numbers, 20 traversals | 0.142 ms | 0.0864 ms | — | 0.61x |
 | Numeric callback, 2M calls (experimental) | 1.38 ms | 0.827 ms | — | 0.60x |
 | Traverse 1K array values with for-await-of and sum them | 0.196 ms | 0.118 ms | — | 0.60x |
@@ -203,6 +204,7 @@ Runtime performance:
 | Count string values in a mixed array, 500K type checks | 1.38 ms | 0.429 ms | — | 0.31x |
 | Object spread, 100K copies stored in an array | 5.51 ms | 1.66 ms | — | 0.30x |
 | Add an `any` value to a number, 200K additions | 0.185 ms | 0.0548 ms | — | 0.30x |
+| Call 100K callbacks stored in an array | 0.420 ms | 0.126 ms | 0.245 ms (delegates) | 0.30x |
 | Serialize 10K numbers divided by 7, 20 times | 21.81 ms | 6.30 ms | — | 0.29x |
 | Self-returning function, 2M calls | 1.97 ms | 0.572 ms | 1.51 ms (delegate) | 0.29x |
 | Cached date formatter, 1K daily UTC dates in 2024, Chinese calendar | 83.9 ms | 23.8 ms | — | 0.28x |
@@ -215,7 +217,6 @@ Runtime performance:
 | Retained class instances with number, string and boolean fields, 100K instances | 6.26 ms | 1.551 ms | 1.832 ms | 0.25x |
 | Attach 10K handlers to one pending promise and sum their results | 3.47 ms | 0.835 ms | 1.03 ms (queued Task continuations) | 0.24x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | — | 0.23x |
-| Call 100K callbacks stored in an array | 0.531 ms | 0.124 ms | 0.251 ms (delegates) | 0.23x |
 | Increment fifth numeric property of a parsed object, 100K times | 0.645 ms | 0.120 ms | 1.361 ms (dictionary), 0.258 ms (class) | 0.19x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Construct and traverse 100K zero-argument class instances with a field initializer and method | 5.68 ms | 0.984 ms | 0.864 ms (class) | 0.17x |
