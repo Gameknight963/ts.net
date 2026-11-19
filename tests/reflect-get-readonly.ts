@@ -15,3 +15,7 @@ console.log(values(make(10)).join(','));
 const shadowed: any = {get(_owner: unknown, _key: string) {return Object.keys;}};
 const selected = shadowed.get(Object, 'freeze');
 console.log(selected(make(11)).join(','));
+console.log([...('ab'[Symbol.iterator]())].join(','));
+const method = Symbol('method');
+const computed = {[method]() {return 12;}};
+console.log(computed[method]());

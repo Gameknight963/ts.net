@@ -21,7 +21,11 @@ func (b *irBuilder) reflectionGetCall(n *ast.Node, seen map[*ast.Node]bool) bool
 		signature = signature.Target()
 	}
 	declaration := signature.Declaration()
-	if declaration == nil || declaration.Name() == nil || declaration.Name().Text() != "get" {
+	if declaration == nil || declaration.Name() == nil {
+		return false
+	}
+	name := declaration.Name()
+	if name.Kind != ast.KindIdentifier && name.Kind != ast.KindStringLiteral || name.Text() != "get" {
 		return false
 	}
 	file := ast.GetSourceFileOfNode(declaration)
