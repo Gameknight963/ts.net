@@ -64,6 +64,17 @@ public static partial class Js
         static readonly SearchValues<char> StringStops = SearchValues.Create(
             "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\u0009\u000a\u000b\u000c\u000d\u000e\u000f" +
             "\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f\"\\");
+        static readonly SearchValues<char> NumericArrayCharacters = SearchValues.Create("0123456789-+.eE, \t\r\n");
+        void ReserveNumericArray(TaggedArray array)
+        {
+            // A bounded vector scan recognizes flat numeric candidates. The
+            // normal parser still validates every token and separator.
+            var remaining = text.AsSpan(position, Math.Min(text.Length - position, 1 << 20));
+            int end = remaining.IndexOfAnyExcept(NumericArrayCharacters);
+            if (end < 1024 || remaining[end] != ']') return;
+            int count = remaining[..end].Count(',') + 1;
+            if (count is >= 128 and <= 65536) array.ReserveCapacity(count);
+        }
         int position;
         JsonRecordShape recordShape;
         bool recordShapeAttempted;
@@ -242,6 +253,7 @@ public static partial class Js
                 bool packed = ch == '[' && !remember && position < text.Length &&
                     (text[position] == '-' || char.IsAsciiDigit(text[position]));
                 value = ch == '{' ? new JsDynamicObject() : packed ? new TaggedArray(0) : new JsArray(0);
+                if (packed) ReserveNumericArray((TaggedArray)value);
                 if (remember) record = new JsonValue(value, start) { Children = new(StringComparer.Ordinal) };
                 frames.Push(new(value, record, frames.Count == 0 ? null : frames.Peek().Keys)); return value;
             }

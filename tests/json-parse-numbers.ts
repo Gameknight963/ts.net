@@ -46,3 +46,18 @@ for (const text of ['[1,]', '[1,,2]', '[1 2]', '[1,2x]', '[1,2', '[1,2,]',
     catch (error) { invalid = (error as Error).name === 'SyntaxError'; }
     if (!invalid) throw new Error('Invalid numeric array accepted: ' + text);
 }
+
+const manyNumbers = Array.from({length: 2048}, (_, i) => i - 1024);
+const manyText = JSON.stringify(manyNumbers);
+for (const text of [manyText, '[' + manyText + ',[1,2],' + manyText + ']',
+    manyText.slice(0, -1) + ',null,"end",{"value":3}]']) {
+    console.log('large numeric arrays', JSON.stringify(JSON.parse(text)) === text);
+}
+for (const text of [manyText.slice(0, -1) + ',]', manyText.slice(0, -1) + ',,2]']) {
+    let invalid = false;
+    try { JSON.parse(text); }
+    catch (error) { invalid = (error as Error).name === 'SyntaxError'; }
+    if (!invalid) throw new Error('Invalid large numeric array accepted');
+}
+console.log('reservation count limit', JSON.parse('[' + '0,'.repeat(65536) + '1]').length);
+console.log('reservation scan limit', JSON.parse('[1,' + ' '.repeat(1048576) + '2]').join(','));
