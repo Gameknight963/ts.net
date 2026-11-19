@@ -106,6 +106,7 @@ Runtime performance:
 | Create/read a two-field object in a 100K-iteration loop, with a constant-key deletion elsewhere in the program | 0.0706 ms | 0.0720 ms | — | 1.02x |
 | Masked integer remainder, 1M iterations | 1.10 ms | 1.11 ms | — | 1.01x |
 | Sum 100K local two-number array literals by fixed index | 0.0679 ms | 0.0689 ms | — | 1.01x |
+| Float32Array traversal through `any`, 10 passes over 10K elements with a fixed bound | 0.0714 ms | 0.0719 ms | 0.0707 ms (float[]) | 1.01x |
 | Literal squares, 2M iterations | 1.40 ms | 1.41 ms | — | 1.00x |
 | `any` property loop, 350K iterations | 0.3 ms | 0.3 ms | — | 1.00x |
 | Float64Array traversal through `any`, 10 passes over 10K elements with a fixed bound | 0.0727 ms | 0.0730 ms | 0.0724 ms (double[]) | 1.00x |
@@ -126,6 +127,7 @@ Runtime performance:
 | Local constructor parameter property and field read, 100K instances | 0.0698 ms | 0.0617 ms | — | 0.88x |
 | Class method through a helper, 100K calls | 0.0703 ms | 0.0619 ms | — | 0.88x |
 | Object literal method through a helper, 100K calls | 0.0715 ms | 0.0630 ms | 0.0710 ms | 0.88x |
+| Uint32Array traversal through `any`, 10 passes over 10K elements with a fixed bound | 0.0721 ms | 0.0619 ms | 0.0712 ms (uint[]) | 0.86x |
 | Response BYOB, read 1 MiB through a reused 16 KiB buffer | 0.957 ms | 0.797 ms | — | 0.83x |
 | Construct and traverse 10K class instances with 17 numeric fields | 0.257 ms | 0.213 ms | 0.163 ms (class) | 0.83x |
 | Object valueOf, 1M numeric conversions | 27.57 ms | 22.64 ms | — | 0.82x |
