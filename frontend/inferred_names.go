@@ -16,6 +16,9 @@ context:
 	if parent == nil {
 		return ""
 	}
+	if b.assignClassFields && parent.Kind == ast.KindPropertyDeclaration {
+		return ""
+	}
 	switch parent.Kind {
 	case ast.KindVariableDeclaration, ast.KindPropertyAssignment, ast.KindPropertyDeclaration, ast.KindParameter, ast.KindBindingElement, ast.KindShorthandPropertyAssignment:
 		if name := parent.Name(); name != nil {

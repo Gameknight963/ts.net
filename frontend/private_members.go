@@ -71,7 +71,7 @@ func (b *irBuilder) privateInitialization(member *ast.Node, receiver int, expres
 	b.nodes[id-1].right = expression
 	b.nodes[id-1].fourth = slot
 	b.nodes[id-1].third = marker
-	if mode != 1 && anonymousPropertyFunction(member.Initializer()) {
+	if mode != 1 && !b.assignClassFields && anonymousPropertyFunction(member.Initializer()) {
 		b.nodes[id-1].constant = 1
 	}
 	return id

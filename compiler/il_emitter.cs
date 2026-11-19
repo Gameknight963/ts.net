@@ -1232,7 +1232,9 @@ internal static partial class CompilerFunctions
             }
             if (n.fourth != 0)
             {
-                il_boxed(n.left, c, b); il_boxed(n.fourth, c, b); il_boxed(n.right, c, b); b.emit(0x20, n.constant ? 1 : 0); b.call(RuntimeMember.InitializeAutoAccessor); return;
+                il_boxed(n.left, c, b); il_boxed(n.fourth, c, b); il_boxed(n.right, c, b);
+                if (n.children != 0) { b.call(RuntimeMember.AssignAutoAccessorBacking); return; }
+                b.emit(0x20, n.constant ? 1 : 0); b.call(RuntimeMember.InitializeAutoAccessor); return;
             }
             int initializer = !n.constant && n.third == 0 ? il_class_field_initializer(entry, c, b) : 0;
             if (initializer != 0) {

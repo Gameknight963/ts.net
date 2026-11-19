@@ -68,6 +68,7 @@ internal sealed class JsPrivateMember(string name, JsPrivateKind kind)
             if (cell.Initialized) throw Error("Private backing storage already exists");
             cell.Value = value; cell.Initialized = true; return;
         }
+        if (mode == 3) { WriteBacking(receiver, value); return; }
         if (!values.TryAdd(Target(receiver), new Cell(value, kind != JsPrivateKind.AutoAccessor))) throw Error("Private member is already installed");
     }
 }

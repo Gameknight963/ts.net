@@ -18,6 +18,9 @@ func (b *irBuilder) className(n *ast.Node) string {
 		parent = parent.Parent
 	}
 	if parent != nil && (parent.Kind == ast.KindVariableDeclaration || parent.Kind == ast.KindPropertyAssignment || parent.Kind == ast.KindPropertyDeclaration) {
+		if b.assignClassFields && parent.Kind == ast.KindPropertyDeclaration {
+			return ""
+		}
 		if parent.Name().Kind == ast.KindPrivateIdentifier {
 			return parent.Name().Text()
 		}
@@ -29,6 +32,11 @@ func (b *irBuilder) className(n *ast.Node) string {
 		}
 	}
 	return b.inferredExpressionName(n)
+}
+
+func (b *irBuilder) assignmentField(n *ast.Node) bool {
+	return b.assignClassFields && n != nil && n.Kind == ast.KindPropertyDeclaration &&
+		n.Name().Kind != ast.KindPrivateIdentifier && ast.GetCombinedModifierFlags(n)&ast.ModifierFlagsAccessor == 0
 }
 func (b *irBuilder) newFunction(n *ast.Node, name string) (int, int) {
 	typ := b.typ(b.c.GetAnyType())
@@ -51,7 +59,38 @@ func (b *irBuilder) classReference(n *ast.Node, symbol int) int {
 	b.nodes[id-1].typ = b.typ(b.c.GetAnyType())
 	return id
 }
-func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
+
+// Assignment-style public fields use ordinary writes, including inherited
+// setters. Private fields and auto-accessor storage still define own slots.
+func (b *irBuilder) classFieldAssignment(n *ast.Node, field int) int {
+	row := b.nodes[field-1]
+	receiver := b.node(58, n, "this")
+	b.nodes[receiver-1].left = row.left
+	b.nodes[receiver-1].typ = b.typ(b.c.GetAnyType())
+	property := b.node(5, n, "field assignment")
+	b.nodes[property-1].left = receiver
+	b.nodes[property-1].name = row.name
+	b.nodes[property-1].typ = b.typ(b.c.GetAnyType())
+	if row.third != 0 {
+		b.nodes[property-1].kind = 33
+		b.nodes[property-1].right = row.third
+	}
+	assignment := b.node(10, n, "=")
+	b.nodes[assignment-1].left = property
+	b.nodes[assignment-1].right = row.right
+	b.nodes[assignment-1].typ = b.nodes[row.right-1].typ
+	return b.expressionStatement(n, assignment)
+}
+
+type classFieldPhase int
+
+const (
+	allClassFields classFieldPhase = iota
+	nativeClassFields
+	assignedClassFields
+)
+
+func (b *irBuilder) classInitializer(n *ast.Node, static bool, phase classFieldPhase) int {
 	function, value := b.newFunction(n, "")
 	previous, scope := b.thisSymbol, b.thisScope
 	previousNewTarget := b.newTargetUsed
@@ -73,6 +112,9 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 	last := 0
 	brands := map[int]bool{}
 	for _, member := range n.Members() {
+		if phase == assignedClassFields {
+			break
+		}
 		if member.Name() == nil || member.Name().Kind != ast.KindPrivateIdentifier || privateKind(member) == 0 || (ast.GetCombinedModifierFlags(member)&ast.ModifierFlagsStatic != 0) != static {
 			continue
 		}
@@ -94,7 +136,70 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 		}
 		last = stamp
 	}
-	if state := b.classDecorations[n]; state != nil {
+	if !static && b.assignClassFields && b.nativeClassFields && phase != assignedClassFields {
+		// Native private storage exists before parameter-property assignments;
+		// its value is assigned later, in source order with public fields.
+		for _, member := range n.Members() {
+			flags := ast.GetCombinedModifierFlags(member)
+			if member.Kind != ast.KindPropertyDeclaration || flags&(ast.ModifierFlagsStatic|ast.ModifierFlagsAmbient|ast.ModifierFlagsAbstract) != 0 {
+				continue
+			}
+			private := member.Name().Kind == ast.KindPrivateIdentifier
+			slot := b.classAutoSlots[member]
+			if !private && slot == 0 {
+				continue
+			}
+			empty := b.node(20, member, "undefined")
+			b.nodes[empty-1].typ = b.typ(b.c.GetUndefinedType())
+			field := 0
+			if private {
+				mode := 0
+				if privateKind(member) == 4 {
+					mode = 2
+				}
+				field = b.privateInitialization(member, b.thisSymbol, empty, mode)
+				b.nodes[field-1].constant = 0
+			} else {
+				field = b.node(57, member, "accessor storage")
+				b.nodes[field-1].left = b.classReference(member, b.thisSymbol)
+				b.nodes[field-1].fourth = b.classReference(member, slot)
+				b.nodes[field-1].right = empty
+			}
+			if last == 0 {
+				b.nodes[body-1].children = field
+			} else {
+				b.nodes[last-1].next = field
+			}
+			last = field
+		}
+	}
+	if !static && !b.assignClassFields {
+		// With define-style fields, parameter properties have their own
+		// undefined slots before any field initializers or constructor defaults.
+		for _, member := range n.Members() {
+			if member.Kind != ast.KindConstructor || member.Body() == nil {
+				continue
+			}
+			for _, parameter := range member.Parameters() {
+				if ast.GetCombinedModifierFlags(parameter)&ast.ModifierFlagsParameterPropertyModifier == 0 {
+					continue
+				}
+				empty := b.node(20, parameter, "undefined")
+				b.nodes[empty-1].typ = b.typ(b.c.GetUndefinedType())
+				field := b.node(57, parameter, "parameter field")
+				b.nodes[field-1].name = b.text(parameter.Name().Text())
+				b.nodes[field-1].left = b.classReference(parameter, b.thisSymbol)
+				b.nodes[field-1].right = empty
+				if last == 0 {
+					b.nodes[body-1].children = field
+				} else {
+					b.nodes[last-1].next = field
+				}
+				last = field
+			}
+		}
+	}
+	if state := b.classDecorations[n]; state != nil && phase != nativeClassFields {
 		mode := 0
 		if static {
 			mode = 1
@@ -108,6 +213,9 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 		last = run
 	}
 	for _, member := range n.Members() {
+		if phase == nativeClassFields {
+			break
+		}
 		flags := ast.GetCombinedModifierFlags(member)
 		if member.Kind == ast.KindClassStaticBlockDeclaration {
 			if static {
@@ -141,6 +249,9 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 			if privateKind(member) == 4 {
 				mode = 2
 			}
+			if !static && b.assignClassFields && b.nativeClassFields {
+				mode = 3
+			}
 			expression = b.decoratedFieldValue(n, member, b.thisSymbol, expression)
 			statement := b.privateInitialization(member, b.thisSymbol, expression, mode)
 			if last == 0 {
@@ -155,6 +266,9 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 			}
 			continue
 		}
+		if b.assignmentField(member) && member.Initializer() == nil && (b.legacyDecorators || len(member.Decorators()) == 0) {
+			continue
+		}
 		statement := b.node(57, member, "field")
 		if known {
 			b.nodes[statement-1].name = b.text(name)
@@ -166,7 +280,7 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 			ref := b.classReference(member, slot)
 			b.nodes[statement-1].fourth = ref
 		}
-		if anonymousPropertyFunction(member.Initializer()) {
+		if anonymousPropertyFunction(member.Initializer()) && !b.assignClassFields {
 			b.nodes[statement-1].constant = 1
 		}
 		receiver := b.classReference(member, b.thisSymbol)
@@ -180,6 +294,12 @@ func (b *irBuilder) classInitializer(n *ast.Node, static bool) int {
 			b.nodes[expression-1].typ = b.typ(b.c.GetUndefinedType())
 		}
 		b.nodes[statement-1].right = b.decoratedFieldValue(n, member, b.thisSymbol, expression)
+		if !static && b.assignClassFields && b.nativeClassFields && b.classAutoSlots[member] != 0 {
+			b.nodes[statement-1].children = b.node(20, member, "assigned backing storage")
+		}
+		if b.assignmentField(member) {
+			statement = b.classFieldAssignment(member, statement)
+		}
 		if last == 0 {
 			b.nodes[body-1].children = statement
 		} else {
@@ -319,7 +439,7 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 		for owner != nil && (owner.Kind == ast.KindParenthesizedExpression || owner.Kind == ast.KindAsExpression || owner.Kind == ast.KindSatisfiesExpression || owner.Kind == ast.KindTypeAssertionExpression) {
 			owner = owner.Parent
 		}
-		if key := b.classFieldKeys[owner]; key != 0 {
+		if key := b.classFieldKeys[owner]; key != 0 && !(b.assignClassFields && owner != nil && owner.Kind == ast.KindPropertyDeclaration) {
 			reference := b.classReference(n, key)
 			if ast.GetCombinedModifierFlags(owner)&ast.ModifierFlagsAccessor != 0 {
 				stringType := b.typ(b.c.GetStringType())
@@ -341,9 +461,22 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 		}
 	}
 	b.nodes[value-1].fourth = marker
-	fields := b.classInitializer(n, false)
+	phase := allClassFields
+	if b.assignClassFields && b.nativeClassFields {
+		for _, member := range n.Members() {
+			if member.Kind == ast.KindConstructor && member.Body() != nil {
+				phase = nativeClassFields
+				break
+			}
+		}
+	}
+	fields := b.classInitializer(n, false, phase)
+	assignedFields := fields
+	if phase == nativeClassFields {
+		assignedFields = b.classInitializer(n, false, assignedClassFields)
+	}
 	b.nodes[value-1].left = fields
-	staticFields := b.classInitializer(n, true)
+	staticFields := b.classInitializer(n, true, allClassFields)
 	last := 0
 	for _, member := range n.Members() {
 		b.superSymbol, b.superStatic = previousSuper, previousStatic
@@ -389,8 +522,18 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 				b.superStatic = false
 				ctor := b.functionValue(member)
 				b.nodes[value-1].right = ctor
-				// Parameter properties initialize after defaults and fields.
+				// Assignment-style fields follow parameter properties. Native
+				// class fields are initialized by the runtime before the body.
 				function := b.nodes[ctor-1].left
+				if b.assignClassFields && b.nodes[function-1].fourth == 0 {
+					b.symbols = append(b.symbols, irSymbol{name: b.text("this"), typ: typ})
+					hidden := b.node(13, member, "this")
+					b.nodes[hidden-1].symbol = len(b.symbols)
+					b.nodes[hidden-1].typ = typ
+					b.nodes[hidden-1].next = b.nodes[function-1].children
+					b.nodes[function-1].children = hidden
+					b.nodes[function-1].fourth = hidden
+				}
 				first := 0
 				tail := 0
 				for _, parameter := range member.Parameters() {
@@ -415,12 +558,36 @@ func (b *irBuilder) classValue(n *ast.Node) int {
 					b.nodes[field-1].left = receiver
 					source := b.lower(parameter.Name())
 					b.nodes[field-1].right = source
+					if b.assignClassFields {
+						field = b.classFieldAssignment(parameter, field)
+					}
 					if first == 0 {
 						first = field
 					} else {
 						b.nodes[tail-1].next = field
 					}
 					tail = field
+				}
+				if b.assignClassFields {
+					// Move the initializer call into this constructor (or its
+					// after-super callback), after defaults and parameter writes.
+					receiver := b.node(58, member, "this")
+					b.nodes[receiver-1].left = b.classReference(member, b.nodes[b.nodes[function-1].fourth-1].symbol)
+					b.nodes[receiver-1].typ = typ
+					initialize := b.node(56, member, "assignment fields")
+					b.nodes[initialize-1].left = receiver
+					b.nodes[initialize-1].right = assignedFields
+					if first == 0 {
+						first = initialize
+					} else {
+						b.nodes[tail-1].next = initialize
+					}
+					tail = initialize
+					if !b.nativeClassFields {
+						empty, emptyValue := b.newFunction(n, "")
+						b.nodes[empty-1].left = b.node(12, n, "empty fields")
+						b.nodes[value-1].left = emptyValue
+					}
 				}
 				if first != 0 {
 					body := b.nodes[function-1].left

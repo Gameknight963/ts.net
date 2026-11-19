@@ -91,30 +91,6 @@ func loadProject(path string, legacy bool, project string) (*session, string, in
 			return nil, diagnosticReport(config.Errors), compilerFailure
 		}
 		options = config.CompilerOptions()
-		// Keep the standalone compiler's defaults for unspecified settings.
-		// Explicit config options, including inherited paths and type roots,
-		// belong to Microsoft's parser and resolver.
-		if options.Strict == core.TSUnknown {
-			options.Strict = core.TSTrue
-		}
-		if options.Target == core.ScriptTargetNone {
-			options.Target = core.ScriptTargetESNext
-		}
-		if options.Module == core.ModuleKindNone {
-			options.Module = core.ModuleKindPreserve
-			if options.ModuleResolution == core.ModuleResolutionKindUnknown {
-				options.ModuleResolution = core.ModuleResolutionKindBundler
-			}
-		}
-		if options.Types == nil {
-			options.Types = []string{}
-		}
-		if options.ResolveJsonModule == core.TSUnknown {
-			options.ResolveJsonModule = core.TSTrue
-		}
-		if options.SkipDefaultLibCheck == core.TSUnknown {
-			options.SkipDefaultLibCheck = core.TSTrue
-		}
 	}
 	// The frontend checks source; assembly output is owned by the IL backend.
 	options.NoEmit = core.TSTrue

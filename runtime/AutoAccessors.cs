@@ -49,4 +49,5 @@ public static partial class Js
         if (inferName) ((JsFunction)value).InferPropertyName(accessor.StorageName);
         accessor.Initialize(target, value);
     }
+    public static void AssignAutoAccessorBacking(object target, object slot, object value) => ((JsAutoAccessor)slot).Write(target, value);
 }

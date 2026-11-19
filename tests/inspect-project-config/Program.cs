@@ -95,6 +95,118 @@ static void Run()
     var missing = Execute(root, "dotnet", compiler, "--project");
     if (missing.Code == 0 || !missing.Error.Contains("--project requires")) throw new Exception("Missing project argument accepted");
     Console.WriteLine("PASS project diagnostics and output preservation");
+
+    string CheckProject(string directory)
+    {
+        string project = Path.Combine(fixture, directory, "tsconfig.json");
+        string source = Path.Combine(fixture, directory, "main.ts");
+        string output = Path.Combine(fixture, directory, "App.dll");
+        RequireSuccess(Execute(root, "dotnet", compiler, "--project", project, source, output));
+        File.Copy(Path.Combine(fixture, "Tsnet.Runtime.dll"), Path.Combine(fixture, directory, "Tsnet.Runtime.dll"), true);
+        File.Copy(Path.Combine(fixture, "App.runtimeconfig.json"), Path.Combine(fixture, directory, "App.runtimeconfig.json"), true);
+        string actual = RequireSuccess(Execute(root, "dotnet", output));
+        string[] arguments = ["--project", project, "--outDir", Path.Combine(fixture, directory, "node")];
+        RequireSuccess(OperatingSystem.IsWindows()
+            ? Execute(root, "cmd", new[] {"/c", "tsc.cmd"}.Concat(arguments).ToArray())
+            : Execute(root, "tsc", arguments));
+        string expected = RequireSuccess(Execute(root, "node", Path.Combine(fixture, directory, "node/main.js")));
+        if (actual != expected) throw new Exception($"{directory} output differs from Node:\nActual:\n{actual}\nExpected:\n{expected}");
+        return actual;
+    }
+    Write("defaults/tsconfig.json", """{"compilerOptions":{"strict":false,"typeRoots":["./types"],"types":["*"]},"files":["main.ts"]}""");
+    Write("defaults/types/default-env/index.d.ts", "type DefaultTag = 'defaults';");
+    Write("defaults/main.ts", "function echo(value) {return value;} const tag: DefaultTag = 'defaults'; console.log(echo(tag));");
+    if (CheckProject("defaults") != "defaults\n") throw new Exception("Config defaults were overridden");
+    Console.WriteLine("PASS config strict override and ambient type discovery");
+
+    string fields = """
+        const events: string[] = [];
+        function init(label: string, value: number): number {events.push(label); return value;}
+        const key = 'computed' as const;
+        class Parent {
+          set value(value: number) {events.push('setter:' + value);}
+          get value(): number {return 30;}
+          set parameter(value: number) {
+            events.push('parameter:' + value);
+            if (typeof (this as any).snapshot === 'function') events.push('early:' + (this as any).snapshot());
+          }
+          get parameter(): number {return 40;}
+          static set flag(value: number) {events.push('static setter:' + value);}
+          static get flag(): number {return 50;}
+          constructor() {events.push('parent');}
+        }
+        class Child extends (Parent as any) {
+          value = init('value', 7);
+          observed = (this as any).parameter;
+          untouched!: number;
+          [key] = init('computed', 8);
+          static flag = init('static', 9);
+          static absent: number;
+          #secret = init('private', 11);
+          accessor automatic = init('auto', 12);
+          arrow = () => this.value;
+          expression = function() {return 13;};
+          klass = class {};
+          static callback = () => 1;
+          constructor(public parameter: number = init('default', 4)) {super(); events.push('body:' + this.parameter);}
+          read(): number {return this.#secret;}
+          snapshot(): string {return String(this.#secret) + ':' + String(this.automatic);}
+        }
+        console.log('definition', events.join(','), Object.hasOwn(Child, 'flag'), Object.hasOwn(Child, 'absent'), Child.flag);
+        events.length = 0;
+        const child = new Child();
+        console.log('instance', events.join(','), child.value, child.parameter, child.computed, child.read(), child.automatic);
+        console.log('presence', Object.hasOwn(child, 'value'), Object.hasOwn(child, 'parameter'), Object.hasOwn(child, 'untouched'));
+        console.log('keys', Object.keys(child).join(','), child.observed);
+        console.log('names', child.arrow.name, child.expression.name, child.klass.name, Child.callback.name);
+        child.automatic = 14; console.log('accessor', child.automatic, new Child(6).automatic);
+        class Plain {
+          value = init('plain field', 1);
+          constructor(public parameter: number = init('plain default', 2)) {events.push('plain body');}
+        }
+        events.length = 0;
+        const plain = new Plain();
+        console.log('plain', events.join(','), plain.value, plain.parameter);
+        console.log('plain keys', Object.keys(plain).join(','));
+        class Implicit extends (Parent as any) {value = 10;}
+        console.log('implicit', new Implicit().value);
+        class Uninitialized { [key]!: number; }
+        console.log('uninitialized', Object.keys(new Uninitialized()).join(','));
+        const replacement = {};
+        class Replacer {constructor() {return replacement;}}
+        class Replaced extends Replacer {
+          value = 15;
+          constructor(public parameter = 16) {super();}
+        }
+        const replaced = new Replaced();
+        console.log('replacement', replaced === replacement, JSON.stringify(replaced));
+        """;
+    foreach (bool define in new[] {false, true}) {
+        string directory = define ? "define fields" : "assign fields";
+        Write(directory + "/main.ts", fields);
+        Write(directory + "/tsconfig.json", "{\"compilerOptions\":{\"strict\":true,\"target\":\"es2022\",\"types\":[],\"useDefineForClassFields\":" + (define ? "true" : "false") + "},\"files\":[\"main.ts\"]}");
+        CheckProject(directory);
+    }
+    Console.WriteLine("PASS class field options, inherited setters, constructor order, private fields and auto-accessors against Node");
+    Write("decorated fields/tsconfig.json", """{"compilerOptions":{"strict":true,"target":"es2022","lib":["esnext","dom"],"types":[],"useDefineForClassFields":false},"files":["main.ts"]}""");
+    Write("decorated fields/main.ts", """
+        const events: string[] = [];
+        function initialize(_value: undefined, context: ClassFieldDecoratorContext<any, any>) {
+          context.addInitializer(function() {events.push('extra:' + this[context.name]);});
+          return function(value: any) {events.push('init:' + value); return value ?? 17;};
+        }
+        class Decorated {
+          @initialize value!: number;
+          @initialize static value: number;
+          constructor(public parameter = 4) {events.push('body:' + this.value);}
+        }
+        console.log('static', events.join(','), Decorated.value);
+        events.length = 0;
+        const item = new Decorated();
+        console.log('instance', events.join(','), item.value, item.parameter, Object.keys(item).join(','));
+        """);
+    CheckProject("decorated fields");
+    Console.WriteLine("PASS assignment-style decorator initializers without field initializers against Node");
 }
 
 static string RequireSuccess((int Code, string Output, string Error) result)

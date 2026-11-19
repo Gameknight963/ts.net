@@ -12,6 +12,7 @@ import (
 
 	"github.com/microsoft/typescript-go/internal/ast"
 	"github.com/microsoft/typescript-go/internal/checker"
+	"github.com/microsoft/typescript-go/internal/core"
 	"github.com/microsoft/typescript-go/internal/evaluator"
 	"github.com/microsoft/typescript-go/internal/scanner"
 )
@@ -39,6 +40,8 @@ type irBuilder struct {
 	nativeShapeViews      map[*checker.Type]bool
 	sourceTexts           map[int]int
 	legacyDecorators      bool
+	assignClassFields     bool
+	nativeClassFields     bool
 	jsonModules           map[*ast.SourceFile]int
 	jsonExports           map[*ast.SourceFile]*ast.Symbol
 	classDecorations      map[*ast.Node]*classDecoration
@@ -1366,6 +1369,8 @@ func exportIR(s *session) (result []byte, err error) {
 	// holding its exclusive lock for IR construction.
 	release()
 	b := &irBuilder{legacyDecorators: s.legacyDecorators, c: c, file: s.file, textIDs: map[string]int{}, typeIDs: map[*checker.Type]int{}, primitives: map[int]int{}, symbolIDs: map[*ast.Symbol]int{}}
+	b.assignClassFields = !s.program.Options().GetUseDefineForClassFields()
+	b.nativeClassFields = s.program.Options().GetEmitScriptTarget() >= core.ScriptTargetES2022
 	b.controlIDs = map[*ast.Node]int{}
 	b.labels = map[string]irLabel{}
 	files := b.moduleFiles(s)
