@@ -268,10 +268,9 @@ internal static partial class CompilerFunctions
         if (b.function_contexts.at(f.symbol) != 0 || il_owns_context(entry, c, b) || il_numeric_function(f.symbol, c) < 0 || !il_function_returns(f.left, c)) { return false; }
         int parameter = f.children;
         while (parameter != 0) { Node p = get_node(parameter, c); if (p.left != 0 || b.written_symbols.at(p.symbol) != 0) { return false; } parameter = p.next; }
-        for (int i = 1; i <= c.node_store.count(); i++)
+        foreach (int i in b.FunctionNodes(entry, c))
         {
             Node n = get_node(i, c);
-            if (scalar_owner(i, b.node_parents, c) != entry) { continue; }
             if (n.kind == NodeKind.Return && (n.left == 0 || !il_defined(n.left, c) || get_type(get_node(n.left, c).type, c).kind != TypeKind.Number)) { return false; }
             if (n.kind != NodeKind.Name) { continue; }
             parameter = f.children; bool argument = false;
