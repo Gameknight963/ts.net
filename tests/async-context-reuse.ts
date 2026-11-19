@@ -34,6 +34,26 @@ async function protectedRegions(): Promise<number> {
     }
     return total;
 }
+async function protectedCaptures(offset: number): Promise<string> {
+    const reads: (() => number)[] = [];
+    for (let i = 0; i < 4; i++) {
+        let value = offset + i;
+        try {
+            const before = value;
+            reads.push(() => before);
+            value += await i;
+            if (i % 2) throw value;
+        } catch (error) {
+            const caught = error as number;
+            reads.push(() => caught);
+        } finally {
+            const after = await value;
+            reads.push(() => after);
+        }
+        reads.push(() => value);
+    }
+    return reads.map(read => read()).join(',');
+}
 async function* values(): AsyncGenerator<number> {
     let total = 0;
     for (let i = 0; i < 5; i++) {total += await i; yield total;}
@@ -44,6 +64,7 @@ async function main(): Promise<void> {
     console.log('captured', await captured());
     console.log('reentrant', await reentrant(), await nested);
     console.log('protected', await protectedRegions());
+    console.log('protected captures', (await Promise.all([protectedCaptures(0), protectedCaptures(100)])).join('|'));
     const output: number[] = []; for await (const value of values()) output.push(value);
     console.log('generator', output.join(','));
 }
