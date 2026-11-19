@@ -104,7 +104,7 @@ internal static partial class CompilerFunctions
             // Getters, construction, spread and other callbacks can invalidate
             // the buffer. New expression kinds keep the ordinary path until
             // their effects are checked here.
-            if (il_key_may_invoke(n, c) || il_coercion_may_invoke(n, c) ||
+            if (il_key_may_invoke(n, c) || il_loop_coercion_may_invoke(n, c, b) ||
                 n.kind is not (NodeKind.Block or NodeKind.Expression or NodeKind.If or NodeKind.Variable or NodeKind.Name or
                     NodeKind.Number or NodeKind.Boolean or NodeKind.String or NodeKind.Null or NodeKind.Undefined or
                     NodeKind.Index or NodeKind.Binary or NodeKind.Unary or NodeKind.Conditional or NodeKind.Sequence or
@@ -164,7 +164,8 @@ internal static partial class CompilerFunctions
                 if (parent.kind != NodeKind.Index || parent.left != i) { return 0; }
             }
         }
-        if (!numeric && b.global_fields.at(array) != 0) { return 0; }
+        // These checks also protect global bindings: the body cannot replace
+        // the array or invoke code that changes its storage.
         return array;
     }
     internal static int il_packed_loop(int entry, int counter, Compiler c, IlBackend b) { return il_buffer_loop(entry, counter, true, c, b); }

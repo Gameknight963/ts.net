@@ -42,6 +42,28 @@ function inlineMixedSum(input:(number|string)[]):number {
     return result;
 }
 console.log(inlineMixedSum([1,'two',3]),inlineMixedSum([1,,3] as (number|string)[]));
+const savedInput:(number|string)[]=[1,'two',3];
+function savedLimitSum(limit:number):number {
+    let result=0;
+    for(let i=0;i<limit;i++) {
+        const value=savedInput[i];
+        if(typeof value==='number')result+=value;
+    }
+    return result;
+}
+console.log(savedLimitSum(savedInput.length),savedLimitSum(2.5),savedLimitSum(5),savedLimitSum(0));
+let rebound:(number|string)[]=[1,2,3];
+function replaceArray(value:number|string):number {
+    rebound=[4,5,6];return typeof value==='number'?value:0;
+}
+let reboundSum=0;const reboundLimit=rebound.length;
+for(let i=0;i<reboundLimit;i++)reboundSum+=replaceArray(rebound[i]);
+console.log(reboundSum);
+const savedGetter:(number|string)[]=[1,2,3];const savedGetterLimit=savedGetter.length;
+Object.defineProperty(savedGetter,'0',{get(){savedGetter[1]=7;return 1;}});
+let savedGetterSum=0;
+for(let i=0;i<savedGetterLimit;i++){const value=savedGetter[i];if(typeof value==='number')savedGetterSum+=value;}
+console.log(savedGetterSum);
 const invalidating:any[]=[{valueOf(){invalidating.length=1;return 8;}},2,3];
 let invalidated=0;for(let i=0;i<invalidating.length;i++){const value=invalidating[i];invalidated+=value;}
 console.log(invalidated,invalidating.length);
