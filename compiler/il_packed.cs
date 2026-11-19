@@ -93,7 +93,7 @@ internal static partial class CompilerFunctions
     {
         if (counter == 0) { return 0; }
         Node loop = get_node(entry, c); int body = loop.fourth; int array = 0; int mode = -1;
-        for (int i = 1; i <= c.node_store.count(); i++)
+        foreach (int i in b.LoopNodes(body, c))
         {
             Node n = get_node(i, c);
             if (!il_inside(i, body, b)) { continue; }
@@ -138,7 +138,7 @@ internal static partial class CompilerFunctions
             }
         }
         if (array == 0) { return 0; }
-        for (int i = 1; i <= c.node_store.count(); i++)
+        foreach (int i in b.LoopNodes(body, c))
         {
             Node n = get_node(i, c);
             if (!il_inside(i, body, b)) { continue; }

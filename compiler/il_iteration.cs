@@ -51,10 +51,10 @@ internal static partial class CompilerFunctions
     {
         // Forward reads of hoisted vars need an undefined slot at entry.
         HashSet<int> reads = new();
-        for (int i = 1; i <= c.node_store.count(); i++)
+        foreach (int i in b.FunctionNodes(owner, c))
         {
             Node n = get_node(i, c);
-            if (scalar_owner(i, b.node_parents, c) != owner || (n.symbol != 0 && b.capture_fields.at(n.symbol) != 0)) { continue; }
+            if (n.symbol != 0 && b.capture_fields.at(n.symbol) != 0) { continue; }
             if ((n.kind == NodeKind.Variable || n.kind == NodeKind.Binding) && n.symbol != 0 && b.global_fields.at(n.symbol) != 0) { continue; }
             if (n.kind == NodeKind.Name && n.symbol != 0) { reads.Add(n.symbol); }
             if (n.kind == NodeKind.Variable && n.fourth != 0 && reads.Contains(n.symbol)) { b.iteration_vars.at_mut(n.symbol) = 1; }
