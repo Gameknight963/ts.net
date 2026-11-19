@@ -206,12 +206,12 @@ Runtime performance:
 | Retained class instances with number, string and boolean fields, 100K instances | 6.26 ms | 1.551 ms | 1.832 ms | 0.25x |
 | Attach 10K handlers to one pending promise and sum their results | 3.47 ms | 0.835 ms | 1.03 ms (queued Task continuations) | 0.24x |
 | map with source-array reads and sum, 10 passes over 10K integers from 0-255 | 1.20 ms | 0.276 ms | — | 0.23x |
+| Call 100K callbacks stored in an array | 0.531 ms | 0.124 ms | 0.251 ms (delegates) | 0.23x |
 | Increment fifth numeric property of a parsed object, 100K times | 0.645 ms | 0.120 ms | 1.361 ms (dictionary), 0.258 ms (class) | 0.19x |
 | Map 10K numbers, replace one result with a string, and sum numeric results, 20 passes | 2.85 ms | 0.521 ms | — | 0.18x |
 | Construct and traverse 100K zero-argument class instances with a field initializer and method | 5.68 ms | 0.984 ms | 0.864 ms (class) | 0.17x |
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
 | Construct and traverse 100K class instances whose constructor calls a helper | 6.41 ms | 1.09 ms | 1.41 ms (class) | 0.17x |
-| Call 100K callbacks stored in an array | 0.798 ms | 0.131 ms | 0.254 ms (delegates) | 0.16x |
 | Run 1K async calls with two awaits each, collect with all, and sum results | 3 ms | 0 ms | — | 0.11x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
