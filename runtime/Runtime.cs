@@ -436,7 +436,15 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object ArrayDecode(object value) => JsArray.DecodeElement(value);
     // The compiler proves these indexes are non-negative.
-    public static object ArrayGetAt(object receiver, int index) => receiver is JsArray array ? array.ElementAt((uint)index) : IndexGet(receiver, (double)index);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object ArrayGetAt(object receiver, int index)
+    {
+        if (receiver is JsArray array && JsArray.TryReadOwnDenseValue(array, index, out object value)) return value;
+        return ArrayGetAtCore(receiver, index);
+    }
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static object ArrayGetAtCore(object receiver, int index) =>
+        receiver is JsArray array ? array.ElementAt((uint)index) : IndexGet(receiver, (double)index);
     public static void ArraySetAt(object receiver, int index, object value)
     {
         if (receiver is JsArray array) array.SetAt(index, value);

@@ -54,3 +54,23 @@ function fill(count: number) {
 }
 const filled = fill(3.5);
 console.log(filled.length, filled[0], filled[1], filled[2], filled[3]);
+
+function visit(values: any[], count: number, observe: (value: any, index: number) => void) {
+    for (let i = 0; i < count; i++) observe(values[i], i);
+}
+const direct: any[] = [];
+direct.push(1, undefined, null, 'text');
+visit(direct, 5, (value, index) => console.log('direct', index, value));
+Object.defineProperty(direct, '1', { get() { direct[2] = 9; return 'getter'; }, configurable: true });
+visit(direct, 4, (value, index) => console.log('getter', index, value));
+const inherited: any[] = [1, , 3];
+const inheritedPrototype = Object.create(Array.prototype);
+Object.defineProperty(inheritedPrototype, '1', { get() { return 'inherited'; }, configurable: true });
+Object.setPrototypeOf(inherited, inheritedPrototype);
+visit(inherited, 3, (value, index) => console.log('inherited', index, value));
+const changing: any[] = [1, 2, 3];
+visit(changing, 4, (value, index) => {
+    console.log('changing', index, value);
+    if (index === 0) changing.length = 1;
+    if (index === 1) changing[2] = 'restored';
+});

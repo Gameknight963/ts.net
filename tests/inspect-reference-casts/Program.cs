@@ -13,6 +13,20 @@ try
     Reject(() => Js.Cast<bool>(1d, "boolean"));
     Reject(() => Js.Check<string>(1d, "string"));
     Console.WriteLine("PASS null reference casts and invalid value conversions");
+    var denseValues = new object[] {1d, Js.Undefined, null, "text"};
+    var denseArray = new JsArray(denseValues);
+    for (int i = 0; i < denseValues.Length; i++)
+        if (!ReferenceEquals(Js.ArrayGetAt(denseArray, i), denseValues[i]))
+            throw new Exception("Integer array read changed an own value");
+    if (!ReferenceEquals(Js.ArrayGetAt(denseArray, 4), Js.Undefined) ||
+        (string)Js.ArrayGetAt(new CustomReadArray(), 0) != "custom")
+        throw new Exception("Integer array read bypassed its fallback");
+    for (int i = 0; i < 10000; i++) Js.ArrayGetAt(denseArray, i & 3);
+    long denseBefore = GC.GetAllocatedBytesForCurrentThread();
+    for (int i = 0; i < 10000; i++) Js.ArrayGetAt(denseArray, i & 3);
+    if (GC.GetAllocatedBytesForCurrentThread() != denseBefore)
+        throw new Exception("Integer array reads allocated");
+    Console.WriteLine("PASS integer array reads preserve own values, subclass overrides, and zero allocations");
     foreach (object value in new object[] {true, false, Js.Undefined, null, 0d, 1, "true", new JsDynamicObject()})
     {
         bool? expected = null, actual = null;
@@ -85,3 +99,9 @@ static object IntegerBox(int value) => Js.BoxInteger(value);
 
 [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
 static object TypedByteRead(object view, int index) => Js.IndexGetNumberKey(view,index);
+
+sealed class CustomReadArray : JsArray
+{
+    internal CustomReadArray() : base(new object[] {1d}) { }
+    protected override object Read(uint index) => "custom";
+}
