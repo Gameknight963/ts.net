@@ -44,3 +44,18 @@ function captured():number {
  const result=run();const local=new Uint8Array([1,2,3]);return result+local[0];
 }
 console.log('captured skipped',captured());
+function first(values:any):number {let value=0;for(let i=0;i<1;i++)value=values[i] as number;return value;}
+const Half=(globalThis as any).Float16Array;
+const formats:any[]=[
+ new Int8Array([-128,-1,127,0]),new Uint8Array([0,255,128,1]),new Uint8ClampedArray([0,255,128,1]),
+ new Int16Array([-32768,-1,32767,2]),new Uint16Array([0,65535,32768,1]),
+ new Int32Array([-2147483648,-1,2147483647,2]),new Uint32Array([0,4294967295,2147483648,1]),
+ new Half([1.25,-2.5,3.75,0.1]),new Float32Array([1.25,-2.5,3.75,0.1]),new Float64Array([1.25,-2.5,3.75,0.1])
+];
+for(const values of formats) {
+ console.log('format',values.constructor.name,prefix(values),lengthSum(values),fromOne(values));
+ console.log('format views',prefix(values.subarray(1,4)),prefix(values.subarray(0,3)));
+}
+for(const C of [Half,Float32Array,Float64Array]) {
+ console.log('float special',Object.is(first(new C([-0])),-0),Number.isNaN(first(new C([NaN]))),first(new C([Infinity])),first(new C([-Infinity])));
+}

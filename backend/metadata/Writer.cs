@@ -210,7 +210,7 @@ sealed class AssemblyPlan
                 case 0xfe03:
                 case 0xfe04:
                 case 0xfe05: pop = 2; push = 1; break;
-                case 0x91: case 0x99: case 0x9a: pop = 2; push = 1; break;
+                case 0x90: case 0x91: case 0x99: case 0x9a: pop = 2; push = 1; break;
                 case 0x65:
                 case 0x66:
                 case 0x69:

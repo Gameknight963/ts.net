@@ -1,7 +1,7 @@
 namespace Tsnet.Compiler;
 using static Tsnet.Compiler.CompilerFunctions;
 
-internal sealed partial class IlBackend { internal readonly HashSet<int> byte_buffers = []; }
+internal sealed partial class IlBackend { internal readonly Dictionary<int, (int Load, RuntimeMember Reader)> buffer_readers = []; }
 
 internal static partial class CompilerFunctions
 {
@@ -14,8 +14,9 @@ internal static partial class CompilerFunctions
         if (receiver.kind != NodeKind.Name || b.typed_buffers.at(receiver.symbol) == 0) return false;
         b.emit(0xfe0c, b.typed_buffers.at(receiver.symbol) - 1);
         il_integer(n.right, c, b);
-        if (b.byte_buffers.Contains(receiver.symbol)) { b.op(0x91); b.op(0x6c); }
-        else b.call(RuntimeMember.ReadFloat64Buffer);
+        var reader = b.buffer_readers[receiver.symbol];
+        if (reader.Load != 0) { b.op(reader.Load); b.op(0x6c); }
+        else b.call(reader.Reader);
         return true;
     }
     internal static bool il_typed_length_loop(int entry, int result, Compiler c, IlBackend b)
@@ -108,8 +109,15 @@ internal static partial class CompilerFunctions
         }
         b.mark(ordinary);
 
-        EmitBuffer(false);
-        EmitBuffer(true);
+        EmitBuffer("Float64", 8, 0, RuntimeMember.ReadFloat64Buffer);
+        EmitBuffer("Uint8", 1, 0x91, default);
+        EmitBuffer("Int8", 1, 0x90, default);
+        EmitBuffer("Float32", 4, 0, RuntimeMember.ReadFloat32Buffer);
+        EmitBuffer("Uint32", 4, 0, RuntimeMember.ReadUint32Buffer);
+        EmitBuffer("Int32", 4, 0, RuntimeMember.ReadInt32Buffer);
+        EmitBuffer("Uint16", 2, 0, RuntimeMember.ReadUint16Buffer);
+        EmitBuffer("Int16", 2, 0, RuntimeMember.ReadInt16Buffer);
+        EmitBuffer("Float16", 2, 0, RuntimeMember.ReadFloat16Buffer);
         b.mark(slowPath);
         il_loop_body(entry, result, 0, -1, c, b);
         b.mark(packedDone);
@@ -120,21 +128,22 @@ internal static partial class CompilerFunctions
             b.emit(0xfe0c, bound); b.plan.number(b.method, fixedBound); b.op(0xfe04); b.emit(0x3a, fallback);
             b.plan.number(b.method, fixedBound); b.emit(0xfe0e, bound);
         }
-        void EmitBuffer(bool bytesOnly) {
+        void EmitBuffer(string kind, int width, int load, RuntimeMember reader) {
             int bytes = b.local(-13), bound = b.local(-3), fallback = b.label();
-            b.load(array); b.call(bytesOnly ? RuntimeMember.TryUint8Buffer : RuntimeMember.TryFloat64Buffer); b.emit(0xfe0e, bytes);
+            b.load(array); b.plan.raw_string(b.method, System.Text.Encoding.UTF8.GetBytes(kind)); b.call(RuntimeMember.TryTypedNumberBuffer); b.emit(0xfe0e, bytes);
             b.emit(0xfe0c, bytes); b.emit(0x39, fallback);
             b.emit(0xfe0c, bytes);
-            if (bytesOnly) { b.op(0x8e); b.op(0x69); } else b.call(RuntimeMember.Float64BufferLength);
+            b.op(0x8e); b.op(0x69);
+            if (width != 1) { b.emit(0x20, width); b.op(0x5b); }
             b.op(0x6c); b.emit(0xfe0e, bound);
             SetBound(bound, fallback);
             int previous = b.raw_slot(counter), nonnegative = b.nonnegative_ints.at(counter);
             b.raw_slots.at_mut(counter) = -6; b.nonnegative_ints.at_mut(counter) = 1;
             b.typed_buffers.at_mut(array) = bytes + 1;
-            if (bytesOnly) b.byte_buffers.Add(array);
+            b.buffer_readers[array] = (load, reader);
             il_loop_body(entry, result, counter, bound, c, b);
             b.typed_buffers.at_mut(array) = 0;
-            if (bytesOnly) b.byte_buffers.Remove(array);
+            b.buffer_readers.Remove(array);
             b.raw_slots.at_mut(counter) = previous; b.nonnegative_ints.at_mut(counter) = nonnegative;
             b.emit(0x38, packedDone);
             b.mark(fallback);
