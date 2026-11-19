@@ -7,14 +7,29 @@ param(
     [switch]$ExperimentalDecorators,
     [switch]$SkipCompilerBuild,
     [switch]$SkipRuntimeBuild,
-    [switch]$LinkRuntime
+    [switch]$LinkRuntime,
+    [switch]$PrecompileCompiler
 )
 $ErrorActionPreference = 'Stop'
 if ($GCHeapCount -and !$ServerGC) { throw 'GCHeapCount requires ServerGC' }
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
-    if (!$SkipCompilerBuild) {
+    $compilerPath = "$root/compiler/bin/Release/net10.0/tsnetc.dll"
+    if ($PrecompileCompiler) {
+        $runtimeInfo = & dotnet --info
+        if ($LASTEXITCODE) { throw 'Cannot read .NET SDK information' }
+        $runtimeMatch = $runtimeInfo | Select-String -Pattern '^\s*RID:\s*(\S+)\s*$' | Select-Object -First 1
+        if (!$runtimeMatch) { throw 'Cannot determine the host runtime identifier' }
+        $compilerRid = $runtimeMatch.Matches[0].Groups[1].Value
+        $compilerDirectory = Join-Path $root "artifacts/precompiled-compiler/$compilerRid"
+        $compilerPath = Join-Path $compilerDirectory 'tsnetc.dll'
+        if (!$SkipCompilerBuild) {
+            & dotnet publish "$root/compiler/Tsnet.Compiler.csproj" -c Release -r $compilerRid --self-contained false --nologo -v quiet -o $compilerDirectory
+            if ($LASTEXITCODE) { throw 'Compiler precompilation failed' }
+        }
+        if (!(Test-Path -LiteralPath $compilerPath)) { throw 'Precompiled compiler not found; run without -SkipCompilerBuild first' }
+    } elseif (!$SkipCompilerBuild) {
         & dotnet build "$root/compiler/Tsnet.Compiler.csproj" -c Release --nologo -v quiet
         if ($LASTEXITCODE) { throw 'Compiler build failed' }
     }
@@ -30,7 +45,7 @@ try {
     }
     $compilerOptions = @()
     if ($ExperimentalDecorators) { $compilerOptions += '--experimentalDecorators' }
-    & dotnet "$root/compiler/bin/Release/net10.0/tsnetc.dll" @compilerOptions $inputPath "$applicationPath/App.dll"
+    & dotnet $compilerPath @compilerOptions $inputPath "$applicationPath/App.dll"
     if ($LASTEXITCODE) { throw 'TypeScript compilation failed' }
     # Build the shared runtime incrementally; generated applications go directly
     # from an IL plan to an assembly without compiling generated C# source.
