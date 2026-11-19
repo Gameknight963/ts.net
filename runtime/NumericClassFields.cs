@@ -30,13 +30,15 @@ public abstract class JsNumericClassInstance : JsClassInstance
     {
         // The property store keeps mutable numeric cells for repeated writes.
         // Do not replace those with a fresh boxed number on every update.
-        if (materialized || (uint)index >= 32 || value is double || !IsReferenceField(index)) return false;
+        ulong current = states;
+        if (current == 2 || (uint)index >= 32 || value is double || !IsReferenceField(index)) return false;
         int shift = index * 2;
-        ulong state = states >> shift & 3;
-        if (state == 0 && (!create || states >> shift != 0)) return false;
+        ulong state = current >> shift & 3;
+        if (state == 0 && (!create || current >> shift != 0)) return false;
         bool undefined = ReferenceEquals(value, Js.Undefined);
         WriteReferenceField(index, undefined ? null : value);
-        states = states & ~(3ul << shift) | (undefined ? 1ul : 3ul) << shift;
+        ulong next = undefined ? 1ul : 3ul;
+        if (state != next) states = states & ~(3ul << shift) | next << shift;
         return true;
     }
 
@@ -64,18 +66,20 @@ public abstract class JsNumericClassInstance : JsClassInstance
     }
     bool StoreNumber(int index, double? value, bool create)
     {
-        if (materialized || (uint)index >= 32) return false;
+        ulong current = states;
+        if (current == 2 || (uint)index >= 32) return false;
         int shift = index * 2;
-        ulong state = states >> shift & 3;
+        ulong state = current >> shift & 3;
         // Copying fields in their compiled order must preserve insertion order.
         // An out-of-order creation uses the ordinary property store instead.
-        if (state == 0 && (!create || states >> shift != 0)) return false;
+        if (state == 0 && (!create || current >> shift != 0)) return false;
         if (IsReferenceField(index)) {
             if (value.HasValue) return false;
             WriteReferenceField(index, null);
         }
         else if (value.HasValue) WriteNumericField(index, value.Value);
-        states = states & ~(3ul << shift) | (value.HasValue ? 3ul : 1ul) << shift;
+        ulong next = value.HasValue ? 3ul : 1ul;
+        if (state != next) states = states & ~(3ul << shift) | next << shift;
         return true;
     }
     protected bool TrySetClassNumber(int index, double? value) => StoreNumber(index, value, false);

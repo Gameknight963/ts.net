@@ -34,3 +34,11 @@ Object.freeze(second);
 console.log(Object.isFrozen(second),Object.isFrozen(third),Object.keys(first).join(","));
 third.a=30;
 console.log(third.a,make(127).a,make(0).a,make(64).g);
+class Mixed {number=1;flag=true;text="initial";}
+const mixed=new Mixed(),untouched=new Mixed();
+for(let i=0;i<8;i++) {
+    mixed.number=i%2===0 ? undefined as unknown as number : i;
+    mixed.flag=i%3===0 ? undefined as unknown as boolean : i%2===0;
+    mixed.text=i%3===0 ? undefined as unknown as string : i%3===1 ? null as unknown as string : "changed";
+    console.log(mixed.number,mixed.flag,mixed.text,Object.hasOwn(mixed,"number"),untouched.number,untouched.flag,untouched.text);
+}
