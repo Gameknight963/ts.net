@@ -12,6 +12,46 @@ public static partial class Js
     {
         internal static readonly SearchValues<char> Unescaped = SearchValues.Create(" !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~");
     }
+    static void AppendJsonNumber(StringBuilder output, double value)
+    {
+        if (value >= int.MinValue && value <= int.MaxValue && value == (int)value)
+        {
+            output.Append(CultureInfo.InvariantCulture, $"{(int)value}");
+            return;
+        }
+        AppendJsonFloatingNumber(output, value);
+    }
+    static void AppendJsonFloatingNumber(StringBuilder output, double value)
+    {
+        if (!double.IsFinite(value)) { output.Append("null"); return; }
+        Span<char> buffer = stackalloc char[32];
+        value.TryFormat(buffer, out int length, "R", CultureInfo.InvariantCulture);
+        ReadOnlySpan<char> raw = buffer[..length];
+        int e = raw.IndexOf('E');
+        if (e < 0) { output.Append(raw); return; }
+        int exponent = int.Parse(raw[(e + 1)..], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
+        if (exponent < -6 || exponent >= 21)
+        {
+            output.Append(raw[..e]).Append('e');
+            if (exponent >= 0) output.Append('+');
+            exponent.TryFormat(buffer[e..], out int count, provider: CultureInfo.InvariantCulture);
+            output.Append(buffer.Slice(e, count));
+            return;
+        }
+        int start = raw[0] == '-' ? 1 : 0;
+        if (start != 0) output.Append('-');
+        int point = exponent + 1;
+        if (point <= 0) output.Append("0.").Append('0', -point);
+        int digits = 0;
+        for (int i = start; i < e; i++)
+        {
+            char digit = raw[i];
+            if (digit == '.') continue;
+            if (point > 0 && digits == point) output.Append('.');
+            output.Append(digit); digits++;
+        }
+        if (point > digits) output.Append('0', point - digits);
+    }
     static void QuoteJson(StringBuilder output, string text)
     {
         const string hex = "0123456789abcdef";
@@ -170,7 +210,7 @@ public static partial class Js
                 if (i != 0) output.Append(',');
                 if (gap.Length != 0) { output.Append('\n'); Indent(frames.Count + 1); }
                 double number = numbers[i];
-                output.Append(double.IsFinite(number) ? NumberKeyString(number) : "null");
+                AppendJsonNumber(output, number);
             }
             if (length != 0 && gap.Length != 0) { output.Append('\n'); Indent(frames.Count); }
             output.Append(']');
@@ -195,7 +235,7 @@ public static partial class Js
                 else { QuoteJson(output, key); output.Append(':'); }
                 if (item == null) output.Append("null");
                 else if (item is string text) QuoteJson(output, text);
-                else if (item is double number) output.Append(double.IsFinite(number) ? NumberKeyString(number) : "null");
+                else if (item is double number) AppendJsonNumber(output, number);
                 else output.Append((bool)item ? "true" : "false");
             }
             output.Append('}');
@@ -223,7 +263,7 @@ public static partial class Js
                 WritePropertyName((string)names[position], position);
                 if (item == null) output.Append("null");
                 else if (item is string text) QuoteJson(output, text);
-                else if (item is double number) output.Append(double.IsFinite(number) ? NumberKeyString(number) : "null");
+                else if (item is double number) AppendJsonNumber(output, number);
                 else output.Append((bool)item ? "true" : "false");
             }
             output.Append('}');
@@ -260,7 +300,7 @@ public static partial class Js
             else if (value == null) output.Append("null");
             else if (value is string text) QuoteJson(output, text);
             else if (value is bool boolean) output.Append(boolean ? "true" : "false");
-            else if (value is double number) output.Append(double.IsFinite(number) ? NumberKeyString(number) : "null");
+            else if (value is double number) AppendJsonNumber(output, number);
             else if (value is TsObject obj)
             {
                 if (!Enter(obj)) throw new InvalidOperationException("Cannot serialize a cyclic object");
