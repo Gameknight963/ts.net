@@ -59,6 +59,7 @@ Runtime performance:
 | Cached date formatter, 1K daily UTC dates in 2024, Gregorian calendar | 0.312 ms | 1.22 ms | — | 3.90x |
 | Gzip-decompress 1,052 bytes into 1 MiB of repeated ASCII A | 1.19 ms | 4.38 ms | — | 3.68x |
 | Small integer bases and varying exponents, 1M iterations | 4.07 ms | 13.85 ms | — | 3.41x |
+| Sum `charCodeAt` over 100K ASCII characters | 0.0699 ms | 0.2366 ms | 0.0695 ms | 3.38x |
 | Float64Array reduce, 10 sums of 10K values | 0.351 ms | 0.999 ms | 0.067 ms (Aggregate) | 2.85x |
 | String includes, 1M searches | 11.19 ms | 28.84 ms | — | 2.58x |
 | Mixed array, 100K elements and 100 reversals | 3.07 ms | 7.70 ms | — | 2.51x |
