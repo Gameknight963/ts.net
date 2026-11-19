@@ -13,6 +13,7 @@ internal static partial class CompilerFunctions
         if (!b.record_array_fields.TryGetValue(entry, out var read)) return false;
         b.emit(0xfe0c, read.Buffer); b.load_storage(read.Counter); b.op(0x9a);
         b.emit(0x74, b.classes.at(read.Owner));
+        if (read.Member == 0) return true; // The guarded element binding itself.
         int token = il_numeric_class_eligible(read.Owner, c, b)
             ? b.class_field_tokens[read.Owner][b.numeric_class_members[read.Owner].IndexOf(read.Member)]
             : b.field_token(read.Member);
@@ -38,15 +39,37 @@ internal static partial class CompilerFunctions
         Node body = get_node(loop.fourth, c);
         int statement = body.kind == NodeKind.Block ? body.children : loop.fourth;
         if (statement == 0) return false;
+        int alias = 0, aliasValue = 0;
         Node expression = get_node(statement, c);
+        if (expression.kind == NodeKind.Variable) {
+            if (expression.symbol == 0 || expression.left == 0 || expression.right != 0 || expression.third != 0 ||
+                expression.children != 0 || expression.next == 0 || expression.symbol == source.symbol ||
+                expression.symbol == counter || b.global_fields.at(expression.symbol) != 0 ||
+                b.capture_fields.at(expression.symbol) != 0 || expression.type != get_node(expression.left, c).type) return false;
+            alias = expression.symbol; aliasValue = expression.left;
+            expression = get_node(expression.next, c);
+        }
         if (expression.kind != NodeKind.Expression || expression.left == 0 || expression.next != 0) return false;
         Node assignment = get_node(expression.left, c);
         if (assignment.kind != NodeKind.Assign ||
             !is_text(get_token(assignment.token, c).text, text_add_assign, c)) return false;
         Node total = get_node(assignment.left, c);
-        if (total.kind != NodeKind.Name || total.symbol == counter || total.symbol == source.symbol ||
+        if (total.kind != NodeKind.Name || total.symbol == counter || total.symbol == source.symbol || total.symbol == alias ||
             get_type(total.type, c).kind != TypeKind.Number || b.global_fields.at(total.symbol) != 0 ||
             b.capture_fields.at(total.symbol) != 0) return false;
+        if (aliasValue != 0) {
+            Node index = get_node(aliasValue, c);
+            int shape = index.type;
+            if (index.kind == NodeKind.Assert && index.left != 0) {
+                Node operand = get_node(index.left, c);
+                if (operand.type != shape && get_type(operand.type, c).kind is not (TypeKind.Any or TypeKind.Unknown)) return false;
+                index = operand;
+            }
+            if (index.kind != NodeKind.Index || index.fourth != 0) return false;
+            Node array = get_node(index.left, c), key = get_node(index.right, c);
+            if (array.kind != NodeKind.Name || array.symbol != source.symbol ||
+                key.kind != NodeKind.Name || key.symbol != counter) return false;
+        }
         int owner = 0;
         var reads = new List<(int Entry, int Member)>();
         bool Pure(int item)
@@ -68,6 +91,7 @@ internal static partial class CompilerFunctions
                     return Pure(node.left);
                 Node index = get_node(node.left, c);
                 int shape = index.type;
+                if (index.kind == NodeKind.Name && index.symbol == alias) index = get_node(aliasValue, c);
                 // A single assertion is redundant when the exact-layout probe
                 // succeeds. Keep its target type and leave fallback checks intact.
                 if (index.kind == NodeKind.Assert && index.left != 0) {
@@ -98,7 +122,8 @@ internal static partial class CompilerFunctions
             return node.kind == NodeKind.Binary && (sign || is_text(op, text_star, c) || is_text(op, text_slash, c)) &&
                 get_type(get_node(node.right, c).type, c).kind == TypeKind.Number && Pure(node.left) && Pure(node.right);
         }
-        if (!Pure(assignment.right) || reads.Count == 0) return false;
+        if (!Pure(assignment.right) || reads.Count == 0 ||
+            aliasValue != 0 && get_node(aliasValue, c).type != owner) return false;
         int buffer = b.local(-7), bound = b.local(-3), fallback = b.label(), done = b.label();
         // The probe invokes no user code. It verifies every element's exact
         // layout and lack of overrides before freezing the length and reads.
@@ -120,8 +145,10 @@ internal static partial class CompilerFunctions
         int saved = b.raw_slot(counter), nonnegative = b.nonnegative_ints.at(counter);
         b.raw_slots.at_mut(counter) = -6; b.nonnegative_ints.at_mut(counter) = 1; b.loop_versions++;
         foreach (var read in reads) b.record_array_fields[read.Entry] = (buffer, counter, owner, read.Member);
+        if (aliasValue != 0) b.record_array_fields[aliasValue] = (buffer, counter, owner, 0);
         il_loop_code(entry, result, counter, bound, c, b);
         foreach (var read in reads) b.record_array_fields.Remove(read.Entry);
+        if (aliasValue != 0) b.record_array_fields.Remove(aliasValue);
         b.raw_slots.at_mut(counter) = saved; b.nonnegative_ints.at_mut(counter) = nonnegative;
         b.emit(0x38, done); b.mark(fallback); il_loop_body(entry, result, 0, -1, c, b); b.mark(done);
         b.loop_versions--; return true;

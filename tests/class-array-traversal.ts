@@ -95,3 +95,42 @@ const nullName=new Item(9);(nullName as any).name=null;
 try{mixed([nullName]);}catch{console.log('null name throws');}
 const undefinedName=new Item(9);(undefinedName as any).name=undefined;
 try{mixed([undefinedName]);}catch{console.log('undefined name throws');}
+
+function aliasMixed(items: Item[]): number {
+ let total=0;
+ for(let i=0;i<items.length;i++) {
+  const item=items[i];
+  total+=item.value+item.name.length+(item.enabled?1:0);
+ }
+ return total;
+}
+console.log('alias plain',aliasMixed([new Item(1),new Item(2)]),aliasMixed([]));
+console.log('alias structural',aliasMixed([new Item(7),mixedRecord]));
+console.log('alias undefined flag',aliasMixed([missingFlag]));
+console.log('alias frozen',aliasMixed(Object.freeze([frozenMixed]) as unknown as Item[]));
+let aliasGets=0;
+const aliasChanging=[new Item(1),new Item(2)];
+const aliasOriginal=aliasChanging[0];
+Object.defineProperty(aliasOriginal,'value',{get(){
+ aliasGets++;aliasChanging[0]=new Item(10);aliasChanging.push(new Item(20));return 1;
+},configurable:true});
+console.log('alias getter changes array',aliasMixed(aliasChanging),aliasGets,aliasChanging.length);
+const aliasIndexed=[new Item(3)];
+Object.defineProperty(aliasIndexed,'0',{get(){aliasGets++;return new Item(aliasGets);}});
+console.log('alias indexed getter',aliasMixed(aliasIndexed),aliasGets);
+const aliasProxy=new Proxy(new Item(5),{get(target,key,receiver){aliasGets++;return Reflect.get(target,key,receiver);}});
+console.log('alias proxy',aliasMixed([aliasProxy]),aliasGets);
+for(const invalid of [nullName,undefinedName]) {
+ try{aliasMixed([invalid]);console.log('alias invalid allowed');}catch(error){console.log('alias invalid',(error as Error).name);}
+}
+let unrelatedCalls=0;
+function unrelated(): Item {unrelatedCalls++;return new Item(0);}
+function aliasUnrelated(items: Item[]): number {
+ let total=0;
+ for(let i=0;i<items.length;i++) {
+  const unused=unrelated();
+  total+=items[i].value;
+ }
+ return total;
+}
+console.log('alias unrelated initializer',aliasUnrelated([new Item(1),new Item(2)]),unrelatedCalls);

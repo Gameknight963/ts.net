@@ -64,3 +64,19 @@ function emptyRecords(values: Point[]): number {
  return values.length;
 }
 console.log("empty record traversal", emptyRecords(items), emptyRecords([]));
+
+function aliasSum(items: Point[]): number {
+ let total=0;
+ for(let i=0;i<items.length;i++) {
+  const item=items[i];
+  total+=item.x+item.y;
+ }
+ return total;
+}
+console.log('record alias',aliasSum(items),aliasSum([]),aliasSum(frozen));
+const aliasValues:Point[]=[{x:1,y:2},{x:3,y:4}];
+let aliasReads=0;
+Object.defineProperty(aliasValues[0],'x',{get(){aliasReads++;aliasValues[0]={x:10,y:20};aliasValues.push({x:30,y:40});return 1;}});
+console.log('record alias mutation',aliasSum(aliasValues),aliasReads,aliasValues.length);
+console.log('record alias indexed',aliasSum(indexed),gets);
+console.log('record alias inherited',aliasSum(sparse),gets);
