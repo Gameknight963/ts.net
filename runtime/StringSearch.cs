@@ -8,6 +8,9 @@ public static partial class Js
         (FunctionBody)(static _ => throw new InvalidOperationException("String search method requires a receiver")), null, name, 1)
     {
         internal readonly StringSearchKind Kind = kind;
+        public override double? InvokeMethodNumber0(object receiver) => CallStringSearchNumber(this, receiver, Undefined, null, 0);
+        public override double? InvokeMethodNumber1(object receiver, double? first) => CallStringSearchNumber(this, receiver, BoxNumber(first), null, 1);
+        public override double? InvokeMethodNumber2(object receiver, double? first, double? second) => CallStringSearchNumber(this, receiver, BoxNumber(first), second, 2);
         public override object InvokeReceiver0(object receiver) => StringSearchResult(Kind, StringSearchPrimitive(this, receiver, Undefined, null));
         public override object InvokeReceiverNumber1(object receiver, double? value) => StringSearchResult(Kind, StringSearchPrimitive(this, receiver, BoxNumber(value), null));
         public override object InvokeReceiverArgument1(object receiver, object value) => StringSearchArguments(this, receiver, value, Undefined);

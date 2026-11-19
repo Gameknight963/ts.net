@@ -7,6 +7,9 @@ public static partial class Js
         (FunctionBody)(static _ => throw new InvalidOperationException("String range method requires a receiver")), null, name, 2)
     {
         internal readonly bool Substring = substring;
+        public override double? InvokeMethodNumber0(object receiver) => Cast<double?>(StringRangePrimitive(this, receiver, null, null), "Function result violates number type");
+        public override double? InvokeMethodNumber1(object receiver, double? first) => Cast<double?>(StringRangePrimitive(this, receiver, first, null), "Function result violates number type");
+        public override double? InvokeMethodNumber2(object receiver, double? first, double? second) => Cast<double?>(StringRangePrimitive(this, receiver, first, second), "Function result violates number type");
         public override object InvokeReceiver0(object receiver) => StringRangePrimitive(this, receiver, null, null);
         public override object InvokeReceiverNumber1(object receiver, double? value) => StringRangePrimitive(this, receiver, value, null);
         public override object InvokeReceiverArgument1(object receiver, object value) => StringRangeConverted(this, receiver, value, Undefined);

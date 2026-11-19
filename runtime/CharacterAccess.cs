@@ -8,6 +8,9 @@ public static partial class Js
         (FunctionBody)(static _ => throw new InvalidOperationException("String character method requires a receiver")), null, name, 1)
     {
         internal readonly CharacterKind Kind = kind;
+        public override double? InvokeMethodNumber0(object receiver) => CharacterNumericResult(this, receiver, 0);
+        public override double? InvokeMethodNumber1(object receiver, double? value) => CharacterNumericResult(this, receiver, value.GetValueOrDefault());
+        public override double? InvokeMethodNumber2(object receiver, double? first, double? second) => InvokeMethodNumber1(receiver, first);
         public override object InvokeReceiver0(object receiver) => CharacterValue(AtString(receiver), 0, Kind);
         public override object InvokeReceiverNumber1(object receiver, double? value) => CharacterValue(AtString(receiver), value.GetValueOrDefault(), Kind);
         public override object InvokeReceiverArgument1(object receiver, object value) => CharacterConverted(this, receiver, value);

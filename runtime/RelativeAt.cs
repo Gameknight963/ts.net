@@ -7,6 +7,16 @@ public static partial class Js
         throw new InvalidOperationException("at requires a receiver")), null, "at", 1)
     {
         internal readonly bool Text = text;
+        public override double? InvokeMethodNumber0(object receiver) => Cast<double?>(AtPrimitive(receiver, 0, Text), "Function result violates number type");
+        public override double? InvokeMethodNumber1(object receiver, double? first)
+        {
+            if (!Text && receiver is NumberArray numbers) {
+                double length = numbers.Length(), index = AtIndex(first.GetValueOrDefault(), length);
+                return index >= 0 && index < length ? numbers.GetNumberAt(ToInt32(index)) : null;
+            }
+            return Cast<double?>(AtPrimitive(receiver, first.GetValueOrDefault(), Text), "Function result violates number type");
+        }
+        public override double? InvokeMethodNumber2(object receiver, double? first, double? second) => InvokeMethodNumber1(receiver, first);
         public override object InvokeReceiver0(object receiver) => AtPrimitive(receiver, 0, Text);
         public override object InvokeReceiverNumber1(object receiver, double? value) => AtPrimitive(receiver, value.GetValueOrDefault(), Text);
         public override object InvokeReceiverArgument1(object receiver, object value) => AtConverted(receiver, value, Text);
@@ -107,35 +117,13 @@ public static partial class Js
         : target is RelativeAtFunction method
         ? AtConverted(receiver, Iteration.Value(arguments, 0), method.Text) : target is StringSearchFunction search
         ? StringSearchArguments(search, receiver, Iteration.Value(arguments, 0), Iteration.Value(arguments, 1)) : InvokeReceiverArguments(target, receiver, arguments);
-    public static double? CallMethodNumber0(object target, object receiver) => target is StringRangeFunction range
-        ? Cast<double?>(StringRangePrimitive(range, receiver, null, null), "Function result violates number type")
-        : target is CharacterFunction character
-        ? CharacterNumericResult(character, receiver, 0)
-        : target is RelativeAtFunction method
-        ? Cast<double?>(AtPrimitive(receiver, 0, method.Text), "Function result violates number type") : target is StringSearchFunction
-        ? CallStringSearchNumber(target, receiver, Undefined, null, 0) : target is JsFunction callable ? callable.InvokeMethodNumber0(SuperReceiver(receiver)) : throw new InvalidOperationException("Value is not callable");
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static double? CallMethodNumber1(object target, object receiver, double? first)
-    {
-        if (target is JsReceiverFunction function)
-            return function.InvokeMethodNumber1(SuperReceiver(receiver), first);
-        if (target is CharacterFunction character)
-            return CharacterNumericResult(character, receiver, first.GetValueOrDefault());
-        if (target is RelativeAtFunction method) {
-            if (!method.Text && receiver is NumberArray numbers) {
-                double length = numbers.Length(), index = AtIndex(first.GetValueOrDefault(), length);
-                return index >= 0 && index < length ? numbers.GetNumberAt(ToInt32(index)) : null;
-            }
-            return Cast<double?>(AtPrimitive(receiver, first.GetValueOrDefault(), method.Text), "Function result violates number type");
-        }
-        if (target is StringRangeFunction range)
-            return Cast<double?>(StringRangePrimitive(range, receiver, first, null), "Function result violates number type");
-        if (target is StringSearchFunction) return CallStringSearchNumber(target, receiver, BoxNumber(first), null, 1);
-        return target is JsFunction callable ? callable.InvokeMethodNumber1(SuperReceiver(receiver),first) : throw new InvalidOperationException("Value is not callable");
-    }
-    public static double? CallMethodNumber2(object target, object receiver, double? first, double? second) => target is StringRangeFunction range
-        ? Cast<double?>(StringRangePrimitive(range, receiver, first, second), "Function result violates number type")
-        : target is RelativeAtFunction or CharacterFunction
-        ? CallMethodNumber1(target, receiver, first) : target is StringSearchFunction
-        ? CallStringSearchNumber(target, receiver, BoxNumber(first), second, 2) : target is JsFunction callable ? callable.InvokeMethodNumber2(SuperReceiver(receiver),first,second) : throw new InvalidOperationException("Value is not callable");
+    public static double? CallMethodNumber0(object target, object receiver) => target is JsFunction callable
+        ? callable.InvokeMethodNumber0(SuperReceiver(receiver)) : throw new InvalidOperationException("Value is not callable");
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double? CallMethodNumber1(object target, object receiver, double? first) => target is JsFunction callable
+        ? callable.InvokeMethodNumber1(SuperReceiver(receiver), first) : throw new InvalidOperationException("Value is not callable");
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double? CallMethodNumber2(object target, object receiver, double? first, double? second) => target is JsFunction callable
+        ? callable.InvokeMethodNumber2(SuperReceiver(receiver), first, second) : throw new InvalidOperationException("Value is not callable");
 }
