@@ -443,8 +443,13 @@ public static partial class Js
         return ArrayGetAtCore(receiver, index);
     }
     [MethodImpl(MethodImplOptions.NoInlining)]
-    static object ArrayGetAtCore(object receiver, int index) =>
-        receiver is JsArray array ? array.ElementAt((uint)index) : IndexGet(receiver, (double)index);
+    static object ArrayGetAtCore(object receiver, int index)
+    {
+        if (receiver is TaggedArray tagged) return tagged.GetStoredAt((uint)index);
+        if (receiver is JsArray array && (receiver.GetType() == typeof(JsArray) || array is NumberArray or ReversibleArray or JsTemplateArray))
+            return array.ElementAt((uint)index);
+        return IndexGetNumberKeyCore(receiver, index);
+    }
     public static void ArraySetAt(object receiver, int index, object value)
     {
         if (receiver is JsArray array) array.SetAt(index, value);
@@ -514,6 +519,11 @@ public static partial class Js
     }
     public static double ArrayLength(object receiver) =>
         receiver is JsArray array ? array.Length() : CheckedNumberValue(Get(receiver, "length"));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool ArrayCounterBelowLength(object receiver, int counter) =>
+        receiver is JsArray array ? counter < array.ElementCount : ArrayCounterBelowLengthCore(receiver, counter);
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static bool ArrayCounterBelowLengthCore(object receiver, int counter) => counter < CheckedNumberValue(Get(receiver, "length"));
     public static void ArraySetLength(object receiver, double length)
     {
         if (receiver is JsArray array) array.SetLength(length);

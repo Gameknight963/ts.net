@@ -51,7 +51,7 @@ internal static partial class CompilerFunctions
         }
         return binding.symbol;
     }
-    internal static void il_loop_code(int entry, int result, int counter, int bound, Compiler c, IlBackend b, bool initialize = true)
+    internal static void il_loop_code(int entry, int result, int counter, int bound, Compiler c, IlBackend b, bool initialize = true, int dynamicCounter = 0, int overflow = 0)
     {
         Node n = get_node(entry, c);
         int start = b.label(); int next = b.label(); int done = b.label();
@@ -61,10 +61,11 @@ internal static partial class CompilerFunctions
         int stop = -1;
         if (counter != 0) { stop = b.local(-6); b.emit(0xfe0c, bound); b.call(RuntimeMember.LoopLimit); b.emit(0xfe0e, stop); }
         // Test counted loops at the bottom, avoiding an unconditional jump per iteration.
-        int check = counter != 0 ? b.label() : 0;
-        if (counter != 0) b.emit(0x38, check);
+        int position = counter != 0 ? counter : dynamicCounter;
+        int check = position != 0 ? b.label() : 0;
+        if (position != 0) b.emit(0x38, check);
         b.mark(start);
-        if (n.kind != NodeKind.Do && counter == 0)
+        if (n.kind != NodeKind.Do && position == 0)
         {
             int condition = n.kind == NodeKind.While ? n.left : n.right;
             if (condition != 0) { il_condition(condition, c, b); b.emit(0x39, done); }
@@ -73,9 +74,9 @@ internal static partial class CompilerFunctions
         il_statement(n.kind == NodeKind.For ? n.fourth : n.right, result, c, b); b.mark(next);
         if (n.kind == NodeKind.Do) { il_condition(n.left, c, b); b.emit(0x39, done); }
         if (n.kind == NodeKind.For) { il_context_clone(entry, c, b); }
-        if (counter != 0)
+        if (position != 0)
         {
-            b.load_storage(counter); b.emit(0x20, 1); b.op(0x58); b.store_storage(counter);
+            b.load_storage(position); b.emit(0x20, 1); b.op(0x58); b.store_storage(position);
         }
         else if (n.kind == NodeKind.For && n.third != 0)
         {
@@ -85,6 +86,17 @@ internal static partial class CompilerFunctions
         {
             b.mark(check);
             b.load_storage(counter); b.emit(0xfe0c, stop); b.op(0xfe04); b.emit(0x3a, start);
+        }
+        else if (dynamicCounter != 0)
+        {
+            b.mark(check);
+            b.load_storage(dynamicCounter); b.emit(0x20, int.MaxValue); b.op(0xfe01); b.emit(0x3a, overflow);
+            Node condition = get_node(n.right, c), limit = get_node(condition.right, c);
+            if (get_type(get_node(limit.left, c).type, c).kind == TypeKind.Array) {
+                il_boxed(limit.left, c, b); b.load_storage(dynamicCounter); b.call(RuntimeMember.ArrayCounterBelowLength);
+            }
+            else il_condition(n.right, c, b);
+            b.emit(0x3a, start);
         }
         else b.emit(0x38, start);
         b.mark(done);
@@ -180,7 +192,10 @@ internal static partial class CompilerFunctions
         if (il_record_array_loop(entry, result, c, b)) return;
         if (il_typed_length_loop(entry, result, c, b)) return;
         int counter = il_counted_loop(entry, c, b);
-        if (counter == 0) { il_loop_body(entry, result, 0, -1, c, b); return; }
+        if (counter == 0) {
+            if (il_dynamic_counter_loop(entry, result, c, b)) return;
+            il_loop_body(entry, result, 0, -1, c, b); return;
+        }
         Node n = get_node(entry, c); Node condition = get_node(n.right, c);
         Node limit = get_node(condition.right, c);
         double initial = number(get_token(get_node(get_node(il_loop_binding(entry, c), c).left, c).token, c).text, c);

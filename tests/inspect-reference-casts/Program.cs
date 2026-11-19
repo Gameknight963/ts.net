@@ -24,9 +24,21 @@ try
     if ((string)Js.IndexGetNumberKey(new CustomReadArray(), 0) != "custom" ||
         (string)Js.IndexGetNumberKey("text", 1) != "e")
         throw new Exception("Numeric array read bypassed a subclass or string fallback");
+    if ((string)Js.ArrayGetAt(new CustomGetArray(), 0) != "custom get" ||
+        (string)Js.IndexGetNumberKey(new CustomGetArray(), 0) != "custom get")
+        throw new Exception("An array subclass's property lookup override was bypassed");
     denseArray.SetOwnValue("undefined", "named");
     if ((string)Js.IndexGetNumberKey(denseArray, null) != "named")
         throw new Exception("Undefined array index changed its property lookup");
+    foreach (var array in new JsArray[] {denseArray, new CustomLengthArray(uint.MaxValue)})
+        foreach (int counter in new[] {-1, 0, 3, 4, int.MaxValue})
+            if (Js.ArrayCounterBelowLength(array, counter) != (counter < Js.ArrayLength(array)))
+                throw new Exception("Integer array bound comparison changed its result");
+    int lengthReads = 0;
+    var arrayLike = new JsDynamicObject();
+    arrayLike.DefineAccessor("length", new JsFunction((FunctionBody)(_ => ++lengthReads == 1 ? 2.5d : 0d), null, "length", 0), 1);
+    if (!Js.ArrayCounterBelowLength(arrayLike, 2) || Js.ArrayCounterBelowLength(arrayLike, 2) || lengthReads != 2)
+        throw new Exception("Integer array bound comparison changed a non-array getter");
     for (int i = 0; i < 10000; i++) Js.ArrayGetAt(denseArray, i & 3);
     long denseBefore = GC.GetAllocatedBytesForCurrentThread();
     for (int i = 0; i < 10000; i++) Js.ArrayGetAt(denseArray, i & 3);
@@ -110,4 +122,17 @@ sealed class CustomReadArray : JsArray
 {
     internal CustomReadArray() : base(new object[] {1d}) { }
     protected override object Read(uint index) => "custom";
+}
+
+sealed class CustomLengthArray : JsArray
+{
+    readonly uint count;
+    internal CustomLengthArray(uint count) : base(0) { this.count = count; }
+    protected override uint Count => count;
+}
+
+sealed class CustomGetArray : JsArray
+{
+    internal CustomGetArray() : base(new object[] {1d}) { }
+    public override object Get(string key) => "custom get";
 }
