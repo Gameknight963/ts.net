@@ -67,6 +67,7 @@ Runtime performance:
 | Cached list formatters, 10K three-element lists across four locales and all types/styles | 4.31 ms | 10.40 ms | — | 2.41x |
 | `Object.entries(value)`, 100K calls and reads | 8.09 ms | 16.71 ms | — | 2.07x |
 | Map 100K number/string/undefined values with a default parameter and sum | 0.801 ms | 1.65 ms | — | 2.06x |
+| Sum `codePointAt` over 100K UTF-16 positions with surrogate pairs | 0.0728 ms | 0.1483 ms | 0.0794 ms | 2.04x |
 | Alternate between two class methods through a helper, 100K calls | 0.0696 ms | 0.1406 ms | — | 2.02x |
 | String lastIndexOf, 1M searches | 10.07 ms | 19.54 ms | — | 1.94x |
 | Gzip-compress 1 MiB of repeated ASCII A | 3.54 ms | 6.71 ms | — | 1.90x |
