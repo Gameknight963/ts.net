@@ -1,7 +1,6 @@
 param([switch]$SkipBuild)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$experiment = Join-Path $root 'experiments/native-frontend'
 $extension = if ([Environment]::OSVersion.Platform -eq 'Win32NT') { '.exe' } else { '' }
 $probe = "$root/compiler/bin/Release/net10.0/tsnet-frontend$extension"
 $output = Join-Path $root 'artifacts/native-frontend'

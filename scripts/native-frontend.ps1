@@ -9,7 +9,7 @@ $extension = if ([Environment]::OSVersion.Platform -eq 'Win32NT') { '.exe' } els
 $frontend = "$root/compiler/bin/Release/net10.0/tsnet-frontend$extension"
 $output = "$root/artifacts/native-frontend"
 [IO.Directory]::CreateDirectory($output) | Out-Null
-$reports = @(& $frontend --inspect "$root/experiments/native-frontend/sample.ts" point count values selected optional label)
+$reports = @(& $frontend --inspect "$root/tests/frontend-inference.ts" point count values selected optional label)
 if ($LASTEXITCODE) { throw 'Frontend probe failed' }
 $reports | Set-Content "$output/probe.jsonl" -Encoding utf8
 $reports | Select-Object -Skip 1 | ForEach-Object {
