@@ -328,6 +328,9 @@ public static partial class Js
     static object PromiseSpeciesReceiver(object receiver, object[] arguments) => receiver;
     sealed class PromiseConstructorFunction : NativeNamespaceFunction
     {
+        readonly JsCreatedObject awaitPrototype;
+        internal bool HasDefaultAwaitConstructor => HasObjectPrototype(awaitPrototype) &&
+            ReferenceEquals(awaitPrototype.OwnDataValue("constructor"), this);
         internal PromiseConstructorFunction() : base("Promise", static _ => throw new InvalidOperationException("Promise requires new"), 1)
         {
             string speciesKey = PropertyKey(SpeciesSymbol);
@@ -335,7 +338,7 @@ public static partial class Js
             var speciesGetter = new CollectionMethod("get [Symbol.species]", 0, PromiseSpeciesReceiver);
             DefineAccessor(speciesKey, speciesGetter, 1);
             speciesGetter.InferPropertyName("get [Symbol.species]");
-            var prototype = new JsCreatedObject(); UseObjectPrototype(prototype);
+            var prototype = new JsCreatedObject(); awaitPrototype = prototype; UseObjectPrototype(prototype);
             prototype.DefineMethod("constructor", this); prototype.DefineMethod("then", new PromiseThenFunction());
             prototype.DefineMethod("catch", new PromiseCatchFunction()); prototype.DefineMethod("finally", new PromiseFinallyFunction());
             prototype.DefineMethod(PropertyKey(ToStringTagSymbol), "Promise", false);

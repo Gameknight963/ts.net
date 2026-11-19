@@ -92,6 +92,16 @@ public static partial class Js
         new(value is TsObject ? PromiseResolve(RuntimeNamespaces.Promise, value) : value, continuation);
     public static object AsyncAwait(object value) => AwaitRecord(value);
     public static object AsyncAwaitContinue(object value, object continuation) => AwaitRecord(value, (JsFunction)continuation);
+    public static object AwaitResolvedNumber(object target, object receiver, double? value, object continuation)
+    {
+        // A fresh intrinsic promise cannot escape this await. Its constructor
+        // lookup must remain an ordinary data read; otherwise keep the full call.
+        if (target is PromiseStaticFunction {IsResolve:true} &&
+            ReferenceEquals(receiver, RuntimeNamespaces.Promise) &&
+            ((PromiseConstructorFunction)receiver).HasDefaultAwaitConstructor)
+            return new AsyncAwaitRecord(BoxNumber(value), (JsFunction)continuation);
+        return AwaitRecord(CallPromiseStaticNumber(target, receiver, value), (JsFunction)continuation);
+    }
     class AsyncFunctionObject : JsFunction
     {
         internal override TsObject PropertyPrototype => TryExplicitPrototype(out var value) ? value : AsyncFunctionFamily.Value.Prototype;

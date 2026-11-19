@@ -43,6 +43,21 @@ internal static partial class CompilerFunctions
         b.call(RuntimeMember.CallPromiseStaticNumber); il_function_result(call.type, c, b); return true;
     }
     internal static readonly TextBytes promise_then_name = "then";
+    internal static bool il_await_resolved_number(int entry, Compiler c, IlBackend b)
+    {
+        Node awaiting = get_node(entry, c), call = get_node(awaiting.left, c);
+        if (call.kind != NodeKind.Call || call.children == 0 || il_call_has_spread(awaiting.left, c)) return false;
+        Node target = get_node(call.left, c), argument = get_node(call.children, c);
+        if (target.kind != NodeKind.Property || target.fourth != 0 || target.left == 0 ||
+            !is_text(target.name, "resolve", c) || argument.next != 0 || get_type(argument.type, c).kind != TypeKind.Number) return false;
+        Node owner = get_node(target.left, c);
+        if (owner.kind != NodeKind.BuiltinNamespace || !is_text(get_token(owner.token, c).text, "Promise", c)) return false;
+        int receiver = il_method_target(call.left, c, b);
+        b.emit(0xfe0c, receiver); il_as(call.children, argument.type, c, b);
+        // Continuation creation is compiler-internal and invokes no user code.
+        if (awaiting.right != 0) il_boxed(awaiting.right, c, b); else b.op(0x14);
+        b.call(RuntimeMember.AwaitResolvedNumber); return true;
+    }
     internal static bool il_promise_then_call(int entry, Compiler c)
     {
         Node call = get_node(entry, c);

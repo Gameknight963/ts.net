@@ -38,6 +38,7 @@ public partial class JsFunction
     }
     internal void MarkOrdinaryPrototype() => ordinaryPrototype = UncreatedPrototype;
     internal void UseObjectPrototype(TsObject prototype) => ordinaryPrototype = prototype;
+    internal bool HasObjectPrototype(TsObject prototype) => ReferenceEquals(ordinaryPrototype, prototype);
     internal object BeginOrdinaryConstruction()
     {
         if (!sourceConstructor) throw new InvalidOperationException("Value is not a constructor");
