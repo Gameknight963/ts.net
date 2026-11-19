@@ -46,6 +46,16 @@ try
     bytes=GC.GetAllocatedBytesForCurrentThread()-before;
     if(bytes!=0 || total!=1273080)throw new Exception($"Cached integer boxing changed: {bytes} bytes, {total}");
     Console.WriteLine("PASS integer boxing values, negative zero, undefined and zero cached allocations");
+    foreach(string name in new[]{"Uint8Array","Uint8ClampedArray"}) {
+        var constructor=(JsFunction)Js.BuiltinNamespace(name);
+        object view=constructor.Construct(new object[]{new JsArray(new object[]{0d,255d})});
+        for(int i=0;i<1000;i++)TypedByteRead(view,i&1);
+        before=GC.GetAllocatedBytesForCurrentThread();total=0;
+        for(int i=0;i<10000;i++)total+=(double)TypedByteRead(view,i&1);
+        bytes=GC.GetAllocatedBytesForCurrentThread()-before;
+        if(bytes!=0 || total!=1275000)throw new Exception($"Typed byte reads changed: {name}, {bytes} bytes, {total}");
+    }
+    Console.WriteLine("PASS boxed typed-byte reads preserve values without repeated allocation");
 
 }
 catch (Exception error) {Console.Error.WriteLine(error); Environment.ExitCode = 1;}
@@ -59,3 +69,6 @@ static int NullableCasts(object value) =>
 
 [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
 static object IntegerBox(int value) => Js.BoxInteger(value);
+
+[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+static object TypedByteRead(object view, int index) => Js.IndexGetNumberKey(view,index);

@@ -35,7 +35,7 @@ public static partial class Js
         {
             if (Buffer.Detached || Buffer.Resizable && (uint)index >= (uint)Count) return Undefined;
             var bytes = Buffer.Bytes.AsSpan(Offset + index * Size, Size);
-            return numberKind == TypedArrayNumberKind.None ? ReadBinary(bytes, Kind, BitConverter.IsLittleEndian) : ReadTypedArrayNumber(bytes, numberKind);
+            return numberKind == TypedArrayNumberKind.None ? ReadBinary(bytes, Kind, BitConverter.IsLittleEndian) : ReadBoxedTypedArrayNumber(bytes, numberKind);
         }
         // The callback loop excludes BigInt views and supplies an integer index.
         // A previous callback may have detached or resized the buffer.

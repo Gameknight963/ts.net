@@ -5,6 +5,9 @@ public static partial class Js
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object BoxInteger(int value) => (uint)value < 256 ? SmallNumberBoxes.Values[value] : (object)(double)value;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static object BoxUnsignedInteger(uint value) => value < 256 ? SmallNumberBoxes.Values[value] : (object)(double)value;
+
     static class SmallNumberBoxes
     {
         internal static readonly object[] Values = Create();
