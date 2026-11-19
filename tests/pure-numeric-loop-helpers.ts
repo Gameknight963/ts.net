@@ -14,6 +14,12 @@ function sumTyped(input:Float64Array):number {
     return result;
 }
 console.log(sumTyped(new Float64Array([4,5,6])));
+function fixedSum(input:number[],limit:number):number {
+    let result=0;
+    for(let i=0;i<limit;i++) result+=arithmetic(input[i],3);
+    return result;
+}
+console.log(fixedSum([1,2,3],3),fixedSum([1,2,3],2.5),fixedSum([1,2],3),fixedSum([],0));
 const sparse:number[]=[1,,3] as number[];
 console.log(sum(sparse));
 const accessor=[1,2,3];let reads=0;

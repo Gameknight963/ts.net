@@ -97,6 +97,10 @@ internal static partial class CompilerFunctions
         {
             Node n = get_node(i, c);
             if (!il_inside(i, body, b)) { continue; }
+            if (n.kind == NodeKind.Call) {
+                if (!il_pure_numeric_call(i, c, b)) return 0;
+                continue;
+            }
             // Getters, construction, spread and other callbacks can invalidate
             // the buffer. New expression kinds keep the ordinary path until
             // their effects are checked here.
