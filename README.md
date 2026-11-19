@@ -80,6 +80,7 @@ Runtime performance:
 | `any` property loop, 350K iterations | 0.266 ms | 0.435 ms | — | 1.64x |
 | Update typed fields and sum through a helper, 2M iterations | 1.42 ms | 2.33 ms | 1.39 ms | 1.64x |
 | Map 10K number/string values to numbers or undefined and reduce, 20 passes | 1.76 ms | 2.80 ms | — | 1.59x |
+| Parse 1,000 three-field records 20 times, without a reviver | 2.77 ms | 4.38 ms | 7.14 ms (records), 10.36 ms (mutable DOM) | 1.58x |
 | WritableStream, queue and complete 1K numeric writes | 0.394 ms | 0.618 ms | — | 1.57x |
 | reduce and reduceRight, 10 pairs over 10K integers from 0-255 | 0.775 ms | 1.21 ms | — | 1.56x |
 | Count numeric values in a mixed array, 500K type checks | 0.285 ms | 0.440 ms | — | 1.54x |
@@ -164,7 +165,6 @@ Runtime performance:
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
 | Call a numeric void method on a record with 16 numeric fields through a helper, 100K calls | 0.477 ms | 0.233 ms | 0.0711 ms (class) | 0.49x |
 | Construct and run a chain of 10K handlers | 0.687 ms | 0.340 ms | 0.665 ms (queued Task continuations) | 0.49x |
-| Parse 1,000 three-field records 20 times, without a reviver | 9 ms | 4 ms | — | 0.48x |
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | — | 0.48x |
 | `Object.keys(value)`, 100K calls and key reads | 2.46 ms | 1.12 ms | — | 0.46x |
 | Cached emoji collator, 10K comparisons with numeric and punctuation options | 2.43 ms | 1.11 ms | — | 0.46x |
