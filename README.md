@@ -228,6 +228,7 @@ Runtime performance:
 | Long meter units, 10K cached calls across German, French, Russian and British English | 51.31 ms | 8.94 ms | — | 0.17x |
 | Call a custom apply handler with an object and a one-number array, 100K calls | 0.612 ms | 0.0624 ms | 0.283 ms (`double[]`) | 0.10x |
 | Call a custom call handler with an object and a number, 100K calls | 0.650 ms | 0.0651 ms | 0.0724 ms (delegate) | 0.10x |
+| Write and sum a numeric property on an ordinary constructor instance, 100K iterations | 0.786 ms | 0.0652 ms | 1.83 ms (dictionary), 0.0706 ms (class field) | 0.08x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 2020 | 0.759 ms | 0.0319 ms | — | 0.04x |
 | Sum five numeric fields from 10K parsed records typed as `any`, 20 passes | 11.71 ms | 0.347 ms | 0.222 ms (classes) | 0.03x |
 | Local year/hour reads, 1K daily timestamp changes on one Date, starting in 20000 | 1.34 ms | 0.0317 ms | — | 0.02x |

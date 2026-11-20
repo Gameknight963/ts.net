@@ -114,6 +114,8 @@ void il_spread_shapes(Compiler c, IlBackend b)
         int constructor = b.plan.method0(5, klass, 0x1886, -1, ".ctor"); b.spread_any_constructor = constructor;
         b.begin(constructor); b.emit(0xfe09, 0); b.call(RuntimeMember.DynamicObjectConstructor); b.op(0x2a); il_spread_count(klass, b);
         il_stored_numeric_properties(klass, b);
+        b.begin(b.plan.method1(5, klass, 0xc6, -10, -4, "TryReadOwnNumber"));
+        b.emit(0xfe09, 0); b.emit(0xfe09, 1); b.call(RuntimeMember.ReadStoredOwnNumber); b.op(0x2a);
         Vector<int> emitted = new Vector<int>(); int target = c.types;
         while (target != 0)
         {

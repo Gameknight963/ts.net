@@ -106,6 +106,32 @@ customUpdate.DefineOwn("value", 1d);
 if (Js.AddNumberProperty(customUpdate,"value",2,false)!=3 || customUpdate.Reads!=1 || customUpdate.Writes!=1)
     throw new Exception("Numeric updates bypassed native property overrides");
 Console.WriteLine("PASS combined numeric updates preserve native read and write overrides");
+var numberProbe = new StoredNumberProbe();
+numberProbe.DefineOwn("value", 0d);
+for (int i = 0; i < 10000; i++) { Js.SetNumber(numberProbe, "value", i); Js.AddPropertyToNumber(1, numberProbe, "value"); }
+long probeStart = GC.GetAllocatedBytesForCurrentThread();
+double probeSum = 0;
+for (int i = 0; i < 100000; i++) {
+    Js.SetNumber(numberProbe, "value", i);
+    probeSum += Js.AddPropertyToNumber(1, numberProbe, "value").Value;
+}
+long probeBytes = GC.GetAllocatedBytesForCurrentThread() - probeStart;
+if (probeSum != 5000050000 || probeBytes > 4096) throw new Exception($"Stored numeric addition changed or allocated: {probeSum}, {probeBytes}");
+foreach (object value in new object[] {null, Js.Undefined, "text", false}) {
+    numberProbe.Set("value", value);
+    if (numberProbe.TryReadOwnNumber("value").HasValue) throw new Exception("Nonnumeric property accepted by numeric probe");
+}
+numberProbe.Set("value", -0d);
+if (BitConverter.DoubleToInt64Bits(numberProbe.TryReadOwnNumber("value").Value) != long.MinValue)
+    throw new Exception("Numeric probe lost negative zero");
+numberProbe.DeleteOwn("value");
+if (numberProbe.TryReadOwnNumber("value").HasValue) throw new Exception("Deleted property accepted by numeric probe");
+Console.WriteLine($"PASS stored numeric addition: {probeBytes} bytes for 100000 writes and reads");
+sealed class StoredNumberProbe : JsDynamicObject
+{
+    public override bool TrySetNumberProperty(string key, double? value) => TrySetStoredNumber(key, value);
+    public override double? TryReadOwnNumber(string key) => ReadStoredOwnNumber(key);
+}
 sealed class Record : TsObject { }
 
 sealed class CustomSetter : JsClassInstance {public int Calls; public override object Set(string key, object value) {Calls++;return base.Set(key,value);}}

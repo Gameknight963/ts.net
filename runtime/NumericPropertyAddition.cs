@@ -5,6 +5,16 @@ public abstract partial class TsObject
     // Null requests ordinary Get, including for an undefined numeric field.
     public virtual double? TryReadOwnNumber(string key) => null;
 
+    // A failed probe must leave ordinary Get (including coercion) untouched.
+    protected double? ReadStoredOwnNumber(string key)
+    {
+        if (IsModuleNamespace || this is not JsDescriptorObject descriptor || descriptor.HasPropertyDescriptors)
+            return null;
+        OwnProperties properties = extra;
+        if (properties == null || properties.Accessors is { } accessors && accessors.ContainsKey(key)) return null;
+        return properties.TryReadNumber(key, out double? value) ? value : null;
+    }
+
     internal bool TryReadDynamicNumber(string key, out double? value)
     {
         value = null;
