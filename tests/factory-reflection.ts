@@ -1,0 +1,12 @@
+export {};
+const makeDefine:any=()=>Object.defineProperty;
+const define=makeDefine();
+const record={value:0};
+let calls=0;
+define(record,'value',{configurable:true,get(){calls++;return 'factory getter';}});
+console.log('factory reflection',(record as any).value,calls);
+const makeDelete:any=()=>Reflect.deleteProperty;
+const remove=makeDelete();console.log('factory delete',remove(record,'value'),Object.hasOwn(record,'value'));
+const chooseFactory:any=true?(()=>Reflect):(()=>Reflect.deleteProperty);
+const reflection=chooseFactory();const conditionalRecord={value:1};
+console.log('conditional factory',reflection.deleteProperty(conditionalRecord,'value'),Object.hasOwn(conditionalRecord,'value'));

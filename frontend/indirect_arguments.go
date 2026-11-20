@@ -89,6 +89,10 @@ func (b *irBuilder) prepareIndirectReflectionSources(files []*ast.SourceFile) {
 }
 
 func (b *irBuilder) indirectSourceSignatures(source *ast.Node, found func(*checker.Signature)) {
+	b.indirectSourceSignaturesSeen(source, map[*ast.Node]bool{}, found)
+}
+
+func (b *irBuilder) indirectSourceSignaturesSeen(source *ast.Node, active map[*ast.Node]bool, found func(*checker.Signature)) {
 	var visit func(*ast.Node, map[*ast.Node]bool) int
 	visit = func(n *ast.Node, seen map[*ast.Node]bool) int {
 		if n == nil || seen[n] {
@@ -136,5 +140,5 @@ func (b *irBuilder) indirectSourceSignatures(source *ast.Node, found func(*check
 		}
 		return 0
 	}
-	visit(source, map[*ast.Node]bool{})
+	visit(source, active)
 }

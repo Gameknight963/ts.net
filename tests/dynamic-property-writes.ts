@@ -57,3 +57,8 @@ const referenceChange:any={text:'before'};referenceChange.text=42;console.log('r
 class IndirectMutator{constructor(target:any){target.value='class constructor';}}
 const ConstructorAlias:any=IndirectMutator;const classArgument={value:0};new ConstructorAlias(classArgument);console.log('class alias',(classArgument as any).value);
 const FunctionConstructorAlias:any=function(this:any,target:any):void{target.value='function constructor';};const functionArgument={value:0};new FunctionConstructorAlias(functionArgument);console.log('constructor alias',(functionArgument as any).value);
+const writerFactory:any=()=>indirectWrite;const factoryWriter=writerFactory();const factoryRecord={value:0};factoryWriter(factoryRecord,'factory');console.log('returned callable',(factoryRecord as any).value);
+const callableIdentity:any=(value:any)=>value;const identityWriter=callableIdentity(indirectWrite);const identityRecord={value:0};identityWriter(identityRecord,'identity');console.log('returned argument',(identityRecord as any).value);
+function recursiveWriterFactory(ready:boolean):any{return ready?indirectWrite:recursiveFactoryAlias(ready);}
+const recursiveFactoryAlias:any=recursiveWriterFactory;const recursiveWriter=recursiveFactoryAlias(true);const recursiveRecord={value:0};recursiveWriter(recursiveRecord,'recursive factory');console.log('recursive factory',(recursiveRecord as any).value);
+const objectFactory:any=()=>({value:0});const factoryObject=objectFactory();factoryObject.value='object factory';console.log('returned object',factoryObject.value);

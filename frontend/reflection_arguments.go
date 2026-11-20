@@ -358,18 +358,37 @@ func (b *irBuilder) reflectionReturnedValue(n *ast.Node, seen map[*ast.Node]bool
 	}
 
 	signature := b.c.GetResolvedSignature(n)
-	if signature == nil {
-		return 0
-	}
-	if signature.Target() != nil {
+	if signature != nil && signature.Target() != nil {
 		signature = signature.Target()
 	}
-	declaration := signature.Declaration()
-	if declaration == nil || !ast.IsFunctionLike(declaration) || declaration.Body() == nil || seen[declaration] {
-		return 0
+	if signature != nil {
+		declaration := signature.Declaration()
+		if declaration != nil && ast.IsFunctionLike(declaration) && declaration.Body() != nil {
+			if seen[declaration] {
+				return 0
+			}
+			seen[declaration] = true
+			return b.reflectionBodyValue(declaration.Body(), seen, classify)
+		}
 	}
-	seen[declaration] = true
-	return b.reflectionBodyValue(declaration.Body(), seen, classify)
+	// An any call can still invoke a known source function. Share the active
+	// set with callee resolution so recursive factories cannot restart the walk.
+	result := 0
+	b.indirectSourceSignaturesSeen(n.Expression(), maps.Clone(seen), func(actual *checker.Signature) {
+		declaration := actual.Declaration()
+		if declaration == nil || declaration.Body() == nil || seen[declaration] {
+			return
+		}
+		active := maps.Clone(seen)
+		active[declaration] = true
+		value := b.reflectionBodyValue(declaration.Body(), active, classify)
+		if result == 1 && value >= 2 || value == 1 && result >= 2 {
+			result = 3
+		} else if value > result {
+			result = value
+		}
+	})
+	return result
 }
 
 func (b *irBuilder) reflectionBodyValue(body *ast.Node, seen map[*ast.Node]bool, classify func(*ast.Node, map[*ast.Node]bool) int) int {
