@@ -101,6 +101,15 @@ public static partial class Js
             capability.Complete(result, false);
         }
     }
+    sealed class ThenablePromiseReaction(JsPromise promise, object receiver, JsFunction function) : PromiseReactionBase
+    {
+        internal override void Run(object value, bool rejected)
+        {
+            var pair = new PromiseResolvingFunctions(promise);
+            try { function.InvokeWithReceiver(receiver, new object[] { pair.Resolve, pair.Reject }); }
+            catch (Exception error) { pair.RejectError(error); }
+        }
+    }
     sealed class PromiseContinuationReaction(Action<object, bool> continuation) : PromiseReactionBase
     {
         internal override void Run(object value, bool rejected) => continuation(value, rejected);
@@ -158,15 +167,8 @@ public static partial class Js
             EnqueueThenable(value, function);
         }
         // Keep the captured job state off the primitive-resolution path.
-        void EnqueueThenable(object value, JsFunction function)
-        {
-            EnqueuePromiseJob(() =>
-            {
-                var pair = new PromiseResolvingFunctions(this);
-                try { function.InvokeWithReceiver(value, new object[] { pair.Resolve, pair.Reject }); }
-                catch (Exception error) { pair.RejectError(error); }
-            });
-        }
+        void EnqueueThenable(object value, JsFunction function) =>
+            new ThenablePromiseReaction(this, value, function).Enqueue(null, false);
         internal void Settle(object value, bool rejected)
         {
             if (state > 0) return;

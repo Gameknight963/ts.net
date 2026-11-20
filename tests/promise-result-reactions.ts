@@ -32,7 +32,16 @@ reentrant = Promise.resolve(0).then(() => {
     reentrant.then(value => log.push('inside:' + value));
     return 41;
 });
-Promise.all([first, second, propagated, identity, ignored, thrown, thenable, adopted, cycle, functionResult, reentrant]).then(values => {
+const savedThenable:any={marker:'saved',get then(){
+    log.push('read then');
+    return function(this:any,resolve:(value:number)=>void,reject:(reason:any)=>void){
+        log.push('call saved then:'+(this===savedThenable)+':'+this.marker);
+        resolve(43);reject('ignored rejection');throw new Error('ignored after resolution');
+    };
+}};
+const savedThen=Promise.resolve(savedThenable).then(value=>{log.push('saved:'+value);return value;});
+Object.defineProperty(savedThenable,'then',{value(){throw new Error('replacement must not run');}});
+Promise.all([first, second, propagated, identity, ignored, thrown, thenable, adopted, cycle, functionResult, reentrant, savedThen]).then(values => {
     console.log('values', values.join(','));
     console.log('order', log.join(','));
 });
