@@ -31,3 +31,19 @@ console.log('native', new Array().length, new Map().size, new Set().size);
 const Revoked = Proxy.revocable(Ordinary, {});
 Revoked.revoke();
 try {new Revoked.proxy();} catch (error) {console.log('revoked', (error as Error).name);}
+
+let sequence=0;
+function makeOrdinary(seed:number):any{return function(this:any):void{this.value=seed+(++sequence);this.target=new.target;};}
+const Simple=makeOrdinary(10);const simpleA=new Simple(),simpleB=new Simple();
+console.log('simple zero',simpleA.value,simpleB.value,simpleA!==simpleB,simpleA.target===Simple,simpleA instanceof Simple);
+const Returning:any=function(this:any):any{this.discarded=1;return {value:17};};
+const returned=new Returning();console.log('returned zero',returned.value,returned instanceof Returning,returned.discarded);
+const Primitive:any=function(this:any):any{this.value=19;return 3;};console.log('primitive zero',new Primitive().value);
+const Missing:any=function(this:any):void{this.value=23;return undefined;};console.log('undefined zero',new Missing().value);
+let initialization='';
+function capturedClass(seed:number):any{return class Item {value=(initialization+='field|',seed);constructor(){initialization+='body|';this.value+=2;}};}
+const Item=capturedClass(29),item=new Item();console.log('class zero',item.value,item instanceof Item,initialization);
+const Untyped:any=Item;console.log('class alias zero',new Untyped().value);
+const Changed:any=function(this:any):void{this.value=31;};Changed.prototype={marker:37};const changed=new Changed();console.log('changed prototype zero',changed.value,changed.marker,Object.getPrototypeOf(changed)===Changed.prototype);
+const arrow:any=()=>undefined;const method:any={method(){}}.method;
+for(const C of [arrow,method]){try{new C();}catch(error){console.log('nonconstructor zero',(error as Error).name);}}

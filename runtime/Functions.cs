@@ -93,6 +93,7 @@ public partial class JsFunction : JsDescriptorObject
     public virtual double? InvokeMethodNumber1(object receiver,double? first)=>InvokeNumber1(first);
     public virtual double? InvokeMethodNumber2(object receiver,double? first,double? second)=>InvokeNumber2(first,second);
     public virtual object Construct(object[] arguments) => ConstructOrdinary(arguments);
+    public virtual object Construct0() => Construct(Array.Empty<object>());
     public virtual object ConstructNumber1(double? value) => Construct(new[] {Js.BoxNumber(value)});
     public virtual object ConstructNumber2(double? first, double? second) => Construct(new[] {Js.BoxNumber(first), Js.BoxNumber(second)});
     public virtual object ConstructArgument(object value) => Construct(new[] {value});

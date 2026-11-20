@@ -1,5 +1,11 @@
 try
 {
+    var constructedZero = new SeparateConstructCalls();
+    if (!ReferenceEquals(Js.Construct0(constructedZero), constructedZero.Result) || constructedZero.Calls != 1)
+        throw new Exception("Zero-argument construction bypassed the ordinary constructor override");
+    var directZero = new DirectZeroConstruct();
+    if (!ReferenceEquals(Js.Construct0(directZero), directZero.Result))
+        throw new Exception("Zero-argument construction bypassed the direct constructor entry point");
     var function = new SeparateCalls();
     var genericNumbers = new GenericNumberCalls();
     if (Js.CallFunctionNumber0(genericNumbers) != 0 || Js.CallFunctionNumber1(genericNumbers, 1) != 1 ||
@@ -135,4 +141,21 @@ sealed class BoundNumericGetter(object expected) : JsFunction((FunctionBody)(_ =
     public override double? InvokeNumber0() => -1;
     public override double? InvokeMethodNumber0(object receiver) => ReferenceEquals(receiver, expected) ? 42
         : throw new Exception("Numeric getter receiver changed");
+}
+
+sealed class SeparateConstructCalls() : JsFunction(null, null, "separate construction", 0)
+{
+    public readonly object Result = new JsDynamicObject();
+    public int Calls;
+    public override object Construct(object[] arguments)
+    {
+        if (arguments.Length != 0) throw new Exception("Zero-argument constructor received arguments");
+        Calls++; return Result;
+    }
+}
+sealed class DirectZeroConstruct() : JsFunction(null, null, "direct construction", 0)
+{
+    public readonly object Result = new JsDynamicObject();
+    public override object Construct(object[] arguments) => throw new Exception("General constructor adapter ran");
+    public override object Construct0() => Result;
 }

@@ -137,6 +137,15 @@ public sealed partial class JsClassFunction : JsFunction
         var instance = (JsClassInstance)factory(Array.Empty<object>()); instance.Owner = this; return instance;
     }
     public override object Construct(object[] arguments) => Initialize(Allocate(), arguments);
+    public override object Construct0()
+    {
+        if (derived) return base.Construct0();
+        var instance = Allocate();
+        instance.SetPrototype(ConstructionPrototype(this));
+        InitializeFields(instance);
+        object returned = constructor?.InvokeReceiver0(constructor.ConstructionReceiver(instance, this));
+        return returned is TsObject ? returned : instance;
+    }
     public override object ConstructNumber1(double? value)
     {
         if (derived) return base.ConstructNumber1(value);

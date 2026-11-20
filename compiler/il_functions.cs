@@ -314,7 +314,8 @@ internal static partial class CompilerFunctions
         int receiver_count = il_numeric_receiver_function(symbol, c);
         int receiver_arguments = il_class_receiver_arguments(symbol, c, b);
         int constructor_parameter = il_constructor_parameter(symbol, c);
-        bool constructor_entry = constructor_parameter != 0;
+        bool zero_constructor = b.function_values_needed.at(symbol) != 0 && il_zero_constructor(symbol, c);
+        bool constructor_entry = constructor_parameter != 0 || zero_constructor;
         bool generic_function = b.function_values_needed.at(symbol) != 0 && get_node(get_symbol(symbol, c).function, c).fourth == 0;
         bool receiver_class = receiver_count >= 0 || receiver_arguments >= 0 || constructor_entry && get_node(get_symbol(symbol,c).function,c).fourth != 0;
         if (receiver_arguments < 0 && !constructor_entry && !generic_function && count < 0 && numeric_arguments < 0 && !source_callback && !continuation && !value_callback && !single_argument && !reduce_callback && value_count < 0 && receiver_count < 0) return;
@@ -351,7 +352,8 @@ internal static partial class CompilerFunctions
         il_apply_array_override(symbol, type, c, b);
         if (direct_method) il_method_array_arguments(symbol, type, context, environment_field, c, b);
         if (receiver_arguments >= 0) il_class_receiver_argument_methods(symbol, receiver_arguments, type, context, environment_field, c, b);
-        if (constructor_entry) il_constructor_methods(symbol, constructor_parameter, type, context, environment_field, c, b);
+        if (constructor_parameter != 0) il_constructor_methods(symbol, constructor_parameter, type, context, environment_field, c, b);
+        if (zero_constructor) il_zero_constructor_method(symbol, type, context, environment_field, c, b);
         if (receiver_class && receiver_count < 0) return;
         if (receiver_count >= 0)
         {
