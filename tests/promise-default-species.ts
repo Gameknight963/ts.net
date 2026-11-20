@@ -1,0 +1,34 @@
+export {};
+const constructorDescriptor=Object.getOwnPropertyDescriptor(Promise.prototype,'constructor')!;
+const speciesDescriptor=Object.getOwnPropertyDescriptor(Promise,Symbol.species)!;
+const values:Promise<number>[]=[];
+const ordinary=Promise.resolve(1);
+values.push(ordinary.then(value=>value+1));
+let ownReads=0;
+const own=Promise.resolve(2);
+Object.defineProperty(own,'constructor',{configurable:true,get(){ownReads++;return Promise;}});
+values.push(own.then(value=>value+1));console.log('own getter',ownReads);
+let prototypeReads=0;
+Object.defineProperty(Promise.prototype,'constructor',{configurable:true,get(){prototypeReads++;return Promise;}});
+values.push(ordinary.then(value=>value+2));console.log('prototype getter',prototypeReads);
+Object.defineProperty(Promise.prototype,'constructor',constructorDescriptor);
+let speciesReads=0;
+Object.defineProperty(Promise,Symbol.species,{configurable:true,get(){speciesReads++;return Promise;}});
+values.push(ordinary.then(value=>value+3));console.log('species getter',speciesReads);
+Object.defineProperty(Promise,Symbol.species,{configurable:true,value:undefined});
+const deletedSpecies=ordinary.then(value=>value+4);console.log('missing species',deletedSpecies.constructor===Promise);values.push(deletedSpecies);
+delete (Promise as any)[Symbol.species];
+const absentSpecies=ordinary.then(value=>value+5);console.log('deleted species',absentSpecies.constructor===Promise);values.push(absentSpecies);
+Object.defineProperty(Promise,Symbol.species,{configurable:true,get(){throw new Error('species failure');}});
+try{ordinary.then(value=>value);}catch(error){console.log('throwing species',(error as Error).message);}
+Object.defineProperty(Promise,Symbol.species,speciesDescriptor);
+Object.defineProperty(Promise.prototype,'constructor',{configurable:true,value:17});
+try{ordinary.then(value=>value);}catch(error){console.log('invalid constructor',(error as Error).name);}
+Object.defineProperty(Promise.prototype,'constructor',constructorDescriptor);
+const changedPrototype=Promise.resolve(6);
+const replacement=Object.create(Promise.prototype);
+Object.defineProperty(replacement,'constructor',{get(){prototypeReads++;return Promise;}});
+Object.setPrototypeOf(changedPrototype,replacement);
+values.push(changedPrototype.then(value=>value+1));console.log('changed prototype',prototypeReads);
+const restored=ordinary.then(value=>value+5);console.log('restored',restored.constructor===Promise);values.push(restored);
+Promise.all(values).then(results=>console.log('values',results.join(',')));

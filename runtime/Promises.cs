@@ -234,6 +234,9 @@ public static partial class Js
     }
     static JsFunction PromiseSpecies(TsObject promise)
     {
+        if (promise is JsPromise && !promise.HasPropertyOverrides &&
+            RuntimeNamespaces.Promise is PromiseConstructorFunction intrinsic && intrinsic.HasDefaultSpecies)
+            return intrinsic;
         object constructor = promise.Get("constructor");
         if (IsUndefined(constructor)) return RuntimeNamespaces.Promise;
         if (constructor is not TsObject obj) throw new InvalidOperationException("Promise constructor must be an object");
@@ -331,13 +334,17 @@ public static partial class Js
     sealed class PromiseConstructorFunction : NativeNamespaceFunction
     {
         readonly JsCreatedObject awaitPrototype;
+        readonly string speciesKey;
+        readonly JsFunction speciesGetter;
+        internal bool HasDefaultSpecies => HasDefaultAwaitConstructor &&
+            TryOwnAccessor(speciesKey, out var accessor) && ReferenceEquals(accessor.Getter, speciesGetter);
         internal bool HasDefaultAwaitConstructor => HasObjectPrototype(awaitPrototype) &&
             ReferenceEquals(awaitPrototype.OwnDataValue("constructor"), this);
         internal PromiseConstructorFunction() : base("Promise", static _ => throw new InvalidOperationException("Promise requires new"), 1)
         {
-            string speciesKey = PropertyKey(SpeciesSymbol);
+            speciesKey = PropertyKey(SpeciesSymbol);
             Member(speciesKey, Undefined);
-            var speciesGetter = new CollectionMethod("get [Symbol.species]", 0, PromiseSpeciesReceiver);
+            speciesGetter = new CollectionMethod("get [Symbol.species]", 0, PromiseSpeciesReceiver);
             DefineAccessor(speciesKey, speciesGetter, 1);
             speciesGetter.InferPropertyName("get [Symbol.species]");
             var prototype = new JsCreatedObject(); awaitPrototype = prototype; UseObjectPrototype(prototype);

@@ -177,9 +177,9 @@ Runtime performance:
 | Create a Map, insert and read 10K entries, then delete half | 1.184 ms | 0.658 ms | 0.395 ms (`Dictionary`) | 0.56x |
 | Parse ten JSON arrays of 10K integers from -5000 to 4999 | 1.587 ms | 0.866 ms | 4.25 ms (`JsonSerializer`) | 0.55x |
 | Read `arguments[0]`, 100K reads | 0.176 ms | 0.0949 ms | — | 0.54x |
+| Construct and run a chain of 10K handlers | 0.592 ms | 0.308 ms | 0.637 ms (queued Task continuations) | 0.52x |
 | ReadableStream tee, drain both branches of 1K numbers | 5.41 ms | 2.69 ms | — | 0.50x |
 | Call a numeric void method on a record with 16 numeric fields through a helper, 100K calls | 0.477 ms | 0.233 ms | 0.0711 ms (class) | 0.49x |
-| Construct and run a chain of 10K handlers | 0.687 ms | 0.340 ms | 0.665 ms (queued Task continuations) | 0.49x |
 | Pipe 1K numbers from a ReadableStream to a WritableStream | 2.06 ms | 0.998 ms | — | 0.48x |
 | Sum 1K values with an await in try and an increment in finally each iteration | 0.0994 ms | 0.0477 ms | 0.0266 ms (queued) | 0.48x |
 | Serialize 1,000 three-field records 20 times, without a replacer | 2.063 ms | 0.988 ms | 2.762 ms (`JsonSerializer`) | 0.48x |
