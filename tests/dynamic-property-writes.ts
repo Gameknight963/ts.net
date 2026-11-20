@@ -32,3 +32,10 @@ function makeAny(value:any):any{return value;}
 const forwarded=makeAny({value:11});forwarded.value='forwarded';console.log('forwarded',forwarded.value);
 const updated:any={value:'2'};console.log('updates',updated.value++,++updated.value,updated.value,typeof updated.value);
 const entries:any[]=[{value:0},{value:1}];for(const entry of entries){entry.value='iteration';}console.log('iteration',entries[0].value,entries[1].value);
+const objectTarget:any={value:0};({value:objectTarget.value}={value:'object pattern'});console.log('object assignment',objectTarget.value);
+const arrayTarget:any={value:0};[arrayTarget.value]=['array pattern'];console.log('array assignment',arrayTarget.value);
+const defaultTarget:any={value:0};({value:defaultTarget.value='default pattern'}={} as any);console.log('default assignment',defaultTarget.value);
+const restTarget:any={value:0};[...restTarget.value]=[1,2];console.log('rest assignment',restTarget.value.join(','));
+const loopTarget:any={value:0};for(loopTarget.value of ['loop assignment']){}console.log('loop assignment',loopTarget.value);
+const patternLoop:any={value:0};for([patternLoop.value] of [['loop pattern']]){}console.log('loop pattern',patternLoop.value);
+const keyTarget:any={value:0};for(keyTarget.value in {item:1}){}console.log('key assignment',keyTarget.value);

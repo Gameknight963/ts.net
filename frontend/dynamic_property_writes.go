@@ -14,6 +14,12 @@ func (b *irBuilder) prepareDynamicPropertyWrite(n *ast.Node) {
 	var left *ast.Node
 	var value *checker.Type
 	switch n.Kind {
+	case ast.KindForOfStatement, ast.KindForInStatement:
+		initializer := n.AsForInOrOfStatement().Initializer
+		if initializer.Kind != ast.KindVariableDeclarationList {
+			b.prepareDynamicDestructuringWrite(initializer)
+		}
+		return
 	case ast.KindBinaryExpression:
 		expression := n.AsBinaryExpression()
 		if !ast.IsAssignmentOperator(expression.OperatorToken.Kind) {
@@ -35,6 +41,46 @@ func (b *irBuilder) prepareDynamicPropertyWrite(n *ast.Node) {
 	default:
 		return
 	}
+	if ast.IsAssignmentExpression(n, true) {
+		pattern := left
+		for pattern.Kind == ast.KindParenthesizedExpression {
+			pattern = pattern.Expression()
+		}
+		if pattern.Kind == ast.KindObjectLiteralExpression || pattern.Kind == ast.KindArrayLiteralExpression {
+			b.prepareDynamicDestructuringWrite(pattern)
+		}
+	}
+	b.prepareDynamicPropertyTarget(left, value)
+}
+
+func (b *irBuilder) prepareDynamicDestructuringWrite(target *ast.Node) {
+	switch target.Kind {
+	case ast.KindParenthesizedExpression:
+		b.prepareDynamicDestructuringWrite(target.Expression())
+	case ast.KindObjectLiteralExpression:
+		for _, property := range target.AsObjectLiteralExpression().Properties.Nodes {
+			if property.Kind == ast.KindPropertyAssignment {
+				b.prepareDynamicDestructuringWrite(property.Initializer())
+			} else if property.Kind == ast.KindSpreadAssignment {
+				b.prepareDynamicDestructuringWrite(property.Expression())
+			}
+		}
+	case ast.KindArrayLiteralExpression:
+		for _, element := range target.AsArrayLiteralExpression().Elements.Nodes {
+			b.prepareDynamicDestructuringWrite(element)
+		}
+	case ast.KindBinaryExpression:
+		if target.AsBinaryExpression().OperatorToken.Kind == ast.KindEqualsToken {
+			b.prepareDynamicDestructuringWrite(target.AsBinaryExpression().Left)
+		}
+	case ast.KindSpreadElement:
+		b.prepareDynamicDestructuringWrite(target.Expression())
+	case ast.KindPropertyAccessExpression, ast.KindElementAccessExpression:
+		b.prepareDynamicPropertyTarget(target, b.c.GetAnyType())
+	}
+}
+
+func (b *irBuilder) prepareDynamicPropertyTarget(left *ast.Node, value *checker.Type) {
 	for left.Kind == ast.KindParenthesizedExpression {
 		left = left.Expression()
 	}
