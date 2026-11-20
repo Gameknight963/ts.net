@@ -31,6 +31,9 @@ internal static partial class CompilerFunctions
         {
             il_boxed(value.left, c, b); il_boxed(value.right, c, b); b.call(RuntimeMember.IndexGetNumberValue); return;
         }
+        if (get_type(target, c).kind == TypeKind.Number && il_addition_chain(entry, c)) {
+            il_addition_value(entry, c, b); b.emit(0x28, b.addition_checked); return;
+        }
         // Keep numeric results unboxed; the fallback still checks the result type.
         if (get_type(target, c).kind == TypeKind.Number && get_type(value.type, c).kind == TypeKind.Any &&
             value.kind == NodeKind.Binary && is_text(get_token(value.token, c).text, text_plus, c))
@@ -353,6 +356,9 @@ internal static partial class CompilerFunctions
             Node right = get_node(n.right, c);
             if (right.kind == NodeKind.Property && right.fourth == 0 && get_type(get_node(right.left, c).type, c).kind == TypeKind.Any) {
                 il_boxed(right.left, c, b); il_text(right.name, c, b); b.call(RuntimeMember.AddPropertyToNumber);
+            }
+            else if (il_addition_chain(n.right, c)) {
+                il_addition_value(n.right, c, b); b.emit(0x28, b.addition_to_number);
             }
             else { il_boxed(n.right, c, b); b.call(RuntimeMember.AddToNumber); }
         }
