@@ -58,6 +58,10 @@ public abstract partial class TsObject
         if (HasOwn(key)) return false;
         for (var prototype = PropertyPrototype; prototype != null; prototype = prototype.PropertyPrototype)
         {
+            if (Js.IsProxy(prototype)) {
+                prototype.SetWithReceiver(key, value, this);
+                return true;
+            }
             if (prototype.IsModuleNamespace) throw new InvalidOperationException("Module namespace is read-only");
             if (prototype.TryOwnAccessor(key, out var accessor)) { accessor.Write(this, value); return true; }
             if (prototype.HasOwn(key))
