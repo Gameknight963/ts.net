@@ -7,6 +7,7 @@ internal sealed partial class IlBackend
     internal readonly Dictionary<int, List<(int Name, int Value)>> scalar_class_initializers = [];
     internal readonly Dictionary<int, List<(int Argument, int Type, int Symbol)>> scalar_constructor_arguments = [];
     internal readonly Dictionary<int, List<(int Name, int Value)>> scalar_constructor_assignments = [];
+    internal readonly Dictionary<int, Dictionary<int, int>> scalar_constructor_defaults = [];
 }
 
 internal static partial class CompilerFunctions
@@ -138,6 +139,7 @@ internal static partial class CompilerFunctions
         if (body.kind != NodeKind.Block || function.fourth == 0 || function.children != function.fourth ||
             receiver.kind != NodeKind.Variable || receiver.symbol == 0 || receiver.name != 0 || receiver.constant) return false;
         var arguments = new List<(int Argument, int Type, int Symbol)>();
+        Dictionary<int, int> defaults = null;
         int parameter = receiver.next, argument = construction.children;
         while (parameter != 0)
         {
@@ -147,15 +149,18 @@ internal static partial class CompilerFunctions
             if (source == 0 || p.type == 0) return false;
             Node value = get_node(source, c);
             if (value.type == 0) return false;
-            int storageType = supplied ? p.type : value.type;
+            int storageType = p.left != 0 ? get_node(p.left, c).type : supplied ? p.type : value.type;
             TypeKind kind = get_type(storageType, c).kind;
-            if (p.kind != NodeKind.Variable || p.symbol == 0 || (supplied && p.constant) || p.right != 0 ||
+            if (p.kind != NodeKind.Variable || p.symbol == 0 || (supplied && p.constant && p.left == 0) || p.right != 0 ||
                 p.third != 0 || p.fourth != 0 || p.children != 0 ||
                 kind is not (TypeKind.Number or TypeKind.String or TypeKind.Boolean) ||
                 value.kind == NodeKind.Spread || get_type(value.type, c).kind != kind) return false;
-            // A supplied nullable value can still trigger its default. Keep that
-            // case on the ordinary path; omitted literal defaults have no effects.
-            if (supplied && p.left != 0) return false;
+            // Literal defaults have no effects. Resolve supplied undefined values
+            // after all arguments have run, before evaluating the field assignments.
+            if (p.left != 0) {
+                if (!scalar_class_literal(p.left, kind, c)) return false;
+                (defaults ??= new())[p.symbol] = p.left;
+            }
             if (!supplied && !scalar_class_literal(source, kind, c)) return false;
             if (arguments.Count == 8) return false;
             arguments.Add((source, storageType, p.symbol));
@@ -206,9 +211,20 @@ internal static partial class CompilerFunctions
         if (owned.Count != count) return false;
         if (recordPlan) {
             b.scalar_constructor_arguments[entry] = arguments;
+            if (defaults != null) b.scalar_constructor_defaults[entry] = defaults;
             b.scalar_constructor_assignments[entry] = assignments;
         }
         return true;
+    }
+
+    static void il_scalar_constructor_default(int entry, int symbol, int type, Compiler c, IlBackend b)
+    {
+        if (!b.scalar_constructor_defaults.TryGetValue(entry, out var defaults) ||
+            !defaults.TryGetValue(symbol, out int value)) return;
+        int slot = b.local(b.type(type, c)), present = b.label(), done = b.label();
+        b.emit(0xfe0e, slot); b.emit(0xfe0c, slot); b.missing(type, c); b.emit(0x39, present);
+        il_as(value, type, c, b); b.emit(0x38, done);
+        b.mark(present); b.emit(0xfe0c, slot); b.mark(done);
     }
 
     internal static void il_scalar_class_initialize(int entry, List<ScalarField> fields, Compiler c, IlBackend b)
@@ -229,7 +245,9 @@ internal static partial class CompilerFunctions
             for (int i = 0; i < arguments.Count; i++)
             {
                 var parameter = arguments[i]; int slot = b.local(b.type(parameter.Type, c));
-                b.emit(0xfe0c, evaluated[i].Slot); b.convert(evaluated[i].Type, parameter.Type, c); b.emit(0xfe0e, slot);
+                b.emit(0xfe0c, evaluated[i].Slot); b.convert(evaluated[i].Type, parameter.Type, c);
+                il_scalar_constructor_default(entry, parameter.Symbol, parameter.Type, c, b);
+                b.emit(0xfe0e, slot);
                 parameters[parameter.Symbol] = (slot, parameter.Type);
             }
         }

@@ -62,7 +62,9 @@ internal static partial class CompilerFunctions
             var parameters = new Dictionary<int, (int Slot, int Type)>();
             for (int i = 0; i < arguments.Count; i++) {
                 int slot = b.local(b.type(arguments[i].Type, c));
-                b.emit(0xfe09, i + 1); b.emit(0xfe0e, slot);
+                b.emit(0xfe09, i + 1);
+                il_scalar_constructor_default(entry.Key, arguments[i].Symbol, arguments[i].Type, c, b);
+                b.emit(0xfe0e, slot);
                 parameters[arguments[i].Symbol] = (slot, arguments[i].Type);
             }
             int instance = b.local(b.classes.at(type)), states = b.local(-6);
