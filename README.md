@@ -92,6 +92,7 @@ Runtime performance:
 | UTF-8 roundtrip, 1K chunks of 80 UTF-16 code units | 11.23 ms | 16.11 ms | — | 1.43x |
 | `==` on mixed values, 1M comparisons | 5.15 ms | 7.26 ms | — | 1.41x |
 | join, 20 joins of 10K integers from 0-99 | 1.64 ms | 2.23 ms | — | 1.36x |
+| Create and read 100K temporary class instances with default parameters | 0.0726 ms | 0.0939 ms | 0.313 ms (classes) | 1.29x |
 | Split 10K comma-separated strings, keep three parts, and sum lengths | 1.542 ms | 1.938 ms | 0.382 ms (`string[]`) | 1.26x |
 | Sum 100K local arrays of two numbers using index & 1 | 0.0702 ms | 0.0877 ms | — | 1.25x |
 | String `.at(index)`, 1M calls | 4.26 ms | 5.28 ms | — | 1.24x |
