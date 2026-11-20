@@ -84,6 +84,7 @@ func (b *irBuilder) prepareReflectionSources(files []*ast.SourceFile) {
 	for _, file := range files {
 		visit(file.AsNode())
 	}
+	b.prepareIndirectReflectionSources(files)
 }
 
 // Expand fresh array literals without executing their elements. Unknown

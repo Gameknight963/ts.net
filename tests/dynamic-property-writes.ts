@@ -39,3 +39,21 @@ const restTarget:any={value:0};[...restTarget.value]=[1,2];console.log('rest ass
 const loopTarget:any={value:0};for(loopTarget.value of ['loop assignment']){}console.log('loop assignment',loopTarget.value);
 const patternLoop:any={value:0};for([patternLoop.value] of [['loop pattern']]){}console.log('loop pattern',patternLoop.value);
 const keyTarget:any={value:0};for(keyTarget.value in {item:1}){}console.log('key assignment',keyTarget.value);
+function indirectWrite(target:any,value:any):void{target.value=value;}
+const writerAlias:any=indirectWrite;const aliasRecord={value:0};writerAlias(aliasRecord,'indirect');console.log('any callable',(aliasRecord as any).value);
+const callRecord={value:0};indirectWrite.call(undefined,callRecord,'call');console.log('call argument',(callRecord as any).value);
+const applyRecord={value:0};const applyArguments:any[]=[applyRecord,'apply'];writerAlias.apply(undefined,applyArguments);console.log('apply argument',(applyRecord as any).value);
+const bindRecord={value:0};const partialWriter=indirectWrite.bind(undefined,bindRecord);partialWriter('bind');console.log('bound argument',(bindRecord as any).value);
+const typedWriter:(target:any,value:any)=>void=indirectWrite;const typedWriterRecord={value:0};typedWriter(typedWriterRecord,'typed writer');console.log('typed callable',(typedWriterRecord as any).value);
+const writerHolder:{write:any}={write:indirectWrite};const holderRecord={value:0};writerHolder.write(holderRecord,'holder');console.log('callable property',(holderRecord as any).value);
+const forwardWriter:any=(writer:any,target:any)=>writer(target,'forward');const forwardRecord={value:0};forwardWriter(indirectWrite,forwardRecord);console.log('indirect forwarding',(forwardRecord as any).value);
+function overloadedWrite(target:any,value:string):void;
+function overloadedWrite(target:any,value:number):void;
+function overloadedWrite(target:any,value:any):void{target.value=value;}
+const overloadRecord={value:0};overloadedWrite(overloadRecord,'overload');console.log('overload argument',(overloadRecord as any).value);
+function receiverWrite(this:{label:string},target:any):void{target.value=this.label;}
+const receiverRecord={value:0};receiverWrite.call({label:'receiver'},receiverRecord);console.log('explicit this',(receiverRecord as any).value);
+const referenceChange:any={text:'before'};referenceChange.text=42;console.log('reference type change',referenceChange.text,typeof referenceChange.text);
+class IndirectMutator{constructor(target:any){target.value='class constructor';}}
+const ConstructorAlias:any=IndirectMutator;const classArgument={value:0};new ConstructorAlias(classArgument);console.log('class alias',(classArgument as any).value);
+const FunctionConstructorAlias:any=function(this:any,target:any):void{target.value='function constructor';};const functionArgument={value:0};new FunctionConstructorAlias(functionArgument);console.log('constructor alias',(functionArgument as any).value);
