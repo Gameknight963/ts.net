@@ -1,5 +1,7 @@
 using System.Globalization;
 
+if (args.Length != 0) LayoutTests.Check(args[0]);
+
 static string[] Keys(TsObject value) {
     var keys=(JsArray)Js.ObjectKeys(value);
     return Enumerable.Range(0,(int)keys.Length()).Select(i=>(string)keys.Get(i.ToString(CultureInfo.InvariantCulture))).ToArray();

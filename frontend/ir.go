@@ -76,6 +76,7 @@ type irBuilder struct {
 	labels                map[string]irLabel
 	deletedNames          map[string]bool
 	deleteAnyName         bool
+	dynamicWriteLiterals  map[*ast.Node]bool
 	reflectionSources     map[*ast.Node][]*ast.Node
 	reflectionIterations  map[*ast.Node][]*ast.Node
 	reflectionMapValues   []*ast.Node

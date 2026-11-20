@@ -232,8 +232,10 @@ func (b *irBuilder) reflectionDeletionValue(n *ast.Node, seen map[*ast.Node]bool
 func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 	b.prepareReflectionSources(files)
 	b.deletedNames = map[string]bool{}
+	b.dynamicWriteLiterals = map[*ast.Node]bool{}
 	var visit func(*ast.Node)
 	visit = func(n *ast.Node) {
+		b.prepareDynamicPropertyWrite(n)
 		if ast.IsClassLike(n) {
 			b.prepareClassBaseReturns(n)
 		}
@@ -308,10 +310,10 @@ func (b *irBuilder) prepareDeletion(files []*ast.SourceFile) {
 	}
 }
 func (b *irBuilder) deletableLiteral(n *ast.Node, row *irNode) {
-	if n.Kind != ast.KindObjectLiteralExpression || len(b.deletedNames) == 0 && !b.deleteAnyName {
+	if n.Kind != ast.KindObjectLiteralExpression || len(b.deletedNames) == 0 && !b.deleteAnyName && !b.dynamicWriteLiterals[n] {
 		return
 	}
-	affected := b.deleteAnyName
+	affected := b.deleteAnyName || b.dynamicWriteLiterals[n]
 	for property := row.children; property != 0; property = b.nodes[property-1].next {
 		p := b.nodes[property-1]
 		if p.name != 0 && b.deletedNames[b.texts[p.name-1]] {
